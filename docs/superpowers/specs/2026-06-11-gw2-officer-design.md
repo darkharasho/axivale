@@ -90,6 +90,9 @@ Stack: Electron + React + TypeScript + Vite. Tests with Vitest (maxWorkers=2).
   - Profession chips use profession colors (assets in sibling `gw2-class-icons`
     repo / axitools `media/gw2classicons/`).
   Production-grade polish; the frontend-design skill governs implementation.
+  The approved static mock is preserved at
+  `docs/superpowers/specs/2026-06-11-gazette-mock.html` — open it in a browser
+  for the exact target; its CSS is the source of truth for values.
 
 **IPC:** renderer ↔ main over Electron IPC: send user message, receive streamed
 agent events (text deltas, tool start/result), settings get/set, confirm-dialog
