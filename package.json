@@ -1,6 +1,6 @@
 {
   "name": "axivale",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AxiVale — a virtual officer for GW2 guild + Discord management",
   "author": "darkharasho",
   "main": "./out/main/index.js",
