@@ -14,6 +14,7 @@ import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
 import { AgentService } from './agent'
 import { setupUpdater } from './updater'
+import type { ProviderConfig, ProviderName } from './providers/types'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -63,6 +64,26 @@ app.whenReady().then(async () => {
   }
   const buildGw2 = (): Gw2Client => new Gw2Client(store.getActiveKey('gw2') ?? '')
 
+  const PROVIDER_MODEL_SETTING: Record<ProviderName, SettingKey> = {
+    claude: 'model',
+    gemini: 'geminiModel',
+    openai: 'openaiModel',
+    local: 'localModel'
+  }
+  const providerConfig = (): ProviderConfig => {
+    const raw = store.getSetting('provider')
+    const provider: ProviderName =
+      raw === 'gemini' || raw === 'openai' || raw === 'local' ? raw : 'claude'
+    return {
+      provider,
+      model: store.getSetting(PROVIDER_MODEL_SETTING[provider]),
+      oauthToken: store.getSecret('claudeOauthToken'),
+      apiKey:
+        provider === 'gemini' || provider === 'openai' ? store.getActiveKey(provider) : null,
+      endpoint: store.getSetting('localEndpoint')
+    }
+  }
+
   const agent = new AgentService({
     toolDeps: () => ({
       axitools: buildAxitools(),
@@ -71,8 +92,7 @@ app.whenReady().then(async () => {
       discordGuildId: () => store.getSetting('guildId') ?? '',
       gw2GuildId: () => store.getSetting('gw2GuildId') ?? ''
     }),
-    oauthToken: () => store.getSecret('claudeOauthToken'),
-    model: () => store.getSetting('model'),
+    config: providerConfig,
     confirm: (toolName, input) =>
       new Promise<boolean>((resolve) => {
         const win = mainWindow
@@ -147,6 +167,68 @@ app.whenReady().then(async () => {
     }
   })
 
+  // Probe the local model server: Ollama's /api/tags first, then the
+  // OpenAI-compatible /v1/models (LM Studio, llama.cpp server).
+  ipcMain.handle('local:status', async () => {
+    const base = (store.getSetting('localEndpoint') || 'http://localhost:11434').replace(/\/+$/, '')
+    try {
+      const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(3000) })
+      if (res.ok) {
+        const data = (await res.json()) as { models?: Array<{ name: string }> }
+        return { ok: true, models: (data.models ?? []).map((m) => m.name) }
+      }
+    } catch {
+      // not Ollama — try the OpenAI-compatible listing below
+    }
+    try {
+      const res = await fetch(`${base}/v1/models`, { signal: AbortSignal.timeout(3000) })
+      if (res.ok) {
+        const data = (await res.json()) as { data?: Array<{ id: string }> }
+        return { ok: true, models: (data.data ?? []).map((m) => m.id) }
+      }
+      return { ok: false, error: `Local server responded ${res.status}` }
+    } catch {
+      return {
+        ok: false,
+        error:
+          'No local model server found. Install Ollama from ollama.com, then run: ollama pull qwen3:8b'
+      }
+    }
+  })
+
+  // Credential readiness for the selected provider — drives the first-run nudge.
+  ipcMain.handle('provider:status', () => {
+    const cfg = providerConfig()
+    switch (cfg.provider) {
+      case 'gemini':
+        return {
+          provider: cfg.provider,
+          ready: cfg.apiKey !== null,
+          note: cfg.apiKey ? null : 'Add a Gemini API key in Settings to file dispatches.'
+        }
+      case 'openai':
+        return {
+          provider: cfg.provider,
+          ready: cfg.apiKey !== null,
+          note: cfg.apiKey ? null : 'Add an OpenAI API key in Settings to file dispatches.'
+        }
+      case 'local':
+        return {
+          provider: cfg.provider,
+          ready: true,
+          note: 'Local models are slower and less reliable on multi-step tasks.'
+        }
+      default:
+        return {
+          provider: cfg.provider,
+          ready: true,
+          note: cfg.oauthToken
+            ? null
+            : "Using this machine's Claude Code login — file a token in Settings if dispatches fail."
+        }
+    }
+  })
+
   // Panel bridge: whitelisted AxitoolsClient methods, active guild injected.
   // The renderer never chooses the guild — it always acts on the bound server.
   const PANEL_METHODS = new Set([
@@ -196,11 +278,18 @@ app.whenReady().then(async () => {
     })
   })
 
+  function drainConfirms(): void {
+    for (const resolve of pendingConfirms.values()) resolve(false)
+    pendingConfirms.clear()
+  }
+
   ipcMain.handle('agent:reset', () => {
+    drainConfirms()
     agent.resetSession()
   })
 
   ipcMain.handle('agent:cancel', () => {
+    drainConfirms()
     agent.cancelTurn()
   })
 

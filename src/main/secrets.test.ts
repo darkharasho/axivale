@@ -112,3 +112,24 @@ describe('SettingsStore keyrings', () => {
     expect(new SettingsStore(path, fakeCipher).getActiveKey('gw2')).toBe('SUPERSECRET')
   })
 })
+
+describe('provider keyrings', () => {
+  it('supports gemini and openai keyrings with active-key selection', () => {
+    const store = makeStore()
+    store.addKey('gemini', 'personal', 'AIza-test')
+    store.setActiveKey('gemini', 'personal')
+    expect(store.getActiveKey('gemini')).toBe('AIza-test')
+    expect(store.listKeyLabels('gemini')).toEqual([{ label: 'personal', active: true }])
+
+    store.addKey('openai', 'work', 'sk-test')
+    expect(store.getActiveKey('openai')).toBe('sk-test')
+    // services are independent rings
+    expect(store.getActiveKey('gemini')).toBe('AIza-test')
+  })
+
+  it('returns an empty ring for new services with no legacy secret to migrate', () => {
+    const store = makeStore()
+    expect(store.listKeyLabels('openai')).toEqual([])
+    expect(store.getActiveKey('openai')).toBeNull()
+  })
+})

@@ -32,6 +32,8 @@ contextBridge.exposeInMainWorld('officer', {
     ipcRenderer.invoke('keys:set-active', service, label),
   axitools: (method: string, ...args: unknown[]) =>
     ipcRenderer.invoke('axitools:call', method, ...args),
+  localStatus: () => ipcRenderer.invoke('local:status'),
+  providerStatus: () => ipcRenderer.invoke('provider:status'),
   appVersion: () => ipcRenderer.invoke('app:version'),
   checkUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),

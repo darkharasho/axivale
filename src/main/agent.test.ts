@@ -131,8 +131,13 @@ describe('AgentService turn serialization', () => {
         discordGuildId: () => '1',
         gw2GuildId: () => 'g1'
       }),
-      oauthToken: () => null,
-      model: () => null,
+      config: () => ({
+        provider: 'claude' as const,
+        model: null,
+        oauthToken: null,
+        apiKey: null,
+        endpoint: null
+      }),
       confirm: vi.fn().mockResolvedValue(true)
     }
 

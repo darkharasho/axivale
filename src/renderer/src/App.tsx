@@ -56,6 +56,7 @@ export default function App(): ReactElement {
   const [guildName, setGuildName] = useState<string | null>(null)
   const [gw2AccountName, setGw2AccountName] = useState<string | null>(null)
   const [claudeTokenSaved, setClaudeTokenSaved] = useState(false)
+  const [providerNote, setProviderNote] = useState<string | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
   // Continue ids past whatever was restored so keys stay unique.
@@ -72,6 +73,12 @@ export default function App(): ReactElement {
 
   async function refreshStatus(): Promise<void> {
     setClaudeTokenSaved(await window.officer.hasSecret('claudeOauthToken'))
+    try {
+      const status = await window.officer.providerStatus()
+      setProviderNote(status.ready ? status.note : (status.note ?? 'Configure a provider in Settings.'))
+    } catch {
+      setProviderNote(null)
+    }
     setGw2AccountName(await window.officer.getSetting('gw2AccountName'))
     const chosenGuild = await window.officer.getSetting('guildId')
     try {
@@ -139,6 +146,7 @@ export default function App(): ReactElement {
 
   function stopTurn(): void {
     window.officer.cancelTurn()
+    setConfirmQueue([])
   }
 
   function submit(text: string): void {
@@ -194,7 +202,7 @@ export default function App(): ReactElement {
             )}
             <span className="d">{dateline}</span>
           </div>
-          {section === 'settings' && <Settings onChanged={refreshStatus} />}
+          {section === 'settings' && <Settings onChanged={refreshStatus} onProviderChanged={newConversation} />}
           {section === 'builds' && <Builds />}
           {section === 'comps' && <Comps />}
           {section === 'roster' && <Roster />}
@@ -202,7 +210,18 @@ export default function App(): ReactElement {
           {section === 'dispatches' && (
             <div className="chat" ref={chatRef}>
               {turns.length === 0 ? (
-                <div className="empty">No dispatches yet — file your orders below.</div>
+                <div className="empty">
+                  No dispatches yet — file your orders below.
+                  {providerNote && (
+                    <>
+                      <br />
+                      {providerNote}{' '}
+                      <button className="folio-act" onClick={() => setSection('settings')}>
+                        Open Settings
+                      </button>
+                    </>
+                  )}
+                </div>
               ) : (
                 turns.map((turn) => <Article key={turn.id} turn={turn} />)
               )}
