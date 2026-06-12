@@ -33,10 +33,20 @@ jobs:
         working-directory: axivale
       - run: npm run build
         working-directory: axivale
-      - run: npx electron-builder --publish always
+      # CSC_LINK is the APPLE cert — keep it off the windows runner, where
+      # electron-builder would try to codesign the .exe with it and fail.
+      - if: runner.os == 'macOS'
+        run: npx electron-builder --publish always
         working-directory: axivale
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No signing certs configured; mac builds unsigned (auto-update on
-          # macOS requires notarized builds — revisit when certs exist).
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - if: runner.os != 'macOS'
+        run: npx electron-builder --publish always
+        working-directory: axivale
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
