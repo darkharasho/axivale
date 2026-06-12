@@ -19,6 +19,7 @@ const MAX_TOOL_ROUNDS = 25
  * local server (Ollama, LM Studio, llama.cpp server).
  */
 export class OpenAIChatAdapter implements ProviderAdapter {
+  /** Grows unbounded across turns; re-sent whole each request (fine at chat scale). reset() clears. */
   private history: ChatMessage[] = []
 
   constructor(
@@ -50,6 +51,18 @@ export class OpenAIChatAdapter implements ProviderAdapter {
   }
 
   async *runTurn(input: TurnInput): AsyncGenerator<AgentEvent> {
+    // Snapshot history length so we can roll back on any throw, keeping history consistent.
+    const historyMark = this.history.length
+    try {
+      yield* this._runTurnInner(input)
+    } catch (err) {
+      // Truncate any messages appended during the failed turn before rethrowing.
+      this.history.length = historyMark
+      throw err
+    }
+  }
+
+  private async *_runTurnInner(input: TurnInput): AsyncGenerator<AgentEvent> {
     const tools = toToolSpecs(input.tools).map((s) => ({
       type: 'function' as const,
       function: { name: s.name, description: s.description, parameters: s.parameters }
@@ -87,6 +100,7 @@ export class OpenAIChatAdapter implements ProviderAdapter {
         } catch {
           continue
         }
+        // Only choices[0] is read; n>1 is never requested so other choices are absent.
         const delta = chunk.choices?.[0]?.delta
         if (!delta) continue
         if (typeof delta.content === 'string' && delta.content) {
@@ -122,6 +136,8 @@ export class OpenAIChatAdapter implements ProviderAdapter {
       })
 
       for (const call of ordered) {
+        // Honour abort before starting each tool; history rollback in runTurn keeps things consistent.
+        if (input.signal.aborted) throw new Error('Turn cancelled')
         let parsed: Record<string, unknown> = {}
         let parseError: string | null = null
         if (call.args.trim()) {

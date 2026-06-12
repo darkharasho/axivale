@@ -154,6 +154,57 @@ describe('OpenAIChatAdapter', () => {
     expect(result).toMatchObject({ isError: true })
   })
 
+  it('rolls back history when a fetch rejects, so the next turn starts clean', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network error'))
+      .mockResolvedValueOnce(
+        sseBody([{ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }])
+      )
+    const adapter = new OpenAIChatAdapter(() => openaiConfig, fetchFn as unknown as typeof fetch)
+    // First turn should reject
+    await expect(collect(adapter, turnInput())).rejects.toThrow('network error')
+    // Second turn succeeds; history must only have system + user (no dirty messages from failed turn)
+    await collect(adapter, turnInput())
+    const body = JSON.parse((fetchFn.mock.calls[1][1] as RequestInit).body as string)
+    expect(body.messages.map((m: { role: string }) => m.role)).toEqual(['system', 'user'])
+  })
+
+  it('aborts mid-loop when signal is already aborted and rolls back history', async () => {
+    const ac = new AbortController()
+    ac.abort()
+    // fetchFn returns a tool_calls round — the abort check fires before gateAndRunTool
+    const fetchFn = vi.fn().mockResolvedValueOnce(
+      sseBody([
+        {
+          choices: [
+            {
+              delta: {
+                tool_calls: [{ index: 0, id: 'call_x', function: { name: 'echo_tool', arguments: '{"message":"x"}' } }]
+              },
+              finish_reason: 'tool_calls'
+            }
+          ]
+        }
+      ])
+    )
+    const freshFetch = vi
+      .fn()
+      .mockResolvedValueOnce(sseBody([{ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }]))
+    const adapter = new OpenAIChatAdapter(() => openaiConfig, fetchFn as unknown as typeof fetch)
+    // The aborted-signal turn should reject
+    await expect(collect(adapter, turnInput({ signal: ac.signal }))).rejects.toThrow('Turn cancelled')
+    // Swap in a clean fetchFn; the adapter should have rolled back history
+    const adapter2 = new OpenAIChatAdapter(() => openaiConfig, freshFetch as unknown as typeof fetch)
+    // Copy history state by re-using same adapter — reset it would defeat the point;
+    // instead verify via a new collect on the same adapter instance with a live signal.
+    ;(adapter as unknown as { fetchFn: typeof fetch }).fetchFn = freshFetch as unknown as typeof fetch
+    await collect(adapter, turnInput())
+    const body = JSON.parse((freshFetch.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.messages.map((m: { role: string }) => m.role)).toEqual(['system', 'user'])
+    void adapter2
+  })
+
   it('uses the local endpoint without auth when provider is local', async () => {
     const fetchFn = vi.fn().mockResolvedValue(
       sseBody([{ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }])
