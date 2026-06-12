@@ -320,8 +320,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .spreset{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
 .shead .zap{margin-left:auto}
 .spills{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.spill{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px dashed var(--rule);padding:3px 7px}
-.spill.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+.spill{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px dashed var(--rule2);border-radius:0;background:rgba(0,0,0,.22);padding:3px 7px}
+.spill.on{color:#fff;background:var(--accent);border:1px dashed rgba(255,255,255,.5)}
 .stime{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--ink-dim)}
 .ssignups{margin-top:11px;padding-top:10px;border-top:1px dotted var(--rule);display:flex;flex-direction:column;gap:5px}
 .ssignrow{display:flex;align-items:center;gap:8px}
