@@ -16,12 +16,12 @@ interface Member {
   preferred_role_id?: string
 }
 
-function guildList(m: Member): string {
+function guildLabels(m: Member): string[] {
   const labels = new Set<string>()
   for (const a of m.accounts) {
     for (const label of Object.values(a.guild_labels ?? {})) labels.add(label)
   }
-  return labels.size > 0 ? [...labels].join(', ') : '—'
+  return [...labels]
 }
 
 function characterCount(m: Member): number {
@@ -164,7 +164,20 @@ export default function Roster(): ReactElement {
                   <td className="mono">
                     {m.accounts.length > 0 ? m.accounts.map((a) => a.account_name).join(', ') : '—'}
                   </td>
-                  <td className="mono">{guildList(m)}</td>
+                  <td className="mono">
+                    {(() => {
+                      const labels = guildLabels(m)
+                      return labels.length > 0 ? (
+                        <div className="guildlines">
+                          {labels.map((g) => (
+                            <span key={g}>{g}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        '—'
+                      )
+                    })()}
+                  </td>
                   <td className="mono">{characterCount(m)}</td>
                 </tr>
               ))}

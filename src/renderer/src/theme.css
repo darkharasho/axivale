@@ -196,6 +196,8 @@ td.nm2{color:var(--ink)}
 .pi .kx{margin-left:10px;color:var(--faint);cursor:pointer}
 .pi .kx:hover{color:var(--accent-b)}
 .classicon{display:inline-block;vertical-align:-0.25em;object-fit:contain;flex-shrink:0}
+.guildlines{display:flex;flex-direction:column;gap:2px}
+.roster-table td{vertical-align:top}
 .roster-filters{display:flex;align-items:stretch;gap:10px;margin:8px 0 16px}
 .rfilter-search{flex:1;border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
 .rfilter-search::placeholder{color:var(--faint)}
