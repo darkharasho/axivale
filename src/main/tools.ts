@@ -346,9 +346,19 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ),
     tool(
       'axitools_members',
-      'Linked-member roster derived from the GW2 API keys members registered with the bot: each Discord member’s GW2 account names, characters, GW2 guild memberships, and preferred guild role. Key material is never included.',
+      'Linked-member roster derived from the GW2 API keys members registered with the bot IN THIS Discord server: each member’s GW2 account names, characters, GW2 guild memberships, and preferred guild role. Key material is never included. NOTE: members who registered their key in a different server the bot shares do not appear here — use axitools_key_holders to check key existence across all servers.',
       {},
       safe(async () => deps.axitools.membersLinked(requireDiscordGuild()))
+    ),
+    tool(
+      'axitools_key_holders',
+      'Check which GW2 account names have an API key registered with the AxiTools bot in ANY Discord server it serves (existence booleans only — no key data, no server details). Use this to answer "who has a key" for a guild roster: feed it the account names from gw2_guild_members. Max 500 names per call.',
+      {
+        account_names: z.array(z.string()).describe('GW2 account names, e.g. ["Logan.1234"]')
+      },
+      safe(async ({ account_names }) =>
+        deps.axitools.keyHolders(requireDiscordGuild(), account_names)
+      )
     ),
     tool(
       'gw2_api',

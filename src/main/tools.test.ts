@@ -38,7 +38,8 @@ function makeDeps(): ToolDeps {
       guildRolesAllowlist: vi.fn().mockResolvedValue({}),
       configGet: vi.fn().mockResolvedValue({}),
       configPatch: vi.fn().mockResolvedValue({}),
-      membersLinked: vi.fn().mockResolvedValue([])
+      membersLinked: vi.fn().mockResolvedValue([]),
+      keyHolders: vi.fn().mockResolvedValue({ holders: { 'A.1': true }, matched: 1 })
     } as never,
     gw2: {
       accountInfo: vi.fn().mockResolvedValue({ accountName: 'A.1', permissions: [], missingPermissions: [], guilds: [], guildLeader: [] }),
@@ -180,6 +181,15 @@ describe('officer tools', () => {
     const members = tools.find((t) => t.name === 'axitools_members')!
     await members.handler({}, {})
     expect(deps.axitools.membersLinked).toHaveBeenCalledWith('123')
+  })
+
+  it('axitools_key_holders checks account names', async () => {
+    const deps = makeDeps()
+    const tools = buildOfficerTools(deps)
+    const kh = tools.find((t) => t.name === 'axitools_key_holders')!
+    const result = await kh.handler({ account_names: ['A.1', 'B.2'] }, {})
+    expect(deps.axitools.keyHolders).toHaveBeenCalledWith('123', ['A.1', 'B.2'])
+    expect(result.isError).toBeUndefined()
   })
 
   it('action-gated tools mark their destructive verbs', async () => {

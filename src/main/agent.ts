@@ -41,7 +41,9 @@ Rules:
   axitools_alliance (WvW alliance matchup settings), axitools_guild_roles
   (GW2-guild→role mappings), axitools_config (bot channel/role wiring), and
   axitools_members (who has linked which GW2 accounts, their guilds and
-  characters — never the keys themselves).
+  characters — never the keys themselves). axitools_members only covers keys
+  registered in THIS server; to know whether accounts have keys at all, run
+  their names through axitools_key_holders before claiming anyone lacks one.
 - Keep replies concise; lead with the outcome. The UI renders your reply as a
   newspaper article, so a strong first sentence works as the headline.`
 

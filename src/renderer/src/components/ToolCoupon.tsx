@@ -24,6 +24,7 @@ const LABELS: Record<string, string> = {
   axitools_guild_roles: 'AXITOOLS / GUILD ROLES',
   axitools_config: 'AXITOOLS / CONFIG',
   axitools_members: 'AXITOOLS / MEMBERS',
+  axitools_key_holders: 'AXITOOLS / KEY CHECK',
   gw2_guild_members: 'GW2 / GUILD MEMBERS',
   gw2_account_info: 'GW2 / ACCOUNT INFO'
 }

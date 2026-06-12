@@ -187,6 +187,10 @@ export class AxitoolsClient {
     return this.request('GET', `/guilds/${guildId}/members-linked`)
   }
 
+  keyHolders(guildId: string, accountNames: string[]): Promise<unknown> {
+    return this.request('POST', `/guilds/${guildId}/key-holders`, { account_names: accountNames })
+  }
+
   listCompSchedules(guildId: string): Promise<CompSchedule[]> {
     return this.request('GET', `/guilds/${guildId}/comp-schedules`)
   }
