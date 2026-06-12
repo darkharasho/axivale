@@ -20,7 +20,7 @@ export default function App(): ReactElement {
   const [turns, setTurns] = useState<Turn[]>([])
   const [section, setSection] = useState<Section>('dispatches')
   const [running, setRunning] = useState(false)
-  const [confirmReq, setConfirmReq] = useState<ConfirmReq | null>(null)
+  const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
 
   // status surfaced in masthead / rails
   const [axiConnected, setAxiConnected] = useState(false)
@@ -28,8 +28,6 @@ export default function App(): ReactElement {
   const [gw2AccountName, setGw2AccountName] = useState<string | null>(null)
   const [claudeTokenSaved, setClaudeTokenSaved] = useState(false)
 
-  const turnsRef = useRef<Turn[]>(turns)
-  turnsRef.current = turns
   const chatRef = useRef<HTMLDivElement>(null)
   const nextId = useRef(1)
 
@@ -67,6 +65,7 @@ export default function App(): ReactElement {
     const offEvent = window.officer.onAgentEvent((raw) => {
       const event = raw as AgentEvent
       setTurns((prev) => {
+        // Events before any turn are intentionally dropped; submit() always creates the turn first.
         if (prev.length === 0) return prev
         const last = prev[prev.length - 1]
         const updated = applyEvent(last, event)
@@ -77,7 +76,7 @@ export default function App(): ReactElement {
       if ((raw as AgentEvent).kind === 'done') setRunning(false)
     })
     const offConfirm = window.officer.onConfirmRequest((raw) => {
-      setConfirmReq(raw as ConfirmReq)
+      setConfirmQueue((prev) => [...prev, raw as ConfirmReq])
     })
     return () => {
       offEvent()
@@ -111,7 +110,7 @@ export default function App(): ReactElement {
 
   function respondConfirm(id: string, allowed: boolean): void {
     window.officer.respondConfirm(id, allowed)
-    setConfirmReq(null)
+    setConfirmQueue((prev) => prev.slice(1))
   }
 
   const memberCount: number | null = null
@@ -152,7 +151,7 @@ export default function App(): ReactElement {
         <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
       </div>
       <InputBar disabled={running} onSubmit={submit} />
-      {confirmReq && <ConfirmDialog req={confirmReq} onRespond={respondConfirm} />}
+      {confirmQueue.length > 0 && <ConfirmDialog req={confirmQueue[0]} onRespond={respondConfirm} />}
     </>
   )
 }
