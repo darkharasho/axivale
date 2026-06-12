@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react'
 import {
   axi,
-  channelName,
+  ChannelTag,
   errText,
   isOffline,
   Offline,
@@ -238,7 +238,7 @@ export default function Bureau(): ReactElement {
                   <td className="nm2">{s.name}</td>
                   <td className="mono">{s.platform}</td>
                   <td>{s.channel_display_name || '—'}</td>
-                  <td className="mono">{channelName(ov, s.discord_channel_id)}</td>
+                  <td className="mono"><ChannelTag ov={ov} id={s.discord_channel_id} /></td>
                   <td className="mono">
                     {s.is_live ? (
                       <span className="lit">● live</span>
@@ -344,7 +344,7 @@ export default function Bureau(): ReactElement {
                 <tr key={f.name}>
                   <td className="nm2">{f.name}</td>
                   <td className="mono">{f.url}</td>
-                  <td className="mono">{channelName(ov, f.channel_id)}</td>
+                  <td className="mono"><ChannelTag ov={ov} id={f.channel_id} /></td>
                   <td className="act">
                     <ZapButton title={`Delete "${f.name}"`} onConfirm={() => void removeRss(f.name)} />
                   </td>

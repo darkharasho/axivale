@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { Hash } from 'lucide-react'
 import { classIconUrl } from './classIcons'
 
 /** Typed wrapper around the whitelisted AxiTools bridge. */
@@ -112,6 +113,24 @@ export function channelName(ov: Overview | null, id: string | undefined | null):
   if (!id) return '—'
   const ch = ov?.channels.find((c) => String(c.id) === String(id))
   return ch ? `#${ch.name}` : String(id)
+}
+
+/** Channel reference with a lucide hash glyph instead of a literal "#". */
+export function ChannelTag({
+  ov,
+  id
+}: {
+  ov: Overview | null
+  id: string | undefined | null
+}): ReactElement {
+  if (!id) return <span className="chtag none">—</span>
+  const ch = ov?.channels.find((c) => String(c.id) === String(id))
+  return (
+    <span className="chtag">
+      <Hash size={12} aria-hidden="true" />
+      {ch ? ch.name : String(id)}
+    </span>
+  )
 }
 
 export const WEEK_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

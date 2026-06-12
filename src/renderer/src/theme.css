@@ -196,6 +196,9 @@ td.nm2{color:var(--ink)}
 .pi .kx{margin-left:10px;color:var(--faint);cursor:pointer}
 .pi .kx:hover{color:var(--accent-b)}
 .classicon{display:inline-block;vertical-align:-0.25em;object-fit:contain;flex-shrink:0}
+.chtag{display:inline-flex;align-items:center;gap:3px}
+.chtag svg{color:var(--faint);flex-shrink:0}
+.chtag.none{color:var(--faint)}
 /* class/spec dropdown */
 .clspick{position:relative}
 .clspick-btn{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-family:'Source Serif 4',serif;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
