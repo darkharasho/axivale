@@ -71,7 +71,9 @@ app.whenReady().then(async () => {
     local: 'localModel'
   }
   const providerConfig = (): ProviderConfig => {
-    const provider = (store.getSetting('provider') ?? 'claude') as ProviderName
+    const raw = store.getSetting('provider')
+    const provider: ProviderName =
+      raw === 'gemini' || raw === 'openai' || raw === 'local' ? raw : 'claude'
     return {
       provider,
       model: store.getSetting(PROVIDER_MODEL_SETTING[provider]),
@@ -170,7 +172,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('local:status', async () => {
     const base = (store.getSetting('localEndpoint') || 'http://localhost:11434').replace(/\/+$/, '')
     try {
-      const res = await fetch(`${base}/api/tags`)
+      const res = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(3000) })
       if (res.ok) {
         const data = (await res.json()) as { models?: Array<{ name: string }> }
         return { ok: true, models: (data.models ?? []).map((m) => m.name) }
@@ -179,7 +181,7 @@ app.whenReady().then(async () => {
       // not Ollama — try the OpenAI-compatible listing below
     }
     try {
-      const res = await fetch(`${base}/v1/models`)
+      const res = await fetch(`${base}/v1/models`, { signal: AbortSignal.timeout(3000) })
       if (res.ok) {
         const data = (await res.json()) as { data?: Array<{ id: string }> }
         return { ok: true, models: (data.data ?? []).map((m) => m.id) }
