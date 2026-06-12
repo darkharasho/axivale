@@ -219,6 +219,40 @@ describe('GeminiAdapter', () => {
     expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
   })
 
+  it('rolls back the WHOLE turn when empty response arrives after a tool round', async () => {
+    const fetchFn = vi
+      .fn()
+      // Round 0: returns a functionCall → tool executes
+      .mockResolvedValueOnce(
+        sseBody([
+          {
+            candidates: [
+              { content: { parts: [{ functionCall: { name: 'echo_tool', args: { message: 'x' } } }] } }
+            ]
+          }
+        ])
+      )
+      // Round 1: empty parts → empty-response path
+      .mockResolvedValueOnce(
+        sseBody([{ candidates: [{ content: { parts: [] } }] }])
+      )
+      // Turn 2: normal text response to verify history is clean
+      .mockResolvedValueOnce(
+        sseBody([{ candidates: [{ content: { parts: [{ text: 'all good' }] } }] }])
+      )
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+
+    // Turn 1: tool executes then empty response
+    const firstEvents = await collect(adapter, turnInput({ prompt: 'do something' }))
+    const doneEvent = firstEvents[firstEvents.length - 1]
+    expect(doneEvent).toMatchObject({ kind: 'done', error: expect.stringContaining('empty response') })
+
+    // Turn 2: history must be exactly ['user'] — full rollback, no dangling functionCall
+    await collect(adapter, turnInput({ prompt: 'next' }))
+    const body = JSON.parse((fetchFn.mock.calls[2][1] as RequestInit).body as string)
+    expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
+  })
+
   it('aborts mid-loop when signal is already aborted and rolls back history', async () => {
     const ac = new AbortController()
     ac.abort()

@@ -76,7 +76,7 @@ export class GeminiAdapter implements ProviderAdapter {
     // Snapshot history length so we can roll back on any throw, keeping history consistent.
     const historyMark = this.history.length
     try {
-      yield* this._runTurnInner(input)
+      yield* this._runTurnInner(input, historyMark)
     } catch (err) {
       // Truncate any messages appended during the failed turn before rethrowing.
       this.history.length = historyMark
@@ -84,7 +84,7 @@ export class GeminiAdapter implements ProviderAdapter {
     }
   }
 
-  private async *_runTurnInner(input: TurnInput): AsyncGenerator<AgentEvent> {
+  private async *_runTurnInner(input: TurnInput, historyMark: number): AsyncGenerator<AgentEvent> {
     const cfg = this.config()
     const model = cfg.model || 'gemini-2.5-flash'
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`
@@ -142,8 +142,8 @@ export class GeminiAdapter implements ProviderAdapter {
         }
       }
       if (modelParts.length === 0 && calls.length === 0) {
-        // Nothing came back — pop the user message pushed at turn start to keep history clean.
-        this.history.splice(this.history.length - 1, 1)
+        // Nothing came back — roll back the entire turn so no dangling entries remain.
+        this.history.length = historyMark
         yield { kind: 'done', sessionId: null, error: 'Gemini returned an empty response — the prompt may have been blocked.' }
         return
       }

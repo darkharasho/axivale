@@ -79,6 +79,8 @@ export class AgentService {
 
   resetSession(): void {
     this.adapter?.reset()
+    this.adapter = null
+    this.adapterProvider = null
   }
 
   /** Abort the in-flight turn, if any. The runTurn loop ends cleanly. */

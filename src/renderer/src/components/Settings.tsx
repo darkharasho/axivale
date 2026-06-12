@@ -47,6 +47,7 @@ interface KeyLabel {
 
 export interface SettingsProps {
   onChanged: () => void
+  onProviderChanged?: () => void
 }
 
 /** Saved-key switcher: click a label to activate, ✕ to remove. */
@@ -86,7 +87,7 @@ function Keyring({
   )
 }
 
-export default function Settings({ onChanged }: SettingsProps): ReactElement {
+export default function Settings({ onChanged, onProviderChanged }: SettingsProps): ReactElement {
   // Claude
   const [claudeToken, setClaudeToken] = useState('')
   const [claudeSaved, setClaudeSaved] = useState(false)
@@ -186,12 +187,14 @@ export default function Settings({ onChanged }: SettingsProps): ReactElement {
   }
 
   async function pickProvider(value: ProviderName): Promise<void> {
+    const prev = provider
     setProvider(value)
     setLlmLabel('')
     setLlmKey('')
     setCustomModel('')
     await window.officer.setSetting('provider', value)
     if (value === 'local') await checkLocal()
+    if (value !== prev) onProviderChanged?.()
     onChanged()
   }
 

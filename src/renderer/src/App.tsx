@@ -146,6 +146,7 @@ export default function App(): ReactElement {
 
   function stopTurn(): void {
     window.officer.cancelTurn()
+    setConfirmQueue([])
   }
 
   function submit(text: string): void {
@@ -201,7 +202,7 @@ export default function App(): ReactElement {
             )}
             <span className="d">{dateline}</span>
           </div>
-          {section === 'settings' && <Settings onChanged={refreshStatus} />}
+          {section === 'settings' && <Settings onChanged={refreshStatus} onProviderChanged={newConversation} />}
           {section === 'builds' && <Builds />}
           {section === 'comps' && <Comps />}
           {section === 'roster' && <Roster />}

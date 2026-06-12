@@ -278,11 +278,18 @@ app.whenReady().then(async () => {
     })
   })
 
+  function drainConfirms(): void {
+    for (const resolve of pendingConfirms.values()) resolve(false)
+    pendingConfirms.clear()
+  }
+
   ipcMain.handle('agent:reset', () => {
+    drainConfirms()
     agent.resetSession()
   })
 
   ipcMain.handle('agent:cancel', () => {
+    drainConfirms()
     agent.cancelTurn()
   })
 

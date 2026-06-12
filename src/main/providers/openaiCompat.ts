@@ -45,7 +45,7 @@ export class OpenAIChatAdapter implements ProviderAdapter {
     return {
       url: 'https://api.openai.com/v1/chat/completions',
       headers: cfg.apiKey ? { Authorization: `Bearer ${cfg.apiKey}` } : {},
-      model: cfg.model || 'gpt-5.1',
+      model: cfg.model || 'gpt-5.4',
       label: 'OpenAI'
     }
   }
