@@ -33,6 +33,7 @@ describe('Gw2Client', () => {
     expect(firstUrl).toBe('https://api.guildwars2.com/v2/tokeninfo')
     const init = mockFetch.mock.calls[0][1] as RequestInit
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer TEST-KEY')
+    expect(mockFetch.mock.calls[1][0]).toBe('https://api.guildwars2.com/v2/account')
   })
 
   it('reports missing permissions', async () => {

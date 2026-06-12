@@ -35,6 +35,7 @@ describe('AxitoolsClient', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe('http://127.0.0.1:8642/guilds/123/builds')
     expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toEqual({ name: 'FB', profession: 'Guardian', chat_code: '[&x]' })
   })
 
   it('encodes preset names in URLs', async () => {
