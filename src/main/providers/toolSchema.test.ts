@@ -80,4 +80,23 @@ describe('gateAndRunTool', () => {
     expect(outcome).toEqual({ text: 'The user declined this action.', isError: true })
     expect(confirm).toHaveBeenCalledWith('axitools_builds_delete', { build_id: 'b1' })
   })
+
+  it('threads updatedInput through to the handler when the user approves', async () => {
+    const captured: Record<string, unknown>[] = []
+    const del = tool(
+      'axitools_builds_delete',
+      'Deletes.',
+      { build_id: z.string() },
+      async (args: { build_id: string }) => {
+        captured.push(args)
+        return { content: [{ type: 'text' as const, text: args.build_id }] }
+      }
+    )
+    const confirm = vi.fn().mockResolvedValue(true)
+    const outcome = await gateAndRunTool([del], 'axitools_builds_delete', { build_id: 'b2' }, confirm)
+    expect(outcome.isError).toBe(false)
+    expect(outcome.text).toBe('b2')
+    expect(captured).toHaveLength(1)
+    expect(captured[0]).toMatchObject({ build_id: 'b2' })
+  })
 })

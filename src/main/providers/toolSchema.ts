@@ -28,8 +28,7 @@ function zodObjectOf(t: SdkMcpToolDefinition<any>): z.ZodObject<z.ZodRawShape> {
 /** Provider-neutral tool descriptions for OpenAI/Gemini function calling. */
 export function toToolSpecs(tools: Tools): ToolSpec[] {
   return tools.map((t) => {
-    const parameters = z.toJSONSchema(zodObjectOf(t), { io: 'input' }) as Record<string, unknown>
-    delete parameters.$schema
+    const { $schema: _discard, ...parameters } = z.toJSONSchema(zodObjectOf(t), { io: 'input' }) as Record<string, unknown>
     return { name: t.name, description: t.description ?? '', parameters }
   })
 }
@@ -52,6 +51,7 @@ export async function executeTool(
   }
   // Handlers are wrapped in tools.ts safe(): they never throw, errors come back as isError results.
   const result = await t.handler(parsed.data, {})
+  // safe()-wrapped handlers always produce at least one text block; empty text means a genuinely empty result.
   const text = (result.content ?? [])
     .map((part: { type: string; text?: string }) => (part.type === 'text' ? (part.text ?? '') : ''))
     .join('')
