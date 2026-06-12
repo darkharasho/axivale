@@ -9,7 +9,7 @@ export type AgentEvent =
 
 const MCP_PREFIX = 'mcp__officer__'
 
-const OFFICER_SYSTEM_PROMPT = `You are The Officer — a virtual guild officer for a Guild Wars 2 guild.
+const AXIVALE_SYSTEM_PROMPT = `You are AxiVale — a virtual guild officer for a Guild Wars 2 guild.
 You manage builds and squad compositions through the AxiTools Discord bot, and
 inspect the guild roster and activity log through the official GW2 API.
 
@@ -166,7 +166,7 @@ export class AgentService {
         options: {
           mcpServers: { officer: server },
           allowedTools,
-          systemPrompt: OFFICER_SYSTEM_PROMPT,
+          systemPrompt: AXIVALE_SYSTEM_PROMPT,
           includePartialMessages: true,
           env,
           ...(this.sessionId ? { resume: this.sessionId } : {}),

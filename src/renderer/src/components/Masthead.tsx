@@ -52,7 +52,7 @@ export default function Masthead(props: MastheadProps): ReactElement {
           </div>
         </div>
         <div className="title">
-          The Officer<em>.</em>
+          AxiVale<em>.</em>
         </div>
         <div className="ear right">
           <div>

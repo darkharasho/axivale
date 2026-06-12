@@ -10,7 +10,7 @@ const fakeCipher: Cipher = {
 }
 
 function makeStore(): SettingsStore {
-  const dir = mkdtempSync(join(tmpdir(), 'gw2officer-'))
+  const dir = mkdtempSync(join(tmpdir(), 'axivale-'))
   return new SettingsStore(join(dir, 'settings.json'), fakeCipher)
 }
 
@@ -22,14 +22,14 @@ describe('SettingsStore', () => {
   })
 
   it('persists across instances', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'gw2officer-'))
+    const dir = mkdtempSync(join(tmpdir(), 'axivale-'))
     const path = join(dir, 'settings.json')
     new SettingsStore(path, fakeCipher).setSecret('axitoolsToken', 'tok')
     expect(new SettingsStore(path, fakeCipher).getSecret('axitoolsToken')).toBe('tok')
   })
 
   it('does not write plaintext secrets to disk', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'gw2officer-'))
+    const dir = mkdtempSync(join(tmpdir(), 'axivale-'))
     const path = join(dir, 'settings.json')
     new SettingsStore(path, fakeCipher).setSecret('gw2ApiKey', 'SUPERSECRET')
     const raw = readFileSync(path, 'utf8')

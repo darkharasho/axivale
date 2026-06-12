@@ -33,13 +33,13 @@ export default function Article({ turn }: { turn: Turn }): ReactElement {
       </div>
       <div className="rip">
         <span className="t"></span>
-        <span className="lbl">The Officer Reports</span>
+        <span className="lbl">AxiVale Reports</span>
         <span className="t"></span>
       </div>
       <div className="msg off">
         <div className="lede">{headline || '…'}</div>
         <div className="byline">
-          By <b>The Officer</b> · filed {turn.filedAt} · {turn.tools.length} action
+          By <b>AxiVale</b> · filed {turn.filedAt} · {turn.tools.length} action
           {turn.tools.length === 1 ? '' : 's'} taken
         </div>
         <div className="prose">

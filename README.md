@@ -1,7 +1,7 @@
-# GW2 Officer
+# AxiVale
 
 A standalone Electron chat app — a **virtual officer** for your Guild Wars 2
-guild and Discord. You chat with a Claude agent ("The Officer") that has real
+guild and Discord. You chat with a Claude agent — AxiVale — that has real
 tools: it manages builds and squad-composition presets/schedules through the
 [AxiTools](../axitools) Discord bot, and inspects your guild roster and
 activity log through the official GW2 API.

@@ -27,7 +27,7 @@ export default function ConfirmDialog({ req, onRespond }: ConfirmDialogProps): R
               <pre>{JSON.stringify(req.input, null, 2)}</pre>
             </div>
           </div>
-          <div className="nask">The Officer requests authorization to proceed.</div>
+          <div className="nask">AxiVale requests authorization to proceed.</div>
         </div>
         <div className="nact">
           <button className="btn-stamp" onClick={() => onRespond(req.id, true)}>
