@@ -100,9 +100,25 @@ export interface Role {
   name: string
 }
 
+export interface Member {
+  id: string
+  name?: string
+  display_name?: string
+}
+
 export interface Overview {
   channels: Channel[]
   roles: Role[]
+  members?: Member[]
+}
+
+/** Map of member id → best display name, from an include=members overview. */
+export function memberNames(ov: Overview | null): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const m of ov?.members ?? []) {
+    map.set(String(m.id), m.display_name || m.name || String(m.id))
+  }
+  return map
 }
 
 export function textChannels(ov: Overview | null): Channel[] {

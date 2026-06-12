@@ -4,6 +4,7 @@ import {
   ClassIcon,
   errText,
   isOffline,
+  memberNames,
   Offline,
   textChannels,
   WEEK_FULL,
@@ -170,7 +171,7 @@ export default function Comps(): ReactElement {
     const [p, s, o, c] = await Promise.allSettled([
       axi<Preset[]>('listCompPresets'),
       axi<Schedule[]>('listCompSchedules'),
-      axi<Overview>('discordOverview'),
+      axi<Overview>('discordOverview', true),
       axi<CompConfig>('compConfigGet')
     ])
     if (
@@ -527,6 +528,8 @@ export default function Comps(): ReactElement {
               const days = s.post_days ?? []
               const signups = s.signups ?? {}
               const signupRows = Object.entries(signups).filter(([, m]) => m && m.length)
+              const names = memberNames(ov)
+              const nameOf = (id: string): string => names.get(String(id)) ?? id
               return (
                 <div className="scard" key={s.schedule_id}>
                   <div className="shead">
@@ -562,7 +565,7 @@ export default function Comps(): ReactElement {
                             <ClassIcon name={cls} size={16} />
                             <span className="ssignclass">{cls}</span>
                             <span className="ssignnames">
-                              {shown.join(', ')}
+                              {shown.map(nameOf).join(', ')}
                               {extra > 0 ? ` +${extra} more` : ''}
                             </span>
                           </div>
