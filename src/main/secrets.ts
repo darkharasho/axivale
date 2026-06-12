@@ -2,7 +2,14 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'f
 import { dirname } from 'path'
 
 // gw2ApiKey/axivaleKey are legacy single-key secrets, migrated into keyrings on read.
-export type SecretKey = 'claudeOauthToken' | 'gw2ApiKey' | 'axivaleKey' | 'gw2Keys' | 'axivaleKeys'
+export type SecretKey =
+  | 'claudeOauthToken'
+  | 'gw2ApiKey'
+  | 'axivaleKey'
+  | 'gw2Keys'
+  | 'axivaleKeys'
+  | 'geminiKeys'
+  | 'openaiKeys'
 export type SettingKey =
   | 'guildId'
   | 'gw2GuildId'
@@ -10,9 +17,16 @@ export type SettingKey =
   | 'model'
   | 'gw2ActiveKey'
   | 'axivaleActiveKey'
+  | 'provider'
+  | 'localEndpoint'
+  | 'geminiModel'
+  | 'openaiModel'
+  | 'localModel'
+  | 'geminiActiveKey'
+  | 'openaiActiveKey'
 
 /** Services that hold a ring of labeled keys with one active. */
-export type KeyService = 'gw2' | 'axivale'
+export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai'
 
 export interface KeyLabel {
   label: string
@@ -24,11 +38,22 @@ interface StoredKey {
   key: string
 }
 
-const RING_SECRET: Record<KeyService, SecretKey> = { gw2: 'gw2Keys', axivale: 'axivaleKeys' }
-const LEGACY_SECRET: Record<KeyService, SecretKey> = { gw2: 'gw2ApiKey', axivale: 'axivaleKey' }
+const RING_SECRET: Record<KeyService, SecretKey> = {
+  gw2: 'gw2Keys',
+  axivale: 'axivaleKeys',
+  gemini: 'geminiKeys',
+  openai: 'openaiKeys'
+}
+// Only the original services have pre-keyring single secrets to migrate.
+const LEGACY_SECRET: Partial<Record<KeyService, SecretKey>> = {
+  gw2: 'gw2ApiKey',
+  axivale: 'axivaleKey'
+}
 const ACTIVE_SETTING: Record<KeyService, SettingKey> = {
   gw2: 'gw2ActiveKey',
-  axivale: 'axivaleActiveKey'
+  axivale: 'axivaleActiveKey',
+  gemini: 'geminiActiveKey',
+  openai: 'openaiActiveKey'
 }
 
 export interface Cipher {
@@ -100,7 +125,8 @@ export class SettingsStore {
       }
     }
     // Migrate a legacy single secret into the ring on first read.
-    const legacy = this.getSecret(LEGACY_SECRET[service])
+    const legacySecret = LEGACY_SECRET[service]
+    const legacy = legacySecret ? this.getSecret(legacySecret) : null
     if (legacy) {
       const ring = [{ label: 'default', key: legacy }]
       this.writeRing(service, ring)
