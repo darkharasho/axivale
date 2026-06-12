@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 export type Section = 'dispatches' | 'builds' | 'comps' | 'roster' | 'bureau' | 'settings'
 
@@ -12,6 +12,83 @@ export interface MastheadProps {
   claudeTokenSaved: boolean
   section: Section
   onSection: (s: Section) => void
+  onSwitched: () => void
+}
+
+interface KeyLabel {
+  label: string
+  active: boolean
+}
+
+/**
+ * Quick-swap dropdown on a masthead ear: lists the saved keys for a service
+ * and switches the active one in place, without opening Settings.
+ */
+function EarSwitcher({
+  service,
+  display,
+  align = 'left',
+  onSwitched
+}: {
+  service: 'gw2' | 'axivale'
+  display: string
+  align?: 'left' | 'right'
+  onSwitched: () => void
+}): ReactElement {
+  const [open, setOpen] = useState(false)
+  const [keys, setKeys] = useState<KeyLabel[]>([])
+  const ref = useRef<HTMLSpanElement>(null)
+
+  async function toggle(): Promise<void> {
+    if (open) {
+      setOpen(false)
+      return
+    }
+    setKeys(await window.officer.listKeys(service))
+    setOpen(true)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  async function pick(label: string): Promise<void> {
+    setOpen(false)
+    await window.officer.setActiveKey(service, label)
+    onSwitched()
+  }
+
+  return (
+    <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
+      <button className="earsw-btn" onClick={() => void toggle()}>
+        {display}
+        <span className="earsw-caret">▾</span>
+      </button>
+      {open && (
+        <div className={`earsw-menu ${align}`}>
+          {keys.length === 0 ? (
+            <div className="earsw-empty">no saved keys</div>
+          ) : (
+            keys.map((k) => (
+              <button
+                key={k.label}
+                className={`earsw-opt${k.active ? ' sel' : ''}`}
+                onClick={() => void pick(k.label)}
+              >
+                {k.label}
+                {k.active && <span className="dot">●</span>}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </span>
+  )
 }
 
 export default function Masthead(props: MastheadProps): ReactElement {
@@ -24,7 +101,8 @@ export default function Masthead(props: MastheadProps): ReactElement {
     memberCount,
     claudeTokenSaved,
     section,
-    onSection
+    onSection,
+    onSwitched
   } = props
 
   const guildDetail = guildName
@@ -68,7 +146,13 @@ export default function Masthead(props: MastheadProps): ReactElement {
             )}
           </div>
           <div>
-            <b>GW2 API</b> {gw2AccountName ?? 'no key'}
+            <b>GW2 API</b>{' '}
+            <EarSwitcher
+              service="gw2"
+              display={gw2AccountName ?? 'no key'}
+              align="left"
+              onSwitched={onSwitched}
+            />
           </div>
         </div>
         <div className="title">
@@ -76,7 +160,13 @@ export default function Masthead(props: MastheadProps): ReactElement {
         </div>
         <div className="ear right">
           <div>
-            <b>{guildName ?? 'Guild'}</b> {guildDetail}
+            <EarSwitcher
+              service="axivale"
+              display={guildName ?? 'Guild'}
+              align="right"
+              onSwitched={onSwitched}
+            />{' '}
+            {guildDetail}
           </div>
           <div>
             <b>Claude</b> {claudeTokenSaved ? 'token saved' : 'system login'}

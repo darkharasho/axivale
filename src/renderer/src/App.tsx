@@ -139,6 +139,7 @@ export default function App(): ReactElement {
         claudeTokenSaved={claudeTokenSaved}
         section={section}
         onSection={setSection}
+        onSwitched={refreshStatus}
       />
       <div className="sheet">
         <LeftRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
