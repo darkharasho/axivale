@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { axi, errText, isOffline, Offline } from './shared'
+import { SearchSelect } from './SearchSelect'
 
 interface LinkedAccount {
   account_name: string
@@ -114,24 +115,19 @@ export default function Roster(): ReactElement {
         {members.length > 0 && (
           <div className="roster-filters">
             <input
-              className="sinput"
+              className="rfilter-search"
               type="text"
               value={query}
               placeholder="Search member, account, or character…"
               onChange={(e) => setQuery(e.target.value)}
             />
-            <select
-              className="sselect"
+            <SearchSelect
               value={guildFilter}
-              onChange={(e) => setGuildFilter(e.target.value)}
-            >
-              <option value="">All guilds</option>
-              {guildOptions.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
+              options={guildOptions.map((g) => ({ value: g, label: g }))}
+              onChange={setGuildFilter}
+              placeholder="All guilds"
+              searchPlaceholder="Filter guilds…"
+            />
             {(query || guildFilter) && (
               <button
                 className="sbtn out"
