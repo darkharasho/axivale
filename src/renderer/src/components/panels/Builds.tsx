@@ -6,7 +6,18 @@ import {
   type FormEvent,
   type ReactElement
 } from 'react'
-import { axi, ClassIcon, errText, isOffline, Offline, ZapButton } from './shared'
+import {
+  axi,
+  ClassIcon,
+  errText,
+  isOffline,
+  Offline,
+  textChannels,
+  ZapButton,
+  type Overview
+} from './shared'
+import { ClassPicker } from './ClassPicker'
+import { splitClass } from './classes'
 
 interface Build {
   build_id: string
@@ -22,8 +33,7 @@ interface Build {
 
 const EMPTY_FORM = {
   name: '',
-  profession: '',
-  specialization: '',
+  cls: '',
   chat_code: '',
   url: '',
   description: ''
@@ -106,17 +116,32 @@ export default function Builds(): ReactElement {
   const [editing, setEditing] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // — Desk settings strip —
+  const [ov, setOv] = useState<Overview | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [buildChannel, setBuildChannel] = useState('')
+  const [chanStatus, setChanStatus] = useState('')
+  const [chanErr, setChanErr] = useState('')
+
   const load = useCallback(async () => {
-    try {
-      setBuilds(await axi<Build[]>('listBuilds'))
-      setOffline(false)
-      setListErr('')
-    } catch (e) {
-      if (isOffline(e)) setOffline(true)
-      else setListErr(errText(e))
-    } finally {
+    const [b, o, c] = await Promise.allSettled([
+      axi<Build[]>('listBuilds'),
+      axi<Overview>('discordOverview'),
+      axi<{ build_channel_id?: string | null }>('configGet')
+    ])
+    if ([b, o, c].some((x) => x.status === 'rejected' && isOffline((x as PromiseRejectedResult).reason))) {
+      setOffline(true)
       setLoaded(true)
+      return
     }
+    setOffline(false)
+    if (b.status === 'fulfilled') {
+      setBuilds(b.value)
+      setListErr('')
+    } else setListErr(errText(b.reason))
+    if (o.status === 'fulfilled') setOv(o.value)
+    if (c.status === 'fulfilled') setBuildChannel(c.value?.build_channel_id ?? '')
+    setLoaded(true)
   }, [])
 
   useEffect(() => {
@@ -132,13 +157,24 @@ export default function Builds(): ReactElement {
     setEditing(b.build_id)
     setForm({
       name: b.name,
-      profession: b.profession,
-      specialization: b.specialization ?? '',
+      cls: b.specialization || b.profession,
       chat_code: b.chat_code,
       url: b.url ?? '',
       description: b.description ?? ''
     })
     setFormErr('')
+  }
+
+  async function saveBuildChannel(value: string): Promise<void> {
+    setBuildChannel(value)
+    setChanErr('')
+    setChanStatus('')
+    try {
+      await axi('configPatch', { build_channel_id: value || null })
+      setChanStatus('Saved')
+    } catch (e) {
+      setChanErr(errText(e))
+    }
   }
 
   function cancelEdit(): void {
@@ -151,11 +187,12 @@ export default function Builds(): ReactElement {
     e.preventDefault()
     setBusy(true)
     setFormErr('')
+    const { profession, specialization } = splitClass(form.cls.trim())
     const patch = {
       name: form.name.trim(),
-      profession: form.profession.trim(),
+      profession,
       chat_code: form.chat_code.trim(),
-      specialization: form.specialization.trim() || undefined,
+      specialization,
       url: form.url.trim() || undefined,
       description: form.description.trim() || undefined
     }
@@ -201,8 +238,40 @@ export default function Builds(): ReactElement {
     g.items.push(b)
   }
 
+  const buildChannels = textChannels(ov)
+
   return (
     <div className="settings">
+      <div className="deskset">
+        <button
+          type="button"
+          className="deskset-head"
+          onClick={() => setSettingsOpen((o) => !o)}
+        >
+          <span className="deskset-tog">{settingsOpen ? '▾' : '▸'}</span>
+          <span className="deskset-lbl">Desk Settings</span>
+        </button>
+        {settingsOpen && (
+          <div className="deskset-body">
+            <label className="slabel">Build posting channel</label>
+            <select
+              className="sselect"
+              value={buildChannel}
+              onChange={(e) => void saveBuildChannel(e.target.value)}
+            >
+              <option value="">— none —</option>
+              {buildChannels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  #{c.name}
+                </option>
+              ))}
+            </select>
+            {chanStatus && <div className="sstatus ok">{chanStatus}</div>}
+            {chanErr && <div className="sstatus err">{chanErr}</div>}
+          </div>
+        )}
+      </div>
+
       <p className="shelp deck">
         Approved fits on record with the guild. Chat codes paste straight into the game client.
       </p>
@@ -249,25 +318,12 @@ export default function Builds(): ReactElement {
               />
             </div>
             <div>
-              <label className="slabel">Profession</label>
-              <input
-                className="sinput"
-                value={form.profession}
-                placeholder="e.g. Guardian"
-                onChange={field('profession')}
+              <label className="slabel">Class</label>
+              <ClassPicker
+                value={form.cls}
+                onChange={(v) => setForm((f) => ({ ...f, cls: v }))}
+                placeholder="Choose a class…"
               />
-            </div>
-            <div>
-              <label className="slabel">Specialization</label>
-              <div className="specfield">
-                <input
-                  className="sinput"
-                  value={form.specialization}
-                  placeholder="optional, e.g. Firebrand"
-                  onChange={field('specialization')}
-                />
-                <ClassIcon name={form.specialization || form.profession} size={20} />
-              </div>
             </div>
             <div>
               <label className="slabel">Chat code</label>
@@ -297,9 +353,7 @@ export default function Builds(): ReactElement {
             <button
               className="sbtn"
               type="submit"
-              disabled={
-                busy || !form.name.trim() || !form.profession.trim() || !form.chat_code.trim()
-              }
+              disabled={busy || !form.name.trim() || !form.cls.trim() || !form.chat_code.trim()}
             >
               {editing ? 'File amendment' : 'File build'}
             </button>

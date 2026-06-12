@@ -196,6 +196,22 @@ td.nm2{color:var(--ink)}
 .pi .kx{margin-left:10px;color:var(--faint);cursor:pointer}
 .pi .kx:hover{color:var(--accent-b)}
 .classicon{display:inline-block;vertical-align:-0.25em;background-color:currentColor;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;flex-shrink:0}
+/* class/spec dropdown */
+.clspick{position:relative}
+.clspick-btn{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-family:'Source Serif 4',serif;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+.clspick-btn .ph{color:var(--faint);font-style:italic}
+.clspick-btn .classicon{color:var(--accent-b)}
+.clspick-btn .caret{margin-left:auto;color:var(--faint);font-size:11px}
+.clspick-menu{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:320px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);margin-top:2px}
+.clspick-group{border-bottom:1px dotted var(--line)}
+.clspick-group:last-child{border-bottom:none}
+.clspick-opt{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:6px 12px;font-family:'Source Serif 4',serif;font-size:13px;color:var(--ink-dim);cursor:pointer;text-align:left}
+.clspick-opt .classicon{color:var(--faint)}
+.clspick-opt.prof{color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase}
+.clspick-opt.prof .classicon{color:var(--accent-b)}
+.clspick-opt .core{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.12em;color:var(--faint)}
+.clspick-opt:hover,.clspick-opt.sel{background:rgba(200,66,58,.12);color:var(--ink)}
+.clspick-opt:hover .classicon,.clspick-opt.sel .classicon{color:var(--accent-b)}
 .srow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .shelp{font-size:12px;color:var(--faint);line-height:1.5;margin:4px 0 12px;font-style:italic}
 .shelp code{font-family:'IBM Plex Mono',monospace;color:var(--ink-dim);font-style:normal}
@@ -309,3 +325,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .ssignrow .classicon{color:var(--ink-dim);flex-shrink:0}
 .ssignclass{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b);min-width:96px}
 .ssignnames{font-size:12.5px;color:var(--ink-dim)}
+/* panel settings strips */
+.deskset{border:1.5px dashed var(--rule2);background:rgba(0,0,0,.16);margin-bottom:22px}
+.deskset-head{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:10px 14px;cursor:pointer;text-align:left}
+.deskset-tog{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-b);width:12px}
+.deskset-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim)}
+.deskset-head:hover .deskset-lbl{color:var(--ink)}
+.deskset-body{padding:4px 16px 16px;border-top:1px dotted var(--rule)}
+.deskset-body .slabel{margin-top:12px}
+.deskset-body .cfgdays{margin-bottom:12px}
+.deskset-body .cfgdays .spill{cursor:pointer}

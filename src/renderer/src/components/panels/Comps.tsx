@@ -5,9 +5,12 @@ import {
   errText,
   isOffline,
   Offline,
+  textChannels,
   WEEK_FULL,
-  ZapButton
+  ZapButton,
+  type Overview
 } from './shared'
+import { ClassPicker } from './ClassPicker'
 
 interface ClassSlot {
   name: string
@@ -27,6 +30,15 @@ interface Schedule {
   post_time?: string
   timezone?: string
   signups?: Record<string, string[]>
+}
+
+interface CompConfig {
+  channel_id?: string | null
+  ping_role_id?: string | null
+  post_days?: number[]
+  post_time?: string
+  timezone?: string
+  active_preset?: string | null
 }
 
 /** Monday-first display labels; index i lines up with post_days value i. */
@@ -146,14 +158,25 @@ export default function Comps(): ReactElement {
   const [editor, setEditor] = useState<EditorState | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // — Desk settings strip (guild-wide comp posting default) —
+  const [ov, setOv] = useState<Overview | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [cfg, setCfg] = useState<CompConfig>({})
+  const [cfgStatus, setCfgStatus] = useState('')
+  const [cfgErr, setCfgErr] = useState('')
+  const [cfgBusy, setCfgBusy] = useState(false)
+
   const load = useCallback(async () => {
-    const [p, s] = await Promise.allSettled([
+    const [p, s, o, c] = await Promise.allSettled([
       axi<Preset[]>('listCompPresets'),
-      axi<Schedule[]>('listCompSchedules')
+      axi<Schedule[]>('listCompSchedules'),
+      axi<Overview>('discordOverview'),
+      axi<CompConfig>('compConfigGet')
     ])
     if (
-      (p.status === 'rejected' && isOffline(p.reason)) ||
-      (s.status === 'rejected' && isOffline(s.reason))
+      [p, s, o, c].some(
+        (x) => x.status === 'rejected' && isOffline((x as PromiseRejectedResult).reason)
+      )
     ) {
       setOffline(true)
       setLoaded(true)
@@ -168,6 +191,8 @@ export default function Comps(): ReactElement {
       setSchedules(s.value)
       setSchedErr('')
     } else setSchedErr(errText(s.reason))
+    if (o.status === 'fulfilled') setOv(o.value)
+    if (c.status === 'fulfilled') setCfg(c.value ?? {})
     setLoaded(true)
   }, [])
 
@@ -250,6 +275,37 @@ export default function Comps(): ReactElement {
     }
   }
 
+  function toggleCfgDay(i: number): void {
+    setCfg((c) => {
+      const days = c.post_days ?? []
+      return {
+        ...c,
+        post_days: days.includes(i) ? days.filter((d) => d !== i) : [...days, i].sort((a, b) => a - b)
+      }
+    })
+  }
+
+  async function saveConfig(): Promise<void> {
+    setCfgBusy(true)
+    setCfgErr('')
+    setCfgStatus('')
+    try {
+      await axi('compConfigPatch', {
+        channel_id: cfg.channel_id || null,
+        ping_role_id: cfg.ping_role_id || null,
+        post_days: cfg.post_days ?? [],
+        post_time: cfg.post_time ?? '',
+        timezone: cfg.timezone ?? '',
+        active_preset: cfg.active_preset || null
+      })
+      setCfgStatus('Saved')
+    } catch (e) {
+      setCfgErr(errText(e))
+    } finally {
+      setCfgBusy(false)
+    }
+  }
+
   if (offline) {
     return (
       <div className="settings">
@@ -271,6 +327,106 @@ export default function Comps(): ReactElement {
       <p className="shelp deck">
         Squad recipes on file — class quotas the bot fills against the roster.
       </p>
+
+      <div className="deskset">
+        <button
+          type="button"
+          className="deskset-head"
+          onClick={() => setSettingsOpen((o) => !o)}
+        >
+          <span className="deskset-tog">{settingsOpen ? '▾' : '▸'}</span>
+          <span className="deskset-lbl">Desk Settings</span>
+        </button>
+        {settingsOpen && (
+          <div className="deskset-body">
+            <label className="slabel">Posting channel</label>
+            <select
+              className="sselect"
+              value={cfg.channel_id ?? ''}
+              onChange={(e) => setCfg((c) => ({ ...c, channel_id: e.target.value }))}
+            >
+              <option value="">— none —</option>
+              {textChannels(ov).map((c) => (
+                <option key={c.id} value={c.id}>
+                  #{c.name}
+                </option>
+              ))}
+            </select>
+            <label className="slabel">Ping role</label>
+            <select
+              className="sselect"
+              value={cfg.ping_role_id ?? ''}
+              onChange={(e) => setCfg((c) => ({ ...c, ping_role_id: e.target.value }))}
+            >
+              <option value="">— none —</option>
+              {(ov?.roles ?? []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+            <label className="slabel">Default days</label>
+            <div className="spills cfgdays">
+              {MON_FIRST.map((d, i) => (
+                <button
+                  type="button"
+                  className={`spill${(cfg.post_days ?? []).includes(i) ? ' on' : ''}`}
+                  key={d}
+                  title={WEEK_FULL[(i + 1) % 7]}
+                  onClick={() => toggleCfgDay(i)}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+            <div className="fgrid">
+              <div>
+                <label className="slabel">Default time</label>
+                <input
+                  className="sinput"
+                  value={cfg.post_time ?? ''}
+                  placeholder="HH:MM"
+                  onChange={(e) => setCfg((c) => ({ ...c, post_time: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="slabel">Timezone</label>
+                <input
+                  className="sinput"
+                  value={cfg.timezone ?? ''}
+                  placeholder="e.g. UTC"
+                  onChange={(e) => setCfg((c) => ({ ...c, timezone: e.target.value }))}
+                />
+              </div>
+            </div>
+            <label className="slabel">Active preset</label>
+            <select
+              className="sselect"
+              value={cfg.active_preset ?? ''}
+              onChange={(e) => setCfg((c) => ({ ...c, active_preset: e.target.value }))}
+            >
+              <option value="">— none —</option>
+              {presets.map((p) => (
+                <option key={p.name} value={p.name}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <div className="srow">
+              <button
+                className="sbtn"
+                type="button"
+                disabled={cfgBusy}
+                onClick={() => void saveConfig()}
+              >
+                Save defaults
+              </button>
+            </div>
+            {cfgStatus && <div className="sstatus ok">{cfgStatus}</div>}
+            {cfgErr && <div className="sstatus err">{cfgErr}</div>}
+          </div>
+        )}
+      </div>
 
       <div className="sgroup">
         <div className="cgrouphead">
@@ -316,13 +472,13 @@ export default function Comps(): ReactElement {
             )}
             {editor.classes.map((c, i) => (
               <div className="ceditrow" key={i}>
-                <input
-                  className="sinput cnameinput"
-                  value={c.name}
-                  placeholder="class or spec"
-                  onChange={(e) => patchClass(i, { name: e.target.value })}
-                />
-                <ClassIcon name={c.name} size={20} />
+                <div className="cnameinput">
+                  <ClassPicker
+                    value={c.name}
+                    onChange={(v) => patchClass(i, { name: v })}
+                    placeholder="class or spec"
+                  />
+                </div>
                 <div className="stepper">
                   <button
                     type="button"

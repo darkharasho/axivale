@@ -195,6 +195,14 @@ export class AxitoolsClient {
     return this.request('GET', `/guilds/${guildId}/comp-schedules`)
   }
 
+  compConfigGet(guildId: string): Promise<unknown> {
+    return this.request('GET', `/guilds/${guildId}/comp-config`)
+  }
+
+  compConfigPatch(guildId: string, patch: Record<string, unknown>): Promise<unknown> {
+    return this.request('PATCH', `/guilds/${guildId}/comp-config`, patch)
+  }
+
   deleteCompSchedule(guildId: string, scheduleId: string): Promise<void> {
     return this.request(
       'DELETE',
