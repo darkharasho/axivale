@@ -279,6 +279,8 @@ td.nm2{color:var(--ink)}
 .sbtn.out{color:var(--ink-dim);background:transparent;border:1px solid var(--rule2);outline:none}
 .sbtn:disabled{opacity:.4;cursor:default}
 .picker{margin-top:10px;display:flex;flex-direction:column;gap:4px}
+/* keyring list sits above an "Add a key" form — give the label room */
+.picker + .slabel{margin-top:18px}
 .picker .pi{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);padding:6px 10px;border:1px dashed var(--rule);cursor:pointer;background:transparent;text-align:left}
 .picker .pi.sel{border-color:var(--accent);color:var(--ink)}
 .picker .pi .lead{color:var(--accent-b)}
