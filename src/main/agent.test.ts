@@ -1,0 +1,120 @@
+import { describe, it, expect, vi } from 'vitest'
+import { evaluateToolPermission } from './agent'
+
+// ---------------------------------------------------------------------------
+// Fix 2: evaluateToolPermission
+// ---------------------------------------------------------------------------
+
+describe('evaluateToolPermission', () => {
+  const neverConfirm = vi.fn()
+
+  it('denies a non-officer tool without calling confirm', async () => {
+    const result = await evaluateToolPermission('Bash', {}, { confirm: neverConfirm })
+    expect(result).toEqual({ behavior: 'deny', message: 'Only officer tools are available in this app.' })
+    expect(neverConfirm).not.toHaveBeenCalled()
+  })
+
+  it('denies a destructive tool when the user declines', async () => {
+    const confirm = vi.fn().mockResolvedValue(false)
+    const result = await evaluateToolPermission(
+      'mcp__officer__axitools_builds_delete',
+      { build_id: 'b1' },
+      { confirm }
+    )
+    expect(result).toEqual({ behavior: 'deny', message: 'The user declined this action.' })
+    expect(confirm).toHaveBeenCalledWith('axitools_builds_delete', { build_id: 'b1' })
+  })
+
+  it('allows a destructive tool when the user confirms', async () => {
+    const confirm = vi.fn().mockResolvedValue(true)
+    const result = await evaluateToolPermission(
+      'mcp__officer__axitools_comp_presets_delete',
+      { name: 'p1' },
+      { confirm }
+    )
+    expect(result.behavior).toBe('allow')
+    expect(confirm).toHaveBeenCalledWith('axitools_comp_presets_delete', { name: 'p1' })
+  })
+
+  it('allows a normal officer tool without calling confirm', async () => {
+    const confirm = vi.fn()
+    const result = await evaluateToolPermission(
+      'mcp__officer__axitools_builds_list',
+      {},
+      { confirm }
+    )
+    expect(result.behavior).toBe('allow')
+    expect(confirm).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Fix 1: AgentService turn serialization
+// ---------------------------------------------------------------------------
+
+// A module-level deferred that the mocked query generator awaits.
+// vi.mock is hoisted to the top of the file so we can't use local variables
+// inside it; the deferred must live at module scope.
+let _releaseTurn: (() => void) | null = null
+const _turnGate = { held: null as Promise<void> | null }
+
+vi.mock('@anthropic-ai/claude-agent-sdk', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@anthropic-ai/claude-agent-sdk')>()
+  return {
+    ...mod,
+    query: vi.fn(async function* () {
+      if (_turnGate.held) await _turnGate.held
+      // yield nothing — turn finishes cleanly after gate opens
+    }),
+    createSdkMcpServer: vi.fn(() => ({}))
+  }
+})
+
+describe('AgentService turn serialization', () => {
+  it('emits a done error when a second turn is started while one is already running', async () => {
+    // Reset module-scope deferred for this test
+    _turnGate.held = new Promise<void>((resolve) => { _releaseTurn = resolve })
+
+    const { AgentService } = await import('./agent')
+    vi.spyOn(await import('./tools'), 'buildOfficerTools').mockReturnValue([])
+
+    const mockDeps = {
+      toolDeps: () => ({
+        axitools: {} as never,
+        gw2: {} as never,
+        discordGuildId: () => 1,
+        gw2GuildId: () => 'g1'
+      }),
+      oauthToken: () => null,
+      confirm: vi.fn().mockResolvedValue(true)
+    }
+
+    const agent = new AgentService(mockDeps)
+
+    const events1: import('./agent').AgentEvent[] = []
+    const events2: import('./agent').AgentEvent[] = []
+
+    // Start turn 1 — it will block until _releaseTurn()
+    const turn1 = agent.runTurn('first prompt', (e) => events1.push(e))
+
+    // Start turn 2 immediately — should be rejected because running=true
+    const turn2 = agent.runTurn('second prompt', (e) => events2.push(e))
+
+    // Allow microtasks to flush
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // turn2 should have received a done event with an error
+    expect(events2).toHaveLength(1)
+    expect(events2[0]).toMatchObject({
+      kind: 'done',
+      error: expect.stringContaining('already in progress')
+    })
+
+    // Release turn1 and wait for everything to settle
+    _releaseTurn!()
+    _turnGate.held = null
+    await turn1
+    await turn2
+  })
+})
