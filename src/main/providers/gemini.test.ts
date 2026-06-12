@@ -1,0 +1,177 @@
+import { describe, it, expect, vi } from 'vitest'
+import { z } from 'zod'
+import { tool } from '@anthropic-ai/claude-agent-sdk'
+import { GeminiAdapter, sanitizeForGemini } from './gemini'
+import type { AgentEvent, ProviderConfig, TurnInput } from './types'
+
+const echo = tool('echo_tool', 'Echoes.', { message: z.string() }, async (args: { message: string }) => ({
+  content: [{ type: 'text' as const, text: `echo:${args.message}` }]
+}))
+
+function sseBody(events: unknown[]): Response {
+  const payload = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('')
+  return new Response(payload, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+}
+
+function turnInput(overrides: Partial<TurnInput> = {}): TurnInput {
+  return {
+    prompt: 'hello',
+    systemPrompt: 'You are a test.',
+    tools: [echo],
+    confirm: vi.fn().mockResolvedValue(true),
+    signal: new AbortController().signal,
+    ...overrides
+  }
+}
+
+const config: ProviderConfig = {
+  provider: 'gemini',
+  model: 'gemini-test',
+  oauthToken: null,
+  apiKey: 'AIza-test',
+  endpoint: null
+}
+
+async function collect(adapter: GeminiAdapter, input: TurnInput): Promise<AgentEvent[]> {
+  const events: AgentEvent[] = []
+  for await (const e of adapter.runTurn(input)) events.push(e)
+  return events
+}
+
+describe('sanitizeForGemini', () => {
+  it('keeps supported keywords and drops unsupported ones recursively', () => {
+    const cleaned = sanitizeForGemini({
+      type: 'object',
+      $schema: 'http://x',
+      additionalProperties: false,
+      properties: {
+        name: { type: 'string', description: 'd', additionalProperties: false }
+      },
+      required: ['name']
+    })
+    expect(cleaned).toEqual({
+      type: 'object',
+      properties: { name: { type: 'string', description: 'd' } },
+      required: ['name']
+    })
+  })
+})
+
+describe('GeminiAdapter', () => {
+  it('streams text and finishes cleanly', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(
+      sseBody([
+        { candidates: [{ content: { parts: [{ text: 'Hel' }] } }] },
+        { candidates: [{ content: { parts: [{ text: 'lo' }] } }] }
+      ])
+    )
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+    const events = await collect(adapter, turnInput())
+    expect(events).toEqual([
+      { kind: 'text-delta', text: 'Hel' },
+      { kind: 'text-delta', text: 'lo' },
+      { kind: 'done', sessionId: null, error: null }
+    ])
+    const url = fetchFn.mock.calls[0][0] as string
+    expect(url).toContain('gemini-test:streamGenerateContent')
+    const headers = (fetchFn.mock.calls[0][1] as RequestInit).headers as Record<string, string>
+    expect(headers['x-goog-api-key']).toBe('AIza-test')
+    const body = JSON.parse((fetchFn.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.systemInstruction.parts[0].text).toBe('You are a test.')
+    expect(body.tools[0].functionDeclarations[0].name).toBe('echo_tool')
+  })
+
+  it('executes a functionCall and loops back with a functionResponse', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        sseBody([
+          {
+            candidates: [
+              { content: { parts: [{ functionCall: { name: 'echo_tool', args: { message: 'hi' } } }] } }
+            ]
+          }
+        ])
+      )
+      .mockResolvedValueOnce(sseBody([{ candidates: [{ content: { parts: [{ text: 'done!' }] } }] }]))
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+    const events = await collect(adapter, turnInput())
+    const start = events.find((e) => e.kind === 'tool-start')
+    expect(start).toMatchObject({ name: 'echo_tool', input: { message: 'hi' } })
+    expect(events).toContainEqual(
+      expect.objectContaining({ kind: 'tool-result', isError: false, text: 'echo:hi' })
+    )
+    const second = JSON.parse((fetchFn.mock.calls[1][1] as RequestInit).body as string)
+    const lastContent = second.contents[second.contents.length - 1]
+    expect(lastContent.role).toBe('user')
+    expect(lastContent.parts[0].functionResponse.name).toBe('echo_tool')
+    expect(events[events.length - 1]).toEqual({ kind: 'done', sessionId: null, error: null })
+  })
+
+  it('throws a labeled error on a non-OK response', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(new Response('nope', { status: 403 }))
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+    await expect(collect(adapter, turnInput())).rejects.toThrow(/Gemini request failed \(403\)/)
+  })
+
+  it('keeps history across turns and clears on reset', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValue(sseBody([{ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }]))
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+    await collect(adapter, turnInput({ prompt: 'first' }))
+    await collect(adapter, turnInput({ prompt: 'second' }))
+    const body = JSON.parse((fetchFn.mock.calls[1][1] as RequestInit).body as string)
+    expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user', 'model', 'user'])
+    adapter.reset()
+    await collect(adapter, turnInput({ prompt: 'third' }))
+    const fresh = JSON.parse((fetchFn.mock.calls[2][1] as RequestInit).body as string)
+    expect(fresh.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
+  })
+
+  it('rolls back history when a fetch rejects, so the next turn starts clean', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network error'))
+      .mockResolvedValueOnce(
+        sseBody([{ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }])
+      )
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+    // First turn should reject
+    await expect(collect(adapter, turnInput())).rejects.toThrow('network error')
+    // Second turn succeeds; history must only have the user message (no dirty messages from failed turn)
+    await collect(adapter, turnInput())
+    const body = JSON.parse((fetchFn.mock.calls[1][1] as RequestInit).body as string)
+    expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
+  })
+
+  it('aborts mid-loop when signal is already aborted and rolls back history', async () => {
+    const ac = new AbortController()
+    ac.abort()
+    // fetchFn returns a functionCall round — the abort check fires before gateAndRunTool
+    const fetchFn = vi.fn().mockResolvedValueOnce(
+      sseBody([
+        {
+          candidates: [
+            {
+              content: {
+                parts: [{ functionCall: { name: 'echo_tool', args: { message: 'x' } } }]
+              }
+            }
+          ]
+        }
+      ])
+    )
+    const freshFetch = vi
+      .fn()
+      .mockResolvedValueOnce(sseBody([{ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }]))
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+    // The aborted-signal turn should reject
+    await expect(collect(adapter, turnInput({ signal: ac.signal }))).rejects.toThrow('Turn cancelled')
+    // Swap in a clean fetchFn; the adapter should have rolled back history
+    ;(adapter as unknown as { fetchFn: typeof fetch }).fetchFn = freshFetch as unknown as typeof fetch
+    await collect(adapter, turnInput())
+    const body = JSON.parse((freshFetch.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
+  })
+})
