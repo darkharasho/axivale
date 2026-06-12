@@ -12,6 +12,10 @@ const __dirname = dirname(__filename)
 
 let mainWindow: BrowserWindow | null = null
 
+// Pending destructive-tool confirmations, keyed by request id.
+// Module-scoped so the window's closed handler can drain them.
+const pendingConfirms = new Map<string, (allowed: boolean) => void>()
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -34,6 +38,9 @@ function createWindow(): void {
   mainWindow = win
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
+    // Resolve all pending confirms with false so agent turns don't hang.
+    for (const resolve of pendingConfirms.values()) resolve(false)
+    pendingConfirms.clear()
   })
 }
 
@@ -46,9 +53,6 @@ app.whenReady().then(async () => {
       store.getSecret('axitoolsToken') ?? ''
     )
   const buildGw2 = (): Gw2Client => new Gw2Client(store.getSecret('gw2ApiKey') ?? '')
-
-  // Pending destructive-tool confirmations, keyed by request id.
-  const pendingConfirms = new Map<string, (allowed: boolean) => void>()
 
   const agent = new AgentService({
     toolDeps: () => ({

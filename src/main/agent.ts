@@ -93,8 +93,42 @@ export interface AgentDeps {
   confirm: (toolName: string, input: Record<string, unknown>) => Promise<boolean>
 }
 
+/** The result type returned by canUseTool callbacks. */
+export type PermissionResult =
+  | { behavior: 'allow'; updatedInput?: Record<string, unknown> }
+  | { behavior: 'deny'; message: string }
+
+/**
+ * Pure function that decides whether a tool call is allowed.
+ * Extracted so it can be unit-tested without running a full agent turn.
+ *
+ * Built-in SDK tools (e.g. Bash) are not in allowedTools and would otherwise
+ * fall through to allow — the non-officer prefix check blocks them explicitly.
+ */
+export async function evaluateToolPermission(
+  toolName: string,
+  input: Record<string, unknown>,
+  deps: { confirm: (toolName: string, input: Record<string, unknown>) => Promise<boolean> }
+): Promise<PermissionResult> {
+  // Only officer MCP tools are permitted in this app.
+  if (!toolName.startsWith(MCP_PREFIX)) {
+    return { behavior: 'deny', message: 'Only officer tools are available in this app.' }
+  }
+
+  const bare = toolName.slice(MCP_PREFIX.length)
+  if (DESTRUCTIVE_TOOLS.includes(bare)) {
+    const allowed = await deps.confirm(bare, input)
+    if (!allowed) {
+      return { behavior: 'deny', message: 'The user declined this action.' }
+    }
+  }
+
+  return { behavior: 'allow', updatedInput: input }
+}
+
 export class AgentService {
   private sessionId: string | null = null
+  private running = false
 
   constructor(private readonly deps: AgentDeps) {}
 
@@ -103,20 +137,30 @@ export class AgentService {
   }
 
   async runTurn(promptText: string, onEvent: (e: AgentEvent) => void): Promise<void> {
-    const tools = buildOfficerTools(this.deps.toolDeps())
-    const server = createSdkMcpServer({ name: 'officer', version: '1.0.0', tools })
-    // Destructive tools are deliberately NOT pre-allowed: allowedTools entries
-    // are auto-approved without ever reaching canUseTool, so destructive ones
-    // must go through the permission flow to hit our confirm gate.
-    const allowedTools = tools
-      .map((t) => `${MCP_PREFIX}${t.name}`)
-      .filter((name) => !DESTRUCTIVE_TOOLS.includes(name.slice(MCP_PREFIX.length)))
-    const token = this.deps.oauthToken()
-    // Options.env REPLACES the subprocess environment entirely, so spread process.env.
-    const env: Record<string, string | undefined> = { ...process.env }
-    if (token) env.CLAUDE_CODE_OAUTH_TOKEN = token
+    if (this.running) {
+      onEvent({
+        kind: 'done',
+        sessionId: this.sessionId,
+        error: 'A turn is already in progress — wait for it to finish.'
+      })
+      return
+    }
 
+    this.running = true
     try {
+      const tools = buildOfficerTools(this.deps.toolDeps())
+      const server = createSdkMcpServer({ name: 'officer', version: '1.0.0', tools })
+      // Destructive tools are deliberately NOT pre-allowed: allowedTools entries
+      // are auto-approved without ever reaching canUseTool, so destructive ones
+      // must go through the permission flow to hit our confirm gate.
+      const allowedTools = tools
+        .map((t) => `${MCP_PREFIX}${t.name}`)
+        .filter((name) => !DESTRUCTIVE_TOOLS.includes(name.slice(MCP_PREFIX.length)))
+      const token = this.deps.oauthToken()
+      // Options.env REPLACES the subprocess environment entirely, so spread process.env.
+      const env: Record<string, string | undefined> = { ...process.env }
+      if (token) env.CLAUDE_CODE_OAUTH_TOKEN = token
+
       const q = query({
         prompt: promptText,
         options: {
@@ -126,16 +170,8 @@ export class AgentService {
           includePartialMessages: true,
           env,
           ...(this.sessionId ? { resume: this.sessionId } : {}),
-          canUseTool: async (toolName, input) => {
-            const bare = toolName.startsWith(MCP_PREFIX) ? toolName.slice(MCP_PREFIX.length) : toolName
-            if (DESTRUCTIVE_TOOLS.includes(bare)) {
-              const allowed = await this.deps.confirm(bare, input)
-              if (!allowed) {
-                return { behavior: 'deny', message: 'The user declined this action.' }
-              }
-            }
-            return { behavior: 'allow', updatedInput: input }
-          }
+          canUseTool: async (toolName, input) =>
+            evaluateToolPermission(toolName, input as Record<string, unknown>, this.deps)
         }
       })
       for await (const msg of q) {
@@ -150,6 +186,8 @@ export class AgentService {
         sessionId: this.sessionId,
         error: err instanceof Error ? err.message : String(err)
       })
+    } finally {
+      this.running = false
     }
   }
 }
