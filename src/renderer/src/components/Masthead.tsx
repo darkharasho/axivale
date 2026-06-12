@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react'
 
+export type Section = 'dispatches' | 'builds' | 'comps' | 'roster' | 'bureau' | 'settings'
+
 export interface MastheadProps {
   issueNo: number
   axiConnected: boolean
@@ -8,8 +10,8 @@ export interface MastheadProps {
   guildTag: string | null
   memberCount: number | null
   claudeTokenSaved: boolean
-  section: 'dispatches' | 'settings'
-  onSection: (s: 'dispatches' | 'settings') => void
+  section: Section
+  onSection: (s: Section) => void
 }
 
 export default function Masthead(props: MastheadProps): ReactElement {
@@ -36,6 +38,24 @@ export default function Masthead(props: MastheadProps): ReactElement {
       <div className="mtop">
         <span>Vol. II · No. {issueNo}</span>
         <span className="r">Final Edition · Free to Members</span>
+        <span className="winctl">
+          <button title="Minimize" onClick={() => window.officer.windowControl('minimize')}>
+            —
+          </button>
+          <button
+            title="Maximize"
+            onClick={() => window.officer.windowControl('maximize-toggle')}
+          >
+            □
+          </button>
+          <button
+            className="close"
+            title="Close"
+            onClick={() => window.officer.windowControl('close')}
+          >
+            ✕
+          </button>
+        </span>
       </div>
       <div className="mmain">
         <div className="ear">
@@ -64,27 +84,21 @@ export default function Masthead(props: MastheadProps): ReactElement {
         </div>
       </div>
       <div className="mnav">
-        <button
-          className={section === 'dispatches' ? 'on' : ''}
-          onClick={() => onSection('dispatches')}
-        >
-          <span className="no">01</span>Dispatches
-        </button>
-        <button className="dis" title="Coming in a later edition">
-          <span className="no">02</span>Builds
-        </button>
-        <button className="dis" title="Coming in a later edition">
-          <span className="no">03</span>Compositions
-        </button>
-        <button className="dis" title="Coming in a later edition">
-          <span className="no">04</span>Roster
-        </button>
-        <button
-          className={section === 'settings' ? 'on' : ''}
-          onClick={() => onSection('settings')}
-        >
-          <span className="no">05</span>Settings
-        </button>
+        {(
+          [
+            ['01', 'dispatches', 'Dispatches'],
+            ['02', 'builds', 'Builds'],
+            ['03', 'comps', 'Compositions'],
+            ['04', 'roster', 'Roster'],
+            ['05', 'bureau', 'Bureau'],
+            ['06', 'settings', 'Settings']
+          ] as Array<[string, Section, string]>
+        ).map(([no, key, label]) => (
+          <button key={key} className={section === key ? 'on' : ''} onClick={() => onSection(key)}>
+            <span className="no">{no}</span>
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   )

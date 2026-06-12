@@ -1,5 +1,10 @@
 import { query, createSdkMcpServer, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
-import { buildOfficerTools, DESTRUCTIVE_TOOLS, type ToolDeps } from './tools'
+import {
+  buildOfficerTools,
+  DESTRUCTIVE_TOOLS,
+  ACTION_GATED_TOOLS,
+  type ToolDeps
+} from './tools'
 
 export type AgentEvent =
   | { kind: 'text-delta'; text: string }
@@ -21,6 +26,22 @@ Rules:
   report it plainly and do not retry more than once.
 - Profession names matter: distinguish base professions (Necromancer) from
   elite specs (Scourge, Reaper, Harbinger).
+- AxiTools is only for Discord-side data (builds, comps, schedules). For game
+  data — items, prices, WvW matches, achievements, anything else — query the
+  official GW2 API directly with the gw2_api tool; never claim you need
+  AxiTools for it.
+- You can manage the connected Discord server directly: discord_overview for
+  the lay of the land (channels, roles, members, ids), discord_messages to
+  read a channel, discord_action to act (channels, roles, members, messages,
+  threads, events). Look up ids via discord_overview first — never guess them.
+  Destructive actions prompt the user to confirm; just call the tool and let
+  the confirmation flow happen.
+- AxiTools also gives you: axitools_audit (server + GW2 guild history),
+  axitools_rss and axitools_streams (feed/stream announcement subscriptions),
+  axitools_alliance (WvW alliance matchup settings), axitools_guild_roles
+  (GW2-guild→role mappings), axitools_config (bot channel/role wiring), and
+  axitools_members (who has linked which GW2 accounts, their guilds and
+  characters — never the keys themselves).
 - Keep replies concise; lead with the outcome. The UI renders your reply as a
   newspaper article, so a strong first sentence works as the headline.`
 
@@ -34,6 +55,12 @@ export function translateSdkMessage(msg: SDKMessage): AgentEvent[] {
       const event = msg.event
       if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
         return [{ kind: 'text-delta', text: event.delta.text }]
+      }
+      // Text blocks before and after tool calls live in separate assistant
+      // messages; separate them so sentences don't concatenate mid-word.
+      // Leading breaks are trimmed by the renderer, repeats collapse in markdown.
+      if (event.type === 'content_block_start' && event.content_block.type === 'text') {
+        return [{ kind: 'text-delta', text: '\n\n' }]
       }
       return []
     }
@@ -90,6 +117,8 @@ export function translateSdkMessage(msg: SDKMessage): AgentEvent[] {
 export interface AgentDeps {
   toolDeps: () => ToolDeps
   oauthToken: () => string | null
+  /** Claude model alias or id from settings; null/'' = SDK default */
+  model: () => string | null
   confirm: (toolName: string, input: Record<string, unknown>) => Promise<boolean>
 }
 
@@ -116,7 +145,12 @@ export async function evaluateToolPermission(
   }
 
   const bare = toolName.slice(MCP_PREFIX.length)
-  if (DESTRUCTIVE_TOOLS.includes(bare)) {
+  // Action-gated tools' risk depends on the verb, not the tool name.
+  const gatedVerbs = ACTION_GATED_TOOLS[bare]
+  const destructive = gatedVerbs
+    ? gatedVerbs.includes(String(input.action ?? ''))
+    : DESTRUCTIVE_TOOLS.includes(bare)
+  if (destructive) {
     const allowed = await deps.confirm(bare, input)
     if (!allowed) {
       return { behavior: 'deny', message: 'The user declined this action.' }
@@ -153,14 +187,20 @@ export class AgentService {
       // Destructive tools are deliberately NOT pre-allowed: allowedTools entries
       // are auto-approved without ever reaching canUseTool, so destructive ones
       // must go through the permission flow to hit our confirm gate.
+      // Action-gated tools always route through canUseTool, which confirms
+      // only their destructive verbs.
       const allowedTools = tools
         .map((t) => `${MCP_PREFIX}${t.name}`)
-        .filter((name) => !DESTRUCTIVE_TOOLS.includes(name.slice(MCP_PREFIX.length)))
+        .filter((name) => {
+          const bare = name.slice(MCP_PREFIX.length)
+          return !DESTRUCTIVE_TOOLS.includes(bare) && !(bare in ACTION_GATED_TOOLS)
+        })
       const token = this.deps.oauthToken()
       // Options.env REPLACES the subprocess environment entirely, so spread process.env.
       const env: Record<string, string | undefined> = { ...process.env }
       if (token) env.CLAUDE_CODE_OAUTH_TOKEN = token
 
+      const model = this.deps.model()
       const q = query({
         prompt: promptText,
         options: {
@@ -169,6 +209,7 @@ export class AgentService {
           systemPrompt: AXIVALE_SYSTEM_PROMPT,
           includePartialMessages: true,
           env,
+          ...(model ? { model } : {}),
           ...(this.sessionId ? { resume: this.sessionId } : {}),
           canUseTool: async (toolName, input) =>
             evaluateToolPermission(toolName, input as Record<string, unknown>, this.deps)

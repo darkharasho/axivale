@@ -20,5 +20,15 @@ contextBridge.exposeInMainWorld('officer', {
     return () => ipcRenderer.removeListener('agent:confirm-request', listener)
   },
   respondConfirm: (id: string, allowed: boolean) =>
-    ipcRenderer.send('agent:confirm-response', { id, allowed })
+    ipcRenderer.send('agent:confirm-response', { id, allowed }),
+  windowControl: (action: 'minimize' | 'maximize-toggle' | 'close') =>
+    ipcRenderer.send('window:control', action),
+  listKeys: (service: string) => ipcRenderer.invoke('keys:list', service),
+  addKey: (service: string, label: string, key: string) =>
+    ipcRenderer.invoke('keys:add', service, label, key),
+  removeKey: (service: string, label: string) => ipcRenderer.invoke('keys:remove', service, label),
+  setActiveKey: (service: string, label: string) =>
+    ipcRenderer.invoke('keys:set-active', service, label),
+  axitools: (method: string, ...args: unknown[]) =>
+    ipcRenderer.invoke('axitools:call', method, ...args)
 })

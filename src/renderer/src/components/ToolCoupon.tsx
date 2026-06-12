@@ -12,7 +12,18 @@ const LABELS: Record<string, string> = {
   axitools_comp_presets_delete: 'COMPS / DELETE PRESET',
   axitools_comp_schedules_list: 'COMPS / LIST SCHEDULES',
   axitools_comp_schedules_save: 'COMPS / SAVE SCHEDULE',
+  discord_overview: 'DISCORD / OVERVIEW',
+  discord_messages: 'DISCORD / MESSAGES',
+  discord_action: 'DISCORD / ACTION',
+  gw2_api: 'GW2 / API',
   gw2_guild_log: 'GW2 / GUILD LOG',
+  axitools_audit: 'AXITOOLS / AUDIT',
+  axitools_rss: 'AXITOOLS / RSS',
+  axitools_streams: 'AXITOOLS / STREAMS',
+  axitools_alliance: 'AXITOOLS / ALLIANCE',
+  axitools_guild_roles: 'AXITOOLS / GUILD ROLES',
+  axitools_config: 'AXITOOLS / CONFIG',
+  axitools_members: 'AXITOOLS / MEMBERS',
   gw2_guild_members: 'GW2 / GUILD MEMBERS',
   gw2_account_info: 'GW2 / ACCOUNT INFO'
 }
@@ -46,9 +57,31 @@ function isObjectArray(v: unknown): v is Record<string, unknown>[] {
   )
 }
 
-function compactInput(input: Record<string, unknown>): string {
-  const s = JSON.stringify(input)
-  return s.length > 110 ? s.slice(0, 109) + '…' : s
+/** Render a value as plain newspaper copy — no braces, no quotes. */
+export function humanValue(v: unknown): string {
+  if (v === null || v === undefined) return '—'
+  if (Array.isArray(v)) return v.map(humanValue).join(', ')
+  if (typeof v === 'object') {
+    const entries = Object.entries(v as Record<string, unknown>)
+    if (entries.length === 0) return '—'
+    return entries.map(([k, val]) => `${prettyKey(k)} ${humanValue(val)}`).join(', ')
+  }
+  return String(v)
+}
+
+function prettyKey(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .toLowerCase()
+}
+
+/** One-line summary of a tool's input: `preset tuesday-wvw · add Riversong, Tessa`. */
+export function humanInput(input: Record<string, unknown>, max = 110): string {
+  const s = Object.entries(input)
+    .map(([k, v]) => `${prettyKey(k)} ${humanValue(v)}`)
+    .join(' · ')
+  return s.length > max ? s.slice(0, max - 1) + '…' : s
 }
 
 function cell(v: unknown): string {
@@ -57,7 +90,7 @@ function cell(v: unknown): string {
   return String(v)
 }
 
-function renderBody(tool: ToolCall): ReactElement {
+export function renderBody(tool: ToolCall): ReactElement {
   const text = tool.resultText ?? ''
   if (tool.isError) {
     return <div className="err">{text || 'The action failed.'}</div>
@@ -105,10 +138,28 @@ function renderBody(tool: ToolCall): ReactElement {
       </>
     )
   }
-  if (parsed !== undefined) {
-    return <pre>{JSON.stringify(parsed, null, 2)}</pre>
+  // Plain object → classified-ad manifest rows, not JSON.
+  if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && parsed !== undefined) {
+    const entries = Object.entries(parsed as Record<string, unknown>)
+    return (
+      <div className="manifest">
+        {entries.map(([k, v]) => (
+          <div className="kv" key={k}>
+            <span className="k">{prettyKey(k)}</span>
+            <span className="v">{humanValue(v)}</span>
+          </div>
+        ))}
+      </div>
+    )
   }
-  return <pre>{text}</pre>
+  // Array of scalars → reads as a list of names/ids.
+  if (Array.isArray(parsed)) {
+    return <div className="copy">{parsed.length === 0 ? 'Nothing on file.' : humanValue(parsed)}</div>
+  }
+  if (parsed !== undefined) {
+    return <div className="copy">{String(parsed)}</div>
+  }
+  return <div className="copy">{text}</div>
 }
 
 export default function ToolCoupon({ tool }: { tool: ToolCall }): ReactElement {
@@ -129,7 +180,7 @@ export default function ToolCoupon({ tool }: { tool: ToolCall }): ReactElement {
         {status}
       </div>
       <div className="tb">
-        {hasInput && <div className="tin">{compactInput(tool.input)}</div>}
+        {hasInput && <div className="tin">{humanInput(tool.input)}</div>}
         {!working && renderBody(tool)}
       </div>
     </div>

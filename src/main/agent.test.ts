@@ -46,6 +46,52 @@ describe('evaluateToolPermission', () => {
     expect(result.behavior).toBe('allow')
     expect(confirm).not.toHaveBeenCalled()
   })
+
+  it('allows safe discord actions without confirm', async () => {
+    const confirm = vi.fn()
+    const result = await evaluateToolPermission(
+      'mcp__officer__discord_action',
+      { action: 'message_send', params: { channel_id: '5', content: 'hi' } },
+      { confirm }
+    )
+    expect(result.behavior).toBe('allow')
+    expect(confirm).not.toHaveBeenCalled()
+  })
+
+  it('requires confirm for destructive discord actions', async () => {
+    const confirm = vi.fn().mockResolvedValue(false)
+    const input = { action: 'member_ban', params: { member_id: '7' } }
+    const result = await evaluateToolPermission('mcp__officer__discord_action', input, { confirm })
+    expect(result).toEqual({ behavior: 'deny', message: 'The user declined this action.' })
+    expect(confirm).toHaveBeenCalledWith('discord_action', input)
+  })
+
+  it('requires confirm for rss delete but not rss list', async () => {
+    const confirm = vi.fn().mockResolvedValue(true)
+    const listResult = await evaluateToolPermission(
+      'mcp__officer__axitools_rss',
+      { action: 'list' },
+      { confirm }
+    )
+    expect(listResult.behavior).toBe('allow')
+    expect(confirm).not.toHaveBeenCalled()
+    await evaluateToolPermission(
+      'mcp__officer__axitools_rss',
+      { action: 'delete', name: 'news' },
+      { confirm }
+    )
+    expect(confirm).toHaveBeenCalledWith('axitools_rss', { action: 'delete', name: 'news' })
+  })
+
+  it('allows destructive discord actions when the user confirms', async () => {
+    const confirm = vi.fn().mockResolvedValue(true)
+    const result = await evaluateToolPermission(
+      'mcp__officer__discord_action',
+      { action: 'channel_delete', params: { channel_id: '5' } },
+      { confirm }
+    )
+    expect(result.behavior).toBe('allow')
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -82,10 +128,11 @@ describe('AgentService turn serialization', () => {
       toolDeps: () => ({
         axitools: {} as never,
         gw2: {} as never,
-        discordGuildId: () => 1,
+        discordGuildId: () => '1',
         gw2GuildId: () => 'g1'
       }),
       oauthToken: () => null,
+      model: () => null,
       confirm: vi.fn().mockResolvedValue(true)
     }
 

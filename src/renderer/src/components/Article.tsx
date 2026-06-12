@@ -1,30 +1,16 @@
 import type { ReactElement } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { Turn } from '../state'
-import ToolCoupon from './ToolCoupon'
-
-function splitHeadline(text: string): { headline: string; rest: string } {
-  const trimmed = text.replace(/^\s+/, '')
-  const match = trimmed.match(/[.!?\n]/)
-  if (!match || match.index === undefined) {
-    return { headline: trimmed, rest: '' }
-  }
-  const breakChar = trimmed[match.index]
-  const end = breakChar === '\n' ? match.index : match.index + 1
-  const headline = trimmed.slice(0, end).trim()
-  const rest = trimmed.slice(match.index + 1).trim()
-  return { headline, rest }
-}
-
-function paragraphs(text: string): string[] {
-  return text
-    .split(/\n{2,}|\n/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0)
-}
+import { rehypeEmojiIcons } from './rehypeEmojiIcons'
+import { renderEmojiSpan } from './emojiIcons'
+import { splitHeadline, stripMarkdown } from './headline'
+import WireThinking from './WireThinking'
 
 export default function Article({ turn }: { turn: Turn }): ReactElement {
   const { headline, rest } = splitHeadline(turn.agentText)
-  const paras = paragraphs(rest)
+  const thinking = !turn.done && turn.agentText.trim() === ''
+  const streaming = !turn.done && turn.agentText.trim() !== ''
   return (
     <>
       <div className="msg user">
@@ -37,28 +23,34 @@ export default function Article({ turn }: { turn: Turn }): ReactElement {
         <span className="t"></span>
       </div>
       <div className="msg off">
-        <div className="lede">{headline || '…'}</div>
-        <div className="byline">
-          By <b>AxiVale</b> · filed {turn.filedAt} · {turn.tools.length} action
-          {turn.tools.length === 1 ? '' : 's'} taken
-        </div>
-        <div className="prose">
-          {paras.map((p, i) => (
-            <p key={i} className={i === 0 ? 'dc' : undefined}>
-              {p}
-            </p>
-          ))}
-          {turn.tools.map((tool) => (
-            <ToolCoupon key={tool.id} tool={tool} />
-          ))}
-          {turn.error && (
-            <div className="errnotice">
-              <div className="h">Dispatch Interrupted</div>
-              {turn.error}
+        {thinking ? (
+          <WireThinking />
+        ) : (
+          <>
+            <div className="lede">{stripMarkdown(headline)}</div>
+            <div className="byline">
+              By <b>AxiVale</b> · filed {turn.filedAt} · {turn.tools.length} action
+              {turn.tools.length === 1 ? '' : 's'} taken
             </div>
-          )}
-          {turn.done && !turn.error && <span className="endmark"> ∎</span>}
-        </div>
+            <div className="prose">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeEmojiIcons]}
+                components={{ span: renderEmojiSpan }}
+              >
+                {rest}
+              </ReactMarkdown>
+              {streaming && <span className="typebar"></span>}
+              {turn.error && (
+                <div className="errnotice">
+                  <div className="h">Dispatch Interrupted</div>
+                  {turn.error}
+                </div>
+              )}
+              {turn.done && !turn.error && <span className="endmark"> ∎</span>}
+            </div>
+          </>
+        )}
       </div>
     </>
   )

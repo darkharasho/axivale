@@ -2,8 +2,15 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'url'
 import { join, dirname } from 'path'
 import { randomUUID } from 'crypto'
-import { SettingsStore, electronCipher, type SecretKey, type SettingKey } from './secrets'
+import {
+  SettingsStore,
+  electronCipher,
+  type KeyService,
+  type SecretKey,
+  type SettingKey
+} from './secrets'
 import { AxitoolsClient } from './axitoolsClient'
+import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
 import { AgentService } from './agent'
 
@@ -20,6 +27,7 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
+    frame: false,
     backgroundColor: '#16171a',
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
@@ -47,21 +55,23 @@ function createWindow(): void {
 app.whenReady().then(async () => {
   const store = new SettingsStore(join(app.getPath('userData'), 'settings.json'), await electronCipher())
 
-  const buildAxitools = (): AxitoolsClient =>
-    new AxitoolsClient(
-      store.getSetting('axitoolsUrl') ?? 'http://127.0.0.1:8642',
-      store.getSecret('axitoolsToken') ?? ''
-    )
-  const buildGw2 = (): Gw2Client => new Gw2Client(store.getSecret('gw2ApiKey') ?? '')
+  const buildAxitools = (): AxitoolsClient => {
+    const parsed = parseAxivaleKey(store.getActiveKey('axivale') ?? '')
+    if (!parsed) return new AxitoolsClient('', '')
+    return new AxitoolsClient(parsed.baseUrl, parsed.token)
+  }
+  const buildGw2 = (): Gw2Client => new Gw2Client(store.getActiveKey('gw2') ?? '')
 
   const agent = new AgentService({
     toolDeps: () => ({
       axitools: buildAxitools(),
       gw2: buildGw2(),
-      discordGuildId: () => Number(store.getSetting('guildId')) || 0,
+      // Kept as a string: Discord snowflakes exceed Number.MAX_SAFE_INTEGER.
+      discordGuildId: () => store.getSetting('guildId') ?? '',
       gw2GuildId: () => store.getSetting('gw2GuildId') ?? ''
     }),
     oauthToken: () => store.getSecret('claudeOauthToken'),
+    model: () => store.getSetting('model'),
     confirm: (toolName, input) =>
       new Promise<boolean>((resolve) => {
         const win = mainWindow
@@ -73,6 +83,14 @@ app.whenReady().then(async () => {
         pendingConfirms.set(id, resolve)
         win.webContents.send('agent:confirm-request', { id, toolName, input })
       })
+  })
+
+  ipcMain.on('window:control', (event, action: 'minimize' | 'maximize-toggle' | 'close') => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return
+    if (action === 'minimize') win.minimize()
+    else if (action === 'maximize-toggle') win.isMaximized() ? win.unmaximize() : win.maximize()
+    else if (action === 'close') win.close()
   })
 
   ipcMain.on('agent:confirm-response', (_event, { id, allowed }: { id: string; allowed: boolean }) => {
@@ -92,6 +110,19 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('secrets:has', (_event, key: SecretKey) => store.getSecret(key) !== null)
 
+  // Keyrings: the renderer only ever sees labels, never key material.
+  ipcMain.handle('keys:list', (_event, service: KeyService) => store.listKeyLabels(service))
+  ipcMain.handle('keys:add', (_event, service: KeyService, label: string, key: string) => {
+    store.addKey(service, label, key)
+    store.setActiveKey(service, label)
+  })
+  ipcMain.handle('keys:remove', (_event, service: KeyService, label: string) => {
+    store.removeKey(service, label)
+  })
+  ipcMain.handle('keys:set-active', (_event, service: KeyService, label: string) => {
+    store.setActiveKey(service, label)
+  })
+
   ipcMain.handle('gw2:validate-key', async () => {
     try {
       const info = await buildGw2().accountInfo()
@@ -102,12 +133,57 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('axitools:status', async () => {
+    if (!parseAxivaleKey(store.getActiveKey('axivale') ?? '')) {
+      return { ok: false, error: 'No AxiVale key on file — generate one in Discord with /config apikey generate.' }
+    }
     try {
       const guilds = await buildAxitools().listGuilds()
+      // The key is scoped to one Discord server; remember it as the active guild.
+      if (guilds.length > 0) store.setSetting('guildId', String(guilds[0].id))
       return { ok: true, guilds }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
+  })
+
+  // Panel bridge: whitelisted AxitoolsClient methods, active guild injected.
+  // The renderer never chooses the guild — it always acts on the bound server.
+  const PANEL_METHODS = new Set([
+    'listBuilds',
+    'createBuild',
+    'updateBuild',
+    'deleteBuild',
+    'listCompPresets',
+    'putCompPreset',
+    'deleteCompPreset',
+    'listCompSchedules',
+    'putCompSchedule',
+    'rssList',
+    'rssSet',
+    'rssDelete',
+    'streamsList',
+    'streamSet',
+    'streamDelete',
+    'allianceGet',
+    'allianceSet',
+    'guildRolesGet',
+    'guildRoleSet',
+    'guildRoleDelete',
+    'guildRolesAllowlist',
+    'configGet',
+    'configPatch',
+    'membersLinked',
+    'discordOverview'
+  ])
+  ipcMain.handle('axitools:call', async (_event, method: string, ...args: unknown[]) => {
+    if (!PANEL_METHODS.has(method)) throw new Error(`Unknown axitools method: ${method}`)
+    const guildId = store.getSetting('guildId')
+    if (!guildId) throw new Error('No server connected — add an AxiVale key in Settings.')
+    const client = buildAxitools() as unknown as Record<
+      string,
+      (...a: unknown[]) => Promise<unknown>
+    >
+    return client[method](guildId, ...args)
   })
 
   ipcMain.handle('agent:send', async (event, prompt: string) => {

@@ -1,8 +1,35 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'fs'
 import { dirname } from 'path'
 
-export type SecretKey = 'claudeOauthToken' | 'gw2ApiKey' | 'axitoolsToken'
-export type SettingKey = 'axitoolsUrl' | 'guildId' | 'gw2GuildId' | 'gw2AccountName'
+// gw2ApiKey/axivaleKey are legacy single-key secrets, migrated into keyrings on read.
+export type SecretKey = 'claudeOauthToken' | 'gw2ApiKey' | 'axivaleKey' | 'gw2Keys' | 'axivaleKeys'
+export type SettingKey =
+  | 'guildId'
+  | 'gw2GuildId'
+  | 'gw2AccountName'
+  | 'model'
+  | 'gw2ActiveKey'
+  | 'axivaleActiveKey'
+
+/** Services that hold a ring of labeled keys with one active. */
+export type KeyService = 'gw2' | 'axivale'
+
+export interface KeyLabel {
+  label: string
+  active: boolean
+}
+
+interface StoredKey {
+  label: string
+  key: string
+}
+
+const RING_SECRET: Record<KeyService, SecretKey> = { gw2: 'gw2Keys', axivale: 'axivaleKeys' }
+const LEGACY_SECRET: Record<KeyService, SecretKey> = { gw2: 'gw2ApiKey', axivale: 'axivaleKey' }
+const ACTIVE_SETTING: Record<KeyService, SettingKey> = {
+  gw2: 'gw2ActiveKey',
+  axivale: 'axivaleActiveKey'
+}
 
 export interface Cipher {
   encrypt(plain: string): Buffer
@@ -58,6 +85,68 @@ export class SettingsStore {
 
   getSetting(key: SettingKey): string | null {
     return this.read().settings[key] ?? null
+  }
+
+  // --- keyrings: labeled keys per service, one active ---------------------
+
+  private readRing(service: KeyService): StoredKey[] {
+    const raw = this.getSecret(RING_SECRET[service])
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as StoredKey[]
+        if (Array.isArray(parsed)) return parsed
+      } catch {
+        // fall through to legacy migration
+      }
+    }
+    // Migrate a legacy single secret into the ring on first read.
+    const legacy = this.getSecret(LEGACY_SECRET[service])
+    if (legacy) {
+      const ring = [{ label: 'default', key: legacy }]
+      this.writeRing(service, ring)
+      return ring
+    }
+    return []
+  }
+
+  private writeRing(service: KeyService, ring: StoredKey[]): void {
+    this.setSecret(RING_SECRET[service], JSON.stringify(ring))
+  }
+
+  private activeLabel(service: KeyService, ring: StoredKey[]): string | null {
+    const wanted = this.getSetting(ACTIVE_SETTING[service])
+    if (wanted && ring.some((k) => k.label === wanted)) return wanted
+    return ring[0]?.label ?? null
+  }
+
+  listKeyLabels(service: KeyService): KeyLabel[] {
+    const ring = this.readRing(service)
+    const active = this.activeLabel(service, ring)
+    return ring.map((k) => ({ label: k.label, active: k.label === active }))
+  }
+
+  addKey(service: KeyService, label: string, key: string): void {
+    const ring = this.readRing(service).filter((k) => k.label !== label)
+    ring.push({ label, key })
+    this.writeRing(service, ring)
+  }
+
+  removeKey(service: KeyService, label: string): void {
+    this.writeRing(
+      service,
+      this.readRing(service).filter((k) => k.label !== label)
+    )
+  }
+
+  setActiveKey(service: KeyService, label: string): void {
+    this.setSetting(ACTIVE_SETTING[service], label)
+  }
+
+  /** The active key's material — for main-process consumers only. */
+  getActiveKey(service: KeyService): string | null {
+    const ring = this.readRing(service)
+    const active = this.activeLabel(service, ring)
+    return ring.find((k) => k.label === active)?.key ?? null
   }
 }
 

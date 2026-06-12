@@ -1,14 +1,25 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import './theme.css'
 import { applyEvent, type AgentEvent, type Turn } from './state'
-import Masthead from './components/Masthead'
+import Masthead, { type Section } from './components/Masthead'
+import Builds from './components/panels/Builds'
+import Comps from './components/panels/Comps'
+import Roster from './components/panels/Roster'
+import Bureau from './components/panels/Bureau'
 import { LeftRail, RightRail } from './components/Rails'
 import Article from './components/Article'
 import InputBar from './components/InputBar'
 import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
 
-type Section = 'dispatches' | 'settings'
+const SECTION_TITLES: Record<Section, string> = {
+  dispatches: 'Dispatches',
+  builds: 'Builds',
+  comps: 'Compositions',
+  roster: 'Roster',
+  bureau: 'Bureau',
+  settings: 'Settings'
+}
 
 function dayOfYear(d: Date): number {
   const start = new Date(d.getFullYear(), 0, 0)
@@ -133,12 +144,15 @@ export default function App(): ReactElement {
         <LeftRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
         <div className="chatcol">
           <div className="folio">
-            <h1>{section === 'settings' ? 'Settings' : 'Dispatches'}</h1>
+            <h1>{SECTION_TITLES[section]}</h1>
             <span className="d">{dateline}</span>
           </div>
-          {section === 'settings' ? (
-            <Settings onChanged={refreshStatus} />
-          ) : (
+          {section === 'settings' && <Settings onChanged={refreshStatus} />}
+          {section === 'builds' && <Builds />}
+          {section === 'comps' && <Comps />}
+          {section === 'roster' && <Roster />}
+          {section === 'bureau' && <Bureau />}
+          {section === 'dispatches' && (
             <div className="chat" ref={chatRef}>
               {turns.length === 0 ? (
                 <div className="empty">No dispatches yet — file your orders below.</div>
@@ -150,7 +164,7 @@ export default function App(): ReactElement {
         </div>
         <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
       </div>
-      <InputBar disabled={running} onSubmit={submit} />
+      {section === 'dispatches' && <InputBar disabled={running} onSubmit={submit} />}
       {confirmQueue.length > 0 && <ConfirmDialog req={confirmQueue[0]} onRespond={respondConfirm} />}
     </>
   )

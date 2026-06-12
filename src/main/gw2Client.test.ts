@@ -62,6 +62,33 @@ describe('Gw2Client', () => {
     await expect(client.guildMembers('G-1')).rejects.toThrow('Invalid access token')
   })
 
+  it('apiGet fetches an arbitrary v2 path with auth', async () => {
+    mockFetch.mockResolvedValue(jsonResponse({ id: 1, name: 'Zojja' }))
+    const data = await client.apiGet('/items/1')
+    expect(data).toEqual({ id: 1, name: 'Zojja' })
+    expect(mockFetch.mock.calls[0][0]).toBe('https://api.guildwars2.com/v2/items/1')
+    const init = mockFetch.mock.calls[0][1] as RequestInit
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer TEST-KEY')
+  })
+
+  it('apiGet preserves query strings', async () => {
+    mockFetch.mockResolvedValue(jsonResponse([]))
+    await client.apiGet('/items?ids=1,2,3')
+    expect(mockFetch.mock.calls[0][0]).toBe('https://api.guildwars2.com/v2/items?ids=1,2,3')
+  })
+
+  it('apiGet rejects paths that do not start with a single slash', async () => {
+    await expect(client.apiGet('items')).rejects.toThrow(Gw2Error)
+    await expect(client.apiGet('//evil.com/x')).rejects.toThrow(Gw2Error)
+    await expect(client.apiGet('https://evil.com/x')).rejects.toThrow(Gw2Error)
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('apiGet rejects path traversal out of /v2', async () => {
+    await expect(client.apiGet('/../v1/secrets')).rejects.toThrow(Gw2Error)
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+
   it('surfaces rate limiting', async () => {
     mockFetch.mockResolvedValue(new Response('', { status: 429 }))
     await expect(client.guildMembers('G-1')).rejects.toThrow(Gw2Error)

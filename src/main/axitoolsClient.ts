@@ -1,6 +1,6 @@
 export class AxitoolsError extends Error {}
 
-export interface DiscordGuild { id: number; name: string }
+export interface DiscordGuild { id: string; name: string }
 export interface Build {
   build_id: string
   name: string
@@ -57,27 +57,27 @@ export class AxitoolsClient {
     return this.request('GET', '/guilds')
   }
 
-  listBuilds(guildId: number): Promise<Build[]> {
+  listBuilds(guildId: string): Promise<Build[]> {
     return this.request('GET', `/guilds/${guildId}/builds`)
   }
 
-  createBuild(guildId: number, build: Omit<Build, 'build_id'>): Promise<Build> {
+  createBuild(guildId: string, build: Omit<Build, 'build_id'>): Promise<Build> {
     return this.request('POST', `/guilds/${guildId}/builds`, build)
   }
 
-  updateBuild(guildId: number, buildId: string, patch: Partial<Build>): Promise<Build> {
+  updateBuild(guildId: string, buildId: string, patch: Partial<Build>): Promise<Build> {
     return this.request('PUT', `/guilds/${guildId}/builds/${buildId}`, patch)
   }
 
-  deleteBuild(guildId: number, buildId: string): Promise<void> {
+  deleteBuild(guildId: string, buildId: string): Promise<void> {
     return this.request('DELETE', `/guilds/${guildId}/builds/${buildId}`)
   }
 
-  listCompPresets(guildId: number): Promise<CompPreset[]> {
+  listCompPresets(guildId: string): Promise<CompPreset[]> {
     return this.request('GET', `/guilds/${guildId}/comp-presets`)
   }
 
-  putCompPreset(guildId: number, preset: CompPreset): Promise<CompPreset> {
+  putCompPreset(guildId: string, preset: CompPreset): Promise<CompPreset> {
     return this.request(
       'PUT',
       `/guilds/${guildId}/comp-presets/${encodeURIComponent(preset.name)}`,
@@ -85,15 +85,113 @@ export class AxitoolsClient {
     )
   }
 
-  deleteCompPreset(guildId: number, name: string): Promise<void> {
+  deleteCompPreset(guildId: string, name: string): Promise<void> {
     return this.request('DELETE', `/guilds/${guildId}/comp-presets/${encodeURIComponent(name)}`)
   }
 
-  listCompSchedules(guildId: number): Promise<CompSchedule[]> {
+  discordOverview(guildId: string, includeMembers = false): Promise<unknown> {
+    const qs = includeMembers ? '?include=members' : ''
+    return this.request('GET', `/guilds/${guildId}/discord${qs}`)
+  }
+
+  discordMessages(guildId: string, channelId: string, limit?: number): Promise<unknown> {
+    const qs = new URLSearchParams({ channel_id: channelId })
+    if (limit !== undefined) qs.set('limit', String(limit))
+    return this.request('GET', `/guilds/${guildId}/discord/messages?${qs}`)
+  }
+
+  discordAction(
+    guildId: string,
+    action: string,
+    params: Record<string, unknown>
+  ): Promise<unknown> {
+    return this.request('POST', `/guilds/${guildId}/discord/actions`, { action, params })
+  }
+
+  private getWithQuery(path: string, filters: Record<string, unknown>): Promise<unknown> {
+    const qs = new URLSearchParams()
+    for (const [k, v] of Object.entries(filters)) {
+      if (v !== undefined && v !== null) qs.set(k, String(v))
+    }
+    const suffix = qs.size > 0 ? `?${qs}` : ''
+    return this.request('GET', `${path}${suffix}`)
+  }
+
+  auditDiscord(guildId: string, filters: Record<string, unknown> = {}): Promise<unknown> {
+    return this.getWithQuery(`/guilds/${guildId}/audit/discord`, filters)
+  }
+
+  auditGw2(guildId: string, filters: Record<string, unknown> = {}): Promise<unknown> {
+    return this.getWithQuery(`/guilds/${guildId}/audit/gw2`, filters)
+  }
+
+  rssList(guildId: string): Promise<unknown> {
+    return this.request('GET', `/guilds/${guildId}/rss`)
+  }
+
+  rssSet(guildId: string, name: string, body: { url: string; channel_id: string }): Promise<unknown> {
+    return this.request('PUT', `/guilds/${guildId}/rss/${encodeURIComponent(name)}`, body)
+  }
+
+  rssDelete(guildId: string, name: string): Promise<void> {
+    return this.request('DELETE', `/guilds/${guildId}/rss/${encodeURIComponent(name)}`)
+  }
+
+  streamsList(guildId: string): Promise<unknown> {
+    return this.request('GET', `/guilds/${guildId}/streams`)
+  }
+
+  streamSet(guildId: string, name: string, body: Record<string, unknown>): Promise<unknown> {
+    return this.request('PUT', `/guilds/${guildId}/streams/${encodeURIComponent(name)}`, body)
+  }
+
+  streamDelete(guildId: string, name: string): Promise<void> {
+    return this.request('DELETE', `/guilds/${guildId}/streams/${encodeURIComponent(name)}`)
+  }
+
+  allianceGet(guildId: string): Promise<unknown> {
+    return this.request('GET', `/guilds/${guildId}/alliance`)
+  }
+
+  allianceSet(guildId: string, patch: Record<string, unknown>): Promise<unknown> {
+    return this.request('PUT', `/guilds/${guildId}/alliance`, patch)
+  }
+
+  guildRolesGet(guildId: string): Promise<unknown> {
+    return this.request('GET', `/guilds/${guildId}/guild-roles`)
+  }
+
+  guildRoleSet(guildId: string, gw2GuildId: string, roleId: string): Promise<unknown> {
+    return this.request('PUT', `/guilds/${guildId}/guild-roles/${encodeURIComponent(gw2GuildId)}`, {
+      role_id: roleId
+    })
+  }
+
+  guildRoleDelete(guildId: string, gw2GuildId: string): Promise<void> {
+    return this.request('DELETE', `/guilds/${guildId}/guild-roles/${encodeURIComponent(gw2GuildId)}`)
+  }
+
+  guildRolesAllowlist(guildId: string, roleIds: string[]): Promise<unknown> {
+    return this.request('PUT', `/guilds/${guildId}/guild-roles-allowlist`, { role_ids: roleIds })
+  }
+
+  configGet(guildId: string): Promise<unknown> {
+    return this.request('GET', `/guilds/${guildId}/config`)
+  }
+
+  configPatch(guildId: string, patch: Record<string, unknown>): Promise<unknown> {
+    return this.request('PATCH', `/guilds/${guildId}/config`, patch)
+  }
+
+  membersLinked(guildId: string): Promise<unknown> {
+    return this.request('GET', `/guilds/${guildId}/members-linked`)
+  }
+
+  listCompSchedules(guildId: string): Promise<CompSchedule[]> {
     return this.request('GET', `/guilds/${guildId}/comp-schedules`)
   }
 
-  putCompSchedule(guildId: number, schedule: CompSchedule): Promise<CompSchedule> {
+  putCompSchedule(guildId: string, schedule: CompSchedule): Promise<CompSchedule> {
     return this.request(
       'PUT',
       `/guilds/${guildId}/comp-schedules/${encodeURIComponent(schedule.schedule_id)}`,

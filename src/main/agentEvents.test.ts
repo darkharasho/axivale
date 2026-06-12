@@ -10,6 +10,28 @@ describe('translateSdkMessage', () => {
     expect(events).toEqual([{ kind: 'text-delta', text: 'Hello' }])
   })
 
+  it('emits a paragraph break when a new text block starts', () => {
+    // Text before and after a tool call comes from separate assistant
+    // messages; without a break they concatenate mid-sentence.
+    const events = translateSdkMessage({
+      type: 'stream_event',
+      event: { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }
+    } as never)
+    expect(events).toEqual([{ kind: 'text-delta', text: '\n\n' }])
+  })
+
+  it('does not emit breaks for non-text block starts', () => {
+    const events = translateSdkMessage({
+      type: 'stream_event',
+      event: {
+        type: 'content_block_start',
+        index: 0,
+        content_block: { type: 'tool_use', id: 't1', name: 'x', input: {} }
+      }
+    } as never)
+    expect(events).toEqual([])
+  })
+
   it('extracts tool_use blocks from assistant messages', () => {
     const events = translateSdkMessage({
       type: 'assistant',

@@ -49,6 +49,17 @@ export class Gw2Client {
     return data as T
   }
 
+  /**
+   * Fetch any /v2 endpoint by relative path (with optional query string).
+   * Rejects anything that could escape api.guildwars2.com/v2.
+   */
+  async apiGet(path: string): Promise<unknown> {
+    if (!path.startsWith('/') || path.startsWith('//') || path.includes('..')) {
+      throw new Gw2Error(`Invalid GW2 API path: ${path} — use a relative /v2 path like /items/1`)
+    }
+    return this.get(path)
+  }
+
   async accountInfo(): Promise<AccountInfo> {
     const token = await this.get<{ permissions: string[] }>('/tokeninfo')
     const account = await this.get<{ name: string; guilds?: string[]; guild_leader?: string[] }>('/account')
