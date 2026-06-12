@@ -3,14 +3,15 @@ import type { ToolCall } from '../state'
 
 // Friendly two-part labels for known tools. Keep dumb and total.
 const LABELS: Record<string, string> = {
-  axitools_comp_presets_save: 'COMPS / SAVE PRESET',
-  axitools_comp_preset_edit: 'COMPS / EDIT PRESET',
-  axitools_comps_list: 'COMPS / LIST',
   axitools_builds_list: 'BUILDS / LIST',
-  axitools_builds_get: 'BUILDS / GET',
-  axitools_builds_save: 'BUILDS / SAVE',
-  axitools_config_get: 'CONFIG / GET',
-  axitools_config_set: 'CONFIG / SET',
+  axitools_builds_create: 'BUILDS / CREATE',
+  axitools_builds_update: 'BUILDS / UPDATE',
+  axitools_builds_delete: 'BUILDS / DELETE',
+  axitools_comp_presets_list: 'COMPS / LIST PRESETS',
+  axitools_comp_presets_save: 'COMPS / SAVE PRESET',
+  axitools_comp_presets_delete: 'COMPS / DELETE PRESET',
+  axitools_comp_schedules_list: 'COMPS / LIST SCHEDULES',
+  axitools_comp_schedules_save: 'COMPS / SAVE SCHEDULE',
   gw2_guild_log: 'GW2 / GUILD LOG',
   gw2_guild_members: 'GW2 / GUILD MEMBERS',
   gw2_account_info: 'GW2 / ACCOUNT INFO'
