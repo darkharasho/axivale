@@ -25,9 +25,9 @@ export default function Masthead(props: MastheadProps): ReactElement {
     onSection
   } = props
 
-  const guildLine = guildName
-    ? `${guildName}${guildTag ? ` [${guildTag}]` : ''}${
-        memberCount != null ? ` · ${memberCount} members` : ''
+  const guildDetail = guildName
+    ? `${guildTag ? `[${guildTag}]` : ''}${
+        memberCount != null ? `${guildTag ? ' · ' : ''}${memberCount} members` : ''
       }`
     : 'no guild'
 
@@ -56,7 +56,7 @@ export default function Masthead(props: MastheadProps): ReactElement {
         </div>
         <div className="ear right">
           <div>
-            <b>{guildName ?? 'Guild'}</b> {guildLine}
+            <b>{guildName ?? 'Guild'}</b> {guildDetail}
           </div>
           <div>
             <b>Claude</b> {claudeTokenSaved ? 'token saved' : 'system login'}
