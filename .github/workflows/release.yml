@@ -1,0 +1,42 @@
+name: Release
+
+# Tag a version to build all three platforms and publish to GitHub Releases
+# (which the in-app auto-updater reads):
+#   npm version minor && git push --follow-tags
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: axivale
+      - uses: actions/checkout@v4
+        with:
+          repository: darkharasho/gw2-class-icons
+          path: gw2-class-icons
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: axivale/package-lock.json
+      - run: npm ci
+        working-directory: axivale
+      - run: npm run build
+        working-directory: axivale
+      - run: npx electron-builder --publish always
+        working-directory: axivale
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No signing certs configured; mac builds unsigned (auto-update on
+          # macOS requires notarized builds — revisit when certs exist).
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'

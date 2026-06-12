@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # The file:../gw2-class-icons dep resolves against a sibling checkout.
+      - uses: actions/checkout@v4
+        with:
+          path: axivale
+      - uses: actions/checkout@v4
+        with:
+          repository: darkharasho/gw2-class-icons
+          path: gw2-class-icons
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: axivale/package-lock.json
+      - run: npm ci
+        working-directory: axivale
+      - run: npm run typecheck
+        working-directory: axivale
+      - run: npx vitest run --maxWorkers=2
+        working-directory: axivale
+      - run: npm run build
+        working-directory: axivale
