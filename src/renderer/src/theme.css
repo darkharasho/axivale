@@ -21,10 +21,13 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .masthead{border-bottom:1px solid var(--rule2);background:rgba(0,0,0,.18)}
 .mtop{display:flex;align-items:center;padding:7px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;border-bottom:1px dashed var(--rule);-webkit-app-region:drag}
 .mtop .r{margin-left:auto}
-.winctl{display:flex;gap:2px;margin-left:18px;-webkit-app-region:no-drag}
-.winctl button{background:none;border:none;color:var(--faint);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1;padding:3px 8px;cursor:pointer}
-.winctl button:hover{color:var(--ink)}
-.winctl button.close:hover{color:var(--accent-b)}
+/* window controls — dashed coupon chips tucked into the corner
+   (negative margin eats most of .mtop's 30px edge padding so the chips sit
+   ~8px from the frame while the Final Edition text keeps its alignment) */
+.winctl{display:flex;gap:5px;margin-left:18px;margin-right:-22px;-webkit-app-region:no-drag}
+.winctl button{width:19px;height:19px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.22);border:1px dashed var(--rule2);color:var(--faint);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1;padding:0;cursor:pointer}
+.winctl button:hover{color:var(--ink);border-color:var(--ink-dim);background:rgba(0,0,0,.4)}
+.winctl button.close:hover{color:#fff;background:var(--accent);border-color:rgba(255,255,255,.5)}
 .mmain{display:flex;align-items:center;padding:15px 30px 13px;gap:24px;-webkit-app-region:drag}
 .mmain .title{font-family:'Playfair Display',serif;font-weight:900;font-size:33px;line-height:1;margin:0 auto}
 .mmain .title em{color:var(--accent-b);font-style:normal}
