@@ -187,6 +187,9 @@ export default function Settings({ onChanged }: SettingsProps): ReactElement {
 
   async function pickProvider(value: ProviderName): Promise<void> {
     setProvider(value)
+    setLlmLabel('')
+    setLlmKey('')
+    setCustomModel('')
     await window.officer.setSetting('provider', value)
     if (value === 'local') await checkLocal()
     onChanged()
@@ -424,6 +427,18 @@ export default function Settings({ onChanged }: SettingsProps): ReactElement {
                   {m.label}
                 </button>
               ))}
+              {(() => {
+                const activeModel = provider === 'gemini' ? geminiModel : openaiModel
+                const curated = provider === 'gemini' ? GEMINI_MODELS : OPENAI_MODELS
+                if (activeModel && !curated.some((m) => m.value === activeModel)) {
+                  return (
+                    <button key={activeModel} className="pi sel">
+                      {activeModel}
+                    </button>
+                  )
+                }
+                return null
+              })()}
             </div>
             <input
               className="sinput"
