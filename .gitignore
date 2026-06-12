@@ -6,3 +6,6 @@ dist
 build
 *.log
 .superpowers
+node_modules/
+out/
+dist/
