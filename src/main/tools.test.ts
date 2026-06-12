@@ -247,7 +247,9 @@ describe('officer tools', () => {
       'role_delete',
       'member_timeout',
       'member_kick',
-      'member_ban'
+      'member_ban',
+      'member_dm',
+      'members_dm'
     ])
   })
 
