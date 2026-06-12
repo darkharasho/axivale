@@ -195,6 +195,13 @@ export class AxitoolsClient {
     return this.request('GET', `/guilds/${guildId}/comp-schedules`)
   }
 
+  deleteCompSchedule(guildId: string, scheduleId: string): Promise<void> {
+    return this.request(
+      'DELETE',
+      `/guilds/${guildId}/comp-schedules/${encodeURIComponent(scheduleId)}`
+    )
+  }
+
   putCompSchedule(guildId: string, schedule: CompSchedule): Promise<CompSchedule> {
     return this.request(
       'PUT',

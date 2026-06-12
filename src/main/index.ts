@@ -158,6 +158,7 @@ app.whenReady().then(async () => {
     'deleteCompPreset',
     'listCompSchedules',
     'putCompSchedule',
+    'deleteCompSchedule',
     'rssList',
     'rssSet',
     'rssDelete',

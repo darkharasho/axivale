@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { classIconUrl } from './classIcons'
 
 /** Typed wrapper around the whitelisted AxiTools bridge. */
 export function axi<T>(method: string, ...args: unknown[]): Promise<T> {
@@ -57,6 +58,35 @@ export function ZapButton({
     >
       {armed ? 'confirm ✕' : '✕'}
     </button>
+  )
+}
+
+/**
+ * GW2 class/elite-spec icon, masked so it takes the current text color.
+ * Falls back to nothing when the name isn't a known class/spec.
+ */
+export function ClassIcon({
+  name,
+  size = 18
+}: {
+  name: string | null | undefined
+  size?: number
+}): ReactElement | null {
+  const url = classIconUrl(name)
+  if (!url) return null
+  return (
+    <span
+      className="classicon"
+      title={name ?? undefined}
+      style={{
+        width: size,
+        height: size,
+        // Quote the data URI: encodeURIComponent leaves ()!*' unescaped, and
+        // an unquoted url() would terminate at the first ) in the SVG.
+        WebkitMaskImage: `url("${url}")`,
+        maskImage: `url("${url}")`
+      }}
+    />
   )
 }
 

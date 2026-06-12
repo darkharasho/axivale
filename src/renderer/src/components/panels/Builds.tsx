@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react'
-import { axi, errText, isOffline, Offline, ZapButton } from './shared'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactElement
+} from 'react'
+import { axi, ClassIcon, errText, isOffline, Offline, ZapButton } from './shared'
 
 interface Build {
   build_id: string
@@ -9,6 +16,8 @@ interface Build {
   url?: string
   chat_code: string
   description?: string
+  filed_at?: string
+  created_at?: string
 }
 
 const EMPTY_FORM = {
@@ -18,6 +27,73 @@ const EMPTY_FORM = {
   chat_code: '',
   url: '',
   description: ''
+}
+
+/** Returns a filed-date string if the API supplied one, else null. */
+function filedDate(b: Build): string | null {
+  const raw = b.filed_at ?? b.created_at
+  if (!raw) return null
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+/** A single build "card" with header, body, code bar and footer. */
+function BuildCard({
+  build,
+  onEdit,
+  onRemove
+}: {
+  build: Build
+  onEdit: () => void
+  onRemove: () => void
+}): ReactElement {
+  const [clipped, setClipped] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+
+  function clip(): void {
+    void navigator.clipboard.writeText(build.chat_code)
+    window.clearTimeout(timer.current)
+    setClipped(true)
+    timer.current = window.setTimeout(() => setClipped(false), 2000)
+  }
+
+  const filed = filedDate(build)
+  return (
+    <div className="bcard">
+      <div className="bhead">
+        <ClassIcon name={build.specialization || build.profession} size={26} />
+        <div className="bheadtext">
+          <div className="bkick">
+            {build.specialization ? `${build.specialization} · ` : ''}
+            {build.profession}
+          </div>
+          <div className="bname">{build.name}</div>
+        </div>
+      </div>
+      <div className="bbody">
+        {build.description ? (
+          <p>{build.description}</p>
+        ) : (
+          <p className="bnone">No notes on file.</p>
+        )}
+      </div>
+      <div className="bcode">
+        <span className="bcodeval">{build.chat_code}</span>
+        <button className={`clipbtn${clipped ? ' done' : ''}`} onClick={clip}>
+          {clipped ? '✓ clipped' : 'Clip code'}
+        </button>
+      </div>
+      <div className="bfoot">
+        <button className="rowbtn" onClick={onEdit}>
+          amend
+        </button>
+        <ZapButton title={`Delete "${build.name}"`} onConfirm={onRemove} />
+        {filed && <span className="bfiled">filed {filed}</span>}
+      </div>
+    </div>
+  )
 }
 
 export default function Builds(): ReactElement {
@@ -48,7 +124,8 @@ export default function Builds(): ReactElement {
   }, [load])
 
   function field(key: keyof typeof EMPTY_FORM) {
-    return (e: { target: { value: string } }): void => setForm((f) => ({ ...f, [key]: e.target.value }))
+    return (e: { target: { value: string } }): void =>
+      setForm((f) => ({ ...f, [key]: e.target.value }))
   }
 
   function startEdit(b: Build): void {
@@ -113,51 +190,52 @@ export default function Builds(): ReactElement {
     )
   }
 
+  // Group builds by profession, preserving first-seen order.
+  const groups: { profession: string; items: Build[] }[] = []
+  for (const b of builds) {
+    let g = groups.find((x) => x.profession === b.profession)
+    if (!g) {
+      g = { profession: b.profession, items: [] }
+      groups.push(g)
+    }
+    g.items.push(b)
+  }
+
   return (
     <div className="settings">
-      <div className="sgroup">
-        <h2>The Build Ledger</h2>
-        <p className="shelp">
-          Approved fits on record with the guild. Chat codes paste straight into the game client.
-        </p>
-        {builds.length === 0 ? (
-          <div className="panel-empty">{loaded ? 'Nothing on file.' : 'Fetching the ledger…'}</div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Profession</th>
-                <th>Chat code</th>
-                <th>Description</th>
-                <th className="act">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {builds.map((b) => (
-                <tr key={b.build_id}>
-                  <td className="nm2">{b.name}</td>
-                  <td>
-                    {b.profession}
-                    {b.specialization ? ` · ${b.specialization}` : ''}
-                  </td>
-                  <td className="mono">{b.chat_code}</td>
-                  <td>{b.description || '—'}</td>
-                  <td className="act">
-                    <button className="rowbtn" onClick={() => startEdit(b)}>
-                      edit
-                    </button>
-                    <ZapButton title={`Delete "${b.name}"`} onConfirm={() => void remove(b.build_id)} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {listErr && <div className="sstatus err">{listErr}</div>}
-      </div>
+      <p className="shelp deck">
+        Approved fits on record with the guild. Chat codes paste straight into the game client.
+      </p>
 
-      <div className="sgroup">
+      {builds.length === 0 ? (
+        <div className="panel-empty">{loaded ? 'Nothing on file.' : 'Fetching the ledger…'}</div>
+      ) : (
+        groups.map((g) => (
+          <div className="bgroup" key={g.profession}>
+            <div className="bgrouphead">
+              <ClassIcon name={g.profession} size={16} />
+              <span className="bgroupname">{g.profession}</span>
+              <span className="bgrouprule" />
+              <span className="bgroupcount">
+                {g.items.length} on file
+              </span>
+            </div>
+            <div className="bgrid">
+              {g.items.map((b) => (
+                <BuildCard
+                  key={b.build_id}
+                  build={b}
+                  onEdit={() => startEdit(b)}
+                  onRemove={() => void remove(b.build_id)}
+                />
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+      {listErr && <div className="sstatus err">{listErr}</div>}
+
+      <div className="sgroup bform">
         <h2>{editing ? 'Amend an Entry' : 'File a Build'}</h2>
         <form onSubmit={(e) => void submit(e)}>
           <div className="fgrid">
@@ -181,12 +259,15 @@ export default function Builds(): ReactElement {
             </div>
             <div>
               <label className="slabel">Specialization</label>
-              <input
-                className="sinput"
-                value={form.specialization}
-                placeholder="optional, e.g. Firebrand"
-                onChange={field('specialization')}
-              />
+              <div className="specfield">
+                <input
+                  className="sinput"
+                  value={form.specialization}
+                  placeholder="optional, e.g. Firebrand"
+                  onChange={field('specialization')}
+                />
+                <ClassIcon name={form.specialization || form.profession} size={20} />
+              </div>
             </div>
             <div>
               <label className="slabel">Chat code</label>
@@ -216,7 +297,9 @@ export default function Builds(): ReactElement {
             <button
               className="sbtn"
               type="submit"
-              disabled={busy || !form.name.trim() || !form.profession.trim() || !form.chat_code.trim()}
+              disabled={
+                busy || !form.name.trim() || !form.profession.trim() || !form.chat_code.trim()
+              }
             >
               {editing ? 'File amendment' : 'File build'}
             </button>
