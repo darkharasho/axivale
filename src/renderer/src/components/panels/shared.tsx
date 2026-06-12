@@ -62,8 +62,9 @@ export function ZapButton({
 }
 
 /**
- * GW2 class/elite-spec icon, masked so it takes the current text color.
- * Falls back to nothing when the name isn't a known class/spec.
+ * GW2 class/elite-spec icon — the real wiki icon (profession color + black
+ * outline), rendered as an image. Falls back to nothing when the name isn't
+ * a known class/spec.
  */
 export function ClassIcon({
   name,
@@ -75,17 +76,13 @@ export function ClassIcon({
   const url = classIconUrl(name)
   if (!url) return null
   return (
-    <span
+    <img
       className="classicon"
+      src={url}
+      alt={name ?? ''}
       title={name ?? undefined}
-      style={{
-        width: size,
-        height: size,
-        // Quote the data URI: encodeURIComponent leaves ()!*' unescaped, and
-        // an unquoted url() would terminate at the first ) in the SVG.
-        WebkitMaskImage: `url("${url}")`,
-        maskImage: `url("${url}")`
-      }}
+      width={size}
+      height={size}
     />
   )
 }
