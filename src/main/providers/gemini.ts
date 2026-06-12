@@ -141,7 +141,14 @@ export class GeminiAdapter implements ProviderAdapter {
           }
         }
       }
-      this.history.push({ role: 'model', parts: modelParts.length > 0 ? modelParts : [{ text: '' }] })
+      if (modelParts.length === 0 && calls.length === 0) {
+        // Nothing came back — pop the user message pushed at turn start to keep history clean.
+        this.history.splice(this.history.length - 1, 1)
+        yield { kind: 'done', sessionId: null, error: 'Gemini returned an empty response — the prompt may have been blocked.' }
+        return
+      }
+
+      this.history.push({ role: 'model', parts: modelParts })
 
       if (calls.length === 0) {
         yield { kind: 'done', sessionId: null, error: null }

@@ -145,6 +145,80 @@ describe('GeminiAdapter', () => {
     expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
   })
 
+  it('collects two functionCalls from one round into a single user content in the follow-up request', async () => {
+    const echo2 = tool('echo_tool_2', 'Echoes.', { message: z.string() }, async (args: { message: string }) => ({
+      content: [{ type: 'text' as const, text: `echo2:${args.message}` }]
+    }))
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        sseBody([
+          {
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    { functionCall: { name: 'echo_tool', args: { message: 'a' } } },
+                    { functionCall: { name: 'echo_tool_2', args: { message: 'b' } } }
+                  ]
+                }
+              }
+            ]
+          }
+        ])
+      )
+      .mockResolvedValueOnce(sseBody([{ candidates: [{ content: { parts: [{ text: 'done' }] } }] }]))
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+    const events = await collect(adapter, turnInput({ tools: [echo, echo2] }))
+
+    // Both tool-start and tool-result events must fire with distinct ids
+    const starts = events.filter((e) => e.kind === 'tool-start')
+    const results = events.filter((e) => e.kind === 'tool-result')
+    expect(starts).toHaveLength(2)
+    expect(results).toHaveLength(2)
+    expect((starts[0] as Extract<AgentEvent, { kind: 'tool-start' }>).name).toBe('echo_tool')
+    expect((starts[1] as Extract<AgentEvent, { kind: 'tool-start' }>).name).toBe('echo_tool_2')
+    const id0 = (starts[0] as Extract<AgentEvent, { kind: 'tool-start' }>).id
+    const id1 = (starts[1] as Extract<AgentEvent, { kind: 'tool-start' }>).id
+    expect(id0).not.toBe(id1)
+
+    // Both functionResponse parts must land in a SINGLE user content in the follow-up body
+    const second = JSON.parse((fetchFn.mock.calls[1][1] as RequestInit).body as string)
+    const lastContent = second.contents[second.contents.length - 1]
+    expect(lastContent.role).toBe('user')
+    expect(lastContent.parts).toHaveLength(2)
+    expect(lastContent.parts[0].functionResponse.name).toBe('echo_tool')
+    expect(lastContent.parts[1].functionResponse.name).toBe('echo_tool_2')
+  })
+
+  it('yields done with empty-response error and does not corrupt history for the next turn', async () => {
+    const fetchFn = vi
+      .fn()
+      // First turn: chunk with no parts → empty response
+      .mockResolvedValueOnce(
+        sseBody([{ candidates: [{ content: { parts: [] } }] }])
+      )
+      // Second turn: normal text response
+      .mockResolvedValueOnce(
+        sseBody([{ candidates: [{ content: { parts: [{ text: 'hello' }] } }] }])
+      )
+    const adapter = new GeminiAdapter(() => config, fetchFn as unknown as typeof fetch)
+
+    // First turn: expect a single done event with the error message
+    const firstEvents = await collect(adapter, turnInput({ prompt: 'blocked?' }))
+    expect(firstEvents).toHaveLength(1)
+    expect(firstEvents[0]).toMatchObject({
+      kind: 'done',
+      error: expect.stringContaining('empty response')
+    })
+
+    // Second turn: history must only contain the new user message (no leftovers from the blocked turn)
+    const secondEvents = await collect(adapter, turnInput({ prompt: 'next' }))
+    expect(secondEvents).toContainEqual({ kind: 'done', sessionId: null, error: null })
+    const body = JSON.parse((fetchFn.mock.calls[1][1] as RequestInit).body as string)
+    expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
+  })
+
   it('aborts mid-loop when signal is already aborted and rolls back history', async () => {
     const ac = new AbortController()
     ac.abort()
