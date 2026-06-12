@@ -11,6 +11,7 @@ export interface OfficerApi {
   }>
   sendMessage(text: string): Promise<void>
   resetSession(): Promise<void>
+  cancelTurn(): Promise<void>
   onAgentEvent(cb: (event: unknown) => void): () => void
   onConfirmRequest(cb: (req: unknown) => void): () => void
   respondConfirm(id: string, allowed: boolean): void

@@ -190,6 +190,10 @@ td.nm2{color:var(--ink)}
 .field:disabled{opacity:.5}
 .filebtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:8px 18px;text-transform:uppercase;font-weight:500;border:1px dashed rgba(255,255,255,.4);outline:3px solid var(--accent);cursor:pointer}
 .filebtn:disabled{opacity:.4;cursor:default}
+.filebtn.stop{background:transparent;color:var(--accent-b);outline-color:var(--accent-b)}
+.filebtn.stop:hover{background:var(--accent);color:#fff}
+.folio-act{margin-left:16px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:1px dashed var(--rule2);padding:4px 10px;cursor:pointer}
+.folio-act:hover{color:var(--ink);border-color:var(--accent-b)}
 /* confirm dialog — public notice */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50}
 .notice{background:var(--paper);border:3px double var(--accent);max-width:560px;width:90%;box-shadow:6px 6px 0 rgba(0,0,0,.4)}

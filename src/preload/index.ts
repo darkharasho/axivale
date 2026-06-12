@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('officer', {
   axitoolsStatus: () => ipcRenderer.invoke('axitools:status'),
   sendMessage: (text: string) => ipcRenderer.invoke('agent:send', text),
   resetSession: () => ipcRenderer.invoke('agent:reset'),
+  cancelTurn: () => ipcRenderer.invoke('agent:cancel'),
   onAgentEvent: (cb: (event: unknown) => void) => {
     const listener = (_e: unknown, event: unknown): void => cb(event)
     ipcRenderer.on('agent:event', listener)

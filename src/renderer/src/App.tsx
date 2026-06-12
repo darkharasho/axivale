@@ -27,8 +27,25 @@ function dayOfYear(d: Date): number {
   return Math.floor(diff / 86400000)
 }
 
+const TURNS_KEY = 'axivale.turns'
+
+// Restore the prior conversation; tolerate absent/corrupt storage.
+function loadTurns(): Turn[] {
+  try {
+    const raw = localStorage.getItem(TURNS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as Turn[]
+    // An interrupted turn from last session can't resume — mark it done.
+    return Array.isArray(parsed)
+      ? parsed.map((t) => (t.done ? t : { ...t, done: true }))
+      : []
+  } catch {
+    return []
+  }
+}
+
 export default function App(): ReactElement {
-  const [turns, setTurns] = useState<Turn[]>([])
+  const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [section, setSection] = useState<Section>('dispatches')
   const [running, setRunning] = useState(false)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
@@ -40,7 +57,8 @@ export default function App(): ReactElement {
   const [claudeTokenSaved, setClaudeTokenSaved] = useState(false)
 
   const chatRef = useRef<HTMLDivElement>(null)
-  const nextId = useRef(1)
+  // Continue ids past whatever was restored so keys stay unique.
+  const nextId = useRef(turns.reduce((max, t) => Math.max(max, t.id), 0) + 1)
 
   const dateline =
     new Date().toLocaleDateString('en-US', {
@@ -101,6 +119,27 @@ export default function App(): ReactElement {
     if (el) el.scrollTop = el.scrollHeight
   }, [turns])
 
+  // Persist the conversation so it survives a restart.
+  useEffect(() => {
+    try {
+      localStorage.setItem(TURNS_KEY, JSON.stringify(turns))
+    } catch {
+      // storage full / unavailable — non-fatal, history just won't persist
+    }
+  }, [turns])
+
+  function newConversation(): void {
+    window.officer.cancelTurn()
+    void window.officer.resetSession()
+    setTurns([])
+    setRunning(false)
+    setConfirmQueue([])
+  }
+
+  function stopTurn(): void {
+    window.officer.cancelTurn()
+  }
+
   function submit(text: string): void {
     const turn: Turn = {
       id: nextId.current++,
@@ -146,6 +185,11 @@ export default function App(): ReactElement {
         <div className="chatcol">
           <div className="folio">
             <h1>{SECTION_TITLES[section]}</h1>
+            {section === 'dispatches' && turns.length > 0 && (
+              <button className="folio-act" onClick={newConversation}>
+                New dispatch
+              </button>
+            )}
             <span className="d">{dateline}</span>
           </div>
           {section === 'settings' && <Settings onChanged={refreshStatus} />}
@@ -165,7 +209,9 @@ export default function App(): ReactElement {
         </div>
         <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
       </div>
-      {section === 'dispatches' && <InputBar disabled={running} onSubmit={submit} />}
+      {section === 'dispatches' && (
+        <InputBar disabled={running} onSubmit={submit} onStop={stopTurn} />
+      )}
       {confirmQueue.length > 0 && <ConfirmDialog req={confirmQueue[0]} onRespond={respondConfirm} />}
     </>
   )

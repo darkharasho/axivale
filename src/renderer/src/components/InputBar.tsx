@@ -3,9 +3,10 @@ import { useState, type ReactElement, type KeyboardEvent } from 'react'
 export interface InputBarProps {
   disabled: boolean
   onSubmit: (text: string) => void
+  onStop: () => void
 }
 
-export default function InputBar({ disabled, onSubmit }: InputBarProps): ReactElement {
+export default function InputBar({ disabled, onSubmit, onStop }: InputBarProps): ReactElement {
   const [value, setValue] = useState('')
 
   function submit(): void {
@@ -35,9 +36,15 @@ export default function InputBar({ disabled, onSubmit }: InputBarProps): ReactEl
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={onKeyDown}
           />
-          <button className="filebtn" disabled={disabled} onClick={submit}>
-            Send
-          </button>
+          {disabled ? (
+            <button className="filebtn stop" onClick={onStop} title="Stop the current dispatch">
+              Stop
+            </button>
+          ) : (
+            <button className="filebtn" onClick={submit}>
+              Send
+            </button>
+          )}
         </div>
       </div>
     </div>

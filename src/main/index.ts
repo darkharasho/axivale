@@ -199,6 +199,10 @@ app.whenReady().then(async () => {
     agent.resetSession()
   })
 
+  ipcMain.handle('agent:cancel', () => {
+    agent.cancelTurn()
+  })
+
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

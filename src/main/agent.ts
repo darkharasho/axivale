@@ -175,11 +175,17 @@ export async function evaluateToolPermission(
 export class AgentService {
   private sessionId: string | null = null
   private running = false
+  private abort: AbortController | null = null
 
   constructor(private readonly deps: AgentDeps) {}
 
   resetSession(): void {
     this.sessionId = null
+  }
+
+  /** Abort the in-flight turn, if any. The runTurn loop ends cleanly. */
+  cancelTurn(): void {
+    this.abort?.abort()
   }
 
   async runTurn(promptText: string, onEvent: (e: AgentEvent) => void): Promise<void> {
@@ -193,6 +199,8 @@ export class AgentService {
     }
 
     this.running = true
+    const abort = new AbortController()
+    this.abort = abort
     try {
       const tools = buildOfficerTools(this.deps.toolDeps())
       const server = createSdkMcpServer({ name: 'officer', version: '1.0.0', tools })
@@ -221,6 +229,7 @@ export class AgentService {
           systemPrompt: AXIVALE_SYSTEM_PROMPT,
           includePartialMessages: true,
           env,
+          abortController: abort,
           ...(model ? { model } : {}),
           ...(this.sessionId ? { resume: this.sessionId } : {}),
           canUseTool: async (toolName, input) =>
@@ -234,13 +243,15 @@ export class AgentService {
         }
       }
     } catch (err) {
+      // A user-initiated cancel ends the turn cleanly, not as an error.
       onEvent({
         kind: 'done',
         sessionId: this.sessionId,
-        error: err instanceof Error ? err.message : String(err)
+        error: abort.signal.aborted ? null : err instanceof Error ? err.message : String(err)
       })
     } finally {
       this.running = false
+      this.abort = null
     }
   }
 }
