@@ -94,7 +94,7 @@ Together with the existing `gw2_api` passthrough this forms the base knowledge l
   - `build-card` / `comp-card` — AxiForge visuals
   - `chart` — line/bar/area spec rendered with Recharts, styled to the newspaper theme
   - `table` — explicit columns/rows with sorting
-- **`@axiapps/forge-render`** — new workspace package in the AxiForge repo (house pattern: `packages/axicode`, `packages/gw2-data`) exporting `renderMiniBuildCard`, the build/comp page renderers, the hover-preview module, and their CSS scoped under a wrapper class. AxiVale consumes it via a `<ForgeCard>` React wrapper rendering into a ref'd div. Icons: bundled profession SVGs (`gw2-class-icons`) + `render.guildwars2.com` URLs, exactly as AxiForge does today.
+- **`@axiapps/forge-render`** — new workspace package in the AxiForge repo (house pattern: `packages/axicode`, `packages/gw2-data`) exporting `renderMiniBuildCard`, a comp card, the hover-preview module, and their CSS scoped under a wrapper class. (The full build/comp *page* renderers stay in AxiForge — they depend on the whole editor module graph, and chat embeds only need the cards.) AxiVale consumes it via a `<ForgeCard>` React wrapper rendering into a ref'd div. Icons: bundled profession SVGs (`gw2-class-icons`) + `render.guildwars2.com` URLs, exactly as AxiForge does today.
 - Catalog data for cards/hover facts comes from the local API catalog endpoints (cached persistently).
 
 ### 7. Error handling & system prompt
