@@ -1,107 +1,15 @@
 import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
-import type { AxitoolsClient } from './axitoolsClient'
-import type { Gw2Client } from './gw2Client'
+import { safe, requireDiscordGuild, type ToolDeps } from './shared'
 
-export interface ToolDeps {
-  axitools: AxitoolsClient
-  gw2: Gw2Client
-  /** active Discord guild id from settings as a string — snowflakes overflow JS numbers ('' = unset) */
-  discordGuildId: () => string
-  /** active GW2 guild id from settings ('' = unset) */
-  gw2GuildId: () => string
-}
-
-/** Tools that mutate data irreversibly — the UI asks the user to confirm before running these. */
-export const DESTRUCTIVE_TOOLS = ['axitools_builds_delete', 'axitools_comp_presets_delete']
-
-/**
- * discord_action verbs that get the confirm dialog. Must mirror the
- * `destructive: True` entries in axitools' api/discord_actions.py registry.
- */
-export const DESTRUCTIVE_DISCORD_ACTIONS = [
-  'channel_delete',
-  'role_update',
-  'role_delete',
-  'member_timeout',
-  'member_kick',
-  'member_ban',
-  'member_dm',
-  'members_dm'
-]
-
-/**
- * Tools whose risk depends on their `action` input: never pre-allowed, and
- * the listed verbs require user confirmation.
- */
-export const ACTION_GATED_TOOLS: Record<string, string[]> = {
-  discord_action: DESTRUCTIVE_DISCORD_ACTIONS,
-  axitools_rss: ['delete'],
-  axitools_streams: ['delete'],
-  axitools_guild_roles: ['delete']
-}
-
-interface ToolResult {
-  [key: string]: unknown
-  content: Array<{ type: 'text'; text: string }>
-  isError?: boolean
-}
-
-// Compact on purpose: results go into the model's context, where pretty-print
-// indentation is pure token waste. The UI re-renders results humanized anyway.
-function ok(value: unknown): ToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(value) }] }
-}
-
-/** Wraps a handler so thrown errors come back as MCP error results instead of exceptions. */
-function safe<A>(fn: (args: A) => Promise<unknown>): (args: A, extra: unknown) => Promise<ToolResult> {
-  return async (args) => {
-    try {
-      return ok(await fn(args))
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      return { isError: true, content: [{ type: 'text', text: message }] }
-    }
-  }
-}
-
-/**
- * Builds the officer MCP toolset.
- *
- * The SDK's `tool()` returns a plain `SdkMcpToolDefinition` object exposing
- * `name`, `description`, `inputSchema`, and `handler`, so the same array is
- * both unit-testable (tests call `t.handler(args, extra)` directly) and
- * directly consumable by `createSdkMcpServer({ tools: buildOfficerTools(deps) })`
- * in Task 10. No separate adapter is needed.
- *
- * The element type matches the SDK's own `Options['mcpServers']` tools array
- * (`Array<SdkMcpToolDefinition<any>>`) — handler arg types vary per tool, so a
- * non-`any` schema parameter would not be assignable.
- */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
-  const requireDiscordGuild = (): string => {
-    const id = deps.discordGuildId()
-    if (id === '') throw new Error('Discord guild not connected — save an AxiVale key in Settings (05)')
-    return id
-  }
-  // Explicit guild_id wins; otherwise fall back to the configured guild.
-  const resolveGw2Guild = (explicit?: string): string => {
-    if (explicit) return explicit
-    const id = deps.gw2GuildId()
-    if (id === '')
-      throw new Error(
-        'No guild_id given and no default guild configured — pass guild_id (your key’s guild ids come from gw2_account_info, or resolve a name via gw2_api /guild/search?name=…), or set a default in Settings (05)'
-      )
-    return id
-  }
-
+export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
   return [
     tool(
       'axitools_builds_list',
       'List all GW2 builds stored in the AxiTools Discord bot for this guild.',
       {},
-      safe(async () => deps.axitools.listBuilds(requireDiscordGuild()))
+      safe(async () => deps.axitools.listBuilds(requireDiscordGuild(deps)))
     ),
     tool(
       'axitools_builds_create',
@@ -114,7 +22,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         url: z.string().optional().describe('Link to a full build guide'),
         description: z.string().optional().describe('Short description of the build')
       },
-      safe(async (args) => deps.axitools.createBuild(requireDiscordGuild(), args))
+      safe(async (args) => deps.axitools.createBuild(requireDiscordGuild(deps), args))
     ),
     tool(
       'axitools_builds_update',
@@ -129,7 +37,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         description: z.string().optional()
       },
       safe(async ({ build_id, ...patch }) =>
-        deps.axitools.updateBuild(requireDiscordGuild(), build_id, patch)
+        deps.axitools.updateBuild(requireDiscordGuild(deps), build_id, patch)
       )
     ),
     tool(
@@ -137,7 +45,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
       'Permanently delete a GW2 build from the AxiTools Discord bot. This is destructive — the user will be asked to confirm before it runs.',
       { build_id: z.string().describe('Id of the build to delete') },
       safe(async ({ build_id }) => {
-        await deps.axitools.deleteBuild(requireDiscordGuild(), build_id)
+        await deps.axitools.deleteBuild(requireDiscordGuild(deps), build_id)
         return { deleted: build_id }
       })
     ),
@@ -145,7 +53,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
       'axitools_comp_presets_list',
       'List all squad composition presets stored in the AxiTools Discord bot for this guild.',
       {},
-      safe(async () => deps.axitools.listCompPresets(requireDiscordGuild()))
+      safe(async () => deps.axitools.listCompPresets(requireDiscordGuild(deps)))
     ),
     tool(
       'axitools_comp_presets_save',
@@ -155,7 +63,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         config: z.record(z.string(), z.unknown()).describe('Full preset configuration object')
       },
       safe(async ({ name, config }) =>
-        deps.axitools.putCompPreset(requireDiscordGuild(), { name, config })
+        deps.axitools.putCompPreset(requireDiscordGuild(deps), { name, config })
       )
     ),
     tool(
@@ -163,7 +71,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
       'Permanently delete a squad composition preset. This is destructive — the user will be asked to confirm before it runs.',
       { name: z.string().describe('Name of the preset to delete') },
       safe(async ({ name }) => {
-        await deps.axitools.deleteCompPreset(requireDiscordGuild(), name)
+        await deps.axitools.deleteCompPreset(requireDiscordGuild(deps), name)
         return { deleted: name }
       })
     ),
@@ -171,7 +79,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
       'axitools_comp_schedules_list',
       'List all squad composition posting schedules stored in the AxiTools Discord bot for this guild.',
       {},
-      safe(async () => deps.axitools.listCompSchedules(requireDiscordGuild()))
+      safe(async () => deps.axitools.listCompSchedules(requireDiscordGuild(deps)))
     ),
     tool(
       'axitools_comp_schedules_save',
@@ -187,39 +95,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         post_time: z.string().optional().describe("Time of day to post, 'HH:MM' 24-hour"),
         timezone: z.string().optional().describe('IANA timezone, e.g. America/New_York')
       },
-      safe(async (args) => deps.axitools.putCompSchedule(requireDiscordGuild(), args))
-    ),
-    tool(
-      'discord_overview',
-      'Full snapshot of the connected Discord server: channels, categories, roles (with permissions and member counts), threads, and scheduled events. Pass include_members for the member list with roles (capped at 1000). Use this to find channel/role/member ids before acting.',
-      {
-        include_members: z.boolean().optional().describe('Also list members with their role ids')
-      },
-      safe(async ({ include_members }) =>
-        deps.axitools.discordOverview(requireDiscordGuild(), include_members ?? false)
-      )
-    ),
-    tool(
-      'discord_messages',
-      'Read recent messages from a channel in the connected Discord server, newest first (default 25, max 100).',
-      {
-        channel_id: z.string().describe('Channel id (from discord_overview)'),
-        limit: z.number().optional().describe('How many messages, max 100')
-      },
-      safe(async ({ channel_id, limit }) =>
-        deps.axitools.discordMessages(requireDiscordGuild(), channel_id, limit)
-      )
-    ),
-    tool(
-      'discord_action',
-      `Perform a management action on the connected Discord server. Actions: channel_create {name, type?, category_id?, topic?}, channel_update {channel_id, name?, topic?, category_id?, slowmode_seconds?, nsfw?}, channel_delete {channel_id, reason?}, role_create {name, color?, hoist?, mentionable?, permissions?}, role_update {role_id, …same fields}, role_delete {role_id, reason?}, role_assign {member_id, role_id}, role_unassign {member_id, role_id}, member_nick {member_id, nick}, member_timeout {member_id, minutes, reason?}, member_kick {member_id, reason?}, member_ban {member_id, reason?, delete_message_days?}, member_dm {member_id, content}, members_dm {member_ids (max 250), content} — bulk DMs are paced bot-side and report per-member sent/failed, message_send {channel_id, content}, message_pin {channel_id, message_id}, thread_create {channel_id, name, message_id?}, event_create {name, start_time, end_time?, description?, channel_id? or location}. Destructive actions (${DESTRUCTIVE_DISCORD_ACTIONS.join(', ')}) ask the user to confirm first. Ids come from discord_overview.`,
-      {
-        action: z.string().describe('Action name from the list above'),
-        params: z.record(z.string(), z.unknown()).optional().describe('Parameters for the action')
-      },
-      safe(async ({ action, params }) =>
-        deps.axitools.discordAction(requireDiscordGuild(), action, params ?? {})
-      )
+      safe(async (args) => deps.axitools.putCompSchedule(requireDiscordGuild(deps), args))
     ),
     tool(
       'axitools_audit',
@@ -235,8 +111,8 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
       },
       safe(async ({ source, event_type, actor, target, user, since_log_id, limit }) =>
         source === 'discord'
-          ? deps.axitools.auditDiscord(requireDiscordGuild(), { event_type, actor, target, limit })
-          : deps.axitools.auditGw2(requireDiscordGuild(), { event_type, user, since_log_id, limit })
+          ? deps.axitools.auditDiscord(requireDiscordGuild(deps), { event_type, actor, target, limit })
+          : deps.axitools.auditGw2(requireDiscordGuild(deps), { event_type, user, since_log_id, limit })
       )
     ),
     tool(
@@ -249,7 +125,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         channel_id: z.string().optional().describe('Discord channel to post to (set)')
       },
       safe(async ({ action, name, url, channel_id }) => {
-        const gid = requireDiscordGuild()
+        const gid = requireDiscordGuild(deps)
         if (action === 'list') return deps.axitools.rssList(gid)
         if (!name) throw new Error('name is required for set/delete')
         if (action === 'delete') return deps.axitools.rssDelete(gid, name)
@@ -269,7 +145,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         ping_role_id: z.string().optional().describe('Role to ping on live')
       },
       safe(async ({ action, name, platform, channel_ref, discord_channel_id, ping_role_id }) => {
-        const gid = requireDiscordGuild()
+        const gid = requireDiscordGuild(deps)
         if (action === 'list') return deps.axitools.streamsList(gid)
         if (!name) throw new Error('name is required for set/delete')
         if (action === 'delete') return deps.axitools.streamDelete(gid, name)
@@ -298,7 +174,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         relink_enabled: z.boolean().optional()
       },
       safe(async ({ action, ...fields }) => {
-        const gid = requireDiscordGuild()
+        const gid = requireDiscordGuild(deps)
         if (action === 'get') return deps.axitools.allianceGet(gid)
         const patch = Object.fromEntries(
           Object.entries(fields).filter(([, v]) => v !== undefined)
@@ -316,7 +192,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         role_ids: z.array(z.string()).optional()
       },
       safe(async ({ action, gw2_guild_id, role_id, role_ids }) => {
-        const gid = requireDiscordGuild()
+        const gid = requireDiscordGuild(deps)
         if (action === 'list') return deps.axitools.guildRolesGet(gid)
         if (action === 'set_allowlist') {
           if (!role_ids) throw new Error('set_allowlist requires role_ids')
@@ -340,7 +216,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         moderator_role_ids: z.array(z.string()).optional()
       },
       safe(async ({ action, ...fields }) => {
-        const gid = requireDiscordGuild()
+        const gid = requireDiscordGuild(deps)
         if (action === 'get') return deps.axitools.configGet(gid)
         const patch = Object.fromEntries(
           Object.entries(fields).filter(([, v]) => v !== undefined)
@@ -356,7 +232,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         include_guilds: z.boolean().optional().describe('Include GW2 guild ids and labels')
       },
       safe(async ({ include_characters, include_guilds }) => {
-        const raw = (await deps.axitools.membersLinked(requireDiscordGuild())) as Array<{
+        const raw = (await deps.axitools.membersLinked(requireDiscordGuild(deps))) as Array<{
           accounts?: Array<Record<string, unknown>>
           [key: string]: unknown
         }>
@@ -382,58 +258,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
         account_names: z.array(z.string()).describe('GW2 account names, e.g. ["Logan.1234"]')
       },
       safe(async ({ account_names }) =>
-        deps.axitools.keyHolders(requireDiscordGuild(), account_names)
-      )
-    ),
-    tool(
-      'gw2_api',
-      'Query ANY endpoint of the official GW2 API (api.guildwars2.com/v2) with the stored API key — items, prices, wvw matches, achievements, characters, guild upgrades, and everything else not covered by the dedicated tools. Pass a relative path like /items?ids=1,2 or /wvw/matches?world=1008. Large responses are truncated; prefer ?ids= filters over fetching whole collections.',
-      { path: z.string().describe('Relative /v2 path including any query string, e.g. /commerce/prices/19684') },
-      async ({ path }: { path: string }) => {
-        try {
-          const text = JSON.stringify(await deps.gw2.apiGet(path))
-          const MAX = 30_000
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text:
-                  text.length > MAX
-                    ? `${text.slice(0, MAX)}\n… [truncated ${text.length - MAX} chars — narrow the query with ?ids=…]`
-                    : text
-              }
-            ]
-          }
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err)
-          return { isError: true, content: [{ type: 'text' as const, text: message }] }
-        }
-      }
-    ),
-    tool(
-      'gw2_account_info',
-      'Validate the stored GW2 API key and return the account name, granted/missing key permissions, and guild ids.',
-      {},
-      safe(async () => deps.gw2.accountInfo())
-    ),
-    tool(
-      'gw2_guild_members',
-      'List the member roster (name, rank, join date) of a GW2 guild the API key can access. Defaults to the configured guild; pass guild_id for any other guild from the account’s guild list.',
-      { guild_id: z.string().optional().describe('Guild id to query; omit for the configured guild') },
-      safe(async ({ guild_id }) => deps.gw2.guildMembers(resolveGw2Guild(guild_id)))
-    ),
-    tool(
-      'gw2_guild_log',
-      'Fetch the activity log (joins, kicks, rank changes, stash, upgrades…) of a GW2 guild the API key can access, newest first. Defaults to the configured guild; pass guild_id for any other guild from the account’s guild list.',
-      {
-        guild_id: z.string().optional().describe('Guild id to query; omit for the configured guild'),
-        since_log_id: z
-          .number()
-          .optional()
-          .describe('Only return entries newer than this log id')
-      },
-      safe(async ({ guild_id, since_log_id }) =>
-        deps.gw2.guildLog(resolveGw2Guild(guild_id), since_log_id)
+        deps.axitools.keyHolders(requireDiscordGuild(deps), account_names)
       )
     )
   ]
