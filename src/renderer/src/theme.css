@@ -50,7 +50,10 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .earsw-btn:hover{color:var(--ink)}
 .ear.right .earsw-btn{color:var(--ink-dim);font-weight:500}
 .earsw-caret{font-size:8px;opacity:.7}
-.earsw-menu{position:absolute;z-index:30;top:140%;min-width:150px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);text-align:left;text-transform:none;letter-spacing:normal}
+/* no-drag is load-bearing: the menu overlaps the masthead's drag region, and
+   Electron resolves drag-vs-click by element bounds, not stacking order —
+   without it the overlapping strip of the first option window-drags. */
+.earsw-menu{position:absolute;z-index:30;top:140%;min-width:150px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);text-align:left;text-transform:none;letter-spacing:normal;-webkit-app-region:no-drag}
 .earsw-menu.left{left:0}
 .earsw-menu.right{right:0}
 .earsw-opt{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);cursor:pointer;text-align:left;border-bottom:1px dotted var(--line)}
