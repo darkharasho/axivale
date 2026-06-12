@@ -45,8 +45,10 @@ interface ToolResult {
   isError?: boolean
 }
 
+// Compact on purpose: results go into the model's context, where pretty-print
+// indentation is pure token waste. The UI re-renders results humanized anyway.
 function ok(value: unknown): ToolResult {
-  return { content: [{ type: 'text', text: JSON.stringify(value, null, 2) }] }
+  return { content: [{ type: 'text', text: JSON.stringify(value) }] }
 }
 
 /** Wraps a handler so thrown errors come back as MCP error results instead of exceptions. */
@@ -346,9 +348,30 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ),
     tool(
       'axitools_members',
-      'Linked-member roster derived from the GW2 API keys members registered with the bot IN THIS Discord server: each member’s GW2 account names, characters, GW2 guild memberships, and preferred guild role. Key material is never included. NOTE: members who registered their key in a different server the bot shares do not appear here — use axitools_key_holders to check key existence across all servers.',
-      {},
-      safe(async () => deps.axitools.membersLinked(requireDiscordGuild()))
+      'Linked-member roster derived from the GW2 API keys members registered with the bot IN THIS Discord server: each member’s GW2 account names (and optionally characters and guild memberships — omitted by default to keep the result small). Key material is never included. NOTE: members who registered their key in a different server the bot shares do not appear here — use axitools_key_holders to check key existence across all servers.',
+      {
+        include_characters: z.boolean().optional().describe('Include character name lists'),
+        include_guilds: z.boolean().optional().describe('Include GW2 guild ids and labels')
+      },
+      safe(async ({ include_characters, include_guilds }) => {
+        const raw = (await deps.axitools.membersLinked(requireDiscordGuild())) as Array<{
+          accounts?: Array<Record<string, unknown>>
+          [key: string]: unknown
+        }>
+        if (include_characters && include_guilds) return raw
+        return raw.map((m) => ({
+          ...m,
+          accounts: (m.accounts ?? []).map((a) => {
+            const slim: Record<string, unknown> = { account_name: a.account_name }
+            if (include_characters) slim.characters = a.characters
+            if (include_guilds) {
+              slim.gw2_guild_ids = a.gw2_guild_ids
+              slim.guild_labels = a.guild_labels
+            }
+            return slim
+          })
+        }))
+      })
     ),
     tool(
       'axitools_key_holders',
@@ -366,7 +389,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
       { path: z.string().describe('Relative /v2 path including any query string, e.g. /commerce/prices/19684') },
       async ({ path }: { path: string }) => {
         try {
-          const text = JSON.stringify(await deps.gw2.apiGet(path), null, 2)
+          const text = JSON.stringify(await deps.gw2.apiGet(path))
           const MAX = 30_000
           return {
             content: [

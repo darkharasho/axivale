@@ -183,6 +183,46 @@ describe('officer tools', () => {
     expect(deps.axitools.membersLinked).toHaveBeenCalledWith('123')
   })
 
+  it('axitools_members is compact by default and expands on request', async () => {
+    const deps = makeDeps()
+    ;(deps.axitools.membersLinked as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        member_id: '7',
+        member_name: 'harasho',
+        accounts: [
+          {
+            account_name: 'harasho.4281',
+            characters: ['Axi', 'Vale'],
+            gw2_guild_ids: ['G1'],
+            guild_labels: { G1: 'EWW' }
+          }
+        ],
+        preferred_role_id: '9'
+      }
+    ])
+    const tools = buildOfficerTools(deps)
+    const members = tools.find((t) => t.name === 'axitools_members')!
+
+    const compact = await members.handler({}, {})
+    const compactText = (compact.content[0] as { text: string }).text
+    expect(compactText).toContain('harasho.4281')
+    expect(compactText).not.toContain('characters')
+    expect(compactText).not.toContain('EWW')
+
+    const full = await members.handler({ include_characters: true, include_guilds: true }, {})
+    const fullText = (full.content[0] as { text: string }).text
+    expect(fullText).toContain('Axi')
+    expect(fullText).toContain('EWW')
+  })
+
+  it('tool results are compact JSON, not pretty-printed', async () => {
+    const deps = makeDeps()
+    const tools = buildOfficerTools(deps)
+    const create = tools.find((t) => t.name === 'axitools_builds_create')!
+    const result = await create.handler({ name: 'FB', profession: 'G', chat_code: '[&x]' }, {})
+    expect((result.content[0] as { text: string }).text).not.toMatch(/\n {2}/)
+  })
+
   it('axitools_key_holders checks account names', async () => {
     const deps = makeDeps()
     const tools = buildOfficerTools(deps)
