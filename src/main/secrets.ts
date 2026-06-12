@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from 'fs'
 import { dirname } from 'path'
 
 export type SecretKey = 'claudeOauthToken' | 'gw2ApiKey' | 'axitoolsToken'
@@ -22,12 +22,20 @@ export class SettingsStore {
 
   private read(): FileShape {
     if (!existsSync(this.path)) return { secrets: {}, settings: {} }
-    return JSON.parse(readFileSync(this.path, 'utf8')) as FileShape
+    try {
+      return JSON.parse(readFileSync(this.path, 'utf8')) as FileShape
+    } catch {
+      // Corrupt/truncated file (interrupted write, manual edit): start fresh
+      // rather than wedging every settings access.
+      return { secrets: {}, settings: {} }
+    }
   }
 
   private write(data: FileShape): void {
     mkdirSync(dirname(this.path), { recursive: true })
     writeFileSync(this.path, JSON.stringify(data, null, 2), { mode: 0o600 })
+    // writeFileSync's mode only applies on creation; re-tighten on rewrites.
+    chmodSync(this.path, 0o600)
   }
 
   setSecret(key: SecretKey, value: string): void {
