@@ -22,7 +22,19 @@ export interface OfficerApi {
   setActiveKey(service: 'gw2' | 'axivale', label: string): Promise<void>
   /** Whitelisted AxitoolsClient call on the connected guild (see PANEL_METHODS in main). */
   axitools(method: string, ...args: unknown[]): Promise<unknown>
+  appVersion(): Promise<string>
+  checkUpdates(): Promise<unknown>
+  installUpdate(): Promise<void>
+  onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
 }
+
+export type UpdateStatus =
+  | { state: 'checking' }
+  | { state: 'available'; version: string }
+  | { state: 'none' }
+  | { state: 'downloading'; percent: number }
+  | { state: 'ready'; version: string }
+  | { state: 'error'; message: string }
 
 declare global {
   interface Window {

@@ -66,6 +66,10 @@ export default function Settings({ onChanged }: SettingsProps): ReactElement {
   const [claudeStatus, setClaudeStatus] = useState('')
   const [model, setModel] = useState('')
 
+  // App / updates
+  const [version, setVersion] = useState('')
+  const [updateMsg, setUpdateMsg] = useState('')
+
   // GW2
   const [gw2Keys, setGw2Keys] = useState<KeyLabel[]>([])
   const [gw2Label, setGw2Label] = useState('')
@@ -91,9 +95,29 @@ export default function Settings({ onChanged }: SettingsProps): ReactElement {
       setClaudeSaved(await window.officer.hasSecret('claudeOauthToken'))
       setModel((await window.officer.getSetting('model')) ?? '')
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
+      setVersion(await window.officer.appVersion())
       await refreshKeyLists()
     })()
   }, [])
+
+  useEffect(
+    () =>
+      window.officer.onUpdateStatus((s) => {
+        const st = s as { state: string; version?: string; percent?: number; message?: string }
+        if (st.state === 'checking') setUpdateMsg('checking…')
+        else if (st.state === 'available') setUpdateMsg(`downloading v${st.version}…`)
+        else if (st.state === 'downloading') setUpdateMsg(`downloading… ${st.percent}%`)
+        else if (st.state === 'ready') setUpdateMsg(`v${st.version} ready — restart to install`)
+        else if (st.state === 'none') setUpdateMsg('up to date')
+        else if (st.state === 'error') setUpdateMsg(`update check failed: ${st.message}`)
+      }),
+    []
+  )
+
+  async function checkUpdates(): Promise<void> {
+    setUpdateMsg('checking…')
+    await window.officer.checkUpdates()
+  }
 
   async function saveClaude(): Promise<void> {
     await window.officer.setSecret('claudeOauthToken', claudeToken)
@@ -313,6 +337,23 @@ export default function Settings({ onChanged }: SettingsProps): ReactElement {
             Bound to <b>{axiGuild.name}</b> · {axiGuild.id}
           </div>
         )}
+      </div>
+
+      <div className="sgroup">
+        <h2>About</h2>
+        <div className="srow">
+          <div className="countline">
+            AxiVale <b>v{version || '—'}</b>
+          </div>
+          <button className="sbtn out" onClick={checkUpdates}>
+            Check for updates
+          </button>
+        </div>
+        {updateMsg && <div className="sstatus ok">{updateMsg}</div>}
+        <p className="shelp">
+          Updates install automatically from GitHub releases; a banner appears when a new edition
+          is ready.
+        </p>
       </div>
     </div>
   )

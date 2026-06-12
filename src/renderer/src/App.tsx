@@ -11,6 +11,7 @@ import Article from './components/Article'
 import InputBar from './components/InputBar'
 import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
+import UpdateBanner from './components/UpdateBanner'
 
 const SECTION_TITLES: Record<Section, string> = {
   dispatches: 'Dispatches',
@@ -168,6 +169,7 @@ export default function App(): ReactElement {
 
   return (
     <>
+      <UpdateBanner />
       <Masthead
         issueNo={issueNo}
         axiConnected={axiConnected}

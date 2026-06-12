@@ -31,5 +31,13 @@ contextBridge.exposeInMainWorld('officer', {
   setActiveKey: (service: string, label: string) =>
     ipcRenderer.invoke('keys:set-active', service, label),
   axitools: (method: string, ...args: unknown[]) =>
-    ipcRenderer.invoke('axitools:call', method, ...args)
+    ipcRenderer.invoke('axitools:call', method, ...args),
+  appVersion: () => ipcRenderer.invoke('app:version'),
+  checkUpdates: () => ipcRenderer.invoke('updates:check'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateStatus: (cb: (status: unknown) => void) => {
+    const listener = (_e: unknown, status: unknown): void => cb(status)
+    ipcRenderer.on('updates:status', listener)
+    return () => ipcRenderer.removeListener('updates:status', listener)
+  }
 })

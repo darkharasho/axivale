@@ -31,6 +31,15 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .ear{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;line-height:1.9}
 .ear b{color:var(--ink-dim);font-weight:500}
 .ear.right{text-align:right}
+/* update banner */
+.updatebar{display:flex;align-items:center;gap:14px;padding:8px 30px;background:var(--accent);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:11px}
+.ub-flag{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;border:1px dashed rgba(255,255,255,.6);padding:3px 8px}
+.ub-msg{font-family:'Source Serif 4',serif;font-size:13px}
+.ub-msg b{font-weight:600}
+.ub-btn{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);background:#fff;border:none;padding:6px 14px;cursor:pointer}
+.ub-btn:hover{background:var(--ink)}
+.ub-dismiss{background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;font-size:12px;padding:2px 4px}
+.ub-dismiss:hover{color:#fff}
 /* masthead quick-swap switcher */
 .earsw{position:relative;display:inline-block;-webkit-app-region:no-drag}
 .earsw-btn{font-family:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--faint);background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px}

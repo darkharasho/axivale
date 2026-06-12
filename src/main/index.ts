@@ -13,6 +13,7 @@ import { AxitoolsClient } from './axitoolsClient'
 import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
 import { AgentService } from './agent'
+import { setupUpdater } from './updater'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -202,6 +203,8 @@ app.whenReady().then(async () => {
   ipcMain.handle('agent:cancel', () => {
     agent.cancelTurn()
   })
+
+  setupUpdater(() => mainWindow)
 
   createWindow()
   app.on('activate', () => {

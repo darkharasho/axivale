@@ -16,10 +16,12 @@
     "dist:dir": "npm run build && electron-builder --dir",
     "dist:linux": "npm run build && electron-builder --linux",
     "dist:win": "npm run build && electron-builder --win",
-    "dist:mac": "npm run build && electron-builder --mac"
+    "dist:mac": "npm run build && electron-builder --mac",
+    "release": "npm run build && electron-builder --publish always"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.174",
+    "electron-updater": "^6.8.9",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -48,6 +50,13 @@
   "build": {
     "appId": "com.darkharasho.axivale",
     "productName": "AxiVale",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "darkharasho",
+        "repo": "axivale"
+      }
+    ],
     "directories": {
       "output": "release",
       "buildResources": "build"
