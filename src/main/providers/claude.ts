@@ -1,4 +1,7 @@
 import { query, createSdkMcpServer, type SDKMessage } from '@anthropic-ai/claude-agent-sdk'
+import { existsSync } from 'fs'
+import { join, dirname, sep } from 'path'
+import { createRequire } from 'module'
 import {
   MCP_PREFIX,
   type AgentEvent,
@@ -78,6 +81,43 @@ export function translateSdkMessage(msg: SDKMessage): AgentEvent[] {
   }
 }
 
+const requireModule = createRequire(import.meta.url)
+
+/**
+ * Locates the SDK's native `claude` binary (shipped in the platform-specific
+ * @anthropic-ai/claude-agent-sdk-<platform>-<arch> optional dependency).
+ *
+ * In a packaged Electron app the module resolves inside app.asar, which is a
+ * file, not a directory — spawning from it fails with ENOTDIR. The binary is
+ * asar-unpacked by electron-builder (see "asarUnpack" in package.json), so
+ * rewrite the path to the real on-disk copy. Returns null when the package
+ * isn't present; the SDK then falls back to its own default resolution.
+ */
+function resolveClaudeExecutable(): string | null {
+  const platformPkg = `claude-agent-sdk-${process.platform}-${process.arch}`
+  const binary = process.platform === 'win32' ? 'claude.exe' : 'claude'
+  try {
+    // sdk.mjs sits at the package root, so its dirname is the package dir.
+    const sdkDir = dirname(requireModule.resolve('@anthropic-ai/claude-agent-sdk'))
+    const candidates = [
+      // Packaged layout: platform package nested under the SDK's node_modules.
+      join(sdkDir, 'node_modules', '@anthropic-ai', platformPkg, binary),
+      // Dev layout: platform package hoisted as a sibling.
+      join(dirname(sdkDir), platformPkg, binary)
+    ]
+    for (const path of candidates) {
+      const real = path.replace(`app.asar${sep}`, `app.asar.unpacked${sep}`)
+      if (existsSync(real)) return real
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+// Resolved once — the install location can't change while the app runs.
+const CLAUDE_EXECUTABLE = resolveClaudeExecutable()
+
 /** The original Claude Agent SDK path, behind the ProviderAdapter interface. */
 export class ClaudeAdapter implements ProviderAdapter {
   private sessionId: string | null = null
@@ -121,6 +161,7 @@ export class ClaudeAdapter implements ProviderAdapter {
           includePartialMessages: true,
           env,
           abortController,
+          ...(CLAUDE_EXECUTABLE ? { pathToClaudeCodeExecutable: CLAUDE_EXECUTABLE } : {}),
           ...(model ? { model } : {}),
           ...(this.sessionId ? { resume: this.sessionId } : {}),
           canUseTool: async (toolName, toolInput) =>

@@ -65,6 +65,9 @@
       "out/**/*",
       "package.json"
     ],
+    "asarUnpack": [
+      "**/node_modules/@anthropic-ai/claude-agent-sdk*/**"
+    ],
     "linux": {
       "target": [
         "AppImage"
