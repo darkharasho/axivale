@@ -71,8 +71,13 @@ app.whenReady().then(async () => {
       discordGuildId: () => store.getSetting('guildId') ?? '',
       gw2GuildId: () => store.getSetting('gw2GuildId') ?? ''
     }),
-    oauthToken: () => store.getSecret('claudeOauthToken'),
-    model: () => store.getSetting('model'),
+    config: () => ({
+      provider: 'claude' as const, // provider setting wired in Task 8
+      model: store.getSetting('model'),
+      oauthToken: store.getSecret('claudeOauthToken'),
+      apiKey: null,
+      endpoint: null
+    }),
     confirm: (toolName, input) =>
       new Promise<boolean>((resolve) => {
         const win = mainWindow
