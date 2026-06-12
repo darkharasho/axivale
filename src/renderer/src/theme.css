@@ -196,6 +196,10 @@ td.nm2{color:var(--ink)}
 .pi .kx{margin-left:10px;color:var(--faint);cursor:pointer}
 .pi .kx:hover{color:var(--accent-b)}
 .classicon{display:inline-block;vertical-align:-0.25em;object-fit:contain;flex-shrink:0}
+.roster-filters{display:flex;align-items:center;gap:12px;margin:6px 0 14px}
+.roster-filters .sinput{flex:1;margin:0}
+.roster-filters .sselect{flex:0 0 auto;min-width:150px;margin:0}
+.roster-filters .sbtn{flex:0 0 auto}
 .chtag{display:inline-flex;align-items:center;gap:3px}
 .chtag svg{color:var(--faint);flex-shrink:0}
 .chtag.none{color:var(--faint)}
