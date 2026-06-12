@@ -5,14 +5,12 @@ import {
   ACTION_GATED_TOOLS,
   type ToolDeps
 } from './tools'
+import { MCP_PREFIX, type AgentEvent } from './providers/types'
+import { evaluateToolPermission } from './providers/permission'
 
-export type AgentEvent =
-  | { kind: 'text-delta'; text: string }
-  | { kind: 'tool-start'; id: string; name: string; input: Record<string, unknown> }
-  | { kind: 'tool-result'; id: string; isError: boolean; text: string }
-  | { kind: 'done'; sessionId: string | null; error: string | null }
-
-const MCP_PREFIX = 'mcp__officer__'
+export { MCP_PREFIX, evaluateToolPermission }
+export type { AgentEvent }
+export type { PermissionResult } from './providers/permission'
 
 const AXIVALE_SYSTEM_PROMPT = `You are AxiVale — a virtual guild officer for a Guild Wars 2 guild.
 You manage builds and squad compositions through the AxiTools Discord bot, and
@@ -132,44 +130,6 @@ export interface AgentDeps {
   /** Claude model alias or id from settings; null/'' = SDK default */
   model: () => string | null
   confirm: (toolName: string, input: Record<string, unknown>) => Promise<boolean>
-}
-
-/** The result type returned by canUseTool callbacks. */
-export type PermissionResult =
-  | { behavior: 'allow'; updatedInput?: Record<string, unknown> }
-  | { behavior: 'deny'; message: string }
-
-/**
- * Pure function that decides whether a tool call is allowed.
- * Extracted so it can be unit-tested without running a full agent turn.
- *
- * Built-in SDK tools (e.g. Bash) are not in allowedTools and would otherwise
- * fall through to allow — the non-officer prefix check blocks them explicitly.
- */
-export async function evaluateToolPermission(
-  toolName: string,
-  input: Record<string, unknown>,
-  deps: { confirm: (toolName: string, input: Record<string, unknown>) => Promise<boolean> }
-): Promise<PermissionResult> {
-  // Only officer MCP tools are permitted in this app.
-  if (!toolName.startsWith(MCP_PREFIX)) {
-    return { behavior: 'deny', message: 'Only officer tools are available in this app.' }
-  }
-
-  const bare = toolName.slice(MCP_PREFIX.length)
-  // Action-gated tools' risk depends on the verb, not the tool name.
-  const gatedVerbs = ACTION_GATED_TOOLS[bare]
-  const destructive = gatedVerbs
-    ? gatedVerbs.includes(String(input.action ?? ''))
-    : DESTRUCTIVE_TOOLS.includes(bare)
-  if (destructive) {
-    const allowed = await deps.confirm(bare, input)
-    if (!allowed) {
-      return { behavior: 'deny', message: 'The user declined this action.' }
-    }
-  }
-
-  return { behavior: 'allow', updatedInput: input }
 }
 
 export class AgentService {
