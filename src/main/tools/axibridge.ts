@@ -77,23 +77,10 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
           repo: r.repo,
           squad: r.summary?.avgSquadSize ?? '—'
         }))
-        return {
-          value: { runs: rows, errors: result.errors },
-          display: {
-            kind: 'table',
-            data: {
-              title: 'Runs',
-              columns: [
-                { key: 'date', label: 'Date' },
-                { key: 'title', label: 'Title' },
-                { key: 'commanders', label: 'Commander' },
-                { key: 'squad', label: 'Avg squad' },
-                { key: 'id', label: 'Run id' }
-              ],
-              rows
-            }
-          }
-        }
+        // No inline figure: a run listing is reference data / an action, not a
+        // graph. It stays a compact action card in the rail; the model
+        // summarizes (count, range, the few that matter) in prose.
+        return { value: { count: rows.length, runs: rows, errors: result.errors } }
       })
     ),
     tool(
