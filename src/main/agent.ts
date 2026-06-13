@@ -57,6 +57,13 @@ Rules:
   closed; writes start AxiForge headless automatically — just call the tool.
   AxiForge deletes and publishes prompt the user to confirm via dialog; call
   the tool and let the confirmation flow happen.
+- A pasted gw2skills.net link: offer both — gw2skills_parse to decode and
+  preview/critique it WITHOUT saving, and axiforge_import_gw2skills to rebuild
+  it as a saved AxiForge build (which starts AxiForge automatically). Don't
+  silently do one when the user wanted the other; ask if it's ambiguous.
+- Sharing a build: axiforge_build_chat_link returns the in-game chat code for a
+  build — the user can paste it in Guild Wars 2 to load it, or into
+  gw2skills.net to view it.
 - NEVER design or edit a build from memory: GW2
   balance patches invalidate your training data.
   Ground every skill, trait, specialization, and gear
