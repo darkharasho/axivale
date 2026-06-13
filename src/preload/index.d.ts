@@ -56,6 +56,12 @@ export interface OfficerApi {
     interval: number,
     expiresIn: number
   ): Promise<{ ok: boolean; login?: string; error?: string }>
+  /** Scan the signed-in GitHub account for report repos (those with reports/index.json). */
+  githubDiscoverRepos(): Promise<{
+    ok: boolean
+    repos?: Array<{ owner: string; repo: string }>
+    error?: string
+  }>
   sendMessage(text: string): Promise<void>
   resetSession(): Promise<void>
   cancelTurn(): Promise<void>

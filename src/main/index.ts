@@ -27,6 +27,7 @@ import {
   pollForToken,
   fetchGithubLogin
 } from './githubAuth'
+import { discoverReportRepos } from './githubRepos'
 import { AgentService } from './agent'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -277,6 +278,18 @@ app.whenReady().then(async () => {
       }
     }
   )
+
+  // Auto-discovery: scan the signed-in GitHub account for report repos (those
+  // with reports/index.json). Returns the found list; the renderer links them
+  // via the existing repos-add handler so manual linking stays the one writer.
+  ipcMain.handle('github:discover-repos', async () => {
+    try {
+      const repos = await discoverReportRepos(store.getActiveKey('github') ?? '')
+      return { ok: true, repos }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 
   // Inline build/comp cards need rune/relic names+icons even when AxiForge is
   // closed — a disk cache on top of the client's catalog fetch covers that.

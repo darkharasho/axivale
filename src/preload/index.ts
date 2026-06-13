@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('officer', {
   githubAuthBegin: () => ipcRenderer.invoke('github:auth-begin'),
   githubAuthComplete: (deviceCode: string, interval: number, expiresIn: number) =>
     ipcRenderer.invoke('github:auth-complete', deviceCode, interval, expiresIn),
+  githubDiscoverRepos: () => ipcRenderer.invoke('github:discover-repos'),
   forgeCatalogUpgrades: () => ipcRenderer.invoke('axiforge:catalog-upgrades'),
   sendMessage: (text: string) => ipcRenderer.invoke('agent:send', text),
   resetSession: () => ipcRenderer.invoke('agent:reset'),

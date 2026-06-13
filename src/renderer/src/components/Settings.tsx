@@ -145,6 +145,7 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   const [bridgeRepos, setBridgeRepos] = useState<Array<{ owner: string; repo: string }>>([])
   const [bridgeInput, setBridgeInput] = useState('')
   const [bridgeStatus, setBridgeStatus] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [bridgeFinding, setBridgeFinding] = useState(false)
   const [bridgeHealth, setBridgeHealth] = useState<
     Array<{
       repo: string
@@ -195,6 +196,42 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
     onChanged()
   }
 
+  // Discover report repos from the signed-in GitHub account and link any that
+  // aren't already linked (reusing the repos-add handler as the single writer).
+  async function discoverAndLinkRepos(): Promise<void> {
+    setBridgeFinding(true)
+    setBridgeStatus({ msg: 'Searching your GitHub repos…', ok: true })
+    try {
+      const res = await window.officer.githubDiscoverRepos()
+      if (!res.ok) {
+        setBridgeStatus({ msg: res.error ?? 'Could not search your GitHub repos.', ok: false })
+        return
+      }
+      const found = res.repos ?? []
+      const existing = await window.officer.axibridgeReposList()
+      const isLinked = (r: { owner: string; repo: string }): boolean =>
+        existing.some((e) => e.owner === r.owner && e.repo === r.repo)
+      let linked = 0
+      for (const r of found) {
+        if (isLinked(r)) continue
+        const add = await window.officer.axibridgeReposAdd(`${r.owner}/${r.repo}`)
+        if (add.ok) linked += 1
+      }
+      setBridgeRepos(await window.officer.axibridgeReposList())
+      await refreshBridgeHealth()
+      if (found.length === 0) {
+        setBridgeStatus({ msg: 'Signed in — no report repos found; add one below.', ok: true })
+      } else {
+        setBridgeStatus({ msg: `Linked ${linked} report repo(s) from your GitHub account`, ok: true })
+      }
+      onChanged()
+    } catch (err) {
+      setBridgeStatus({ msg: err instanceof Error ? err.message : String(err), ok: false })
+    } finally {
+      setBridgeFinding(false)
+    }
+  }
+
   // GitHub OAuth device flow: open the verification page, show the user code,
   // then poll to completion and refresh the keyring with the signed-in account.
   async function signInGithub(): Promise<void> {
@@ -214,6 +251,9 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
         setGhAuthStatus({ msg: `signed in · ${res.login ?? 'github'}`, ok: true })
         await refreshKeyLists()
         onChanged()
+        // Auto-discover + link this account's report repos so linking isn't a
+        // separate manual step after signing in.
+        await discoverAndLinkRepos()
       } else {
         setGhUserCode('')
         setGhAuthStatus({ msg: res.error ?? 'sign-in failed', ok: false })
@@ -763,6 +803,16 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
         <div className="srow">
           <button className="sbtn" disabled={!bridgeInput.trim()} onClick={addBridgeRepo}>
             Link repo
+          </button>
+          <button
+            className="sbtn out"
+            disabled={bridgeFinding || githubKeys.length === 0}
+            onClick={discoverAndLinkRepos}
+            title={
+              githubKeys.length === 0 ? 'Sign in with GitHub below first' : 'Scan your GitHub account'
+            }
+          >
+            {bridgeFinding ? 'Searching…' : 'Find my report repos'}
           </button>
           <button className="sbtn out" onClick={refreshBridgeHealth}>
             Check health

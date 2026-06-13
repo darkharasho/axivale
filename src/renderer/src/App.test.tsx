@@ -26,6 +26,7 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
       expiresIn: 900
     }),
     githubAuthComplete: vi.fn().mockResolvedValue({ ok: false }),
+    githubDiscoverRepos: vi.fn().mockResolvedValue({ ok: false }),
     forgeCatalogUpgrades: vi.fn().mockResolvedValue(null),
     sendMessage: vi.fn().mockResolvedValue(undefined),
     resetSession: vi.fn().mockResolvedValue(undefined),
