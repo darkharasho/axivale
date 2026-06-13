@@ -123,6 +123,17 @@ app.whenReady().then(async () => {
     forgeDevLaunch
   )
 
+  // On quit, release a headless AxiForge we spawned so it doesn't linger and get
+  // focus-launched by AxiOM later. Defer the quit once to let the (best-effort,
+  // short-timeout) release call complete; AxiForge ignores it if it has a window.
+  let releasingForge = false
+  app.on('before-quit', (e) => {
+    if (releasingForge) return
+    releasingForge = true
+    e.preventDefault()
+    void axiforgeLauncher.releaseIfSpawned().finally(() => app.quit())
+  })
+
   // AxiBridge analytics: one client/cache/service for the app's lifetime; the
   // service reads linked repos and the GitHub PAT fresh from settings on every
   // call, so connecting a repo in Settings takes effect without a restart.

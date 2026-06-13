@@ -103,6 +103,8 @@ export function resolveAxiforgeExe(dataDir: string, io: LauncherIo = defaultIo):
 /** The only client surface the launcher needs — keeps tests trivial. */
 export interface HealthCheckable {
   health(): Promise<{ ok: boolean; version: string }>
+  /** Optional graceful release of a headless instance we spawned (see releaseIfSpawned). */
+  quitIfHeadless?(): Promise<void>
 }
 
 /**
@@ -120,6 +122,8 @@ export interface DevLaunch {
 
 export class AxiAppLauncher {
   private startPromise: Promise<void> | null = null
+  /** True once WE spawned a headless instance — gates cleanup so we never quit a user-started AxiForge. */
+  private spawnedHeadless = false
 
   constructor(
     private readonly client: HealthCheckable,
@@ -154,7 +158,20 @@ export class AxiAppLauncher {
       )
     }
     this.spawnHeadless(exe)
+    this.spawnedHeadless = true
     await this.waitForHealth()
+  }
+
+  /**
+   * Release the headless AxiForge we started, so it doesn't linger in the
+   * background and get focus-launched by AxiOM later. No-op when we never
+   * spawned it (a user-started instance is left alone); AxiForge itself
+   * declines if its window was promoted. Safe to call on app quit.
+   */
+  async releaseIfSpawned(): Promise<void> {
+    if (!this.spawnedHeadless) return
+    await this.client.quitIfHeadless?.()
+    this.spawnedHeadless = false
   }
 
   private spawnDev(cwd: string): void {

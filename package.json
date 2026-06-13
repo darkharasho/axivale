@@ -62,7 +62,8 @@
       {
         "provider": "github",
         "owner": "darkharasho",
-        "repo": "axivale"
+        "repo": "axivale",
+        "releaseType": "release"
       }
     ],
     "directories": {

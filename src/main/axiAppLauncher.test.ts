@@ -149,6 +149,38 @@ describe('AxiAppLauncher.ensureRunning', () => {
     expect(err.message).toMatch(/did not come up/i)
   })
 
+  it('releaseIfSpawned asks AxiForge to quit only after WE spawned a headless instance', async () => {
+    const io = fakeIo({
+      readdirSync: vi.fn().mockImplementation((dir: string) =>
+        dir.endsWith('AppImages') ? ['AxiForge-1.4.0.AppImage'] : []
+      )
+    })
+    const quitIfHeadless = vi.fn().mockResolvedValue(undefined)
+    const client = { ...flakyClient(1), quitIfHeadless }
+    const launcher = new AxiAppLauncher(client, dataDir, io, { timeoutMs: 5000, pollMs: 10 })
+
+    // Nothing spawned yet → release is a no-op.
+    await launcher.releaseIfSpawned()
+    expect(quitIfHeadless).not.toHaveBeenCalled()
+
+    await launcher.ensureRunning() // spawns headless (health fails once, then ok)
+    await launcher.releaseIfSpawned()
+    expect(quitIfHeadless).toHaveBeenCalledTimes(1)
+
+    // Idempotent: a second release does not re-signal.
+    await launcher.releaseIfSpawned()
+    expect(quitIfHeadless).toHaveBeenCalledTimes(1)
+  })
+
+  it('releaseIfSpawned leaves a user-started AxiForge alone (we never spawned it)', async () => {
+    const quitIfHeadless = vi.fn().mockResolvedValue(undefined)
+    const client = { ...flakyClient(0), quitIfHeadless } // health responds immediately
+    const launcher = new AxiAppLauncher(client, dataDir, fakeIo(), { timeoutMs: 1000, pollMs: 10 })
+    await launcher.ensureRunning()
+    await launcher.releaseIfSpawned()
+    expect(quitIfHeadless).not.toHaveBeenCalled()
+  })
+
   it('in dev mode runs `npm run dev` in the sibling repo instead of resolving a binary', async () => {
     // No AppImage anywhere — prod resolution would fail; dev launch must not depend on it.
     const io = fakeIo()

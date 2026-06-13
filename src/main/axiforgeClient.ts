@@ -373,6 +373,19 @@ export class AxiforgeClient {
     return this.request('GET', '/health')
   }
 
+  /**
+   * Ask a headless AxiForge we spawned to shut down — but only if it never got
+   * a window (AxiForge ignores the request once a window is open). Best-effort:
+   * a missing/stale instance just means there's nothing to release.
+   */
+  async quitIfHeadless(): Promise<void> {
+    try {
+      await this.request('POST', '/lifecycle/quit-if-headless')
+    } catch {
+      /* not running / already gone — nothing to release */
+    }
+  }
+
   /** Settings-indicator state: live API > readable files > nothing. */
   async status(): Promise<AxiforgeStatus> {
     try {
