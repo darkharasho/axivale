@@ -49,6 +49,7 @@ export default function App(): ReactElement {
   const [turns, setTurns] = useState<Turn[]>(loadTurns)
   const [section, setSection] = useState<Section>('dispatches')
   const [running, setRunning] = useState(false)
+  const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
 
   // status surfaced in masthead / rails
@@ -110,14 +111,21 @@ export default function App(): ReactElement {
         next.push(updated)
         return next
       })
-      if ((raw as AgentEvent).kind === 'done') setRunning(false)
+      if ((raw as AgentEvent).kind === 'done') {
+        setRunning(false)
+        setBridgeProgress(null)
+      }
     })
     const offConfirm = window.officer.onConfirmRequest((raw) => {
       setConfirmQueue((prev) => [...prev, raw as ConfirmReq])
     })
+    const offProgress = window.officer.onAxibridgeProgress((raw) => {
+      setBridgeProgress(raw as string)
+    })
     return () => {
       offEvent()
       offConfirm()
+      offProgress()
     }
   }, [])
 
@@ -164,6 +172,7 @@ export default function App(): ReactElement {
     }
     setTurns((prev) => [...prev, turn])
     setRunning(true)
+    setBridgeProgress(null)
     void window.officer.sendMessage(text).catch(() => setRunning(false))
   }
 
@@ -230,6 +239,9 @@ export default function App(): ReactElement {
         </div>
         <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
       </div>
+      {section === 'dispatches' && running && bridgeProgress && (
+        <div className="bridge-progress">{bridgeProgress}</div>
+      )}
       {section === 'dispatches' && (
         <InputBar disabled={running} onSubmit={submit} onStop={stopTurn} />
       )}

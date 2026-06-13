@@ -65,6 +65,7 @@ export interface OfficerApi {
   checkUpdates(): Promise<unknown>
   installUpdate(): Promise<void>
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
+  onAxibridgeProgress(cb: (message: string) => void): () => void
 }
 
 export type UpdateStatus =
