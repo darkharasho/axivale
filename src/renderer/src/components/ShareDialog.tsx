@@ -1,5 +1,6 @@
 // src/renderer/src/components/ShareDialog.tsx
 import { useState, type ReactElement } from 'react'
+import { Info, Loader } from 'lucide-react'
 
 export type ShareState =
   | { status: 'idle' }
@@ -7,6 +8,7 @@ export type ShareState =
   | { status: 'done'; url: string }
   | { status: 'error'; error: string }
 
+/** Newspaper "Special Edition" clipping for a freshly filed public share. */
 export default function ShareDialog({
   state,
   onClose
@@ -24,37 +26,64 @@ export default function ShareDialog({
     })
   }
 
+  const title =
+    state.status === 'publishing'
+      ? 'Going to press…'
+      : state.status === 'error'
+        ? 'Held from the press'
+        : 'Filed for the public record'
+
   return (
     <div className="share-overlay" onClick={onClose}>
       <div className="share-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="kick">AxiVale Press</div>
-        {state.status === 'publishing' && (
-          <div className="share-dialog-body">Publishing… your link will be live shortly.</div>
-        )}
-        {state.status === 'done' && (
-          <div className="share-dialog-body">
-            <div className="h">Filed for the public record</div>
-            <div className="share-url-row">
-              <input className="share-url" readOnly value={state.url} onFocus={(e) => e.target.select()} />
-              <button className="folio-act" onClick={() => copy(state.url)}>
-                {copied ? 'Copied' : 'Copy link'}
-              </button>
+        <div className="sd-head">
+          <div className="sd-kick">AxiVale · Special Edition</div>
+          <h2 className="sd-title">{title}</h2>
+        </div>
+        <div className="sd-rule">
+          <span className="ln" />
+          <span className="dot">Wire Copy</span>
+          <span className="ln" />
+        </div>
+
+        <div className="sd-body">
+          {state.status === 'publishing' && (
+            <div className="sd-pending">
+              <Loader size={15} className="sd-spin" />
+              <span>Setting type and pulling a proof… your link will be ready in a moment.</span>
             </div>
-            <div className="share-dialog-note">
-              First time sharing? GitHub Pages can take a minute to go live — the link may 404
-              briefly before the press run starts.
-            </div>
-          </div>
-        )}
-        {state.status === 'error' && (
-          <div className="share-dialog-body">
-            <div className="h">Could not file this share</div>
-            <div className="errnotice">{state.error}</div>
-          </div>
-        )}
-        <div className="share-dialog-acts">
-          <button className="folio-act" onClick={onClose}>
-            Close
+          )}
+
+          {state.status === 'done' && (
+            <>
+              <p className="sd-sub">Anyone with this link can read this dispatch.</p>
+              <div className="sd-urlrow">
+                <input
+                  className="sd-url"
+                  readOnly
+                  value={state.url}
+                  onFocus={(e) => e.target.select()}
+                />
+                <button className="sd-copy" onClick={() => copy(state.url)}>
+                  {copied ? 'Copied' : 'Copy link'}
+                </button>
+              </div>
+              <div className="sd-note">
+                <Info size={13} />
+                <span>
+                  First time sharing? GitHub Pages can take about a minute to go live — the link may
+                  404 briefly before the press run starts.
+                </span>
+              </div>
+            </>
+          )}
+
+          {state.status === 'error' && <div className="sd-error">{state.error}</div>}
+        </div>
+
+        <div className="sd-acts">
+          <button className="sd-btn" onClick={onClose}>
+            {state.status === 'done' ? 'Done' : 'Close'}
           </button>
         </div>
       </div>

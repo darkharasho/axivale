@@ -10,9 +10,10 @@ describe('ShareDialog', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('shows a publishing message', () => {
+  it('shows a pending message while publishing', () => {
     render(<ShareDialog state={{ status: 'publishing' }} onClose={() => {}} />)
-    expect(screen.getByText(/publishing/i)).toBeTruthy()
+    expect(screen.getByText(/going to press/i)).toBeTruthy()
+    expect(screen.getByText(/ready in a moment/i)).toBeTruthy()
   })
 
   it('shows the url and copies it on click', async () => {

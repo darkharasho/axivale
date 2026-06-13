@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ReactElement } from 'react'
+import { Pencil, Share2, Trash2 } from 'lucide-react'
 import type { Turn } from '../state'
 import { splitHeadline, stripMarkdown } from './headline'
 
@@ -129,14 +130,14 @@ function Row({
       )}
       <div className="ed-meta">{metaLine(item)}</div>
       <div className="ed-acts">
-        <button title="Rename" onClick={startEdit}>
-          ✎
+        <button title="Rename" aria-label="Rename" onClick={startEdit}>
+          <Pencil size={13} />
         </button>
-        <button title="Share conversation" onClick={share}>
-          ↗
+        <button className="share" title="Share conversation" aria-label="Share conversation" onClick={share}>
+          <Share2 size={13} />
         </button>
-        <button title="Delete" onClick={remove}>
-          ✕
+        <button title="Delete" aria-label="Delete" onClick={remove}>
+          <Trash2 size={13} />
         </button>
       </div>
     </div>
