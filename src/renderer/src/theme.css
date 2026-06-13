@@ -453,6 +453,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .share-dialog .h{font-size:20px;font-weight:700;margin-bottom:12px}
 .share-dialog-body{margin-bottom:16px}
 .share-url-row{display:flex;gap:8px}
+.share-dialog-note{margin-top:10px;font-size:12px;color:var(--faint);line-height:1.4}
 .share-url{flex:1;background:var(--bg,#16171a);border:1px solid var(--rule);color:var(--ink);padding:8px 10px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:12px}
 .share-dialog .errnotice{color:var(--accent-b)}
 .share-dialog-acts{display:flex;justify-content:flex-end}

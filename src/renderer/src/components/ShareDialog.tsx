@@ -40,6 +40,10 @@ export default function ShareDialog({
                 {copied ? 'Copied' : 'Copy link'}
               </button>
             </div>
+            <div className="share-dialog-note">
+              First time sharing? GitHub Pages can take a minute to go live — the link may 404
+              briefly before the press run starts.
+            </div>
           </div>
         )}
         {state.status === 'error' && (
