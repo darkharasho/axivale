@@ -1,7 +1,7 @@
 import { Fragment, useRef, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Camera, Check, X } from 'lucide-react'
+import { Camera, Check, X, Share2 } from 'lucide-react'
 import type { Turn } from '../state'
 import { rehypeEmojiIcons } from './rehypeEmojiIcons'
 import { renderEmojiSpan } from './emojiIcons'
@@ -73,7 +73,15 @@ async function copyArticleAsImage(node: HTMLElement): Promise<void> {
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob! })])
 }
 
-export default function Article({ turn }: { turn: Turn }): ReactElement {
+export default function Article({
+  turn,
+  conversationId,
+  onShare
+}: {
+  turn: Turn
+  conversationId: string | null
+  onShare?: (conversationId: string, turnId: number) => void
+}): ReactElement {
   const { headline, rest } = splitHeadline(turn.agentText)
   const thinking = !turn.done && turn.agentText.trim() === ''
   const streaming = !turn.done && turn.agentText.trim() !== ''
@@ -108,21 +116,34 @@ export default function Article({ turn }: { turn: Turn }): ReactElement {
         ) : (
           <>
             {turn.done && (
-              <button
-                className="clip-img-btn"
-                data-copy-btn="1"
-                onClick={handleCopy}
-                aria-label="Copy article as image"
-                title="Copy as newspaper clipping"
-              >
-                {copyState === 'ok' ? (
-                  <Check size={12} />
-                ) : copyState === 'err' ? (
-                  <X size={12} />
-                ) : (
-                  <Camera size={12} />
+              <>
+                <button
+                  className="clip-img-btn"
+                  data-copy-btn="1"
+                  onClick={handleCopy}
+                  aria-label="Copy article as image"
+                  title="Copy as newspaper clipping"
+                >
+                  {copyState === 'ok' ? (
+                    <Check size={12} />
+                  ) : copyState === 'err' ? (
+                    <X size={12} />
+                  ) : (
+                    <Camera size={12} />
+                  )}
+                </button>
+                {onShare && conversationId && (
+                  <button
+                    className="share-msg-btn"
+                    data-copy-btn="1"
+                    onClick={() => onShare(conversationId, turn.id)}
+                    aria-label="Share this response"
+                    title="Share this response"
+                  >
+                    <Share2 size={12} />
+                  </button>
                 )}
-              </button>
+              </>
             )}
             <div className="lede">{stripMarkdown(headline)}</div>
             <div className="byline">
