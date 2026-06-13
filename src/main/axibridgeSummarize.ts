@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { Worker } from 'node:worker_threads'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -31,6 +31,7 @@ export function runSummaryJobs(jobs: SummaryJob[]): SummaryJobResult {
       }
       const report = JSON.parse(readFileSync(job.reportPath, 'utf8'))
       const summary = extractRunSummary(report)
+      mkdirSync(dirname(job.summaryPath), { recursive: true }) // cache summary/ dir is created lazily
       writeFileSync(job.summaryPath, JSON.stringify(summary))
       summaries.push(summary)
     } catch (err) {
