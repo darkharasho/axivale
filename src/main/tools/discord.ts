@@ -113,6 +113,9 @@ export function buildDiscordTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
             matches.push(m)
           }
           before = page[page.length - 1].id
+          // Watertight against a malformed page (no id): without advancing
+          // `before` we'd re-fetch the same newest page forever.
+          if (!before) break
           if (page.length < pageSize) break
         }
         return { matches, scanned, reachedCap: scanned >= cap, oldestScannedAt }
