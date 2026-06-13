@@ -133,3 +133,12 @@ describe('provider keyrings', () => {
     expect(store.getActiveKey('openai')).toBeNull()
   })
 })
+
+describe('github keyring', () => {
+  it('stores and activates GitHub PATs like the gemini ring', () => {
+    const store = makeStore()
+    store.addKey('github', 'guild-pat', 'ghp_example123')
+    expect(store.listKeyLabels('github')).toEqual([{ label: 'guild-pat', active: true }])
+    expect(store.getActiveKey('github')).toBe('ghp_example123')
+  })
+})

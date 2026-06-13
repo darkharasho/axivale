@@ -10,6 +10,7 @@ export type SecretKey =
   | 'axivaleKeys'
   | 'geminiKeys'
   | 'openaiKeys'
+  | 'githubKeys'
 export type SettingKey =
   | 'guildId'
   | 'gw2GuildId'
@@ -24,9 +25,12 @@ export type SettingKey =
   | 'localModel'
   | 'geminiActiveKey'
   | 'openaiActiveKey'
+  | 'githubActiveKey'
+  | 'axibridgeRepos'
+  | 'axibridgeCacheCapBytes'
 
 /** Services that hold a ring of labeled keys with one active. */
-export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai'
+export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'
 
 export interface KeyLabel {
   label: string
@@ -42,7 +46,8 @@ const RING_SECRET: Record<KeyService, SecretKey> = {
   gw2: 'gw2Keys',
   axivale: 'axivaleKeys',
   gemini: 'geminiKeys',
-  openai: 'openaiKeys'
+  openai: 'openaiKeys',
+  github: 'githubKeys'
 }
 // Only the original services have pre-keyring single secrets to migrate.
 const LEGACY_SECRET: Partial<Record<KeyService, SecretKey>> = {
@@ -53,7 +58,8 @@ const ACTIVE_SETTING: Record<KeyService, SettingKey> = {
   gw2: 'gw2ActiveKey',
   axivale: 'axivaleActiveKey',
   gemini: 'geminiActiveKey',
-  openai: 'openaiActiveKey'
+  openai: 'openaiActiveKey',
+  github: 'githubActiveKey'
 }
 
 export interface Cipher {
