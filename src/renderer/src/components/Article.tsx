@@ -20,28 +20,48 @@ async function copyArticleAsImage(node: HTMLElement): Promise<void> {
     .getPropertyValue('--bg')
     .trim() || '#16171a'
 
-  // Size the capture to the full content width (incl. any overflowing figure)
-  // and add the padding OUTSIDE it (content-box) so nothing is clipped on the
-  // right — border-box padding would shrink the content area and cut text off.
-  const contentWidth = node.scrollWidth
+  // Inline figures (.post-figure / .richchart) use overflow-x:auto, so a wide
+  // table scrolls INSIDE its own box and never widens the article — measuring
+  // scrollWidth would miss it and the capture would clip on the right. Briefly
+  // neutralize that inner overflow (and the article's max-width) so the figures
+  // expand to full content width; modern-screenshot reads computed styles off
+  // the live DOM, so this must be applied before measuring + capturing.
+  const captureStyle = document.createElement('style')
+  captureStyle.textContent =
+    '.axi-capturing,.axi-capturing .prose{max-width:none!important}' +
+    '.axi-capturing .post-figure,.axi-capturing .richchart{overflow:visible!important;max-width:none!important}'
+  document.head.appendChild(captureStyle)
+  node.classList.add('axi-capturing')
 
-  const blob = await domToBlob(node, {
-    type: 'image/png',
-    backgroundColor: bgColor,
-    scale: 2,
-    // Breathing room around the clipping so text isn't flush to the edges.
-    style: {
-      padding: '32px 36px',
-      boxSizing: 'content-box',
-      width: `${contentWidth}px`,
-      maxWidth: 'none'
-    },
-    // Exclude the copy button from the capture
-    filter: (el: Node) => {
-      if (el instanceof HTMLElement && el.dataset.copyBtn === '1') return false
-      return true
-    }
-  })
+  let blob: Blob | undefined
+  try {
+    void node.offsetWidth // force reflow so scrollWidth reflects expanded figures
+    // Size the capture to the full content width and add padding OUTSIDE it
+    // (content-box) so nothing is clipped — border-box would shrink the content
+    // area and cut text off.
+    const contentWidth = node.scrollWidth
+
+    blob = await domToBlob(node, {
+      type: 'image/png',
+      backgroundColor: bgColor,
+      scale: 2,
+      // Breathing room around the clipping so text isn't flush to the edges.
+      style: {
+        padding: '32px 36px',
+        boxSizing: 'content-box',
+        width: `${contentWidth}px`,
+        maxWidth: 'none'
+      },
+      // Exclude the copy button from the capture
+      filter: (el: Node) => {
+        if (el instanceof HTMLElement && el.dataset.copyBtn === '1') return false
+        return true
+      }
+    })
+  } finally {
+    node.classList.remove('axi-capturing')
+    captureStyle.remove()
+  }
 
   await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob! })])
 }
