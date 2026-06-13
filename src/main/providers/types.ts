@@ -50,6 +50,34 @@ export const MCP_PREFIX = 'mcp__officer__'
 
 export type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
 
+/**
+ * One tool invocation within a turn. Duplicated from
+ * src/renderer/src/state.ts by design — main never imports from the renderer
+ * (same rule that duplicates DisplayPayload above).
+ */
+export interface ToolCall {
+  id: string
+  name: string
+  input: Record<string, unknown>
+  resultText?: string
+  isError?: boolean
+  display?: DisplayPayload
+}
+
+/**
+ * One user/agent exchange, persisted by the ConversationStore. Duplicated
+ * from src/renderer/src/state.ts by design (see ToolCall).
+ */
+export interface Turn {
+  id: number
+  userText: string
+  agentText: string
+  tools: ToolCall[]
+  done: boolean
+  error: string | null
+  filedAt: string
+}
+
 /** Serialized per-conversation session, persisted by the ConversationStore. */
 export interface SessionState {
   /** Claude resumes via this id. */
