@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
-import { evaluateToolPermission } from './agent'
+import { evaluateToolPermission, AXIVALE_SYSTEM_PROMPT } from './agent'
+
+describe('AXIVALE_SYSTEM_PROMPT', () => {
+  it('includes the analytics methodology section', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toContain('Analytics methodology')
+    expect(AXIVALE_SYSTEM_PROMPT).toContain('own baselines')
+  })
+})
 
 // ---------------------------------------------------------------------------
 // Fix 2: evaluateToolPermission
