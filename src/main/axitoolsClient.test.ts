@@ -59,12 +59,28 @@ describe('AxitoolsClient', () => {
     expect(mockFetch.mock.calls[1][0]).toBe('http://127.0.0.1:8642/guilds/123/discord?include=members')
   })
 
-  it('fetches channel messages with a limit', async () => {
+  it('fetches channel messages with a limit (options object)', async () => {
     mockFetch.mockResolvedValue(jsonResponse([]))
-    await client.discordMessages('123', '555', 50)
+    await client.discordMessages('123', { channelId: '555', limit: 50 })
     expect(mockFetch.mock.calls[0][0]).toBe(
       'http://127.0.0.1:8642/guilds/123/discord/messages?channel_id=555&limit=50'
     )
+  })
+
+  it('builds thread + before/after query params, omitting empties', async () => {
+    mockFetch.mockResolvedValue(jsonResponse([]))
+    await client.discordMessages('123', {
+      threadId: '777',
+      before: '101',
+      after: '2026-06-01'
+    })
+    const url = new URL(mockFetch.mock.calls[0][0] as string)
+    expect(url.pathname).toBe('/guilds/123/discord/messages')
+    expect(url.searchParams.get('thread_id')).toBe('777')
+    expect(url.searchParams.get('before')).toBe('101')
+    expect(url.searchParams.get('after')).toBe('2026-06-01')
+    expect(url.searchParams.has('channel_id')).toBe(false)
+    expect(url.searchParams.has('limit')).toBe(false)
   })
 
   it('posts discord actions', async () => {

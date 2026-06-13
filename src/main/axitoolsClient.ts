@@ -94,9 +94,22 @@ export class AxitoolsClient {
     return this.request('GET', `/guilds/${guildId}/discord${qs}`)
   }
 
-  discordMessages(guildId: string, channelId: string, limit?: number): Promise<unknown> {
-    const qs = new URLSearchParams({ channel_id: channelId })
-    if (limit !== undefined) qs.set('limit', String(limit))
+  discordMessages(
+    guildId: string,
+    opts: {
+      channelId?: string
+      threadId?: string
+      limit?: number
+      before?: string
+      after?: string
+    }
+  ): Promise<unknown> {
+    const qs = new URLSearchParams()
+    if (opts.channelId) qs.set('channel_id', opts.channelId)
+    if (opts.threadId) qs.set('thread_id', opts.threadId)
+    if (opts.limit !== undefined) qs.set('limit', String(opts.limit))
+    if (opts.before) qs.set('before', opts.before)
+    if (opts.after) qs.set('after', opts.after)
     return this.request('GET', `/guilds/${guildId}/discord/messages?${qs}`)
   }
 
