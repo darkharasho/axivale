@@ -128,14 +128,10 @@ export class AxiforgeClient {
     let resp: Response
     try {
       resp = await this.fetchOnce(disc, method, path, body)
-    } catch (err) {
-      // TimeoutError / AbortError = request timed out; treat like "closed".
-      // Connection refused with a discovery file present = the app crashed
-      // without cleanup (stale file). Treat exactly like "closed".
-      const name = (err as { name?: string }).name
-      if (name === 'TimeoutError' || name === 'AbortError') {
-        throw new AxiforgeNotRunningError()
-      }
+    } catch {
+      // TimeoutError / AbortError = request timed out; connection refused with
+      // a discovery file present = the app crashed without cleanup (stale
+      // file). Either way, treat exactly like "closed".
       throw new AxiforgeNotRunningError()
     }
 

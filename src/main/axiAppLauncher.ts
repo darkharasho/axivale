@@ -1,5 +1,4 @@
-import { spawn as nodeSpawn } from 'child_process'
-import { execSync as nodeExecSync } from 'child_process'
+import { spawn as nodeSpawn, execSync as nodeExecSync } from 'child_process'
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { join, dirname } from 'path'
 import { homedir } from 'os'
