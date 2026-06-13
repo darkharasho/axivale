@@ -281,13 +281,19 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
     ),
     tool(
       'axibridge_compare',
-      'Per-metric deltas between two runs or two date ranges. Pass run ids from axibridge_runs_list or ranges as "YYYY-MM-DD..YYYY-MM-DD".',
+      'Per-metric deltas between two runs or two date ranges. BOTH arguments are required, each a run id (from axibridge_runs_list) OR a date range "YYYY-MM-DD..YYYY-MM-DD". Example: { "first": "20260601-2030-ab12", "second": "20260611-1808-zq6c" }.',
       {
-        a: z.string().describe('Run id or date range "YYYY-MM-DD..YYYY-MM-DD"'),
-        b: z.string().describe('Run id or date range "YYYY-MM-DD..YYYY-MM-DD"')
+        first: z
+          .string()
+          .min(1)
+          .describe('Required. First run id or date range "YYYY-MM-DD..YYYY-MM-DD" (the baseline)'),
+        second: z
+          .string()
+          .min(1)
+          .describe('Required. Second run id or date range "YYYY-MM-DD..YYYY-MM-DD" (compared to the first)')
       },
-      safeRich(async ({ a, b }) => {
-        const result = await service().compare(a, b)
+      safeRich(async ({ first, second }) => {
+        const result = await service().compare(first, second)
         const rows = result.comparison.metrics.map((m) => ({ metric: m.metric, a: m.a, b: m.b, delta: m.delta }))
         return {
           value: result,
@@ -295,11 +301,11 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
             kind: 'chart',
             data: {
               type: 'bar',
-              title: `Compare ${a} vs ${b}`,
+              title: `Compare ${first} vs ${second}`,
               xKey: 'metric',
               series: [
-                { key: 'a', label: a },
-                { key: 'b', label: b }
+                { key: 'a', label: first },
+                { key: 'b', label: second }
               ],
               rows
             }

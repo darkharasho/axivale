@@ -42,7 +42,7 @@ describe('axibridge tools', () => {
     expect(res.display?.kind).toBe('table')
   })
   it('compare attaches a chart display with the spec shape', async () => {
-    const res = (await byName('axibridge_compare').handler({ a: 'r1', b: 'r2' }, {})) as never as {
+    const res = (await byName('axibridge_compare').handler({ first: 'r1', second: 'r2' }, {})) as never as {
       display?: { kind: string; data: { type: string; xKey: string; series: Array<{ key: string }>; rows: unknown[] } }
     }
     expect(res.display?.kind).toBe('chart')
