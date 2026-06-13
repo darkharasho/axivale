@@ -14,6 +14,7 @@ import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
 import { AxiforgeClient, forgeDataDir } from './axiforgeClient'
 import { AxiAppLauncher } from './axiAppLauncher'
+import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
 import { AgentService } from './agent'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -168,6 +169,14 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('axiforge:status', () => axiforge.status())
+
+  // Inline build/comp cards need rune/relic names+icons even when AxiForge is
+  // closed — a disk cache on top of the client's catalog fetch covers that.
+  const forgeCatalog = new ForgeCatalogCache(
+    join(app.getPath('userData'), 'cache'),
+    () => axiforge.catalogUpgrades() as Promise<ForgeUpgradeCatalog>
+  )
+  ipcMain.handle('axiforge:catalog-upgrades', () => forgeCatalog.getUpgrades())
 
   ipcMain.handle('axitools:status', async () => {
     if (!parseAxivaleKey(store.getActiveKey('axivale') ?? '')) {

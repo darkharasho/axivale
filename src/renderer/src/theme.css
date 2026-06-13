@@ -153,6 +153,9 @@ td.nm2{color:var(--ink)}
 .richchart{overflow-x:auto}
 .richchart .recharts-legend-item-text{color:var(--ink-dim) !important}
 .richchart .recharts-text{fill:var(--faint)}
+/* AxiForge cards keep their own design system inside the coupon */
+.forgecard{font-family:system-ui,sans-serif;text-align:left;hyphens:none}
+.forgecard .mini-card{cursor:default}
 /* thinking — story coming in over the wire */
 .wire{padding:2px 0 6px}
 .wline{display:flex;align-items:center;gap:12px;margin-bottom:14px}

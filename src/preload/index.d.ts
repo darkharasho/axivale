@@ -12,6 +12,11 @@ export interface OfficerApi {
   axiforgeStatus(): Promise<
     { state: 'connected'; version: string } | { state: 'file-only' } | { state: 'offline' }
   >
+  /** Cached AxiForge upgrade catalog for inline cards; null when never fetched. */
+  forgeCatalogUpgrades(): Promise<{
+    runes: Array<{ id: number; name: string; icon?: string; bonuses?: string[] }>
+    relics: Array<{ name: string; icon?: string }>
+  } | null>
   sendMessage(text: string): Promise<void>
   resetSession(): Promise<void>
   cancelTurn(): Promise<void>
