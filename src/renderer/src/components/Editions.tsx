@@ -18,6 +18,7 @@ interface EditionsProps {
   onNew: () => void
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
+  onShare: (id: string) => void
 }
 
 /** Auto headline: first done AI turn, else first user line, else fallback. */
@@ -56,13 +57,15 @@ function Row({
   active,
   onSelect,
   onRename,
-  onDelete
+  onDelete,
+  onShare
 }: {
   item: EditionItem
   active: boolean
   onSelect: (id: string) => void
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
+  onShare: (id: string) => void
 }): ReactElement {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -91,6 +94,11 @@ function Row({
   function remove(e: React.MouseEvent): void {
     e.stopPropagation()
     if (window.confirm('Delete this edition? The transcript will be lost.')) onDelete(item.id)
+  }
+
+  function share(e: React.MouseEvent): void {
+    e.stopPropagation()
+    onShare(item.id)
   }
 
   return (
@@ -124,6 +132,9 @@ function Row({
         <button title="Rename" onClick={startEdit}>
           ✎
         </button>
+        <button title="Share conversation" onClick={share}>
+          ↗
+        </button>
         <button title="Delete" onClick={remove}>
           ✕
         </button>
@@ -138,7 +149,8 @@ export default function Editions({
   onSelect,
   onNew,
   onRename,
-  onDelete
+  onDelete,
+  onShare
 }: EditionsProps): ReactElement {
   const [query, setQuery] = useState('')
 
@@ -174,6 +186,7 @@ export default function Editions({
           onSelect={onSelect}
           onRename={onRename}
           onDelete={onDelete}
+          onShare={onShare}
         />
       ))}
       {earlier.length > 0 && <div className="ed-group">Earlier</div>}
@@ -185,6 +198,7 @@ export default function Editions({
           onSelect={onSelect}
           onRename={onRename}
           onDelete={onDelete}
+          onShare={onShare}
         />
       ))}
     </div>
