@@ -100,7 +100,9 @@ app.whenReady().then(async () => {
   const conversations = new ConversationStore(join(app.getPath('userData'), 'conversations.json'))
 
   const shares = new ShareStore(join(app.getPath('userData'), 'shares.json'))
-  const SHARE_REPO = 'axivale-shares'
+  // Dev runs publish to a separate repo so testing never touches a user's real
+  // public share site. app.isPackaged is false under `npm run dev`.
+  const SHARE_REPO = app.isPackaged ? 'axivale-shares' : 'axivale-shares-dev'
   // Built viewer ships in out/share-viewer; __dirname is out/main at runtime.
   const viewerDir = join(__dirname, '../share-viewer')
   const sharePublisher = new SharePublisher({

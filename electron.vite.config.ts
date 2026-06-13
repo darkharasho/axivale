@@ -24,7 +24,11 @@ export default defineConfig({
     optimizeDeps: {
       // forge-render ships raw ESM with Vite `?raw` SVG imports; esbuild
       // pre-bundling chokes on the query suffix, so serve it as source.
-      exclude: ['@axiapps/forge-render']
+      exclude: ['@axiapps/forge-render'],
+      // ...but its transitive dep @axiapps/gw2-data/engine is CommonJS. Excluding
+      // forge-render means Vite serves that CJS file raw too, so `require` reaches
+      // the browser ("require is not defined"). Force-prebundle it to ESM here.
+      include: ['@axiapps/gw2-data/engine']
     }
   }
 })
