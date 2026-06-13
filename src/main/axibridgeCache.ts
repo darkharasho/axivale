@@ -3,6 +3,7 @@ import {
   mkdirSync,
   readFileSync,
   writeFileSync,
+  renameSync,
   unlinkSync,
   readdirSync,
   statSync
@@ -63,7 +64,10 @@ export class AxibridgeCache {
   }
 
   private writeLedger(ledger: Ledger): void {
-    writeFileSync(this.ledgerPath(), JSON.stringify(ledger))
+    const target = this.ledgerPath()
+    const tmp = `${target}.${process.pid}.tmp`
+    writeFileSync(tmp, JSON.stringify(ledger))
+    renameSync(tmp, target)
   }
 
   private key(repo: RepoRef, kind: 'report' | 'summary' | 'meta', id: string): string {

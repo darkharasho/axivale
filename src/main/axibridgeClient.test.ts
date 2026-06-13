@@ -112,6 +112,29 @@ describe('AxibridgeClient', () => {
       message: expect.stringContaining('PAT')
     })
   })
+
+  it('does NOT send Authorization to the Pages URL but DOES send it to raw', async () => {
+    // raw rollup.json returns 404, so fetchRollup falls through to the Pages URL.
+    // We capture per-path headers to verify PAT isolation.
+    requests = []
+    const pat = 'ghp_isolation_test'
+    await makeClient(pat).fetchRollup(repo)
+
+    const rawRequests = requests.filter((r) => r.url.startsWith('/raw/'))
+    const pagesRequests = requests.filter((r) => r.url.startsWith('/pages/'))
+
+    // At least one raw attempt was made and it carried the PAT.
+    expect(rawRequests.length).toBeGreaterThan(0)
+    for (const r of rawRequests) {
+      expect(r.auth).toBe(`Bearer ${pat}`)
+    }
+
+    // The Pages fallback must not carry the PAT.
+    expect(pagesRequests.length).toBeGreaterThan(0)
+    for (const r of pagesRequests) {
+      expect(r.auth).toBeUndefined()
+    }
+  })
 })
 
 describe('downloadReport', () => {
