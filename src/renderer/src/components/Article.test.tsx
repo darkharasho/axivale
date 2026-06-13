@@ -71,26 +71,26 @@ describe('Article copy-as-image button', () => {
   })
 
   it('shows copy button when turn is done', () => {
-    render(<Article turn={doneTurn()} />)
+    render(<Article turn={doneTurn()} conversationId={null} />)
     const btn = screen.getByRole('button', { name: /copy article as image/i })
     expect(btn).toBeTruthy()
   })
 
   it('does NOT show copy button while turn is streaming', () => {
-    render(<Article turn={streamingTurn()} />)
+    render(<Article turn={streamingTurn()} conversationId={null} />)
     const btn = screen.queryByRole('button', { name: /copy article as image/i })
     expect(btn).toBeNull()
   })
 
   it('does NOT show copy button during thinking state (no text yet)', () => {
     const thinking = doneTurn({ agentText: '', done: false })
-    render(<Article turn={thinking} />)
+    render(<Article turn={thinking} conversationId={null} />)
     const btn = screen.queryByRole('button', { name: /copy article as image/i })
     expect(btn).toBeNull()
   })
 
   it('calls domToBlob and clipboard.write on click', async () => {
-    render(<Article turn={doneTurn()} />)
+    render(<Article turn={doneTurn()} conversationId={null} />)
     const btn = screen.getByRole('button', { name: /copy article as image/i })
     fireEvent.click(btn)
     await waitFor(() => {
@@ -100,7 +100,7 @@ describe('Article copy-as-image button', () => {
   })
 
   it('clipboard.write receives a ClipboardItem array', async () => {
-    render(<Article turn={doneTurn()} />)
+    render(<Article turn={doneTurn()} conversationId={null} />)
     const btn = screen.getByRole('button', { name: /copy article as image/i })
     fireEvent.click(btn)
     await waitFor(() => {
@@ -114,7 +114,7 @@ describe('Article copy-as-image button', () => {
 
   it('handles clipboard failure gracefully without throwing', async () => {
     clipboardWriteMock.mockRejectedValueOnce(new Error('Permission denied'))
-    render(<Article turn={doneTurn()} />)
+    render(<Article turn={doneTurn()} conversationId={null} />)
     const btn = screen.getByRole('button', { name: /copy article as image/i })
     expect(() => {
       fireEvent.click(btn)
@@ -125,7 +125,7 @@ describe('Article copy-as-image button', () => {
   })
 
   it('domToBlob is called with the article node and correct options', async () => {
-    render(<Article turn={doneTurn()} />)
+    render(<Article turn={doneTurn()} conversationId={null} />)
     const btn = screen.getByRole('button', { name: /copy article as image/i })
     fireEvent.click(btn)
     await waitFor(() => expect(domToBlobMock).toHaveBeenCalledTimes(1))
@@ -166,6 +166,7 @@ describe('Article inline figures', () => {
           agentText: 'Headline\n\nBefore the chart.\n\n{{figure}}\n\nAfter the chart.',
           tools: [tableTool]
         })}
+        conversationId={null}
       />
     )
     // The table figure rendered (column label from RichTable)
@@ -175,7 +176,7 @@ describe('Article inline figures', () => {
   })
 
   it('appends figures at the end when no marker is present', () => {
-    render(<Article turn={doneTurn({ agentText: 'Headline\n\nNo marker here.', tools: [tableTool] })} />)
+    render(<Article turn={doneTurn({ agentText: 'Headline\n\nNo marker here.', tools: [tableTool] })} conversationId={null} />)
     expect(screen.getByText('Wins')).toBeTruthy()
   })
 
@@ -186,6 +187,7 @@ describe('Article inline figures', () => {
           agentText: 'Headline\n\n{{figure}}',
           tools: [{ ...tableTool, isError: true }]
         })}
+        conversationId={null}
       />
     )
     expect(screen.queryByText('Wins')).toBeNull()

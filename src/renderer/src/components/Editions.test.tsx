@@ -24,7 +24,8 @@ function baseProps(items: EditionItem[]) {
     onSelect: vi.fn(),
     onNew: vi.fn(),
     onRename: vi.fn(),
-    onDelete: vi.fn()
+    onDelete: vi.fn(),
+    onShare: vi.fn()
   }
 }
 

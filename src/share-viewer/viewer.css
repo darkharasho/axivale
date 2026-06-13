@@ -1,0 +1,57 @@
+/* src/share-viewer/viewer.css
+   Centers the shared article(s) inside AxiVale's newspaper theme (theme.css is
+   imported in main.tsx, supplying .msg.off / .lede / .byline / .prose etc.). */
+
+/* theme.css sets `body{overflow:hidden}` and `#root{display:flex}` for the app's
+   fixed-panel layout. The standalone viewer is a normal scrolling document, so
+   undo both here (this stylesheet is imported last, so it wins). */
+html,
+body {
+  height: auto;
+  overflow-y: auto;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg, #16171a);
+  color: var(--ink, #e9e6df);
+}
+#root {
+  display: block;
+}
+.share-page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+.share-masthead {
+  text-align: center;
+  border-bottom: 3px double var(--rule, #3a3a3a);
+  padding-bottom: 12px;
+  margin-bottom: 28px;
+}
+.share-masthead .title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 40px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+.share-masthead .dateline {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+.share-state {
+  text-align: center;
+  font-family: Georgia, serif;
+  opacity: 0.8;
+  padding: 80px 20px;
+}
+.share-footer {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 40px;
+}

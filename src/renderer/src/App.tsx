@@ -9,6 +9,7 @@ import Bureau from './components/panels/Bureau'
 import { RightRail } from './components/Rails'
 import Editions, { type EditionItem } from './components/Editions'
 import Article from './components/Article'
+import ShareDialog, { type ShareState } from './components/ShareDialog'
 import InputBar from './components/InputBar'
 import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
@@ -75,6 +76,19 @@ export default function App(): ReactElement {
   const [running, setRunning] = useState(false)
   const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
+  const [shareState, setShareState] = useState<ShareState>({ status: 'idle' })
+
+  async function shareResponse(conversationId: string, turnId: number): Promise<void> {
+    setShareState({ status: 'publishing' })
+    const res = await window.officer.shareResponse(conversationId, turnId)
+    setShareState(res.ok ? { status: 'done', url: res.url } : { status: 'error', error: res.error })
+  }
+
+  async function shareConversation(conversationId: string): Promise<void> {
+    setShareState({ status: 'publishing' })
+    const res = await window.officer.shareConversation(conversationId)
+    setShareState(res.ok ? { status: 'done', url: res.url } : { status: 'error', error: res.error })
+  }
 
   const turns = (activeId && turnsByConv[activeId]) || []
   // Mirror of turnsByConv for handlers that need the current value without
@@ -348,6 +362,7 @@ export default function App(): ReactElement {
             void window.officer.renameConversation(id, title)
             setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)))
           }}
+          onShare={(id) => void shareConversation(id)}
           onDelete={(id) => {
             void window.officer.deleteConversation(id).then(async () => {
               const list = await window.officer.listConversations()
@@ -398,7 +413,14 @@ export default function App(): ReactElement {
                   )}
                 </div>
               ) : (
-                turns.map((turn) => <Article key={turn.id} turn={turn} />)
+                turns.map((turn) => (
+                  <Article
+                    key={turn.id}
+                    turn={turn}
+                    conversationId={activeId}
+                    onShare={(cid, tid) => void shareResponse(cid, tid)}
+                  />
+                ))
               )}
             </div>
           )}
@@ -412,6 +434,7 @@ export default function App(): ReactElement {
         <InputBar disabled={running} onSubmit={submit} onStop={stopTurn} />
       )}
       {confirmQueue.length > 0 && <ConfirmDialog req={confirmQueue[0]} onRespond={respondConfirm} />}
+      <ShareDialog state={shareState} onClose={() => setShareState({ status: 'idle' })} />
     </>
   )
 }

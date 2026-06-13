@@ -30,6 +30,13 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     }),
     githubAuthComplete: vi.fn().mockResolvedValue({ ok: false }),
     githubDiscoverRepos: vi.fn().mockResolvedValue({ ok: false }),
+    shareConversation: vi.fn().mockResolvedValue({ ok: false, error: '' }),
+    shareResponse: vi.fn().mockResolvedValue({ ok: false, error: '' }),
+    shareList: vi.fn().mockResolvedValue([]),
+    shareDelete: vi.fn().mockResolvedValue({ ok: true }),
+    shareStatus: vi
+      .fn()
+      .mockResolvedValue({ signedIn: false, repoReady: false, pagesUrl: null }),
     forgeCatalogUpgrades: vi.fn().mockResolvedValue(null),
     sendMessage: vi.fn().mockResolvedValue(undefined),
     resetSession: vi.fn().mockResolvedValue(undefined),

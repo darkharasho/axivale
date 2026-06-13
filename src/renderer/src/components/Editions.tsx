@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type ReactElement } from 'react'
+import { Pencil, Share2, Trash2 } from 'lucide-react'
 import type { Turn } from '../state'
 import { splitHeadline, stripMarkdown } from './headline'
 
@@ -18,6 +19,7 @@ interface EditionsProps {
   onNew: () => void
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
+  onShare: (id: string) => void
 }
 
 /** Auto headline: first done AI turn, else first user line, else fallback. */
@@ -56,13 +58,15 @@ function Row({
   active,
   onSelect,
   onRename,
-  onDelete
+  onDelete,
+  onShare
 }: {
   item: EditionItem
   active: boolean
   onSelect: (id: string) => void
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
+  onShare: (id: string) => void
 }): ReactElement {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
@@ -93,6 +97,11 @@ function Row({
     if (window.confirm('Delete this edition? The transcript will be lost.')) onDelete(item.id)
   }
 
+  function share(e: React.MouseEvent): void {
+    e.stopPropagation()
+    onShare(item.id)
+  }
+
   return (
     <div
       className={`edition${active ? ' active' : ''}${item.fresh ? ' fresh' : ''}`}
@@ -121,11 +130,14 @@ function Row({
       )}
       <div className="ed-meta">{metaLine(item)}</div>
       <div className="ed-acts">
-        <button title="Rename" onClick={startEdit}>
-          ✎
+        <button title="Rename" aria-label="Rename" onClick={startEdit}>
+          <Pencil size={13} />
         </button>
-        <button title="Delete" onClick={remove}>
-          ✕
+        <button className="share" title="Share conversation" aria-label="Share conversation" onClick={share}>
+          <Share2 size={13} />
+        </button>
+        <button title="Delete" aria-label="Delete" onClick={remove}>
+          <Trash2 size={13} />
         </button>
       </div>
     </div>
@@ -138,7 +150,8 @@ export default function Editions({
   onSelect,
   onNew,
   onRename,
-  onDelete
+  onDelete,
+  onShare
 }: EditionsProps): ReactElement {
   const [query, setQuery] = useState('')
 
@@ -174,6 +187,7 @@ export default function Editions({
           onSelect={onSelect}
           onRename={onRename}
           onDelete={onDelete}
+          onShare={onShare}
         />
       ))}
       {earlier.length > 0 && <div className="ed-group">Earlier</div>}
@@ -185,6 +199,7 @@ export default function Editions({
           onSelect={onSelect}
           onRename={onRename}
           onDelete={onDelete}
+          onShare={onShare}
         />
       ))}
     </div>

@@ -18,6 +18,13 @@ contextBridge.exposeInMainWorld('officer', {
   githubAuthComplete: (deviceCode: string, interval: number, expiresIn: number) =>
     ipcRenderer.invoke('github:auth-complete', deviceCode, interval, expiresIn),
   githubDiscoverRepos: () => ipcRenderer.invoke('github:discover-repos'),
+  shareConversation: (conversationId: string) =>
+    ipcRenderer.invoke('share:createConversation', conversationId),
+  shareResponse: (conversationId: string, turnId: number) =>
+    ipcRenderer.invoke('share:createResponse', conversationId, turnId),
+  shareList: () => ipcRenderer.invoke('share:list'),
+  shareDelete: (id: string) => ipcRenderer.invoke('share:delete', id),
+  shareStatus: () => ipcRenderer.invoke('share:status'),
   forgeCatalogUpgrades: () => ipcRenderer.invoke('axiforge:catalog-upgrades'),
   sendMessage: (conversationId: string, text: string) =>
     ipcRenderer.invoke('agent:send', conversationId, text),

@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
-  "include": ["src/renderer/src/**/*", "src/preload/index.d.ts"]
+  "include": ["src/renderer/src/**/*", "src/share-viewer", "src/preload/index.d.ts"]
 }

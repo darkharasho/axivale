@@ -28,6 +28,12 @@ import {
   fetchGithubLogin
 } from './githubAuth'
 import { discoverReportRepos } from './githubRepos'
+import { ShareStore } from './shareStore'
+import { SharePublisher } from './sharePublisher'
+import { createGithubShareClient } from './shareGithub'
+import { loadViewerBundle } from './shareViewerBundle'
+import { buildSharePayload } from './shareSanitize'
+import { makeShareId } from './shareId'
 import { AgentService } from './agent'
 import { ConversationStore, type Conversation } from './conversationStore'
 import type { SessionState } from './providers/types'
@@ -92,6 +98,18 @@ app.whenReady().then(async () => {
   const store = new SettingsStore(join(app.getPath('userData'), 'settings.json'), await electronCipher())
 
   const conversations = new ConversationStore(join(app.getPath('userData'), 'conversations.json'))
+
+  const shares = new ShareStore(join(app.getPath('userData'), 'shares.json'))
+  // Dev runs publish to a separate repo so testing never touches a user's real
+  // public share site. app.isPackaged is false under `npm run dev`.
+  const SHARE_REPO = app.isPackaged ? 'axivale-shares' : 'axivale-shares-dev'
+  // Built viewer ships in out/share-viewer; __dirname is out/main at runtime.
+  const viewerDir = join(__dirname, '../share-viewer')
+  const sharePublisher = new SharePublisher({
+    client: () => createGithubShareClient(store.getActiveKey('github') ?? ''),
+    viewer: () => loadViewerBundle(viewerDir),
+    repo: SHARE_REPO
+  })
 
   const buildAxitools = (): AxitoolsClient => {
     const parsed = parseAxivaleKey(store.getActiveKey('axivale') ?? '')
@@ -339,6 +357,71 @@ app.whenReady().then(async () => {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   })
+
+  ipcMain.handle('share:createConversation', async (_event, conversationId: string) => {
+    try {
+      const conv = conversations.get(conversationId)
+      if (!conv) return { ok: false as const, error: 'Conversation not found.' }
+      const id = makeShareId()
+      const doc = buildSharePayload(conv, {
+        id,
+        createdAt: new Date().toISOString(),
+        appVersion: app.getVersion()
+      })
+      const { url } = await sharePublisher.publishDoc(doc)
+      shares.add({
+        id,
+        kind: 'conversation',
+        title: doc.title,
+        url,
+        sourceConversationId: conversationId,
+        createdAt: doc.createdAt
+      })
+      return { ok: true as const, url }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Share failed.' }
+    }
+  })
+
+  ipcMain.handle('share:createResponse', async (_event, conversationId: string, turnId: number) => {
+    try {
+      const conv = conversations.get(conversationId)
+      if (!conv) return { ok: false as const, error: 'Conversation not found.' }
+      const id = makeShareId()
+      const doc = buildSharePayload(conv, {
+        id,
+        createdAt: new Date().toISOString(),
+        appVersion: app.getVersion(),
+        turnId
+      })
+      const { url } = await sharePublisher.publishDoc(doc)
+      shares.add({
+        id,
+        kind: 'response',
+        title: doc.title,
+        url,
+        sourceConversationId: conversationId,
+        createdAt: doc.createdAt
+      })
+      return { ok: true as const, url }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Share failed.' }
+    }
+  })
+
+  ipcMain.handle('share:list', () => shares.list())
+
+  ipcMain.handle('share:delete', async (_event, id: string) => {
+    try {
+      await sharePublisher.deleteDoc(id)
+      shares.remove(id)
+      return { ok: true as const }
+    } catch (err) {
+      return { ok: false as const, error: err instanceof Error ? err.message : 'Delete failed.' }
+    }
+  })
+
+  ipcMain.handle('share:status', () => sharePublisher.status())
 
   // Inline build/comp cards need rune/relic names+icons even when AxiForge is
   // closed — a disk cache on top of the client's catalog fetch covers that.
