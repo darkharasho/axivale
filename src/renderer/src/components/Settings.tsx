@@ -159,7 +159,18 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   // GitHub OAuth device-flow sign-in state.
   const [ghSigningIn, setGhSigningIn] = useState(false)
   const [ghUserCode, setGhUserCode] = useState('')
+  const [ghCodeCopied, setGhCodeCopied] = useState(false)
   const [ghAuthStatus, setGhAuthStatus] = useState<{ msg: string; ok: boolean } | null>(null)
+
+  async function copyGhCode(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(ghUserCode)
+      setGhCodeCopied(true)
+      setTimeout(() => setGhCodeCopied(false), 1500)
+    } catch {
+      // clipboard unavailable — the code is still shown for manual entry
+    }
+  }
 
   async function refreshBridgeHealth(): Promise<void> {
     const res = await window.officer.axibridgeStatus()
@@ -783,7 +794,11 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
           />
           {ghUserCode && (
             <div className="sstatus ok">
-              Enter code <b>{ghUserCode}</b> at github.com/login/device (opened in your browser).
+              Enter code <b>{ghUserCode}</b>{' '}
+              <button className="sbtn out" type="button" onClick={copyGhCode}>
+                {ghCodeCopied ? 'copied ✓' : 'copy'}
+              </button>{' '}
+              at github.com/login/device (opened in your browser).
             </div>
           )}
           <div className="srow">
