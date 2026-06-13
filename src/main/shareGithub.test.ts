@@ -28,9 +28,10 @@ describe('createGithubShareClient', () => {
     })
     const gh = createGithubShareClient('TOKEN', fetchFn as unknown as typeof fetch)
     await gh.ensureRepo('axivale-shares')
-    const createCall = fetchFn.mock.calls.find(([, i]) => (i as RequestInit)?.method === 'POST')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const createCall = (fetchFn.mock.calls as any[]).find(([, i]: [string, RequestInit?]) => i?.method === 'POST') as [string, RequestInit] | undefined
     expect(createCall).toBeTruthy()
-    expect(JSON.parse((createCall![1] as RequestInit).body as string)).toMatchObject({
+    expect(JSON.parse(createCall![1].body as string)).toMatchObject({
       name: 'axivale-shares',
       private: false,
       auto_init: true
@@ -45,7 +46,8 @@ describe('createGithubShareClient', () => {
     })
     const gh = createGithubShareClient('TOKEN', fetchFn as unknown as typeof fetch)
     await gh.ensureRepo('axivale-shares')
-    expect(fetchFn.mock.calls.some(([, i]) => (i as RequestInit)?.method === 'POST')).toBe(false)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((fetchFn.mock.calls as any[]).some(([, i]: [string, RequestInit?]) => i?.method === 'POST')).toBe(false)
   })
 
   it('getFileSha returns the sha or null on 404', async () => {
@@ -62,11 +64,13 @@ describe('createGithubShareClient', () => {
   it('putFile PUTs base64 content with sha when updating', async () => {
     const fetchFn = vi.fn(async () => json({}, 200))
     const gh = createGithubShareClient('TOKEN', fetchFn as unknown as typeof fetch)
-    await gh.ensureRepoOwnerForTest?.('alice') // no-op if undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (gh as any).ensureRepoOwnerForTest?.('alice') // no-op if undefined
     await gh.putFile('axivale-shares', 'shares/x.json', 'YmFzZTY0', 'add x', 'oldsha')
-    const call = fetchFn.mock.calls.at(-1)!
-    expect((call[1] as RequestInit).method).toBe('PUT')
-    const body = JSON.parse((call[1] as RequestInit).body as string)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const call = (fetchFn.mock.calls as any[]).at(-1)! as [string, RequestInit]
+    expect(call[1].method).toBe('PUT')
+    const body = JSON.parse(call[1].body as string)
     expect(body).toMatchObject({ content: 'YmFzZTY0', message: 'add x', sha: 'oldsha' })
   })
 
