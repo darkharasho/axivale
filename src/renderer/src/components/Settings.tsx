@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
 type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'
@@ -142,6 +142,7 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   }
 
   // AxiBridge
+  const autoDiscovered = useRef(false)
   const [bridgeRepos, setBridgeRepos] = useState<Array<{ owner: string; repo: string }>>([])
   const [bridgeInput, setBridgeInput] = useState('')
   const [bridgeStatus, setBridgeStatus] = useState<{ msg: string; ok: boolean } | null>(null)
@@ -287,8 +288,16 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
       setVersion(await window.officer.appVersion())
       await refreshKeyLists()
       void checkForge()
-      setBridgeRepos(await window.officer.axibridgeReposList())
+      const repos = await window.officer.axibridgeReposList()
+      setBridgeRepos(repos)
       void refreshBridgeHealth()
+      // Signed in to GitHub but nothing linked yet → discover automatically
+      // (once per session) so the user never has to click "Find my report repos".
+      const ghKeys = await window.officer.listKeys('github')
+      if (!autoDiscovered.current && ghKeys.length > 0 && repos.length === 0) {
+        autoDiscovered.current = true
+        void discoverAndLinkRepos()
+      }
     })()
   }, [])
 
