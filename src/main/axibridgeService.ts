@@ -1,5 +1,6 @@
 import type { RepoRef } from './axibridgeRepos'
 import { repoKey } from './axibridgeRepos'
+import { localRunDate } from './axibridgeRunDate'
 import type { AxibridgeClient, ReportIndexEntry, DownloadProgress } from './axibridgeClient'
 import { AxibridgeCache } from './axibridgeCache'
 import type { SummaryJob, SummaryJobResult } from './axibridgeSummarize'
@@ -27,10 +28,12 @@ export interface DateRange {
 }
 
 const inRange = (entry: ReportIndexEntry, range: DateRange): boolean => {
-  const date = entry.dateStart ?? entry.dateEnd
+  // Compare on the recorder's LOCAL date (from the run-id prefix) so range
+  // filters match what the user sees, not the day-ahead UTC dateStart.
+  const date = localRunDate(entry.id, entry.dateStart ?? entry.dateEnd)
   if (!date) return true
   if (range.from && date < range.from) return false
-  if (range.to && date.slice(0, 10) > range.to) return false
+  if (range.to && date > range.to) return false
   return true
 }
 
@@ -92,7 +95,13 @@ export class AxibridgeService {
         errors.push(err instanceof Error ? err.message : String(err)) // other repos unaffected
       }
     }
-    runs.sort((a, b) => String(b.dateStart ?? '').localeCompare(String(a.dateStart ?? '')))
+    // Newest first by local date, then by run id (carries HHMMSS) within a day.
+    runs.sort((a, b) => {
+      const da = localRunDate(a.id, a.dateStart) ?? ''
+      const db = localRunDate(b.id, b.dateStart) ?? ''
+      if (da !== db) return db.localeCompare(da)
+      return String(b.id ?? '').localeCompare(String(a.id ?? ''))
+    })
     return { runs, errors }
   }
 

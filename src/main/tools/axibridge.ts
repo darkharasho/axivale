@@ -2,6 +2,7 @@ import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safeRich } from './shared'
 import type { AxibridgeService } from '../axibridgeService'
+import { localRunDate } from '../axibridgeRunDate'
 
 const chartSpecSchema = z.object({
   type: z.enum(['line', 'bar', 'area']),
@@ -70,7 +71,7 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
         const result = await service().runsList({ repo, from, to })
         const rows = result.runs.map((r) => ({
           id: r.id,
-          date: r.dateStart?.slice(0, 10) ?? '—',
+          date: localRunDate(r.id, r.dateStart) ?? '—',
           title: r.title,
           commanders: r.commanders.join(', '),
           repo: r.repo,
@@ -119,7 +120,7 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
             run: {
               id: summary.id,
               title: summary.title,
-              date: summary.dateStart,
+              date: localRunDate(summary.id, summary.dateStart),
               fights: summary.fights,
               wins: summary.wins,
               losses: summary.losses,
