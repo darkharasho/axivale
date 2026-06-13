@@ -8,25 +8,6 @@ export interface RailsProps {
   turns: Turn[]
 }
 
-export function LeftRail({ memberCount, buildsCount }: RailsProps): ReactElement {
-  return (
-    <div className="rail left">
-      <div className="h">In this issue</div>
-      <div className="item">
-        <b>Guild roster</b>
-        {memberCount != null ? `${memberCount} members on the books` : '— awaiting muster'}
-      </div>
-      <div className="item">
-        <b>Builds index</b>
-        {buildsCount != null ? `${buildsCount} filed` : '— not yet indexed'}
-      </div>
-      <div className="item">
-        <b>Weekly reset</b>Friday 18:00 UTC
-      </div>
-    </div>
-  )
-}
-
 interface Notice {
   tool: ToolCall
   seq: number

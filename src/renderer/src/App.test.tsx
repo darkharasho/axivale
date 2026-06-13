@@ -31,6 +31,43 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     sendMessage: vi.fn().mockResolvedValue(undefined),
     resetSession: vi.fn().mockResolvedValue(undefined),
     cancelTurn: vi.fn(),
+    listConversations: vi.fn().mockResolvedValue([
+      {
+        id: 'c1',
+        title: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        turns: [],
+        provider: 'claude',
+        session: {},
+        seenTurnCount: 0
+      }
+    ]),
+    getConversation: vi.fn().mockResolvedValue({
+      id: 'c1',
+      title: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      turns: [],
+      provider: 'claude',
+      session: {},
+      seenTurnCount: 0
+    }),
+    createConversation: vi.fn().mockResolvedValue({
+      id: 'c1',
+      title: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      turns: [],
+      provider: 'claude',
+      session: {},
+      seenTurnCount: 0
+    }),
+    saveTurns: vi.fn().mockResolvedValue(undefined),
+    renameConversation: vi.fn().mockResolvedValue(undefined),
+    deleteConversation: vi.fn().mockResolvedValue(undefined),
+    setActiveConversation: vi.fn().mockResolvedValue(undefined),
+    markConversationSeen: vi.fn().mockResolvedValue(undefined),
     onAgentEvent: vi.fn().mockImplementation(noop),
     onConfirmRequest: vi.fn().mockImplementation(noop),
     onAxibridgeProgress: vi.fn().mockImplementation(noop),
@@ -65,9 +102,9 @@ vi.mock('./components/panels/Roster', () => ({ default: () => null }))
 vi.mock('./components/panels/Bureau', () => ({ default: () => null }))
 vi.mock('./components/Settings', () => ({ default: () => null }))
 vi.mock('./components/Rails', () => ({
-  LeftRail: () => null,
   RightRail: () => null
 }))
+vi.mock('./components/Editions', () => ({ default: () => null }))
 vi.mock('./components/InputBar', () => ({
   default: ({ onSubmit }: { onSubmit: (t: string) => void }) => (
     <button data-testid="submit-btn" onClick={() => onSubmit('hello')}>
@@ -108,7 +145,9 @@ describe('App bridgeProgress indicator', () => {
   })
 
   it('shows progress text while running and a progress message is set', async () => {
-    render(<App />)
+    await act(async () => {
+      render(<App />)
+    })
 
     // Simulate a turn being submitted (sets running=true)
     const submitBtn = screen.getByTestId('submit-btn')
@@ -125,7 +164,9 @@ describe('App bridgeProgress indicator', () => {
   })
 
   it('clears progress text when the done event arrives', async () => {
-    render(<App />)
+    await act(async () => {
+      render(<App />)
+    })
 
     // Start a turn
     const submitBtn = screen.getByTestId('submit-btn')
@@ -148,7 +189,9 @@ describe('App bridgeProgress indicator', () => {
   })
 
   it('does not show progress when not running', async () => {
-    render(<App />)
+    await act(async () => {
+      render(<App />)
+    })
 
     // Fire progress without starting a turn (running is still false)
     act(() => {

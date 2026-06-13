@@ -6,12 +6,14 @@ import Builds from './components/panels/Builds'
 import Comps from './components/panels/Comps'
 import Roster from './components/panels/Roster'
 import Bureau from './components/panels/Bureau'
-import { LeftRail, RightRail } from './components/Rails'
+import { RightRail } from './components/Rails'
+import Editions, { type EditionItem } from './components/Editions'
 import Article from './components/Article'
 import InputBar from './components/InputBar'
 import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
 import UpdateBanner from './components/UpdateBanner'
+import type { RendererConversation } from '../../preload/index.d'
 
 const SECTION_TITLES: Record<Section, string> = {
   dispatches: 'Dispatches',
@@ -30,23 +32,27 @@ function dayOfYear(d: Date): number {
 
 const TURNS_KEY = 'axivale.turns'
 
-// Restore the prior conversation; tolerate absent/corrupt storage.
-function loadTurns(): Turn[] {
+// Legacy single conversation persisted under localStorage; migrated once.
+function legacyTurns(): Turn[] {
   try {
     const raw = localStorage.getItem(TURNS_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as Turn[]
-    // An interrupted turn from last session can't resume — mark it done.
-    return Array.isArray(parsed)
-      ? parsed.map((t) => (t.done ? t : { ...t, done: true }))
-      : []
+    return Array.isArray(parsed) ? parsed.map((t) => (t.done ? t : { ...t, done: true })) : []
   } catch {
     return []
   }
 }
 
+function completedTurnCount(turns: Turn[]): number {
+  return turns.filter((t) => t.done).length
+}
+
 export default function App(): ReactElement {
-  const [turns, setTurns] = useState<Turn[]>(loadTurns)
+  const [conversations, setConversations] = useState<RendererConversation[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [turns, setTurns] = useState<Turn[]>([])
+  const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
   const [section, setSection] = useState<Section>('dispatches')
   const [running, setRunning] = useState(false)
   const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
@@ -60,8 +66,10 @@ export default function App(): ReactElement {
   const [providerNote, setProviderNote] = useState<string | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
-  // Continue ids past whatever was restored so keys stay unique.
-  const nextId = useRef(turns.reduce((max, t) => Math.max(max, t.id), 0) + 1)
+  const nextId = useRef(1)
+  // The active id seen by event handlers (avoids stale closures in subscriptions).
+  const activeIdRef = useRef<string | null>(null)
+  activeIdRef.current = activeId
 
   const dateline =
     new Date().toLocaleDateString('en-US', {
@@ -98,22 +106,75 @@ export default function App(): ReactElement {
     void refreshStatus()
   }, [])
 
-  // Subscribe once; fold events into the last turn.
+  async function openConversation(id: string, knownList?: RendererConversation[]): Promise<void> {
+    const conv = await window.officer.getConversation(id)
+    if (!conv) return
+    setActiveId(id)
+    setTurns(conv.turns as Turn[])
+    nextId.current = (conv.turns as Turn[]).reduce((m, t) => Math.max(m, t.id), 0) + 1
+    void window.officer.setActiveConversation(id)
+    const seen = completedTurnCount(conv.turns as Turn[])
+    void window.officer.markConversationSeen(id, seen)
+    setFreshIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    // Reflect the up-to-date seenTurnCount/turns into the cached list.
+    const list = knownList ?? conversations
+    setConversations(
+      list.map((c) => (c.id === id ? { ...c, seenTurnCount: seen, turns: conv.turns } : c))
+    )
+  }
+
+  // Load conversations on mount; migrate the legacy localStorage transcript once.
+  useEffect(() => {
+    void (async () => {
+      let list = await window.officer.listConversations()
+      const legacy = legacyTurns()
+      if (list.length === 0 && legacy.length > 0) {
+        const provider = (await window.officer.getSetting('provider')) as
+          | RendererConversation['provider']
+          | null
+        const created = await window.officer.createConversation({
+          turns: legacy,
+          provider: provider ?? 'claude',
+          seenTurnCount: completedTurnCount(legacy)
+        })
+        await window.officer.setActiveConversation(created.id)
+        localStorage.removeItem(TURNS_KEY)
+        list = await window.officer.listConversations()
+      }
+      setConversations(list)
+      const stored = list[0] ?? null
+      if (stored) {
+        await openConversation(stored.id, list)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Subscribe once; fold events into the active conversation, flag background completions.
   useEffect(() => {
     const offEvent = window.officer.onAgentEvent((raw) => {
-      const event = raw as AgentEvent
-      setTurns((prev) => {
-        // Events before any turn are intentionally dropped; submit() always creates the turn first.
-        if (prev.length === 0) return prev
-        const last = prev[prev.length - 1]
-        const updated = applyEvent(last, event)
-        const next = prev.slice(0, -1)
-        next.push(updated)
-        return next
-      })
-      if ((raw as AgentEvent).kind === 'done') {
-        setRunning(false)
-        setBridgeProgress(null)
+      const event = raw as AgentEvent & { conversationId?: string }
+      const convId = event.conversationId ?? activeIdRef.current
+      if (convId && convId === activeIdRef.current) {
+        setTurns((prev) => {
+          if (prev.length === 0) return prev
+          const last = prev[prev.length - 1]
+          const updated = applyEvent(last, event)
+          return [...prev.slice(0, -1), updated]
+        })
+        if (event.kind === 'done') {
+          setRunning(false)
+          setBridgeProgress(null)
+        }
+      } else if (event.kind === 'done' && convId) {
+        // Background conversation finished — mark it fresh and refresh the list.
+        setFreshIds((prev) => new Set(prev).add(convId))
+        void window.officer.listConversations().then(setConversations)
       }
     })
     const offConfirm = window.officer.onConfirmRequest((raw) => {
@@ -135,29 +196,42 @@ export default function App(): ReactElement {
     if (el) el.scrollTop = el.scrollHeight
   }, [turns])
 
-  // Persist the conversation so it survives a restart.
+  // Persist the active conversation's turns (debounced) to the store.
   useEffect(() => {
-    try {
-      localStorage.setItem(TURNS_KEY, JSON.stringify(turns))
-    } catch {
-      // storage full / unavailable — non-fatal, history just won't persist
-    }
-  }, [turns])
+    if (!activeId) return
+    const id = activeId
+    const handle = setTimeout(() => {
+      void window.officer.saveTurns(id, turns)
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, turns, updatedAt: new Date().toISOString() } : c))
+      )
+    }, 300)
+    return () => clearTimeout(handle)
+  }, [turns, activeId])
 
-  function newConversation(): void {
-    window.officer.cancelTurn()
-    void window.officer.resetSession()
+  async function newConversation(): Promise<void> {
+    const provider = (await window.officer.getSetting('provider')) as
+      | RendererConversation['provider']
+      | null
+    const created = await window.officer.createConversation({ provider: provider ?? 'claude' })
+    const list = await window.officer.listConversations()
+    setConversations(list)
+    setActiveId(created.id)
     setTurns([])
+    nextId.current = 1
     setRunning(false)
     setConfirmQueue([])
+    void window.officer.setActiveConversation(created.id)
   }
 
   function stopTurn(): void {
-    window.officer.cancelTurn()
+    if (activeId) void window.officer.cancelTurn(activeId)
     setConfirmQueue([])
   }
 
   function submit(text: string): void {
+    if (!activeId) return
+    const id = activeId
     const turn: Turn = {
       id: nextId.current++,
       userText: text,
@@ -165,21 +239,27 @@ export default function App(): ReactElement {
       tools: [],
       done: false,
       error: null,
-      filedAt: new Date().toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit'
-      })
+      filedAt: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     }
     setTurns((prev) => [...prev, turn])
     setRunning(true)
     setBridgeProgress(null)
-    void window.officer.sendMessage(text).catch(() => setRunning(false))
+    void window.officer.sendMessage(id, text).catch(() => setRunning(false))
   }
 
   function respondConfirm(id: string, allowed: boolean): void {
     window.officer.respondConfirm(id, allowed)
     setConfirmQueue((prev) => prev.slice(1))
   }
+
+  const editionItems: EditionItem[] = conversations.map((c) => ({
+    id: c.id,
+    title: c.title,
+    updatedAt: c.updatedAt,
+    turns: c.turns as Turn[],
+    dispatchCount: (c.turns as Turn[]).filter((t) => t.userText.trim()).length,
+    fresh: freshIds.has(c.id)
+  }))
 
   const memberCount: number | null = null
   const buildsCount: number | null = null
@@ -200,18 +280,35 @@ export default function App(): ReactElement {
         onSwitched={refreshStatus}
       />
       <div className="sheet">
-        <LeftRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
+        <Editions
+          items={editionItems}
+          activeId={activeId}
+          onSelect={(id) => void openConversation(id)}
+          onNew={() => void newConversation()}
+          onRename={(id, title) => {
+            void window.officer.renameConversation(id, title)
+            setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title } : c)))
+          }}
+          onDelete={(id) => {
+            void window.officer.deleteConversation(id).then(async () => {
+              const list = await window.officer.listConversations()
+              setConversations(list)
+              if (id === activeId) {
+                const fallback = list[0]
+                if (fallback) await openConversation(fallback.id, list)
+                else await newConversation()
+              }
+            })
+          }}
+        />
         <div className="chatcol">
           <div className="folio">
             <h1>{SECTION_TITLES[section]}</h1>
-            {section === 'dispatches' && turns.length > 0 && (
-              <button className="folio-act" onClick={newConversation}>
-                New dispatch
-              </button>
-            )}
             <span className="d">{dateline}</span>
           </div>
-          {section === 'settings' && <Settings onChanged={refreshStatus} onProviderChanged={newConversation} />}
+          {section === 'settings' && (
+            <Settings onChanged={refreshStatus} onProviderChanged={() => void newConversation()} />
+          )}
           {section === 'builds' && <Builds />}
           {section === 'comps' && <Comps />}
           {section === 'roster' && <Roster />}
