@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('officer', {
   hasSecret: (key: string) => ipcRenderer.invoke('secrets:has', key),
   validateGw2Key: () => ipcRenderer.invoke('gw2:validate-key'),
   axitoolsStatus: () => ipcRenderer.invoke('axitools:status'),
+  axiforgeStatus: () => ipcRenderer.invoke('axiforge:status'),
   sendMessage: (text: string) => ipcRenderer.invoke('agent:send', text),
   resetSession: () => ipcRenderer.invoke('agent:reset'),
   cancelTurn: () => ipcRenderer.invoke('agent:cancel'),

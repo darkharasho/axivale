@@ -9,6 +9,9 @@ export interface OfficerApi {
     guilds?: Array<{ id: string; name: string }>
     error?: string
   }>
+  axiforgeStatus(): Promise<
+    { state: 'connected'; version: string } | { state: 'file-only' } | { state: 'offline' }
+  >
   sendMessage(text: string): Promise<void>
   resetSession(): Promise<void>
   cancelTurn(): Promise<void>

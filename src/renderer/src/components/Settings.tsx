@@ -131,6 +131,16 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   const [axiStatus, setAxiStatus] = useState<{ msg: string; ok: boolean } | null>(null)
   const [axiGuild, setAxiGuild] = useState<AxiGuild | null>(null)
 
+  // AxiForge
+  const [forgeStatus, setForgeStatus] = useState<
+    { state: 'connected'; version: string } | { state: 'file-only' } | { state: 'offline' } | null
+  >(null)
+
+  async function checkForge(): Promise<void> {
+    setForgeStatus(null)
+    setForgeStatus(await window.officer.axiforgeStatus())
+  }
+
   async function refreshKeyLists(): Promise<void> {
     setGw2Keys(await window.officer.listKeys('gw2'))
     setAxiKeys(await window.officer.listKeys('axivale'))
@@ -150,6 +160,7 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
       setVersion(await window.officer.appVersion())
       await refreshKeyLists()
+      void checkForge()
     })()
   }, [])
 
@@ -589,6 +600,32 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
             Bound to <b>{axiGuild.name}</b> · {axiGuild.id}
           </div>
         )}
+      </div>
+
+      <div className="sgroup">
+        <h2>AxiForge</h2>
+        <div className="srow">
+          {forgeStatus === null && <div className="sstatus ok">checking…</div>}
+          {forgeStatus?.state === 'connected' && (
+            <div className="sstatus ok">connected · v{forgeStatus.version}</div>
+          )}
+          {forgeStatus?.state === 'file-only' && (
+            <div className="sstatus ok">
+              file-only · AxiForge is closed — builds are read from disk; edits will start it
+              headless
+            </div>
+          )}
+          {forgeStatus?.state === 'offline' && (
+            <div className="sstatus err">not found — install AxiForge via AxiOM</div>
+          )}
+          <button className="sbtn out" onClick={checkForge}>
+            Recheck
+          </button>
+        </div>
+        <p className="shelp">
+          AxiVale edits AxiForge builds and comps through its local API. No setup needed — the
+          connection is discovered automatically when AxiForge runs on this machine.
+        </p>
       </div>
 
       <div className="sgroup">

@@ -167,6 +167,8 @@ app.whenReady().then(async () => {
     }
   })
 
+  ipcMain.handle('axiforge:status', () => axiforge.status())
+
   ipcMain.handle('axitools:status', async () => {
     if (!parseAxivaleKey(store.getActiveKey('axivale') ?? '')) {
       return { ok: false, error: 'No AxiVale key on file — generate one in Discord with /config apikey generate.' }
