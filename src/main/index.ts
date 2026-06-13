@@ -243,6 +243,17 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('axiforge:status', () => axiforge.status())
+  // Manually start AxiForge (headless, or its dev server in dev) on demand —
+  // the same path a write would trigger, exposed so the user can spin it up
+  // from Settings instead of waiting for the first edit.
+  ipcMain.handle('axiforge:launch', async () => {
+    try {
+      await axiforgeLauncher.ensureRunning()
+      return { ok: true }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 
   // AxiBridge linked report repos: list/add/remove persist to the axibridgeRepos
   // setting; the service reads them fresh, so changes take effect without restart.

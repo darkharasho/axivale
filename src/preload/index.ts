@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('officer', {
   validateGw2Key: () => ipcRenderer.invoke('gw2:validate-key'),
   axitoolsStatus: () => ipcRenderer.invoke('axitools:status'),
   axiforgeStatus: () => ipcRenderer.invoke('axiforge:status'),
+  axiforgeLaunch: () => ipcRenderer.invoke('axiforge:launch'),
   axibridgeReposList: () => ipcRenderer.invoke('axibridge:repos-list'),
   axibridgeReposAdd: (input: string) => ipcRenderer.invoke('axibridge:repos-add', input),
   axibridgeReposRemove: (owner: string, repo: string) =>

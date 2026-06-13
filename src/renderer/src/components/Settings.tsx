@@ -136,9 +136,22 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
     { state: 'connected'; version: string } | { state: 'file-only' } | { state: 'offline' } | null
   >(null)
 
+  const [forgeLaunching, setForgeLaunching] = useState(false)
+
   async function checkForge(): Promise<void> {
     setForgeStatus(null)
     setForgeStatus(await window.officer.axiforgeStatus())
+  }
+
+  // Start AxiForge on demand (headless, or its dev server in dev), then re-check.
+  async function launchForge(): Promise<void> {
+    setForgeLaunching(true)
+    try {
+      await window.officer.axiforgeLaunch()
+    } finally {
+      setForgeLaunching(false)
+      await checkForge()
+    }
   }
 
   // AxiBridge
@@ -753,12 +766,16 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
           )}
           {forgeStatus?.state === 'file-only' && (
             <div className="sstatus ok">
-              file-only · AxiForge is closed — builds are read from disk; edits will start it
-              headless
+              file-only · AxiForge is closed — builds are read from disk
             </div>
           )}
           {forgeStatus?.state === 'offline' && (
             <div className="sstatus err">not found — install AxiForge via AxiOM</div>
+          )}
+          {forgeStatus && forgeStatus.state !== 'connected' && forgeStatus.state !== 'offline' && (
+            <button className="sbtn" disabled={forgeLaunching} onClick={launchForge}>
+              {forgeLaunching ? 'Starting…' : 'Launch AxiForge'}
+            </button>
           )}
           <button className="sbtn out" onClick={checkForge}>
             Recheck
@@ -860,7 +877,7 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
               at github.com/login/device (opened in your browser).
             </div>
           )}
-          <div className="srow">
+          <div className="srow" style={{ marginTop: '12px' }}>
             <button className="sbtn" disabled={ghSigningIn} onClick={signInGithub}>
               {ghSigningIn ? 'Signing in…' : 'Sign in with GitHub'}
             </button>

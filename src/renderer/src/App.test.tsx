@@ -16,6 +16,7 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     validateGw2Key: vi.fn().mockResolvedValue({ ok: false }),
     axitoolsStatus: vi.fn().mockResolvedValue({ ok: false }),
     axiforgeStatus: vi.fn().mockResolvedValue({ state: 'offline' }),
+    axiforgeLaunch: vi.fn().mockResolvedValue({ ok: true }),
     axibridgeReposList: vi.fn().mockResolvedValue([]),
     axibridgeReposAdd: vi.fn().mockResolvedValue({ ok: false, error: '' }),
     axibridgeReposRemove: vi.fn().mockResolvedValue([]),
