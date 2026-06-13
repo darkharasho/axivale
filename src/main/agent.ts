@@ -2,7 +2,7 @@ import { buildOfficerTools, type ToolDeps } from './tools'
 import { MCP_PREFIX, type AgentEvent, type ProviderConfig, type ProviderName } from './providers/types'
 import { evaluateToolPermission } from './providers/permission'
 import { createAdapter } from './providers'
-import type { ProviderAdapter } from './providers/types'
+import type { ProviderAdapter, SessionState } from './providers/types'
 
 export { MCP_PREFIX, evaluateToolPermission }
 export type { AgentEvent }
@@ -81,39 +81,56 @@ export interface AgentDeps {
   /** Provider, model, and credentials — read fresh at the start of every turn. */
   config: () => ProviderConfig
   confirm: (toolName: string, input: Record<string, unknown>) => Promise<boolean>
+  /** Persisted session for a conversation, used to restore an adapter on first use. */
+  loadSession: (conversationId: string) => SessionState
+  /** Persist a conversation's session after each completed turn. */
+  saveSession: (conversationId: string, provider: ProviderName, session: SessionState) => void
+}
+
+interface LiveAdapter {
+  adapter: ProviderAdapter
+  provider: ProviderName
 }
 
 export class AgentService {
-  private adapter: ProviderAdapter | null = null
-  private adapterProvider: ProviderName | null = null
-  private running = false
-  private abort: AbortController | null = null
+  private adapters = new Map<string, LiveAdapter>()
+  private running = new Set<string>()
+  private aborts = new Map<string, AbortController>()
 
   constructor(private readonly deps: AgentDeps) {}
 
-  /** Returns the adapter for the configured provider; switching providers starts fresh. */
-  private currentAdapter(): ProviderAdapter {
+  /**
+   * Returns the live adapter for a conversation, creating + restoring it on
+   * first use. Switching providers for a conversation starts a fresh adapter
+   * (transcript is preserved by the store; model context resets).
+   */
+  private adapterFor(conversationId: string): ProviderAdapter {
     const provider = this.deps.config().provider
-    if (!this.adapter || this.adapterProvider !== provider) {
-      this.adapter = createAdapter(provider, this.deps.config)
-      this.adapterProvider = provider
-    }
-    return this.adapter
+    const existing = this.adapters.get(conversationId)
+    if (existing && existing.provider === provider) return existing.adapter
+    const adapter = createAdapter(provider, this.deps.config)
+    adapter.restoreSession(this.deps.loadSession(conversationId))
+    this.adapters.set(conversationId, { adapter, provider })
+    return adapter
   }
 
-  resetSession(): void {
-    this.adapter?.reset()
-    this.adapter = null
-    this.adapterProvider = null
+  /** Drop a conversation's live adapter + session (new conversation / delete). */
+  resetSession(conversationId: string): void {
+    this.adapters.get(conversationId)?.adapter.reset()
+    this.adapters.delete(conversationId)
   }
 
-  /** Abort the in-flight turn, if any. The runTurn loop ends cleanly. */
-  cancelTurn(): void {
-    this.abort?.abort()
+  /** Abort the in-flight turn for a conversation, if any. */
+  cancelTurn(conversationId: string): void {
+    this.aborts.get(conversationId)?.abort()
   }
 
-  async runTurn(promptText: string, onEvent: (e: AgentEvent) => void): Promise<void> {
-    if (this.running) {
+  async runTurn(
+    conversationId: string,
+    promptText: string,
+    onEvent: (e: AgentEvent) => void
+  ): Promise<void> {
+    if (this.running.has(conversationId)) {
       onEvent({
         kind: 'done',
         sessionId: null,
@@ -122,12 +139,12 @@ export class AgentService {
       return
     }
 
-    this.running = true
+    this.running.add(conversationId)
     const abort = new AbortController()
-    this.abort = abort
+    this.aborts.set(conversationId, abort)
+    const adapter = this.adapterFor(conversationId)
     try {
       const tools = buildOfficerTools(this.deps.toolDeps())
-      const adapter = this.currentAdapter()
       const turn = adapter.runTurn({
         prompt: promptText,
         systemPrompt: AXIVALE_SYSTEM_PROMPT,
@@ -144,8 +161,11 @@ export class AgentService {
         error: abort.signal.aborted ? null : err instanceof Error ? err.message : String(err)
       })
     } finally {
-      this.running = false
-      this.abort = null
+      this.running.delete(conversationId)
+      this.aborts.delete(conversationId)
+      // Persist the (possibly updated) session for restart resume.
+      const live = this.adapters.get(conversationId)
+      if (live) this.deps.saveSession(conversationId, live.provider, live.adapter.serializeSession())
     }
   }
 }

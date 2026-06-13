@@ -148,7 +148,9 @@ describe('AgentService turn serialization', () => {
         apiKey: null,
         endpoint: null
       }),
-      confirm: vi.fn().mockResolvedValue(true)
+      confirm: vi.fn().mockResolvedValue(true),
+      loadSession: () => ({}),
+      saveSession: vi.fn()
     }
 
     const agent = new AgentService(mockDeps)
@@ -156,27 +158,102 @@ describe('AgentService turn serialization', () => {
     const events1: import('./agent').AgentEvent[] = []
     const events2: import('./agent').AgentEvent[] = []
 
-    // Start turn 1 — it will block until _releaseTurn()
-    const turn1 = agent.runTurn('first prompt', (e) => events1.push(e))
+    // Start turn 1 on conversation "c1" — it blocks until _releaseTurn()
+    const turn1 = agent.runTurn('c1', 'first prompt', (e) => events1.push(e))
 
-    // Start turn 2 immediately — should be rejected because running=true
-    const turn2 = agent.runTurn('second prompt', (e) => events2.push(e))
+    // A second turn on the SAME conversation must be rejected.
+    const turn2 = agent.runTurn('c1', 'second prompt', (e) => events2.push(e))
 
-    // Allow microtasks to flush
     await Promise.resolve()
     await Promise.resolve()
 
-    // turn2 should have received a done event with an error
     expect(events2).toHaveLength(1)
     expect(events2[0]).toMatchObject({
       kind: 'done',
       error: expect.stringContaining('already in progress')
     })
 
-    // Release turn1 and wait for everything to settle
     _releaseTurn!()
     _turnGate.held = null
     await turn1
     await turn2
+  })
+
+  it('allows concurrent turns on different conversations', async () => {
+    _turnGate.held = new Promise<void>((resolve) => { _releaseTurn = resolve })
+
+    const { AgentService } = await import('./agent')
+    vi.spyOn(await import('./tools'), 'buildOfficerTools').mockReturnValue([])
+
+    const deps = {
+      toolDeps: () => ({
+        axitools: {} as never,
+        gw2: {} as never,
+        discordGuildId: () => '1',
+        gw2GuildId: () => 'g1',
+        axiforge: {} as never,
+        axiforgeLauncher: { ensureRunning: async () => {} },
+        axibridge: () => ({}) as never
+      }),
+      config: () => ({
+        provider: 'claude' as const,
+        model: null,
+        oauthToken: null,
+        apiKey: null,
+        endpoint: null
+      }),
+      confirm: vi.fn().mockResolvedValue(true),
+      loadSession: () => ({}),
+      saveSession: vi.fn()
+    }
+    const agent = new AgentService(deps)
+
+    const eventsB: import('./agent').AgentEvent[] = []
+    const turnA = agent.runTurn('cA', 'a', () => {})
+    const turnB = agent.runTurn('cB', 'b', (e) => eventsB.push(e))
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // cB was NOT rejected — no early "already in progress" done event.
+    expect(eventsB).toHaveLength(0)
+
+    _releaseTurn!()
+    _turnGate.held = null
+    await turnA
+    await turnB
+  })
+})
+
+describe('AgentService persistence', () => {
+  it('persists the conversation session after a turn completes', async () => {
+    const { AgentService } = await import('./agent')
+    vi.spyOn(await import('./tools'), 'buildOfficerTools').mockReturnValue([])
+
+    const saveSession = vi.fn()
+    const deps = {
+      toolDeps: () => ({
+        axitools: {} as never,
+        gw2: {} as never,
+        discordGuildId: () => '1',
+        gw2GuildId: () => 'g1',
+        axiforge: {} as never,
+        axiforgeLauncher: { ensureRunning: async () => {} },
+        axibridge: () => ({}) as never
+      }),
+      config: () => ({
+        provider: 'claude' as const,
+        model: null,
+        oauthToken: null,
+        apiKey: null,
+        endpoint: null
+      }),
+      confirm: vi.fn().mockResolvedValue(true),
+      loadSession: () => ({}),
+      saveSession
+    }
+    const agent = new AgentService(deps)
+    await agent.runTurn('c9', 'hello', () => {})
+    expect(saveSession).toHaveBeenCalledWith('c9', 'claude', expect.any(Object))
   })
 })
