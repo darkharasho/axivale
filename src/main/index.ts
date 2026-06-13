@@ -136,7 +136,10 @@ app.whenReady().then(async () => {
     repos: () => listLinkedRepos(store.getSetting('axibridgeRepos')),
     client: axibridgeClient,
     cache: axibridgeCache,
-    summarize: (jobs) => summarizeResilient(jobs),
+    // Pass the worker path explicitly: summarizeResilient lives in a module that
+    // electron-vite code-splits into out/main/chunks/, so its own import.meta.url
+    // resolves to the wrong dir. __dirname here is out/main, where the worker emits.
+    summarize: (jobs) => summarizeResilient(jobs, join(__dirname, 'axibridgeWorker.js')),
     onProgress: (message) => {
       const win = mainWindow
       if (win && !win.isDestroyed()) win.webContents.send('axibridge:progress', message)
