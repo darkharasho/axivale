@@ -778,7 +778,7 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
           style={{
             marginTop: '1.5rem',
             paddingTop: '1.25rem',
-            paddingBottom: '1.5rem',
+            paddingBottom: '2.5rem',
             borderTop: '1px dashed var(--rule)'
           }}
         >
