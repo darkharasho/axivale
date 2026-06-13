@@ -91,6 +91,105 @@ function EarSwitcher({
   )
 }
 
+interface Gw2Guild {
+  id: string
+  name: string
+  tag: string
+  leader: boolean
+}
+
+/**
+ * Quick-switch dropdown for the active GW2 guild. Shows the saved guild name
+ * when closed; on open it validates the active GW2 key to list the user's
+ * guilds and switches the `gw2GuildId` setting in place — no Settings detour.
+ */
+export function Gw2GuildSwitcher({ onSwitched }: { onSwitched: () => void }): ReactElement {
+  const [open, setOpen] = useState(false)
+  const [display, setDisplay] = useState<string>('no guild')
+  const [currentId, setCurrentId] = useState<string | null>(null)
+  const [guilds, setGuilds] = useState<Gw2Guild[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const ref = useRef<HTMLSpanElement>(null)
+
+  async function refresh(): Promise<void> {
+    const name = await window.officer.getSetting('gw2GuildName')
+    setDisplay(name ?? 'no guild')
+    setCurrentId(await window.officer.getSetting('gw2GuildId'))
+  }
+
+  useEffect(() => {
+    void refresh()
+  }, [])
+
+  async function toggle(): Promise<void> {
+    if (open) {
+      setOpen(false)
+      return
+    }
+    setGuilds(null)
+    setError(null)
+    setOpen(true)
+    const res = await window.officer.validateGw2Key()
+    if (res.ok && res.info) {
+      setGuilds((res.info as { guilds: Gw2Guild[] }).guilds ?? [])
+    } else {
+      setError(res.error ?? 'no GW2 key')
+    }
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  async function pick(g: Gw2Guild): Promise<void> {
+    const text = g.name + (g.tag ? ` [${g.tag}]` : '')
+    setOpen(false)
+    await window.officer.setSetting('gw2GuildId', g.id)
+    await window.officer.setSetting('gw2GuildName', text)
+    setDisplay(text)
+    setCurrentId(g.id)
+    onSwitched()
+  }
+
+  return (
+    <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
+      <button className="earsw-btn" onClick={() => void toggle()}>
+        {display}
+        <span className="earsw-caret">▾</span>
+      </button>
+      {open && (
+        <div className="earsw-menu left">
+          {error ? (
+            <div className="earsw-empty">{error}</div>
+          ) : guilds === null ? (
+            <div className="earsw-empty">loading…</div>
+          ) : guilds.length === 0 ? (
+            <div className="earsw-empty">no guilds</div>
+          ) : (
+            guilds.map((g) => (
+              <button
+                key={g.id}
+                className={`earsw-opt${g.id === currentId ? ' sel' : ''}`}
+                onClick={() => void pick(g)}
+              >
+                {g.name}
+                {g.tag ? ` [${g.tag}]` : ''}
+                {g.leader ? ' ★' : ''}
+                {g.id === currentId && <span className="dot">●</span>}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </span>
+  )
+}
+
 export default function Masthead(props: MastheadProps): ReactElement {
   const {
     issueNo,
@@ -153,6 +252,9 @@ export default function Masthead(props: MastheadProps): ReactElement {
               align="left"
               onSwitched={onSwitched}
             />
+          </div>
+          <div>
+            <b>GW2 Guild</b> <Gw2GuildSwitcher onSwitched={onSwitched} />
           </div>
         </div>
         <div className="title">

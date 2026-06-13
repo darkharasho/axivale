@@ -377,6 +377,10 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   async function pickGw2Guild(id: string): Promise<void> {
     setGw2GuildId(id)
     await window.officer.setSetting('gw2GuildId', id)
+    // Persist a display name too so the masthead switcher can show the active
+    // guild without a network round-trip on load.
+    const g = gw2Info?.guilds.find((guild) => guild.id === id)
+    if (g) await window.officer.setSetting('gw2GuildName', g.name + (g.tag ? ` [${g.tag}]` : ''))
     onChanged()
   }
 

@@ -14,6 +14,7 @@ export type SecretKey =
 export type SettingKey =
   | 'guildId'
   | 'gw2GuildId'
+  | 'gw2GuildName'
   | 'gw2AccountName'
   | 'model'
   | 'gw2ActiveKey'
