@@ -225,7 +225,7 @@ td.nm2{color:var(--ink)}
 .filebtn:disabled{opacity:.4;cursor:default}
 .filebtn.stop{background:transparent;color:var(--accent-b);outline-color:var(--accent-b)}
 .filebtn.stop:hover{background:var(--accent);color:#fff}
-.folio-act{margin-left:16px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:1px dashed var(--rule2);padding:4px 10px;cursor:pointer}
+.folio-act{align-self:center;margin-left:16px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:1px dashed var(--rule2);padding:4px 10px;cursor:pointer}
 .folio-act:hover{color:var(--ink);border-color:var(--accent-b)}
 /* axibridge fetch progress — faint ticker above the input */
 .bridge-progress{padding:4px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border-top:1px dashed var(--rule);background:var(--bg2)}
