@@ -18,9 +18,21 @@ contextBridge.exposeInMainWorld('officer', {
     ipcRenderer.invoke('github:auth-complete', deviceCode, interval, expiresIn),
   githubDiscoverRepos: () => ipcRenderer.invoke('github:discover-repos'),
   forgeCatalogUpgrades: () => ipcRenderer.invoke('axiforge:catalog-upgrades'),
-  sendMessage: (text: string) => ipcRenderer.invoke('agent:send', text),
-  resetSession: () => ipcRenderer.invoke('agent:reset'),
-  cancelTurn: () => ipcRenderer.invoke('agent:cancel'),
+  sendMessage: (conversationId: string, text: string) =>
+    ipcRenderer.invoke('agent:send', conversationId, text),
+  resetSession: (conversationId: string) => ipcRenderer.invoke('agent:reset', conversationId),
+  cancelTurn: (conversationId: string) => ipcRenderer.invoke('agent:cancel', conversationId),
+  listConversations: () => ipcRenderer.invoke('conversations:list'),
+  getConversation: (id: string) => ipcRenderer.invoke('conversations:get', id),
+  createConversation: (seed?: unknown) => ipcRenderer.invoke('conversations:create', seed),
+  saveTurns: (id: string, turns: unknown) =>
+    ipcRenderer.invoke('conversations:save-turns', id, turns),
+  renameConversation: (id: string, title: string | null) =>
+    ipcRenderer.invoke('conversations:rename', id, title),
+  deleteConversation: (id: string) => ipcRenderer.invoke('conversations:delete', id),
+  setActiveConversation: (id: string) => ipcRenderer.invoke('conversations:set-active', id),
+  markConversationSeen: (id: string, count: number) =>
+    ipcRenderer.invoke('conversations:mark-seen', id, count),
   onAgentEvent: (cb: (event: unknown) => void) => {
     const listener = (_e: unknown, event: unknown): void => cb(event)
     ipcRenderer.on('agent:event', listener)

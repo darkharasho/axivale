@@ -29,6 +29,8 @@ import {
 } from './githubAuth'
 import { discoverReportRepos } from './githubRepos'
 import { AgentService } from './agent'
+import { ConversationStore, type Conversation } from './conversationStore'
+import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
 
@@ -88,6 +90,8 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   const store = new SettingsStore(join(app.getPath('userData'), 'settings.json'), await electronCipher())
+
+  const conversations = new ConversationStore(join(app.getPath('userData'), 'conversations.json'))
 
   const buildAxitools = (): AxitoolsClient => {
     const parsed = parseAxivaleKey(store.getActiveKey('axivale') ?? '')
@@ -171,6 +175,10 @@ app.whenReady().then(async () => {
       axibridge: () => axibridge
     }),
     config: providerConfig,
+    loadSession: (conversationId: string): SessionState =>
+      conversations.get(conversationId)?.session ?? {},
+    saveSession: (conversationId, provider, session) =>
+      conversations.saveSession(conversationId, provider, session),
     confirm: (toolName, input) =>
       new Promise<boolean>((resolve) => {
         const win = mainWindow
@@ -434,9 +442,11 @@ app.whenReady().then(async () => {
     return client[method](guildId, ...args)
   })
 
-  ipcMain.handle('agent:send', async (event, prompt: string) => {
-    await agent.runTurn(prompt, (agentEvent) => {
-      if (!event.sender.isDestroyed()) event.sender.send('agent:event', agentEvent)
+  ipcMain.handle('agent:send', async (event, conversationId: string, prompt: string) => {
+    await agent.runTurn(conversationId, prompt, (agentEvent) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('agent:event', { ...agentEvent, conversationId })
+      }
     })
   })
 
@@ -445,14 +455,36 @@ app.whenReady().then(async () => {
     pendingConfirms.clear()
   }
 
-  ipcMain.handle('agent:reset', () => {
+  ipcMain.handle('agent:reset', (_event, conversationId: string) => {
     drainConfirms()
-    agent.resetSession()
+    agent.resetSession(conversationId)
   })
 
-  ipcMain.handle('agent:cancel', () => {
+  ipcMain.handle('agent:cancel', (_event, conversationId: string) => {
     drainConfirms()
-    agent.cancelTurn()
+    agent.cancelTurn(conversationId)
+  })
+
+  ipcMain.handle('conversations:list', () => conversations.list())
+  ipcMain.handle('conversations:get', (_event, id: string) => conversations.get(id))
+  ipcMain.handle('conversations:create', (_event, seed?: Partial<Conversation>) =>
+    conversations.create(seed)
+  )
+  ipcMain.handle('conversations:save-turns', (_event, id: string, turns: Conversation['turns']) => {
+    conversations.saveTurns(id, turns)
+  })
+  ipcMain.handle('conversations:rename', (_event, id: string, title: string | null) => {
+    conversations.rename(id, title)
+  })
+  ipcMain.handle('conversations:delete', (_event, id: string) => {
+    conversations.remove(id)
+    agent.resetSession(id)
+  })
+  ipcMain.handle('conversations:set-active', (_event, id: string) => {
+    conversations.setActive(id)
+  })
+  ipcMain.handle('conversations:mark-seen', (_event, id: string, count: number) => {
+    conversations.markSeen(id, count)
   })
 
   setupUpdater(() => mainWindow)

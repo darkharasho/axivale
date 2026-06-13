@@ -1,3 +1,19 @@
+export interface RendererSessionState {
+  claudeSessionId?: string
+  history?: unknown[]
+}
+
+export interface RendererConversation {
+  id: string
+  title: string | null
+  createdAt: string
+  updatedAt: string
+  turns: unknown[]
+  provider: 'claude' | 'gemini' | 'openai' | 'local'
+  session: RendererSessionState
+  seenTurnCount: number
+}
+
 export interface OfficerApi {
   getSetting(key: string): Promise<string | null>
   setSetting(key: string, value: string): Promise<void>
@@ -62,9 +78,17 @@ export interface OfficerApi {
     repos?: Array<{ owner: string; repo: string }>
     error?: string
   }>
-  sendMessage(text: string): Promise<void>
-  resetSession(): Promise<void>
-  cancelTurn(): Promise<void>
+  sendMessage(conversationId: string, text: string): Promise<void>
+  resetSession(conversationId: string): Promise<void>
+  cancelTurn(conversationId: string): Promise<void>
+  listConversations(): Promise<RendererConversation[]>
+  getConversation(id: string): Promise<RendererConversation | null>
+  createConversation(seed?: Partial<RendererConversation>): Promise<RendererConversation>
+  saveTurns(id: string, turns: unknown[]): Promise<void>
+  renameConversation(id: string, title: string | null): Promise<void>
+  deleteConversation(id: string): Promise<void>
+  setActiveConversation(id: string): Promise<void>
+  markConversationSeen(id: string, count: number): Promise<void>
   onAgentEvent(cb: (event: unknown) => void): () => void
   onConfirmRequest(cb: (req: unknown) => void): () => void
   respondConfirm(id: string, allowed: boolean): void
