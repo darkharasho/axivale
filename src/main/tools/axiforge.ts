@@ -217,6 +217,33 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
       safe(async ({ url }) => write(() => deps.axiforge.importGw2skills(url)))
     ),
     tool(
+      'gw2skills_parse',
+      'Decode a gw2skills.net editor link into a structured build WITHOUT saving it — use this to explain, critique, or compare a build the user pasted. Returns the full build (profession, traits, skills, gear, runes/sigils/infusions, food, relic). Read-only; nothing is written to AxiForge. To actually rebuild the link in AxiForge instead, use axiforge_import_gw2skills. Parsing needs AxiForge\'s catalog, so it starts AxiForge headless if it is closed. The user sees a build card for the parsed build; images (if any) are stripped from the model-visible JSON.',
+      {
+        url: z.string().describe('gw2skills.net editor URL'),
+        game_mode: z
+          .enum(['pve', 'wvw', 'pvp'])
+          .optional()
+          .describe('Fallback game mode if the link does not specify one (the link usually does)')
+      },
+      safeRich(async ({ url, game_mode }) => {
+        const build = (await write(() =>
+          deps.axiforge.parseGw2Skills(game_mode ? { url, gameMode: game_mode } : { url })
+        )) as Record<string, unknown>
+        // Model gets the image-stripped build; the card renders the full one.
+        return {
+          value: stripImages(build),
+          display: { kind: 'build-card', data: { build } }
+        }
+      })
+    ),
+    tool(
+      'axiforge_build_chat_link',
+      'Generate the in-game build template chat code for an AxiForge build. The user can paste this code in Guild Wars 2 to load the build, or into gw2skills.net to view it. Read-only. Returns { chatLink }.',
+      { build_id: z.string().describe('Build id from axiforge_builds_list') },
+      safe(async ({ build_id }) => write(() => deps.axiforge.buildChatLink(build_id)))
+    ),
+    tool(
       'axiforge_catalog',
       'Look up current GW2 profession/specialization/trait/skill/upgrade data from AxiForge’s catalog. ALWAYS ground build edits in this (and gw2_api) instead of memory — balance patches invalidate training data. kind "professions" lists all professions; "profession" needs profession_id (e.g. Guardian) and optional game_mode (pve/wvw/pvp) for its full spec/trait/skill data; "upgrades" lists runes/sigils/relics.',
       {

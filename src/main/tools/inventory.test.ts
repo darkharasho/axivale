@@ -25,6 +25,7 @@ describe('tools module split', () => {
       'axibridge_repos_status',
       'axibridge_run_summary',
       'axibridge_runs_list',
+      'axiforge_build_chat_link',
       'axiforge_build_publish',
       'axiforge_builds_delete',
       'axiforge_builds_get',
@@ -61,7 +62,8 @@ describe('tools module split', () => {
       'gw2_account_info',
       'gw2_api',
       'gw2_guild_log',
-      'gw2_guild_members'
+      'gw2_guild_members',
+      'gw2skills_parse'
     ])
   })
 

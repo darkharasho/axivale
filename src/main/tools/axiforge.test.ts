@@ -27,7 +27,15 @@ function makeDeps(): ToolDeps {
       importGw2skills: vi.fn().mockResolvedValue({ id: 'b10', title: 'Imported 2' }),
       catalogProfessions: vi.fn().mockResolvedValue([{ id: 'Guardian' }]),
       catalogProfession: vi.fn().mockResolvedValue({ id: 'Guardian', specializations: [] }),
-      catalogUpgrades: vi.fn().mockResolvedValue([{ id: 24836 }])
+      catalogUpgrades: vi.fn().mockResolvedValue([{ id: 24836 }]),
+      buildChatLink: vi.fn().mockResolvedValue({ chatLink: '[&DQEK...]' }),
+      parseGw2Skills: vi.fn().mockResolvedValue({
+        title: 'Parsed Build',
+        profession: 'Guardian',
+        gameMode: 'wvw',
+        equipment: {},
+        images: { icon: 'data:image/png;base64,abc123' }
+      })
     } as never,
     axiforgeLauncher: { ensureRunning: vi.fn().mockResolvedValue(undefined) },
     axibridge: () => ({}) as never
@@ -39,7 +47,7 @@ function find(deps: ToolDeps, name: string) {
 }
 
 describe('axiforge tools', () => {
-  it('registers all 13 axiforge tools', () => {
+  it('registers all 15 axiforge tools', () => {
     const names = buildOfficerTools(makeDeps()).map((t) => t.name)
     for (const n of [
       'axiforge_builds_list',
@@ -54,6 +62,8 @@ describe('axiforge tools', () => {
       'axiforge_comp_publish',
       'axiforge_import_chat_link',
       'axiforge_import_gw2skills',
+      'gw2skills_parse',
+      'axiforge_build_chat_link',
       'axiforge_catalog'
     ]) {
       expect(names).toContain(n)
@@ -287,5 +297,87 @@ describe('axiforge tools', () => {
     expect(deps.axiforgeLauncher.ensureRunning).not.toHaveBeenCalled()
     expect(result.isError).toBe(true)
     expect((result.content[0] as { text: string }).text).toContain('Something went wrong')
+  })
+
+  describe('gw2skills_parse', () => {
+    it('returns the parsed build (images stripped) and attaches a build-card display', async () => {
+      const deps = makeDeps()
+      const result = await find(deps, 'gw2skills_parse').handler(
+        { url: 'http://gw2skills.net/editor/?abc', game_mode: 'wvw' },
+        {}
+      )
+      expect(deps.axiforge.parseGw2Skills).toHaveBeenCalledWith({
+        url: 'http://gw2skills.net/editor/?abc',
+        gameMode: 'wvw'
+      })
+      const text = (result.content[0] as { text: string }).text
+      expect(text).not.toContain('data:image/')
+      const parsed = JSON.parse(text)
+      expect(parsed.profession).toBe('Guardian')
+      expect(parsed.images).toBeUndefined()
+      expect(parsed.imageKeys).toEqual(['icon'])
+      // Full build (images intact) goes to the card.
+      expect(result.display).toMatchObject({ kind: 'build-card' })
+      expect(result.isError).toBeUndefined()
+    })
+
+    it('omits game_mode from the client call when not provided', async () => {
+      const deps = makeDeps()
+      await find(deps, 'gw2skills_parse').handler({ url: 'http://gw2skills.net/editor/?abc' }, {})
+      expect(deps.axiforge.parseGw2Skills).toHaveBeenCalledWith({ url: 'http://gw2skills.net/editor/?abc' })
+    })
+
+    it('auto-spawns AxiForge and retries once when it is closed (parse needs the catalog)', async () => {
+      const deps = makeDeps()
+      ;(deps.axiforge.parseGw2Skills as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(new AxiforgeNotRunningError())
+        .mockResolvedValueOnce({ title: 'Parsed', profession: 'Guardian', equipment: {} })
+      const result = await find(deps, 'gw2skills_parse').handler(
+        { url: 'http://gw2skills.net/editor/?abc' },
+        {}
+      )
+      expect(deps.axiforgeLauncher.ensureRunning).toHaveBeenCalledTimes(1)
+      expect(deps.axiforge.parseGw2Skills).toHaveBeenCalledTimes(2)
+      expect(result.isError).toBeUndefined()
+    })
+
+    it('never throws: a parse error comes back as an error result', async () => {
+      const deps = makeDeps()
+      ;(deps.axiforge.parseGw2Skills as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new AxiforgeError("Couldn't read that gw2skills link")
+      )
+      const result = await find(deps, 'gw2skills_parse').handler({ url: 'http://bad' }, {})
+      expect(result.isError).toBe(true)
+      expect((result.content[0] as { text: string }).text).toContain('gw2skills link')
+    })
+
+    it('is not destructive', () => {
+      expect(DESTRUCTIVE_TOOLS).not.toContain('gw2skills_parse')
+    })
+  })
+
+  describe('axiforge_build_chat_link', () => {
+    it('returns the chat link for a build id', async () => {
+      const deps = makeDeps()
+      const result = await find(deps, 'axiforge_build_chat_link').handler({ build_id: 'b1' }, {})
+      expect(deps.axiforge.buildChatLink).toHaveBeenCalledWith('b1')
+      const parsed = JSON.parse((result.content[0] as { text: string }).text)
+      expect(parsed.chatLink).toBe('[&DQEK...]')
+      expect(result.isError).toBeUndefined()
+    })
+
+    it('surfaces an unknown-build error as an error result (never throws)', async () => {
+      const deps = makeDeps()
+      ;(deps.axiforge.buildChatLink as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new AxiforgeError('Build not found: nope')
+      )
+      const result = await find(deps, 'axiforge_build_chat_link').handler({ build_id: 'nope' }, {})
+      expect(result.isError).toBe(true)
+      expect((result.content[0] as { text: string }).text).toContain('Build not found')
+    })
+
+    it('is not destructive', () => {
+      expect(DESTRUCTIVE_TOOLS).not.toContain('axiforge_build_chat_link')
+    })
   })
 })
