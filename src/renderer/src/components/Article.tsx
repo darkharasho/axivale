@@ -35,21 +35,28 @@ async function copyArticleAsImage(node: HTMLElement): Promise<void> {
 
   let blob: Blob | undefined
   try {
-    void node.offsetWidth // force reflow so scrollWidth reflects expanded figures
-    // Size the capture to the full content width and add padding OUTSIDE it
-    // (content-box) so nothing is clipped — border-box would shrink the content
-    // area and cut text off.
-    const contentWidth = node.scrollWidth
+    void node.offsetWidth // force reflow so scroll size reflects expanded figures
+    // modern-screenshot sizes the output canvas from the element's bounding box,
+    // not from a style.width override — so we must pass explicit width/height
+    // equal to the full scroll extent (+ padding) or wide tables clip on the
+    // right. border-box width = canvas size means padding sits inside, leaving
+    // exactly scrollWidth/scrollHeight of content area.
+    const PADX = 36
+    const PADY = 32
+    const w = node.scrollWidth + PADX * 2
+    const h = node.scrollHeight + PADY * 2
 
     blob = await domToBlob(node, {
       type: 'image/png',
       backgroundColor: bgColor,
       scale: 2,
-      // Breathing room around the clipping so text isn't flush to the edges.
+      width: w,
+      height: h,
       style: {
-        padding: '32px 36px',
-        boxSizing: 'content-box',
-        width: `${contentWidth}px`,
+        padding: `${PADY}px ${PADX}px`,
+        boxSizing: 'border-box',
+        width: `${w}px`,
+        height: `${h}px`,
         maxWidth: 'none'
       },
       // Exclude the copy button from the capture
