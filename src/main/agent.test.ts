@@ -131,7 +131,8 @@ describe('AgentService turn serialization', () => {
         discordGuildId: () => '1',
         gw2GuildId: () => 'g1',
         axiforge: {} as never,
-        axiforgeLauncher: { ensureRunning: async () => {} }
+        axiforgeLauncher: { ensureRunning: async () => {} },
+        axibridge: () => ({}) as never
       }),
       config: () => ({
         provider: 'claude' as const,

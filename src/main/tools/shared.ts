@@ -1,6 +1,7 @@
 import type { AxitoolsClient } from '../axitoolsClient'
 import type { Gw2Client } from '../gw2Client'
 import type { AxiforgeClient } from '../axiforgeClient'
+import type { AxibridgeService } from '../axibridgeService'
 import type { DisplayPayload } from '../providers/types'
 
 /** Structural launcher type so tests stub one method instead of the whole class. */
@@ -19,6 +20,8 @@ export interface ToolDeps {
   axiforge: AxiforgeClient
   /** Spawns headless AxiForge when a write needs it. */
   axiforgeLauncher: AxiforgeLauncherLike
+  /** AxiBridge analytics service, resolved per-call so repos/PAT stay fresh from settings. */
+  axibridge: () => AxibridgeService
 }
 
 export interface ToolResult {

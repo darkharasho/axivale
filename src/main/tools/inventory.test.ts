@@ -7,7 +7,8 @@ const deps: ToolDeps = {
   discordGuildId: () => '1',
   gw2GuildId: () => 'g1',
   axiforge: {} as never,
-  axiforgeLauncher: { ensureRunning: async () => {} }
+  axiforgeLauncher: { ensureRunning: async () => {} },
+  axibridge: () => ({}) as never
 }
 
 describe('tools module split', () => {
@@ -16,6 +17,14 @@ describe('tools module split', () => {
       .map((t) => t.name)
       .sort()
     expect(names).toEqual([
+      'axibridge_attendance',
+      'axibridge_commander_stats',
+      'axibridge_compare',
+      'axibridge_player_stats',
+      'axibridge_render_chart',
+      'axibridge_repos_status',
+      'axibridge_run_summary',
+      'axibridge_runs_list',
       'axiforge_build_publish',
       'axiforge_builds_delete',
       'axiforge_builds_get',

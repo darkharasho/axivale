@@ -14,6 +14,11 @@ import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
 import { AxiforgeClient, forgeDataDir } from './axiforgeClient'
 import { AxiAppLauncher } from './axiAppLauncher'
+import { AxibridgeClient } from './axibridgeClient'
+import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridgeCache'
+import { AxibridgeService } from './axibridgeService'
+import { listLinkedRepos } from './axibridgeRepos'
+import { summarizeInWorker } from './axibridgeSummarize'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
 import { AgentService } from './agent'
 import { setupUpdater } from './updater'
@@ -77,6 +82,26 @@ app.whenReady().then(async () => {
   })
   const axiforgeLauncher = new AxiAppLauncher(axiforge, axiforgeDataDir)
 
+  // AxiBridge analytics: one client/cache/service for the app's lifetime; the
+  // service reads linked repos and the GitHub PAT fresh from settings on every
+  // call, so connecting a repo in Settings takes effect without a restart.
+  const axibridgeClient = new AxibridgeClient(() => store.getActiveKey('github'))
+  const axibridgeCache = new AxibridgeCache({
+    dir: join(app.getPath('userData'), 'axibridge-cache'),
+    capBytes: Number(store.getSetting('axibridgeCacheCapBytes')) || DEFAULT_CACHE_CAP_BYTES,
+    ttlMs: META_TTL_MS
+  })
+  const axibridge = new AxibridgeService({
+    repos: () => listLinkedRepos(store.getSetting('axibridgeRepos')),
+    client: axibridgeClient,
+    cache: axibridgeCache,
+    summarize: (jobs) => summarizeInWorker(jobs),
+    onProgress: (message) => {
+      const win = mainWindow
+      if (win && !win.isDestroyed()) win.webContents.send('axibridge:progress', message)
+    }
+  })
+
   const PROVIDER_MODEL_SETTING: Record<ProviderName, SettingKey> = {
     claude: 'model',
     gemini: 'geminiModel',
@@ -105,7 +130,8 @@ app.whenReady().then(async () => {
       discordGuildId: () => store.getSetting('guildId') ?? '',
       gw2GuildId: () => store.getSetting('gw2GuildId') ?? '',
       axiforge,
-      axiforgeLauncher
+      axiforgeLauncher,
+      axibridge: () => axibridge
     }),
     config: providerConfig,
     confirm: (toolName, input) =>
