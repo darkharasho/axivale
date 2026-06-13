@@ -22,6 +22,8 @@ async function copyArticleAsImage(node: HTMLElement): Promise<void> {
     type: 'image/png',
     backgroundColor: bgColor,
     scale: 2,
+    // Breathing room around the clipping so text isn't flush to the edges.
+    style: { padding: '32px 36px', boxSizing: 'border-box' },
     // Exclude the copy button from the capture
     filter: (el: Node) => {
       if (el instanceof HTMLElement && el.dataset.copyBtn === '1') return false
