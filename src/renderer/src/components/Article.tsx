@@ -1,16 +1,55 @@
-import type { ReactElement } from 'react'
+import { useRef, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Camera, Check, X } from 'lucide-react'
 import type { Turn } from '../state'
 import { rehypeEmojiIcons } from './rehypeEmojiIcons'
 import { renderEmojiSpan } from './emojiIcons'
 import { splitHeadline, stripMarkdown } from './headline'
 import WireThinking from './WireThinking'
 
+type CopyState = 'idle' | 'ok' | 'err'
+
+async function copyArticleAsImage(node: HTMLElement): Promise<void> {
+  // dynamic import so the library only loads when used
+  const { domToBlob } = await import('modern-screenshot')
+
+  const bgColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--bg')
+    .trim() || '#16171a'
+
+  const blob = await domToBlob(node, {
+    type: 'image/png',
+    backgroundColor: bgColor,
+    scale: 2,
+    // Exclude the copy button from the capture
+    filter: (el: Node) => {
+      if (el instanceof HTMLElement && el.dataset.copyBtn === '1') return false
+      return true
+    }
+  })
+
+  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob! })])
+}
+
 export default function Article({ turn }: { turn: Turn }): ReactElement {
   const { headline, rest } = splitHeadline(turn.agentText)
   const thinking = !turn.done && turn.agentText.trim() === ''
   const streaming = !turn.done && turn.agentText.trim() !== ''
+  const articleRef = useRef<HTMLDivElement>(null)
+  const [copyState, setCopyState] = useState<CopyState>('idle')
+
+  function handleCopy(): void {
+    if (!articleRef.current || copyState !== 'idle') return
+    copyArticleAsImage(articleRef.current).then(() => {
+      setCopyState('ok')
+      setTimeout(() => setCopyState('idle'), 1500)
+    }).catch(() => {
+      setCopyState('err')
+      setTimeout(() => setCopyState('idle'), 1500)
+    })
+  }
+
   return (
     <>
       <div className="msg user">
@@ -22,11 +61,28 @@ export default function Article({ turn }: { turn: Turn }): ReactElement {
         <span className="lbl">AxiVale Reports</span>
         <span className="t"></span>
       </div>
-      <div className="msg off">
+      <div className="msg off" ref={articleRef} style={{ position: 'relative' }}>
         {thinking ? (
           <WireThinking />
         ) : (
           <>
+            {turn.done && (
+              <button
+                className="clip-img-btn"
+                data-copy-btn="1"
+                onClick={handleCopy}
+                aria-label="Copy article as image"
+                title="Copy as newspaper clipping"
+              >
+                {copyState === 'ok' ? (
+                  <Check size={12} />
+                ) : copyState === 'err' ? (
+                  <X size={12} />
+                ) : (
+                  <Camera size={12} />
+                )}
+              </button>
+            )}
             <div className="lede">{stripMarkdown(headline)}</div>
             <div className="byline">
               By <b>AxiVale</b> · filed {turn.filedAt} · {turn.tools.length} action

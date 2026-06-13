@@ -144,6 +144,11 @@ th{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;te
 td{padding:6px 18px 6px 0;font-size:13px;border-bottom:1px dotted var(--line);color:var(--ink-dim);vertical-align:top}
 td.nm2{color:var(--ink)}
 .endmark{color:var(--accent-b);font-size:13px}
+/* copy-as-image button — tucked in the top-right corner of the AI article */
+.clip-img-btn{position:absolute;top:0;right:0;display:flex;align-items:center;justify-content:center;width:22px;height:20px;background:none;border:none;color:var(--faint);cursor:pointer;padding:0;font-family:'IBM Plex Mono',monospace;line-height:1}
+.clip-img-btn:hover{color:var(--accent-b)}
+.clip-img-btn.ok{color:var(--green)}
+.clip-img-btn.err{color:var(--accent-b)}
 /* rich display blocks inside tool coupons */
 .rich{margin-top:6px}
 .rich .rich-title{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:8px}
