@@ -125,6 +125,18 @@ describe('AxiAppLauncher.ensureRunning', () => {
     expect(err.message).toMatch(/install/i)
   })
 
+  it('serializes concurrent ensureRunning calls — spawns only once', async () => {
+    const io = fakeIo({
+      readdirSync: vi.fn().mockImplementation((dir: string) =>
+        dir.endsWith('AppImages') ? ['AxiForge-1.4.0.AppImage'] : []
+      )
+    })
+    // health() fails twice (initial check for each caller), then succeeds after spawn
+    const launcher = new AxiAppLauncher(flakyClient(2), dataDir, io, { timeoutMs: 5000, pollMs: 10 })
+    await Promise.all([launcher.ensureRunning(), launcher.ensureRunning()])
+    expect(io.spawn).toHaveBeenCalledTimes(1)
+  })
+
   it('errors when the API never comes up within the timeout', async () => {
     const io = fakeIo({
       readdirSync: vi.fn().mockImplementation((dir: string) =>

@@ -97,6 +97,7 @@ export function resolveAxiforgeExe(dataDir: string, io: LauncherIo = defaultIo):
   }
   if (io.platform === 'win32') return resolveWindows(io)
   if (io.platform === 'linux') return resolveLinux(io)
+  // darwin: AxiForge is not distributed for macOS yet — detection intentionally omitted.
   return null
 }
 
@@ -106,6 +107,8 @@ export interface HealthCheckable {
 }
 
 export class AxiAppLauncher {
+  private startPromise: Promise<void> | null = null
+
   constructor(
     private readonly client: HealthCheckable,
     private readonly dataDir: string,
@@ -121,6 +124,11 @@ export class AxiAppLauncher {
     } catch (err) {
       if (!(err instanceof AxiforgeNotRunningError)) throw err
     }
+    this.startPromise ??= this.startAndWait().finally(() => { this.startPromise = null })
+    return this.startPromise
+  }
+
+  private async startAndWait(): Promise<void> {
     const exe = resolveAxiforgeExe(this.dataDir, this.io)
     if (!exe) {
       throw new AxiforgeError(
@@ -154,8 +162,8 @@ export class AxiAppLauncher {
       cwd: dirname(exe),
       env
     })
-    // Spawn errors (ENOENT, EACCES) surface as the poll timeout below.
-    child.on('error', () => {})
+    // Spawn errors (ENOENT, EACCES) are logged and surface to callers as the poll timeout below.
+    child.on('error', (err) => console.error('[axiforge-launch] spawn error:', err?.message || err))
     child.unref()
   }
 
