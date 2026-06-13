@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.174",
+    "@axiapps/bridge-metrics": "file:../axibridge/packages/bridge-metrics",
     "@axiapps/forge-render": "file:../axiforge/packages/forge-render",
     "electron-updater": "^6.8.9",
     "modern-screenshot": "^4.7.0",
