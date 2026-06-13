@@ -436,3 +436,28 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .deskset-body .slabel{margin-top:12px}
 .deskset-body .cfgdays{margin-bottom:12px}
 .deskset-body .cfgdays .spill{cursor:pointer}
+
+/* ---- Share controls ---- */
+/* Sits just left of the .clip-img-btn camera button (which is right:0, width:22px),
+   so right:26px clears it with a small gap. Mirrors .clip-img-btn sizing/colors. */
+.share-msg-btn{position:absolute;top:0;right:26px;display:flex;align-items:center;justify-content:center;width:18px;height:20px;background:none;border:none;color:var(--faint);cursor:pointer;padding:0;line-height:1}
+.share-msg-btn:hover{color:var(--accent-b)}
+
+/* ---- Share dialog ---- */
+.share-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1000}
+.share-dialog{background:var(--paper,#1d1e22);border:1px solid var(--rule);border-radius:4px;padding:22px 26px;width:min(560px,90vw);font-family:Georgia,serif}
+.share-dialog .kick{font-size:11px;text-transform:uppercase;letter-spacing:2px;opacity:.7;margin-bottom:8px}
+.share-dialog .h{font-size:20px;font-weight:700;margin-bottom:12px}
+.share-dialog-body{margin-bottom:16px}
+.share-url-row{display:flex;gap:8px}
+.share-url{flex:1;background:var(--bg,#16171a);border:1px solid var(--rule);color:var(--ink);padding:8px 10px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:12px}
+.share-dialog .errnotice{color:var(--accent-b)}
+.share-dialog-acts{display:flex;justify-content:flex-end}
+
+/* ---- Shared list in Settings ---- */
+.share-list{list-style:none;margin:8px 0 0;padding:0}
+.share-list-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--rule)}
+.share-list-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.share-list-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}
+.share-list-kind{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.6}
+.share-list-acts{display:flex;gap:8px;flex-shrink:0}
