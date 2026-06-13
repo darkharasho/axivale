@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
+import type { Turn } from './state'
+import type { RendererConversation } from '../../preload/index.d'
 
 // Minimal window.officer mock — every method the App constructor touches must
 // exist or the component will throw before we can assert anything.
@@ -104,10 +106,25 @@ vi.mock('./components/Settings', () => ({ default: () => null }))
 vi.mock('./components/Rails', () => ({
   RightRail: () => null
 }))
-vi.mock('./components/Editions', () => ({ default: () => null }))
+vi.mock('./components/Editions', () => ({
+  default: ({ onSelect }: { onSelect: (id: string) => void }) => (
+    <>
+      <button data-testid="select-c1" onClick={() => onSelect('c1')}>
+        open c1
+      </button>
+      <button data-testid="select-c2" onClick={() => onSelect('c2')}>
+        open c2
+      </button>
+    </>
+  )
+}))
 vi.mock('./components/InputBar', () => ({
-  default: ({ onSubmit }: { onSubmit: (t: string) => void }) => (
-    <button data-testid="submit-btn" onClick={() => onSubmit('hello')}>
+  default: ({ disabled, onSubmit }: { disabled: boolean; onSubmit: (t: string) => void }) => (
+    <button
+      data-testid="submit-btn"
+      data-disabled={disabled ? 'true' : 'false'}
+      onClick={() => onSubmit('hello')}
+    >
       send
     </button>
   )
@@ -200,5 +217,115 @@ describe('App bridgeProgress indicator', () => {
 
     // The indicator is gated on `running && bridgeProgress` — must not appear
     expect(screen.queryByText('fetching run 1 of 5')).toBeNull()
+  })
+})
+
+describe('App per-conversation accumulation + running tracking', () => {
+  let agentCb: (event: unknown) => void
+  let saveTurns: ReturnType<typeof vi.fn>
+
+  function conv(id: string, turns: unknown[] = []): RendererConversation {
+    return {
+      id,
+      title: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      turns,
+      provider: 'claude',
+      session: {},
+      seenTurnCount: 0
+    }
+  }
+
+  beforeEach(() => {
+    saveTurns = vi.fn().mockResolvedValue(undefined)
+    const conversations = [conv('c1'), conv('c2')]
+    const officer = makeOfficer({
+      listConversations: vi.fn().mockResolvedValue(conversations),
+      // c1 opens on mount; c2 opens on select. c2 starts empty on disk.
+      getConversation: vi.fn().mockImplementation((id: string) => Promise.resolve(conv(id))),
+      saveTurns,
+      onAgentEvent: vi.fn().mockImplementation((cb) => {
+        agentCb = cb
+        return () => {}
+      })
+    })
+    Object.defineProperty(window, 'officer', {
+      value: officer,
+      writable: true,
+      configurable: true
+    })
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('captures a backgrounded conversation transcript and resets running on switch', async () => {
+    await act(async () => {
+      render(<App />)
+    })
+
+    // Start a turn in the active conversation (c1) → running true.
+    const submitBtn = screen.getByTestId('submit-btn')
+    act(() => {
+      submitBtn.click()
+    })
+    expect(screen.getByTestId('submit-btn').getAttribute('data-disabled')).toBe('true')
+
+    // Switch to c2 (c1 still running in the background) → c2 has no in-flight
+    // turn, so the InputBar must become usable.
+    await act(async () => {
+      screen.getByTestId('select-c2').click()
+    })
+    expect(screen.getByTestId('submit-btn').getAttribute('data-disabled')).toBe('false')
+
+    // c1 streams + completes in the background; events carry its conversationId.
+    await act(async () => {
+      agentCb({ kind: 'text-delta', text: 'background reply', conversationId: 'c1' })
+      agentCb({ kind: 'done', sessionId: null, error: null, conversationId: 'c1' })
+    })
+
+    // Viewing c2: it is unaffected and input stays usable.
+    expect(screen.getByTestId('submit-btn').getAttribute('data-disabled')).toBe('false')
+
+    // Reopen c1 — its captured transcript shows the reply, and since the turn
+    // is now done, input is usable (no eternal spinner).
+    await act(async () => {
+      screen.getByTestId('select-c1').click()
+    })
+    expect(screen.getByTestId('submit-btn').getAttribute('data-disabled')).toBe('false')
+
+    // c1's transcript was persisted (debounced) with the reply text and done.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 350))
+    })
+    const c1Saves = saveTurns.mock.calls.filter((c) => c[0] === 'c1')
+    const lastC1 = c1Saves[c1Saves.length - 1][1] as Turn[]
+    expect(lastC1[lastC1.length - 1].agentText).toBe('background reply')
+    expect(lastC1[lastC1.length - 1].done).toBe(true)
+  })
+
+  it('disables input when reopening a conversation with an in-flight turn', async () => {
+    await act(async () => {
+      render(<App />)
+    })
+
+    // Start a turn in c1 → running true.
+    act(() => {
+      screen.getByTestId('submit-btn').click()
+    })
+    // Switch away to c2 → running false (c2 idle).
+    await act(async () => {
+      screen.getByTestId('select-c2').click()
+    })
+    expect(screen.getByTestId('submit-btn').getAttribute('data-disabled')).toBe('false')
+
+    // Reopen c1 — its live in-memory turn is still not done, so input disables.
+    // (openConversation keeps the live transcript rather than the empty disk one.)
+    await act(async () => {
+      screen.getByTestId('select-c1').click()
+    })
+    expect(screen.getByTestId('submit-btn').getAttribute('data-disabled')).toBe('true')
   })
 })

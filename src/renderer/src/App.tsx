@@ -48,15 +48,39 @@ function completedTurnCount(turns: Turn[]): number {
   return turns.filter((t) => t.done).length
 }
 
+function nextTurnId(turns: Turn[]): number {
+  return turns.reduce((m, t) => Math.max(m, t.id), 0) + 1
+}
+
+function lastTurnRunning(turns: Turn[] | undefined): boolean {
+  if (!turns || turns.length === 0) return false
+  return !turns[turns.length - 1].done
+}
+
+const AWAY_ERROR = 'This dispatch finished while you were away — reopen to continue.'
+
+// A disk-loaded transcript may contain a stub turn left mid-stream by a prior
+// session. With no live in-memory version, treat it as finished-while-away.
+function sanitizeLoadedTurns(turns: Turn[]): Turn[] {
+  return turns.map((t) => (t.done ? t : { ...t, done: true, error: t.error ?? AWAY_ERROR }))
+}
+
 export default function App(): ReactElement {
   const [conversations, setConversations] = useState<RendererConversation[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [turns, setTurns] = useState<Turn[]>([])
+  // Per-conversation transcripts. The center column shows turnsByConv[activeId].
+  const [turnsByConv, setTurnsByConv] = useState<Record<string, Turn[]>>({})
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
   const [section, setSection] = useState<Section>('dispatches')
   const [running, setRunning] = useState(false)
   const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
+
+  const turns = (activeId && turnsByConv[activeId]) || []
+  // Mirror of turnsByConv for handlers that need the current value without
+  // re-subscribing (event handler, openConversation running-check).
+  const turnsByConvRef = useRef(turnsByConv)
+  turnsByConvRef.current = turnsByConv
 
   // status surfaced in masthead / rails
   const [axiConnected, setAxiConnected] = useState(false)
@@ -66,10 +90,26 @@ export default function App(): ReactElement {
   const [providerNote, setProviderNote] = useState<string | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
-  const nextId = useRef(1)
   // The active id seen by event handlers (avoids stale closures in subscriptions).
   const activeIdRef = useRef<string | null>(null)
   activeIdRef.current = activeId
+  // Per-conversation debounce handles for save-turns, keyed by conversationId.
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  // Debounced, per-conversation persistence — never cross-writes between convs.
+  function scheduleSave(id: string, convTurns: Turn[]): void {
+    const timers = saveTimers.current
+    if (timers[id]) clearTimeout(timers[id])
+    timers[id] = setTimeout(() => {
+      delete timers[id]
+      void window.officer.saveTurns(id, convTurns)
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, turns: convTurns, updatedAt: new Date().toISOString() } : c
+        )
+      )
+    }, 300)
+  }
 
   const dateline =
     new Date().toLocaleDateString('en-US', {
@@ -110,9 +150,15 @@ export default function App(): ReactElement {
     const conv = await window.officer.getConversation(id)
     if (!conv) return
     setActiveId(id)
-    setTurns(conv.turns as Turn[])
-    nextId.current = (conv.turns as Turn[]).reduce((m, t) => Math.max(m, t.id), 0) + 1
+    // Prefer the live in-memory transcript (may be mid-stream); only load from
+    // disk when we have nothing for this conversation yet, sanitizing any stub
+    // turn left mid-stream by a prior session.
+    const live = turnsByConvRef.current[id] ?? sanitizeLoadedTurns(conv.turns as Turn[])
+    setTurnsByConv((prev) => (prev[id] ? prev : { ...prev, [id]: live }))
     void window.officer.setActiveConversation(id)
+    // Running reflects the conversation being viewed: live if its last turn is
+    // not done.
+    setRunning(lastTurnRunning(live))
     const seen = completedTurnCount(conv.turns as Turn[])
     void window.officer.markConversationSeen(id, seen)
     setFreshIds((prev) => {
@@ -155,26 +201,34 @@ export default function App(): ReactElement {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Subscribe once; fold events into the active conversation, flag background completions.
+  // Subscribe once; fold EVERY event into its own conversation's transcript so
+  // backgrounded turns finish in place. Uses refs to avoid stale closures.
   useEffect(() => {
     const offEvent = window.officer.onAgentEvent((raw) => {
       const event = raw as AgentEvent & { conversationId?: string }
       const convId = event.conversationId ?? activeIdRef.current
-      if (convId && convId === activeIdRef.current) {
-        setTurns((prev) => {
-          if (prev.length === 0) return prev
-          const last = prev[prev.length - 1]
-          const updated = applyEvent(last, event)
-          return [...prev.slice(0, -1), updated]
-        })
-        if (event.kind === 'done') {
+      if (!convId) return
+      const isActive = convId === activeIdRef.current
+
+      setTurnsByConv((prev) => {
+        const convTurns = prev[convId]
+        if (!convTurns || convTurns.length === 0) return prev
+        const last = convTurns[convTurns.length - 1]
+        const updated = [...convTurns.slice(0, -1), applyEvent(last, event)]
+        // Persist this conversation's transcript (debounced, keyed by convId).
+        scheduleSave(convId, updated)
+        return { ...prev, [convId]: updated }
+      })
+
+      if (event.kind === 'done') {
+        if (isActive) {
           setRunning(false)
           setBridgeProgress(null)
+        } else {
+          // Background conversation finished — flag it fresh, refresh the list.
+          setFreshIds((p) => new Set(p).add(convId))
+          void window.officer.listConversations().then(setConversations)
         }
-      } else if (event.kind === 'done' && convId) {
-        // Background conversation finished — mark it fresh and refresh the list.
-        setFreshIds((prev) => new Set(prev).add(convId))
-        void window.officer.listConversations().then(setConversations)
       }
     })
     const offConfirm = window.officer.onConfirmRequest((raw) => {
@@ -196,18 +250,13 @@ export default function App(): ReactElement {
     if (el) el.scrollTop = el.scrollHeight
   }, [turns])
 
-  // Persist the active conversation's turns (debounced) to the store.
+  // Clear any pending debounced saves on unmount.
   useEffect(() => {
-    if (!activeId) return
-    const id = activeId
-    const handle = setTimeout(() => {
-      void window.officer.saveTurns(id, turns)
-      setConversations((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, turns, updatedAt: new Date().toISOString() } : c))
-      )
-    }, 300)
-    return () => clearTimeout(handle)
-  }, [turns, activeId])
+    const timers = saveTimers.current
+    return () => {
+      for (const id of Object.keys(timers)) clearTimeout(timers[id])
+    }
+  }, [])
 
   async function newConversation(): Promise<void> {
     const provider = (await window.officer.getSetting('provider')) as
@@ -217,8 +266,7 @@ export default function App(): ReactElement {
     const list = await window.officer.listConversations()
     setConversations(list)
     setActiveId(created.id)
-    setTurns([])
-    nextId.current = 1
+    setTurnsByConv((prev) => ({ ...prev, [created.id]: [] }))
     setRunning(false)
     setConfirmQueue([])
     void window.officer.setActiveConversation(created.id)
@@ -232,16 +280,21 @@ export default function App(): ReactElement {
   function submit(text: string): void {
     if (!activeId) return
     const id = activeId
-    const turn: Turn = {
-      id: nextId.current++,
-      userText: text,
-      agentText: '',
-      tools: [],
-      done: false,
-      error: null,
-      filedAt: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-    }
-    setTurns((prev) => [...prev, turn])
+    setTurnsByConv((prev) => {
+      const convTurns = prev[id] ?? []
+      const turn: Turn = {
+        id: nextTurnId(convTurns),
+        userText: text,
+        agentText: '',
+        tools: [],
+        done: false,
+        error: null,
+        filedAt: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      }
+      const updated = [...convTurns, turn]
+      scheduleSave(id, updated)
+      return { ...prev, [id]: updated }
+    })
     setRunning(true)
     setBridgeProgress(null)
     void window.officer.sendMessage(id, text).catch(() => setRunning(false))
@@ -293,6 +346,16 @@ export default function App(): ReactElement {
             void window.officer.deleteConversation(id).then(async () => {
               const list = await window.officer.listConversations()
               setConversations(list)
+              if (saveTimers.current[id]) {
+                clearTimeout(saveTimers.current[id])
+                delete saveTimers.current[id]
+              }
+              setTurnsByConv((prev) => {
+                if (!(id in prev)) return prev
+                const next = { ...prev }
+                delete next[id]
+                return next
+              })
               if (id === activeId) {
                 const fallback = list[0]
                 if (fallback) await openConversation(fallback.id, list)
