@@ -43,7 +43,7 @@ export function buildGw2Tools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> 
     ),
     tool(
       'gw2_account_info',
-      'Validate the stored GW2 API key and return the account name, granted/missing key permissions, and guild ids.',
+      'Validate the stored GW2 API key and return the account name, granted/missing key permissions, and the account\'s guilds (id, name, tag, leader flag).',
       {},
       safe(async () => deps.gw2.accountInfo())
     ),

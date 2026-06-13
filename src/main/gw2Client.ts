@@ -3,12 +3,18 @@ const REQUIRED_PERMISSIONS = ['account', 'guilds'] as const
 
 export class Gw2Error extends Error {}
 
+export interface GuildRef {
+  id: string
+  name: string
+  tag: string
+  leader: boolean
+}
+
 export interface AccountInfo {
   accountName: string
   permissions: string[]
   missingPermissions: string[]
-  guilds: string[]
-  guildLeader: string[]
+  guilds: GuildRef[]
 }
 
 export interface GuildMember {
@@ -63,12 +69,24 @@ export class Gw2Client {
   async accountInfo(): Promise<AccountInfo> {
     const token = await this.get<{ permissions: string[] }>('/tokeninfo')
     const account = await this.get<{ name: string; guilds?: string[]; guild_leader?: string[] }>('/account')
+    const leaderIds = new Set(account.guild_leader ?? [])
+    // /guild/:id is public (name + tag); resolve in parallel and fall back to
+    // the raw id if a lookup fails so account info never breaks on one guild.
+    const guilds = await Promise.all(
+      (account.guilds ?? []).map(async (id): Promise<GuildRef> => {
+        try {
+          const g = await this.get<{ name?: string; tag?: string }>(`/guild/${id}`)
+          return { id, name: g.name ?? id, tag: g.tag ?? '', leader: leaderIds.has(id) }
+        } catch {
+          return { id, name: id, tag: '', leader: leaderIds.has(id) }
+        }
+      })
+    )
     return {
       accountName: account.name,
       permissions: token.permissions,
       missingPermissions: REQUIRED_PERMISSIONS.filter((p) => !token.permissions.includes(p)),
-      guilds: account.guilds ?? [],
-      guildLeader: account.guild_leader ?? []
+      guilds
     }
   }
 

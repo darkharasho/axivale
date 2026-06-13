@@ -42,7 +42,7 @@ function makeDeps(): ToolDeps {
       keyHolders: vi.fn().mockResolvedValue({ holders: { 'A.1': true }, matched: 1 })
     } as never,
     gw2: {
-      accountInfo: vi.fn().mockResolvedValue({ accountName: 'A.1', permissions: [], missingPermissions: [], guilds: [], guildLeader: [] }),
+      accountInfo: vi.fn().mockResolvedValue({ accountName: 'A.1', permissions: [], missingPermissions: [], guilds: [] }),
       guildMembers: vi.fn().mockResolvedValue([{ name: 'R.1', rank: 'Member', joined: null }]),
       guildLog: vi.fn().mockResolvedValue([]),
       apiGet: vi.fn().mockResolvedValue({ id: 1, name: 'Zojja' })

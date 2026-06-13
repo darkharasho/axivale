@@ -31,8 +31,7 @@ interface Gw2Info {
   accountName: string
   permissions: string[]
   missingPermissions: string[]
-  guilds: string[]
-  guildLeader: string[]
+  guilds: Array<{ id: string; name: string; tag: string; leader: boolean }>
 }
 
 interface AxiGuild {
@@ -549,14 +548,15 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
             </div>
             {gw2Info.guilds.length > 0 && (
               <div className="picker">
-                {gw2Info.guilds.map((id) => (
+                {gw2Info.guilds.map((g) => (
                   <button
-                    key={id}
-                    className={`pi${gw2GuildId === id ? ' sel' : ''}`}
-                    onClick={() => pickGw2Guild(id)}
+                    key={g.id}
+                    className={`pi${gw2GuildId === g.id ? ' sel' : ''}`}
+                    onClick={() => pickGw2Guild(g.id)}
                   >
-                    {id}
-                    {gw2Info.guildLeader.includes(id) && <span className="lead"> (leader)</span>}
+                    {g.name}
+                    {g.tag ? ` [${g.tag}]` : ''}
+                    {g.leader && <span className="lead"> (leader)</span>}
                   </button>
                 ))}
               </div>

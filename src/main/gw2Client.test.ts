@@ -19,21 +19,38 @@ describe('Gw2Client', () => {
     client = new Gw2Client('TEST-KEY')
   })
 
-  it('validates the key via tokeninfo + account', async () => {
+  it('validates the key via tokeninfo + account and resolves guild names/tags', async () => {
     mockFetch
       .mockResolvedValueOnce(jsonResponse({ id: 'x', name: 'officer', permissions: ['account', 'guilds'] }))
-      .mockResolvedValueOnce(jsonResponse({ name: 'Darkharasho.4621', guilds: ['G-1'], guild_leader: ['G-1'] }))
+      .mockResolvedValueOnce(
+        jsonResponse({ name: 'Darkharasho.4621', guilds: ['G-1', 'G-2'], guild_leader: ['G-1'] })
+      )
+      .mockResolvedValueOnce(jsonResponse({ id: 'G-1', name: 'Onyx Guardians', tag: 'OG' }))
+      .mockResolvedValueOnce(jsonResponse({ id: 'G-2', name: 'Riverside Irregulars', tag: 'RIV' }))
     const info = await client.accountInfo()
     expect(info.accountName).toBe('Darkharasho.4621')
     expect(info.permissions).toContain('guilds')
     expect(info.missingPermissions).toEqual([])
-    expect(info.guilds).toEqual(['G-1'])
-    expect(info.guildLeader).toEqual(['G-1'])
+    expect(info.guilds).toEqual([
+      { id: 'G-1', name: 'Onyx Guardians', tag: 'OG', leader: true },
+      { id: 'G-2', name: 'Riverside Irregulars', tag: 'RIV', leader: false }
+    ])
     const firstUrl = mockFetch.mock.calls[0][0] as string
     expect(firstUrl).toBe('https://api.guildwars2.com/v2/tokeninfo')
     const init = mockFetch.mock.calls[0][1] as RequestInit
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer TEST-KEY')
     expect(mockFetch.mock.calls[1][0]).toBe('https://api.guildwars2.com/v2/account')
+    expect(mockFetch.mock.calls[2][0]).toBe('https://api.guildwars2.com/v2/guild/G-1')
+    expect(mockFetch.mock.calls[3][0]).toBe('https://api.guildwars2.com/v2/guild/G-2')
+  })
+
+  it('falls back to the raw id when a guild lookup fails', async () => {
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ id: 'x', name: 'officer', permissions: ['account', 'guilds'] }))
+      .mockResolvedValueOnce(jsonResponse({ name: 'A.1', guilds: ['G-1'], guild_leader: [] }))
+      .mockResolvedValueOnce(jsonResponse({ text: 'too busy' }, 503))
+    const info = await client.accountInfo()
+    expect(info.guilds).toEqual([{ id: 'G-1', name: 'G-1', tag: '', leader: false }])
   })
 
   it('reports missing permissions', async () => {
