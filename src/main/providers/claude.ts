@@ -10,6 +10,7 @@ import {
   type TurnInput
 } from './types'
 import { evaluateToolPermission } from './permission'
+import { DisplayCorrelator } from './displayBus'
 import { DESTRUCTIVE_TOOLS, ACTION_GATED_TOOLS } from '../tools'
 
 /**
@@ -129,7 +130,12 @@ export class ClaudeAdapter implements ProviderAdapter {
   }
 
   async *runTurn(input: TurnInput): AsyncGenerator<AgentEvent> {
-    const server = createSdkMcpServer({ name: 'officer', version: '1.0.0', tools: input.tools })
+    const correlator = new DisplayCorrelator()
+    const server = createSdkMcpServer({
+      name: 'officer',
+      version: '1.0.0',
+      tools: correlator.wrapTools(input.tools)
+    })
     // Destructive tools are deliberately NOT pre-allowed: allowedTools entries
     // are auto-approved without ever reaching canUseTool, so destructive ones
     // must go through the permission flow to hit our confirm gate.
@@ -173,7 +179,7 @@ export class ClaudeAdapter implements ProviderAdapter {
       for await (const msg of q) {
         for (const event of translateSdkMessage(msg)) {
           if (event.kind === 'done' && event.sessionId) this.sessionId = event.sessionId
-          yield event
+          yield correlator.observe(event)
         }
       }
     } finally {

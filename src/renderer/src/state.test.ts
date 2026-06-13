@@ -42,6 +42,22 @@ describe('applyEvent', () => {
     expect(t.tools[1].isError).toBe(true)
   })
 
+  it('copies display onto the matching tool on tool-result', () => {
+    const display = {
+      kind: 'table' as const,
+      data: { columns: [{ key: 'n', label: 'Name' }], rows: [{ n: 'Firebrand' }] }
+    }
+    let t = applyEvent(baseTurn(), { kind: 'tool-start', id: 'a', name: 'x', input: {} })
+    t = applyEvent(t, { kind: 'tool-result', id: 'a', isError: false, text: '{}', display })
+    expect(t.tools[0].display).toEqual(display)
+  })
+
+  it('leaves display undefined when the event has none', () => {
+    let t = applyEvent(baseTurn(), { kind: 'tool-start', id: 'a', name: 'x', input: {} })
+    t = applyEvent(t, { kind: 'tool-result', id: 'a', isError: false, text: '{}' })
+    expect(t.tools[0].display).toBeUndefined()
+  })
+
   it('marks done and records error on done', () => {
     const ok = applyEvent(baseTurn(), { kind: 'done', sessionId: 's1', error: null })
     expect(ok.done).toBe(true)

@@ -1,9 +1,53 @@
+export interface ChartSeriesSpec {
+  key: string
+  label: string
+  color?: string
+}
+
+/**
+ * Typed rich-render payload attached to tool results by main-process tool
+ * handlers. Provider-agnostic: the model only ever sees the compact JSON
+ * text; the renderer receives this alongside it. Shapes are shared with the
+ * AxiBridge integration — change them only in lockstep with that plan.
+ *
+ * Duplicated from src/main/providers/types.ts by design — the renderer
+ * never imports from src/main.
+ */
+export type DisplayPayload =
+  | { kind: 'build-card'; data: { build: Record<string, unknown> } }
+  | {
+      kind: 'comp-card'
+      data: {
+        comp: Record<string, unknown>
+        builds: Record<string, Record<string, unknown>>
+      }
+    }
+  | {
+      kind: 'chart'
+      data: {
+        type: 'line' | 'bar' | 'area'
+        title: string
+        xKey: string
+        series: ChartSeriesSpec[]
+        rows: Array<Record<string, string | number>>
+      }
+    }
+  | {
+      kind: 'table'
+      data: {
+        title?: string
+        columns: Array<{ key: string; label: string }>
+        rows: Array<Record<string, string | number>>
+      }
+    }
+
 export interface ToolCall {
   id: string
   name: string
   input: Record<string, unknown>
   resultText?: string
   isError?: boolean
+  display?: DisplayPayload
 }
 
 export interface Turn {
@@ -19,7 +63,7 @@ export interface Turn {
 export type AgentEvent =
   | { kind: 'text-delta'; text: string }
   | { kind: 'tool-start'; id: string; name: string; input: Record<string, unknown> }
-  | { kind: 'tool-result'; id: string; isError: boolean; text: string }
+  | { kind: 'tool-result'; id: string; isError: boolean; text: string; display?: DisplayPayload }
   | { kind: 'done'; sessionId: string | null; error: string | null }
 
 export function applyEvent(turn: Turn, event: AgentEvent): Turn {
@@ -32,7 +76,9 @@ export function applyEvent(turn: Turn, event: AgentEvent): Turn {
       return {
         ...turn,
         tools: turn.tools.map((t) =>
-          t.id === event.id ? { ...t, resultText: event.text, isError: event.isError } : t
+          t.id === event.id
+            ? { ...t, resultText: event.text, isError: event.isError, display: event.display }
+            : t
         )
       }
     case 'done':

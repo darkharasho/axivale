@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
-import { MCP_PREFIX } from './types'
+import { MCP_PREFIX, type DisplayPayload } from './types'
 import { evaluateToolPermission } from './permission'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -16,6 +16,7 @@ export interface ToolSpec {
 export interface ToolOutcome {
   text: string
   isError: boolean
+  display?: DisplayPayload
 }
 
 /** The SDK's tool() stores the raw Zod shape it was given; normalize to a ZodObject. */
@@ -55,7 +56,9 @@ export async function executeTool(
   const text = (result.content ?? [])
     .map((part: { type: string; text?: string }) => (part.type === 'text' ? (part.text ?? '') : ''))
     .join('')
-  return { text, isError: result.isError === true }
+  const display = (result as { display?: DisplayPayload }).display
+  const isError = result.isError === true
+  return isError || !display ? { text, isError } : { text, isError, display }
 }
 
 /** Permission gate (destructive-tool confirm) + execution, for non-Claude adapters. */

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { z } from 'zod'
 import { tool } from '@anthropic-ai/claude-agent-sdk'
 import { toToolSpecs, executeTool, gateAndRunTool } from './toolSchema'
+import type { DisplayPayload } from './types'
 import { buildOfficerTools } from '../tools'
 
 const echo = tool(
@@ -100,5 +101,38 @@ describe('gateAndRunTool', () => {
     expect(outcome.text).toBe('b2')
     expect(captured).toHaveLength(1)
     expect(captured[0]).toMatchObject({ build_id: 'b2' })
+  })
+})
+
+describe('display payload passthrough', () => {
+  const tableDisplay: DisplayPayload = {
+    kind: 'table',
+    data: { columns: [{ key: 'n', label: 'Name' }], rows: [{ n: 'Firebrand' }] }
+  }
+
+  it('executeTool copies handler display onto the outcome', async () => {
+    const tools = [
+      tool('rich', 'returns a display', {}, async () => ({
+        content: [{ type: 'text' as const, text: '{"ok":true}' }],
+        display: tableDisplay
+      }))
+    ]
+    const out = await executeTool(tools, 'rich', {})
+    expect(out.isError).toBe(false)
+    expect(out.text).toBe('{"ok":true}')
+    expect(out.display).toEqual(tableDisplay)
+  })
+
+  it('executeTool omits display on error results', async () => {
+    const tools = [
+      tool('boom', 'fails with display attached', {}, async () => ({
+        isError: true,
+        content: [{ type: 'text' as const, text: 'nope' }],
+        display: tableDisplay
+      }))
+    ]
+    const out = await executeTool(tools, 'boom', {})
+    expect(out.isError).toBe(true)
+    expect(out.display).toBeUndefined()
   })
 })

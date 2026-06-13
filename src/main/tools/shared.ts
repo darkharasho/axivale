@@ -1,6 +1,7 @@
 import type { AxitoolsClient } from '../axitoolsClient'
 import type { Gw2Client } from '../gw2Client'
 import type { AxiforgeClient } from '../axiforgeClient'
+import type { DisplayPayload } from '../providers/types'
 
 /** Structural launcher type so tests stub one method instead of the whole class. */
 export interface AxiforgeLauncherLike {
@@ -24,6 +25,8 @@ export interface ToolResult {
   [key: string]: unknown
   content: Array<{ type: 'text'; text: string }>
   isError?: boolean
+  /** Rich-render payload for the UI; never serialized into model context. */
+  display?: DisplayPayload
 }
 
 // Compact on purpose: results go into the model's context, where pretty-print
@@ -37,6 +40,25 @@ export function safe<A>(fn: (args: A) => Promise<unknown>): (args: A, extra: unk
   return async (args) => {
     try {
       return ok(await fn(args))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      return { isError: true, content: [{ type: 'text', text: message }] }
+    }
+  }
+}
+
+/**
+ * Like safe(), for handlers that also produce a rich display payload.
+ * The model gets JSON.stringify(value); the renderer gets display.
+ */
+export function safeRich<A>(
+  fn: (args: A) => Promise<{ value: unknown; display?: DisplayPayload }>
+): (args: A, extra: unknown) => Promise<ToolResult> {
+  return async (args) => {
+    try {
+      const { value, display } = await fn(args)
+      const result = ok(value)
+      return display ? { ...result, display } : result
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       return { isError: true, content: [{ type: 'text', text: message }] }

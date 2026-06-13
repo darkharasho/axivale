@@ -161,7 +161,13 @@ export class GeminiAdapter implements ProviderAdapter {
         if (input.signal.aborted) throw new Error('Turn cancelled')
         yield { kind: 'tool-start', id: call.id, name: call.name, input: call.args }
         const outcome = await gateAndRunTool(input.tools, call.name, call.args, input.confirm)
-        yield { kind: 'tool-result', id: call.id, isError: outcome.isError, text: outcome.text }
+        yield {
+          kind: 'tool-result',
+          id: call.id,
+          isError: outcome.isError,
+          text: outcome.text,
+          ...(outcome.display ? { display: outcome.display } : {})
+        }
         responses.push({
           functionResponse: {
             name: call.name,

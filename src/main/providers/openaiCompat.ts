@@ -1,5 +1,5 @@
 import type { AgentEvent, ProviderAdapter, ProviderConfig, TurnInput } from './types'
-import { toToolSpecs, gateAndRunTool } from './toolSchema'
+import { toToolSpecs, gateAndRunTool, type ToolOutcome } from './toolSchema'
 import { sseData } from './sse'
 
 type ChatMessage =
@@ -148,10 +148,16 @@ export class OpenAIChatAdapter implements ProviderAdapter {
           }
         }
         yield { kind: 'tool-start', id: call.id, name: call.name, input: parsed }
-        const outcome = parseError
+        const outcome: ToolOutcome = parseError
           ? { text: parseError, isError: true }
           : await gateAndRunTool(input.tools, call.name, parsed, input.confirm)
-        yield { kind: 'tool-result', id: call.id, isError: outcome.isError, text: outcome.text }
+        yield {
+          kind: 'tool-result',
+          id: call.id,
+          isError: outcome.isError,
+          text: outcome.text,
+          ...(outcome.display ? { display: outcome.display } : {})
+        }
         this.history.push({ role: 'tool', tool_call_id: call.id, content: outcome.text })
       }
       // Paragraph break so post-tool prose doesn't concatenate mid-word

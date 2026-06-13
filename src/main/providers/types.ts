@@ -1,9 +1,49 @@
 import type { SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 
+export interface ChartSeriesSpec {
+  key: string
+  label: string
+  color?: string
+}
+
+/**
+ * Typed rich-render payload attached to tool results by main-process tool
+ * handlers. Provider-agnostic: the model only ever sees the compact JSON
+ * text; the renderer receives this alongside it. Shapes are shared with the
+ * AxiBridge integration — change them only in lockstep with that plan.
+ */
+export type DisplayPayload =
+  | { kind: 'build-card'; data: { build: Record<string, unknown> } }
+  | {
+      kind: 'comp-card'
+      data: {
+        comp: Record<string, unknown>
+        builds: Record<string, Record<string, unknown>>
+      }
+    }
+  | {
+      kind: 'chart'
+      data: {
+        type: 'line' | 'bar' | 'area'
+        title: string
+        xKey: string
+        series: ChartSeriesSpec[]
+        rows: Array<Record<string, string | number>>
+      }
+    }
+  | {
+      kind: 'table'
+      data: {
+        title?: string
+        columns: Array<{ key: string; label: string }>
+        rows: Array<Record<string, string | number>>
+      }
+    }
+
 export type AgentEvent =
   | { kind: 'text-delta'; text: string }
   | { kind: 'tool-start'; id: string; name: string; input: Record<string, unknown> }
-  | { kind: 'tool-result'; id: string; isError: boolean; text: string }
+  | { kind: 'tool-result'; id: string; isError: boolean; text: string; display?: DisplayPayload }
   | { kind: 'done'; sessionId: string | null; error: string | null }
 
 export const MCP_PREFIX = 'mcp__officer__'
