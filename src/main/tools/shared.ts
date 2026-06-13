@@ -1,5 +1,11 @@
 import type { AxitoolsClient } from '../axitoolsClient'
 import type { Gw2Client } from '../gw2Client'
+import type { AxiforgeClient } from '../axiforgeClient'
+
+/** Structural launcher type so tests stub one method instead of the whole class. */
+export interface AxiforgeLauncherLike {
+  ensureRunning(): Promise<void>
+}
 
 export interface ToolDeps {
   axitools: AxitoolsClient
@@ -8,6 +14,10 @@ export interface ToolDeps {
   discordGuildId: () => string
   /** active GW2 guild id from settings ('' = unset) */
   gw2GuildId: () => string
+  /** Local AxiForge app client (API with read-only file fallback). */
+  axiforge: AxiforgeClient
+  /** Spawns headless AxiForge when a write needs it. */
+  axiforgeLauncher: AxiforgeLauncherLike
 }
 
 export interface ToolResult {

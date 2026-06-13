@@ -5,15 +5,30 @@ const deps: ToolDeps = {
   axitools: {} as never,
   gw2: {} as never,
   discordGuildId: () => '1',
-  gw2GuildId: () => 'g1'
+  gw2GuildId: () => 'g1',
+  axiforge: {} as never,
+  axiforgeLauncher: { ensureRunning: async () => {} }
 }
 
 describe('tools module split', () => {
-  it('exposes exactly the pre-split tool inventory', () => {
+  it('exposes exactly the expected tool inventory', () => {
     const names = buildOfficerTools(deps)
       .map((t) => t.name)
       .sort()
     expect(names).toEqual([
+      'axiforge_build_publish',
+      'axiforge_builds_delete',
+      'axiforge_builds_get',
+      'axiforge_builds_list',
+      'axiforge_builds_save',
+      'axiforge_catalog',
+      'axiforge_comp_publish',
+      'axiforge_comps_delete',
+      'axiforge_comps_get',
+      'axiforge_comps_list',
+      'axiforge_comps_save',
+      'axiforge_import_chat_link',
+      'axiforge_import_gw2skills',
       'axitools_alliance',
       'axitools_audit',
       'axitools_builds_create',
@@ -42,7 +57,14 @@ describe('tools module split', () => {
   })
 
   it('keeps the destructive lists intact', () => {
-    expect(DESTRUCTIVE_TOOLS).toEqual(['axitools_builds_delete', 'axitools_comp_presets_delete'])
+    expect(DESTRUCTIVE_TOOLS).toEqual([
+      'axitools_builds_delete',
+      'axitools_comp_presets_delete',
+      'axiforge_builds_delete',
+      'axiforge_comps_delete',
+      'axiforge_build_publish',
+      'axiforge_comp_publish'
+    ])
     expect(ACTION_GATED_TOOLS).toEqual({
       discord_action: [
         'channel_delete',

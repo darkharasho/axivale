@@ -3,12 +3,17 @@ import type { ToolDeps } from './shared'
 import { buildAxitoolsTools } from './axitools'
 import { buildDiscordTools, DESTRUCTIVE_DISCORD_ACTIONS } from './discord'
 import { buildGw2Tools } from './gw2'
+import { buildAxiforgeTools, AXIFORGE_DESTRUCTIVE_TOOLS } from './axiforge'
 
 export type { ToolDeps } from './shared'
 export { DESTRUCTIVE_DISCORD_ACTIONS }
 
-/** Tools that mutate data irreversibly — the UI asks the user to confirm before running these. */
-export const DESTRUCTIVE_TOOLS = ['axitools_builds_delete', 'axitools_comp_presets_delete']
+/** Tools that mutate data irreversibly (or publish publicly) — the UI asks the user to confirm before running these. */
+export const DESTRUCTIVE_TOOLS = [
+  'axitools_builds_delete',
+  'axitools_comp_presets_delete',
+  ...AXIFORGE_DESTRUCTIVE_TOOLS
+]
 
 /**
  * Tools whose risk depends on their `action` input: never pre-allowed, and
@@ -36,5 +41,10 @@ export const ACTION_GATED_TOOLS: Record<string, string[]> = {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
-  return [...buildAxitoolsTools(deps), ...buildDiscordTools(deps), ...buildGw2Tools(deps)]
+  return [
+    ...buildAxitoolsTools(deps),
+    ...buildDiscordTools(deps),
+    ...buildGw2Tools(deps),
+    ...buildAxiforgeTools(deps)
+  ]
 }

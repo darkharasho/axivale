@@ -12,6 +12,8 @@ import {
 import { AxitoolsClient } from './axitoolsClient'
 import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
+import { AxiforgeClient, forgeDataDir } from './axiforgeClient'
+import { AxiAppLauncher } from './axiAppLauncher'
 import { AgentService } from './agent'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -64,6 +66,16 @@ app.whenReady().then(async () => {
   }
   const buildGw2 = (): Gw2Client => new Gw2Client(store.getActiveKey('gw2') ?? '')
 
+  // One client + launcher for the app's lifetime: the launcher serializes
+  // concurrent ensureRunning() calls, and the client's catalog cache persists
+  // across AxiForge restarts.
+  const axiforgeDataDir = forgeDataDir()
+  const axiforge = new AxiforgeClient({
+    dataDir: axiforgeDataDir,
+    catalogCachePath: join(app.getPath('userData'), 'axiforge-catalog-cache.json')
+  })
+  const axiforgeLauncher = new AxiAppLauncher(axiforge, axiforgeDataDir)
+
   const PROVIDER_MODEL_SETTING: Record<ProviderName, SettingKey> = {
     claude: 'model',
     gemini: 'geminiModel',
@@ -90,7 +102,9 @@ app.whenReady().then(async () => {
       gw2: buildGw2(),
       // Kept as a string: Discord snowflakes exceed Number.MAX_SAFE_INTEGER.
       discordGuildId: () => store.getSetting('guildId') ?? '',
-      gw2GuildId: () => store.getSetting('gw2GuildId') ?? ''
+      gw2GuildId: () => store.getSetting('gw2GuildId') ?? '',
+      axiforge,
+      axiforgeLauncher
     }),
     config: providerConfig,
     confirm: (toolName, input) =>

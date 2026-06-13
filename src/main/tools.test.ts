@@ -48,7 +48,9 @@ function makeDeps(): ToolDeps {
       apiGet: vi.fn().mockResolvedValue({ id: 1, name: 'Zojja' })
     } as never,
     discordGuildId: () => '123',
-    gw2GuildId: () => 'G-1'
+    gw2GuildId: () => 'G-1',
+    axiforge: {} as never,
+    axiforgeLauncher: { ensureRunning: async () => {} }
   }
 }
 
