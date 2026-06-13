@@ -158,6 +158,9 @@ td.nm2{color:var(--ink)}
 .richchart{overflow-x:auto}
 .richchart .recharts-legend-item-text{color:var(--ink-dim) !important}
 .richchart .recharts-text{fill:var(--faint)}
+/* Rich figures embedded in the main article column (charts/tables/cards). */
+.post-figure{margin:16px 0;padding:14px 16px;border:1px solid var(--line);background:rgba(0,0,0,.12);overflow-x:auto}
+.post-figure figcaption{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-top:8px;text-align:right}
 /* AxiForge cards keep their own design system inside the coupon */
 .forgecard{font-family:system-ui,sans-serif;text-align:left;hyphens:none}
 .forgecard .mini-card{cursor:default}

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactElement } from 'react'
+import { Fragment, useRef, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Camera, Check, X } from 'lucide-react'
@@ -6,6 +6,8 @@ import type { Turn } from '../state'
 import { rehypeEmojiIcons } from './rehypeEmojiIcons'
 import { renderEmojiSpan } from './emojiIcons'
 import { splitHeadline, stripMarkdown } from './headline'
+import { couponLabel } from './ToolCoupon'
+import RichDisplay from './rich/RichDisplay'
 import WireThinking from './WireThinking'
 
 type CopyState = 'idle' | 'ok' | 'err'
@@ -91,13 +93,40 @@ export default function Article({ turn }: { turn: Turn }): ReactElement {
               {turn.tools.length === 1 ? '' : 's'} taken
             </div>
             <div className="prose">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeEmojiIcons]}
-                components={{ span: renderEmojiSpan }}
-              >
-                {rest}
-              </ReactMarkdown>
+              {/* Figures (charts/tables/cards) render full-width in the main
+                  column — the right rail is too narrow for a graph. The model
+                  places each one inline by writing {{figure}} on its own line;
+                  segments split on that marker and figures fill the gaps in
+                  order. With no markers, all figures fall to the end. */}
+              {(() => {
+                const figures = turn.tools.filter((t) => t.display && !t.isError)
+                const segments = rest.split(/\{\{\s*figure\s*\}\}/i)
+                const renderFigure = (t: (typeof figures)[number]): ReactElement => (
+                  <figure className="post-figure" key={t.id}>
+                    <RichDisplay display={t.display!} />
+                    <figcaption>{couponLabel(t.name)}</figcaption>
+                  </figure>
+                )
+                return (
+                  <>
+                    {segments.map((seg, i) => (
+                      <Fragment key={i}>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeEmojiIcons]}
+                          components={{ span: renderEmojiSpan }}
+                        >
+                          {seg}
+                        </ReactMarkdown>
+                        {i < segments.length - 1 && figures[i] && renderFigure(figures[i])}
+                      </Fragment>
+                    ))}
+                    {/* Leftover figures (fewer markers than figures, incl. the
+                        no-marker case) render after the prose. */}
+                    {figures.slice(Math.max(0, segments.length - 1)).map(renderFigure)}
+                  </>
+                )
+              })()}
               {streaming && <span className="typebar"></span>}
               {turn.error && (
                 <div className="errnotice">

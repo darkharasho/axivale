@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import type { ToolCall, Turn } from '../state'
-import { couponLabel, humanInput, renderCouponBody } from './ToolCoupon'
+import { couponLabel, humanInput, renderBody } from './ToolCoupon'
 
 export interface RailsProps {
   memberCount: number | null
@@ -46,7 +46,7 @@ function NoticeCard({ notice }: { notice: Notice }): ReactElement {
         <div className="tm">
           № {seq} · {filedAt}
         </div>
-        {open && !working && <div className="nx">{renderCouponBody(tool)}</div>}
+        {open && !working && <div className="nx">{renderBody(tool)}</div>}
       </div>
     </div>
   )

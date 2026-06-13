@@ -146,3 +146,48 @@ describe('Article copy-as-image button', () => {
     expect(filterFn(fakeDiv)).toBe(true)
   })
 })
+
+describe('Article inline figures', () => {
+  const tableTool = {
+    id: 't1',
+    name: 'axibridge_run_summary',
+    input: {},
+    resultText: '{}',
+    display: {
+      kind: 'table' as const,
+      data: { title: 'Run Summary', columns: [{ key: 'a', label: 'Wins' }], rows: [{ a: 15 }] }
+    }
+  }
+
+  it('renders a tool figure at the {{figure}} marker position', () => {
+    render(
+      <Article
+        turn={doneTurn({
+          agentText: 'Headline\n\nBefore the chart.\n\n{{figure}}\n\nAfter the chart.',
+          tools: [tableTool]
+        })}
+      />
+    )
+    // The table figure rendered (column label from RichTable)
+    expect(screen.getByText('Wins')).toBeTruthy()
+    expect(screen.getByText('Before the chart.')).toBeTruthy()
+    expect(screen.getByText('After the chart.')).toBeTruthy()
+  })
+
+  it('appends figures at the end when no marker is present', () => {
+    render(<Article turn={doneTurn({ agentText: 'Headline\n\nNo marker here.', tools: [tableTool] })} />)
+    expect(screen.getByText('Wins')).toBeTruthy()
+  })
+
+  it('does not render a figure for an errored tool', () => {
+    render(
+      <Article
+        turn={doneTurn({
+          agentText: 'Headline\n\n{{figure}}',
+          tools: [{ ...tableTool, isError: true }]
+        })}
+      />
+    )
+    expect(screen.queryByText('Wins')).toBeNull()
+  })
+})

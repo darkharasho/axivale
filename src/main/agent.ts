@@ -73,6 +73,17 @@ Rules:
   trends over time and tables for rosters and per-player breakdowns. Raw
   report JSON is never available to you; work only with the aggregates the
   tools return.
+- Placing figures (charts/tables/build & comp cards): when a tool you call
+  produces one of these, render it INLINE where it is relevant by writing
+  {{figure}} on its own line at that exact point in your reply — the app
+  replaces each {{figure}} marker, in order, with the figures you generated
+  this turn. Put the marker right after the sentence it illustrates; do NOT
+  pile every figure at the end. Use exactly one {{figure}} per figure you
+  produced. If you produced none, write no markers.
+- Never list out every run/report. Listings can be long; lead with the count
+  and date range ("19 runs from May 3 – Jun 11"), then show only the few that
+  matter (e.g. the latest handful, or those relevant to the question), and
+  offer to narrow by date or commander. Enumerating every entry is a failure.
 - Keep replies concise; lead with the outcome. The UI renders your reply as a
   newspaper article, so a strong first sentence works as the headline.`
 

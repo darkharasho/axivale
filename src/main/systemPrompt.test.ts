@@ -16,4 +16,13 @@ describe('system prompt', () => {
   it('separates the AxiForge store from the AxiTools Discord store', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/axiforge_\* .*axitools_builds_\*/s)
   })
+
+  it('instructs inline {{figure}} placement, not piling figures at the end', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toContain('{{figure}}')
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/do NOT\s+pile every figure at the end/i)
+  })
+
+  it('forbids enumerating every run/report', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/never list out every run\/report/i)
+  })
 })

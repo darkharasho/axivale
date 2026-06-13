@@ -17,7 +17,9 @@ function turnWith(tool: ToolCall): Turn {
 }
 
 describe('RightRail notice cards', () => {
-  it('renders the rich block for a tool with a display payload', () => {
+  // Rich blocks (charts/tables/cards) render in the main article column, NOT
+  // the narrow right rail. The rail's expanded notice shows the compact body.
+  it('does NOT render a rich block in the rail; shows the generic body instead', () => {
     const tool: ToolCall = {
       id: 't1',
       name: 'gw2_api',
@@ -29,16 +31,17 @@ describe('RightRail notice cards', () => {
         data: { title: 'Roster', columns: [{ key: 'n', label: 'Name' }], rows: [{ n: 'Tessa' }] }
       }
     }
-    const { container, getByText } = render(
+    const { container } = render(
       <RightRail memberCount={null} buildsCount={null} turns={[turnWith(tool)]} />
     )
     fireEvent.click(container.querySelector('.ncard')!)
-    expect(container.querySelector('.richtable')).toBeTruthy()
-    expect(getByText('Tessa')).toBeTruthy()
-    expect(container.querySelector('.manifest')).toBeNull()
+    expect(container.querySelector('.richtable')).toBeNull()
+    expect(container.querySelector('.richchart')).toBeNull()
+    // The compact tool body is shown in the rail (manifest for the JSON result).
+    expect(container.querySelector('.manifest')).toBeTruthy()
   })
 
-  it('renders a chart block when display.kind=chart', () => {
+  it('does NOT render a chart block in the rail', () => {
     const tool: ToolCall = {
       id: 't2',
       name: 'gw2_api',
@@ -60,7 +63,7 @@ describe('RightRail notice cards', () => {
       <RightRail memberCount={null} buildsCount={null} turns={[turnWith(tool)]} />
     )
     fireEvent.click(container.querySelector('.ncard')!)
-    expect(container.querySelector('.richchart svg')).toBeTruthy()
+    expect(container.querySelector('.richchart')).toBeNull()
   })
 
   it('falls back to the generic body when there is no display', () => {
