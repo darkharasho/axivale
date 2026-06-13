@@ -20,7 +20,7 @@ describe('createGithubShareClient', () => {
 
   it('ensureRepo creates the repo only when it does not exist', async () => {
     const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.endsWith('/user') && !init) return json({ login: 'alice' })
+      if (url.endsWith('/user')) return json({ login: 'alice' })
       if (url.includes('/repos/alice/axivale-shares') && (!init || init.method === undefined))
         return json({ message: 'Not Found' }, 404)
       if (url.endsWith('/user/repos') && init?.method === 'POST') return json({}, 201)
@@ -28,8 +28,7 @@ describe('createGithubShareClient', () => {
     })
     const gh = createGithubShareClient('TOKEN', fetchFn as unknown as typeof fetch)
     await gh.ensureRepo('axivale-shares')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const createCall = (fetchFn.mock.calls as any[]).find(([, i]: [string, RequestInit?]) => i?.method === 'POST') as [string, RequestInit] | undefined
+    const createCall = fetchFn.mock.calls.find(([, i]) => i?.method === 'POST') as [string, RequestInit] | undefined
     expect(createCall).toBeTruthy()
     expect(JSON.parse(createCall![1].body as string)).toMatchObject({
       name: 'axivale-shares',
@@ -39,15 +38,14 @@ describe('createGithubShareClient', () => {
   })
 
   it('ensureRepo is a no-op when the repo already exists', async () => {
-    const fetchFn = vi.fn(async (url: string) => {
+    const fetchFn = vi.fn(async (url: string, _init?: RequestInit) => {
       if (url.endsWith('/user')) return json({ login: 'alice' })
       if (url.includes('/repos/alice/axivale-shares')) return json({ name: 'axivale-shares' }, 200)
       throw new Error(`unexpected ${url}`)
     })
     const gh = createGithubShareClient('TOKEN', fetchFn as unknown as typeof fetch)
     await gh.ensureRepo('axivale-shares')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((fetchFn.mock.calls as any[]).some(([, i]: [string, RequestInit?]) => i?.method === 'POST')).toBe(false)
+    expect(fetchFn.mock.calls.some(([, i]) => i?.method === 'POST')).toBe(false)
   })
 
   it('getFileSha returns the sha or null on 404', async () => {
@@ -62,13 +60,13 @@ describe('createGithubShareClient', () => {
   })
 
   it('putFile PUTs base64 content with sha when updating', async () => {
-    const fetchFn = vi.fn(async () => json({}, 200))
+    const fetchFn = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url.endsWith('/user')) return json({ login: 'alice' })
+      return json({}, 200)
+    })
     const gh = createGithubShareClient('TOKEN', fetchFn as unknown as typeof fetch)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (gh as any).ensureRepoOwnerForTest?.('alice') // no-op if undefined
     await gh.putFile('axivale-shares', 'shares/x.json', 'YmFzZTY0', 'add x', 'oldsha')
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const call = (fetchFn.mock.calls as any[]).at(-1)! as [string, RequestInit]
+    const call = fetchFn.mock.calls.at(-1)! as [string, RequestInit]
     expect(call[1].method).toBe('PUT')
     const body = JSON.parse(call[1].body as string)
     expect(body).toMatchObject({ content: 'YmFzZTY0', message: 'add x', sha: 'oldsha' })

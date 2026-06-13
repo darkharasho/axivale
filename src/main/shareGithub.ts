@@ -25,14 +25,15 @@ export function createGithubShareClient(
 ): GithubShareClient {
   if (!token) throw new Error('Sign in with GitHub first to share.')
 
-  let cachedLogin: string | null = null
+  let cachedLogin = ''
   async function login(): Promise<string> {
-    if (cachedLogin !== null) return cachedLogin
-    const res = await fetchFn(`${GITHUB_API}/user`)
+    if (cachedLogin) return cachedLogin
+    const res = await fetchFn(`${GITHUB_API}/user`, { headers: headers(token) })
     if (res.status === 401) throw new Error('GitHub sign-in expired — sign in again.')
     if (!res.ok) throw new Error(`GitHub could not identify your account (${res.status}).`)
     const data = (await res.json()) as { login?: string }
-    cachedLogin = data.login ?? ''
+    if (!data.login) throw new Error('GitHub did not return your login.')
+    cachedLogin = data.login
     return cachedLogin
   }
 
