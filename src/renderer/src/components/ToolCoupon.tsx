@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import type { ToolCall } from '../state'
+import RichDisplay from './rich/RichDisplay'
 
 // Friendly two-part labels for known tools. Keep dumb and total.
 const LABELS: Record<string, string> = {
@@ -163,6 +164,14 @@ export function renderBody(tool: ToolCall): ReactElement {
   return <div className="copy">{text}</div>
 }
 
+function renderCouponBody(tool: ToolCall): ReactElement {
+  if (tool.display && !tool.isError) {
+    const rich = RichDisplay({ display: tool.display })
+    if (rich !== null) return rich
+  }
+  return renderBody(tool)
+}
+
 export default function ToolCoupon({ tool }: { tool: ToolCall }): ReactElement {
   const working = tool.resultText === undefined && !tool.isError
   let status: ReactElement
@@ -182,7 +191,7 @@ export default function ToolCoupon({ tool }: { tool: ToolCall }): ReactElement {
       </div>
       <div className="tb">
         {hasInput && <div className="tin">{humanInput(tool.input)}</div>}
-        {!working && renderBody(tool)}
+        {!working && renderCouponBody(tool)}
       </div>
     </div>
   )

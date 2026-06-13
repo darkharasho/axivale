@@ -144,6 +144,15 @@ th{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;te
 td{padding:6px 18px 6px 0;font-size:13px;border-bottom:1px dotted var(--line);color:var(--ink-dim);vertical-align:top}
 td.nm2{color:var(--ink)}
 .endmark{color:var(--accent-b);font-size:13px}
+/* rich display blocks inside tool coupons */
+.rich{margin-top:6px}
+.rich .rich-title{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:8px}
+.richtable th{cursor:pointer;user-select:none}
+.richtable th:hover{color:var(--ink)}
+.richtable th .arr{color:var(--accent-b);margin-left:5px;font-size:8px}
+.richchart{overflow-x:auto}
+.richchart .recharts-legend-item-text{color:var(--ink-dim) !important}
+.richchart .recharts-text{fill:var(--faint)}
 /* thinking — story coming in over the wire */
 .wire{padding:2px 0 6px}
 .wline{display:flex;align-items:center;gap:12px;margin-bottom:14px}
