@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'url'
+import { existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { randomUUID } from 'crypto'
 import {
@@ -13,7 +14,7 @@ import { AxitoolsClient } from './axitoolsClient'
 import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
 import { AxiforgeClient, forgeDataDir } from './axiforgeClient'
-import { AxiAppLauncher } from './axiAppLauncher'
+import { AxiAppLauncher, defaultIo } from './axiAppLauncher'
 import { AxibridgeClient } from './axibridgeClient'
 import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridgeCache'
 import { AxibridgeService } from './axibridgeService'
@@ -75,12 +76,25 @@ app.whenReady().then(async () => {
   // One client + launcher for the app's lifetime: the launcher serializes
   // concurrent ensureRunning() calls, and the client's catalog cache persists
   // across AxiForge restarts.
-  const axiforgeDataDir = forgeDataDir()
+  // In dev, AxiForge runs via `npm run dev` (APP_PROFILE=dev → "-dev" userData),
+  // and there is no installed binary to detect — so read the dev profile's
+  // discovery file and auto-launch the sibling repo's dev server instead.
+  const isDev = !app.isPackaged
+  const axiforgeDataDir = forgeDataDir(process.platform, isDev ? 'dev' : undefined)
   const axiforge = new AxiforgeClient({
     dataDir: axiforgeDataDir,
     catalogCachePath: join(app.getPath('userData'), 'axiforge-catalog-cache.json')
   })
-  const axiforgeLauncher = new AxiAppLauncher(axiforge, axiforgeDataDir)
+  const siblingForgeDir = join(app.getAppPath(), '..', 'axiforge')
+  const forgeDevLaunch =
+    isDev && existsSync(join(siblingForgeDir, 'package.json')) ? { cwd: siblingForgeDir } : null
+  const axiforgeLauncher = new AxiAppLauncher(
+    axiforge,
+    axiforgeDataDir,
+    defaultIo,
+    { timeoutMs: 15_000, pollMs: 500 },
+    forgeDevLaunch
+  )
 
   // AxiBridge analytics: one client/cache/service for the app's lifetime; the
   // service reads linked repos and the GitHub PAT fresh from settings on every

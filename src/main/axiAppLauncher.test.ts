@@ -148,4 +148,22 @@ describe('AxiAppLauncher.ensureRunning', () => {
     expect(err).toBeInstanceOf(AxiforgeError)
     expect(err.message).toMatch(/did not come up/i)
   })
+
+  it('in dev mode runs `npm run dev` in the sibling repo instead of resolving a binary', async () => {
+    // No AppImage anywhere — prod resolution would fail; dev launch must not depend on it.
+    const io = fakeIo()
+    const launcher = new AxiAppLauncher(
+      flakyClient(2),
+      dataDir,
+      io,
+      { timeoutMs: 5000, pollMs: 10 },
+      { cwd: '/repos/axiforge', timeoutMs: 5000 }
+    )
+    await launcher.ensureRunning()
+    expect(io.spawn).toHaveBeenCalledTimes(1)
+    const [cmd, args, opts] = (io.spawn as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(cmd).toBe('npm')
+    expect(args).toEqual(['run', 'dev'])
+    expect(opts).toMatchObject({ detached: true, cwd: '/repos/axiforge' })
+  })
 })

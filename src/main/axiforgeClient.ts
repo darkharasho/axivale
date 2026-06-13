@@ -58,13 +58,21 @@ export type AxiforgeStatus =
  * AxiForge's <userData>/data dir per platform. The Electron app name is
  * "axiforge-desktop" (package.json name; no top-level productName), so that is
  * the userData directory name on every platform.
+ *
+ * `profile` mirrors AxiForge's APP_PROFILE: its dev script runs with
+ * APP_PROFILE=dev, which makes its userData dir "axiforge-desktop-dev". Pass
+ * profile='dev' so a dev AxiVale reads the dev AxiForge's discovery file.
  */
-export function forgeDataDir(platform: NodeJS.Platform = process.platform): string {
+export function forgeDataDir(
+  platform: NodeJS.Platform = process.platform,
+  profile?: string
+): string {
+  const folder = profile ? `axiforge-desktop-${profile}` : 'axiforge-desktop'
   if (platform === 'win32')
-    return join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), 'axiforge-desktop', 'data')
+    return join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), folder, 'data')
   if (platform === 'darwin')
-    return join(homedir(), 'Library', 'Application Support', 'axiforge-desktop', 'data')
-  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), 'axiforge-desktop', 'data')
+    return join(homedir(), 'Library', 'Application Support', folder, 'data')
+  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config'), folder, 'data')
 }
 
 export interface AxiforgeClientOptions {

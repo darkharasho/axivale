@@ -105,6 +105,19 @@ export interface HealthCheckable {
   health(): Promise<{ ok: boolean; version: string }>
 }
 
+/**
+ * Dev-mode launch: instead of resolving an installed binary (there is none in a
+ * source checkout), run the sibling repo's `npm run dev`. The sibling's dev
+ * script sets its own env (APP_PROFILE, VITE_DEV_SERVER_URL), so it self-boots
+ * a windowed dev instance that still writes the discovery file we poll for.
+ */
+export interface DevLaunch {
+  /** The sibling repo directory, e.g. <axivale>/../axiforge. */
+  cwd: string
+  /** Dev boot (vite + electron) is slow; allow longer than the prod timeout. */
+  timeoutMs?: number
+}
+
 export class AxiAppLauncher {
   private startPromise: Promise<void> | null = null
 
@@ -112,7 +125,8 @@ export class AxiAppLauncher {
     private readonly client: HealthCheckable,
     private readonly dataDir: string,
     private readonly io: LauncherIo = defaultIo,
-    private readonly timing: { timeoutMs: number; pollMs: number } = { timeoutMs: 15_000, pollMs: 500 }
+    private readonly timing: { timeoutMs: number; pollMs: number } = { timeoutMs: 15_000, pollMs: 500 },
+    private readonly dev: DevLaunch | null = null
   ) {}
 
   /** Resolves when the local API answers /health; throws AxiforgeError (friendly) otherwise. */
@@ -128,6 +142,11 @@ export class AxiAppLauncher {
   }
 
   private async startAndWait(): Promise<void> {
+    if (this.dev) {
+      this.spawnDev(this.dev.cwd)
+      await this.waitForHealth(this.dev.timeoutMs ?? 90_000)
+      return
+    }
     const exe = resolveAxiforgeExe(this.dataDir, this.io)
     if (!exe) {
       throw new AxiforgeError(
@@ -136,6 +155,22 @@ export class AxiAppLauncher {
     }
     this.spawnHeadless(exe)
     await this.waitForHealth()
+  }
+
+  private spawnDev(cwd: string): void {
+    // `npm run dev` in the sibling checkout. On Windows npm is npm.cmd, which
+    // needs a shell. The sibling's dev script owns its env, so pass ours intact.
+    const child = this.io.spawn('npm', ['run', 'dev'], {
+      detached: true,
+      stdio: 'ignore',
+      cwd,
+      env: process.env,
+      shell: this.io.platform === 'win32'
+    })
+    child.on('error', (err) =>
+      console.error('[axiforge-launch] dev spawn error:', err?.message || err)
+    )
+    child.unref()
   }
 
   private spawnHeadless(exe: string): void {
@@ -166,8 +201,8 @@ export class AxiAppLauncher {
     child.unref()
   }
 
-  private async waitForHealth(): Promise<void> {
-    const deadline = Date.now() + this.timing.timeoutMs
+  private async waitForHealth(timeoutMs: number = this.timing.timeoutMs): Promise<void> {
+    const deadline = Date.now() + timeoutMs
     for (;;) {
       try {
         await this.client.health()
