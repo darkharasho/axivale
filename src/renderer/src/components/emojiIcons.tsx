@@ -95,6 +95,40 @@ const EMOJI_TO_ICON: Record<string, LucideIcon> = {
 const SKIN_TONES = /[\u{1F3FB}-\u{1F3FF}]/gu
 const VARIATION = /️/g
 
+// Colored-shape emoji → their actual CSS color.
+// These are rendered with the Fluent mask but tinted to the real color
+// rather than the accent, so color information is preserved.
+const COLOR_EMOJI: Record<string, string> = {
+  // Circles
+  '🔴': '#e0352b',
+  '🟠': '#e67e22',
+  '🟡': '#f1c40f',
+  '🟢': '#2ecc71',
+  '🔵': '#3498db',
+  '🟣': '#9b59b6',
+  '🟤': '#8a5a2b',
+  '⚫': '#2c2c2c',
+  '⚪': '#d8d8d8',
+  // Squares (same palette as circles)
+  '🟥': '#e0352b',
+  '🟧': '#e67e22',
+  '🟨': '#f1c40f',
+  '🟩': '#2ecc71',
+  '🟦': '#3498db',
+  '🟪': '#9b59b6',
+  '🟫': '#8a5a2b',
+  '⬛': '#2c2c2c',
+  '⬜': '#d8d8d8'
+}
+
+function lookupColor(emoji: string): string | undefined {
+  return (
+    COLOR_EMOJI[emoji] ??
+    COLOR_EMOJI[emoji.replace(VARIATION, '')] ??
+    COLOR_EMOJI[emoji + '️']
+  )
+}
+
 export function makeEmojiRegex(): RegExp {
   return emojiRegex()
 }
@@ -129,13 +163,18 @@ export function EmojiIcon({ emoji }: { emoji: string }): ReactElement {
   }
   const url = fluentEmojiUrl(emoji)
   if (url) {
+    const color = lookupColor(emoji)
     return (
       <span
         role="img"
         aria-label={emoji}
         title={emoji}
         className="axi-emoji-mask"
-        style={{ WebkitMaskImage: `url(${url})`, maskImage: `url(${url})` }}
+        style={{
+          WebkitMaskImage: `url(${url})`,
+          maskImage: `url(${url})`,
+          ...(color ? { backgroundColor: color } : {})
+        }}
       />
     )
   }
