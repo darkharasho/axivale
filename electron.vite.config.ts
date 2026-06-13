@@ -21,8 +21,15 @@ export default defineConfig({
   preload: { plugins: [externalizeDepsPlugin()] },
   renderer: {
     plugins: [react()],
-    // forge-render ships raw ESM with Vite `?raw` SVG imports; esbuild
-    // pre-bundling chokes on the query suffix, so serve it as source.
-    optimizeDeps: { exclude: ['@axiapps/forge-render'] }
+    optimizeDeps: {
+      // forge-render ships raw ESM with Vite `?raw` SVG imports; esbuild
+      // pre-bundling chokes on the query suffix, so serve it as source.
+      exclude: ['@axiapps/forge-render'],
+      // ...but its dep @axiapps/gw2-data is CommonJS. Because the parent is
+      // excluded, Vite won't pre-bundle the leaf either, and the dev server
+      // would serve raw `require(...)` to the browser ("require is not
+      // defined"). Force-include the CJS leaf so it's transformed to ESM.
+      include: ['@axiapps/gw2-data', '@axiapps/gw2-data/engine']
+    }
   }
 })
