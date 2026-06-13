@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, access } from 'fs/promises'
+import { readFile, writeFile, mkdir, access, rename } from 'fs/promises'
 import { join, dirname } from 'path'
 import { homedir } from 'os'
 
@@ -72,15 +72,24 @@ export interface AxiforgeClientOptions {
   dataDir: string
   /** AxiVale-side file persisting catalog responses across AxiForge restarts. */
   catalogCachePath: string
+  /** Timeout in ms for each HTTP request to the AxiForge local API. Default: 3000. */
+  requestTimeoutMs?: number
 }
 
+const CACHE_SCHEMA_VERSION = 1
+
 interface CatalogCacheFile {
+  schemaVersion: number
   entries: Record<string, unknown>
   savedAt: string
 }
 
 export class AxiforgeClient {
-  constructor(private readonly opts: AxiforgeClientOptions) {}
+  private readonly requestTimeoutMs: number
+
+  constructor(private readonly opts: AxiforgeClientOptions) {
+    this.requestTimeoutMs = opts.requestTimeoutMs ?? 3000
+  }
 
   // --- discovery + transport ----------------------------------------------
 
@@ -102,23 +111,54 @@ export class AxiforgeClient {
     }
   }
 
+  private async fetchOnce(disc: AxiforgeDiscovery, method: string, path: string, body?: unknown): Promise<Response> {
+    return fetch(`http://127.0.0.1:${disc.port}${path}`, {
+      method,
+      signal: AbortSignal.timeout(this.requestTimeoutMs),
+      headers: {
+        Authorization: `Bearer ${disc.token}`,
+        ...(body !== undefined ? { 'content-type': 'application/json' } : {})
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined
+    })
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const disc = await this.readDiscovery()
     let resp: Response
     try {
-      resp = await fetch(`http://127.0.0.1:${disc.port}${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${disc.token}`,
-          ...(body !== undefined ? { 'content-type': 'application/json' } : {})
-        },
-        body: body !== undefined ? JSON.stringify(body) : undefined
-      })
-    } catch {
+      resp = await this.fetchOnce(disc, method, path, body)
+    } catch (err) {
+      // TimeoutError / AbortError = request timed out; treat like "closed".
       // Connection refused with a discovery file present = the app crashed
       // without cleanup (stale file). Treat exactly like "closed".
+      const name = (err as { name?: string }).name
+      if (name === 'TimeoutError' || name === 'AbortError') {
+        throw new AxiforgeNotRunningError()
+      }
       throw new AxiforgeNotRunningError()
     }
+
+    // --- 401 self-heal: re-read the discovery file once and retry ----------
+    if (resp.status === 401) {
+      let freshDisc: AxiforgeDiscovery
+      try {
+        freshDisc = await this.readDiscovery()
+      } catch {
+        throw new AxiforgeNotRunningError('AxiForge restarted with a new token — retry failed')
+      }
+      let retryResp: Response
+      try {
+        retryResp = await this.fetchOnce(freshDisc, method, path, body)
+      } catch {
+        throw new AxiforgeNotRunningError('AxiForge restarted with a new token — retry failed')
+      }
+      if (retryResp.status === 401) {
+        throw new AxiforgeNotRunningError('AxiForge restarted with a new token — retry failed')
+      }
+      resp = retryResp
+    }
+
     if (resp.status === 204) return undefined as T
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok) {
@@ -161,9 +201,11 @@ export class AxiforgeClient {
     return this.withFileFallback(
       () => this.request('GET', `/builds/${encodeURIComponent(id)}`),
       async () => {
-        const build = ((await this.readJsonFile<ForgeBuild[]>('builds.json')) ?? []).find(
-          (b) => b.id === id
-        )
+        const all = await this.readJsonFile<ForgeBuild[]>('builds.json')
+        if (all === null) {
+          throw new AxiforgeNotRunningError('AxiForge isn\'t running and no local data found')
+        }
+        const build = all.find((b) => b.id === id)
         if (!build) throw new AxiforgeError(`No AxiForge build with id "${id}".`)
         return build
       }
@@ -199,9 +241,11 @@ export class AxiforgeClient {
     return this.withFileFallback(
       () => this.request('GET', `/comps/${encodeURIComponent(id)}`),
       async () => {
-        const comp = ((await this.readJsonFile<ForgeComp[]>('comps.json')) ?? []).find(
-          (c) => c.id === id
-        )
+        const all = await this.readJsonFile<ForgeComp[]>('comps.json')
+        if (all === null) {
+          throw new AxiforgeNotRunningError('AxiForge isn\'t running and no local data found')
+        }
+        const comp = all.find((c) => c.id === id)
         if (!comp) throw new AxiforgeError(`No AxiForge comp with id "${id}".`)
         return comp
       }
@@ -249,20 +293,37 @@ export class AxiforgeClient {
 
   private async readCatalogCache(): Promise<CatalogCacheFile> {
     try {
-      return JSON.parse(await readFile(this.opts.catalogCachePath, 'utf8')) as CatalogCacheFile
+      const raw = await readFile(this.opts.catalogCachePath, 'utf8')
+      const parsed = JSON.parse(raw) as CatalogCacheFile
+      if (parsed.schemaVersion !== CACHE_SCHEMA_VERSION) {
+        return { schemaVersion: CACHE_SCHEMA_VERSION, entries: {}, savedAt: '' }
+      }
+      return parsed
     } catch {
-      return { entries: {}, savedAt: '' }
+      return { schemaVersion: CACHE_SCHEMA_VERSION, entries: {}, savedAt: '' }
     }
+  }
+
+  private async writeCatalogCache(cache: CatalogCacheFile): Promise<void> {
+    const dest = this.opts.catalogCachePath
+    const tmp = `${dest}.${process.pid}.tmp`
+    await mkdir(dirname(dest), { recursive: true })
+    await writeFile(tmp, JSON.stringify(cache))
+    await rename(tmp, dest)
   }
 
   private async cachedCatalog<T>(cacheKey: string, path: string): Promise<T> {
     try {
       const data = await this.request<T>('GET', path)
-      const cache = await this.readCatalogCache()
-      cache.entries[cacheKey] = data
-      cache.savedAt = new Date().toISOString()
-      await mkdir(dirname(this.opts.catalogCachePath), { recursive: true })
-      await writeFile(this.opts.catalogCachePath, JSON.stringify(cache))
+      // Best-effort cache persistence — fresh data is always returned
+      try {
+        const cache = await this.readCatalogCache()
+        cache.entries[cacheKey] = data
+        cache.savedAt = new Date().toISOString()
+        await this.writeCatalogCache(cache)
+      } catch (writeErr) {
+        console.warn('AxiforgeClient: failed to persist catalog cache:', writeErr)
+      }
       return data
     } catch (err) {
       if (!(err instanceof AxiforgeNotRunningError)) throw err

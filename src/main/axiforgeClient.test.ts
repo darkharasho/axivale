@@ -16,6 +16,7 @@ const FIXTURE_COMPS = [{ id: 'c1', name: 'Zerg Comp', folderId: null, updatedAt:
 const FIXTURE_FOLDERS = [{ id: 'f1', name: 'WvW' }]
 
 let dataDir: string
+let cacheDir: string
 let cachePath: string
 let server: Server | null = null
 let requests: Array<{ method: string; url: string; auth: string | undefined; body: string }> = []
@@ -46,20 +47,21 @@ function startStub(routes: Record<string, { status?: number; json: unknown }>): 
   })
 }
 
-function writeDiscovery(port: number): void {
+function writeDiscovery(port: number, token = TOKEN): void {
   writeFileSync(
     join(dataDir, 'local-api.json'),
-    JSON.stringify({ port, token: TOKEN, exePath: '/opt/AxiForge/axiforge', version: '1.4.0', pid: 4242 })
+    JSON.stringify({ port, token, exePath: '/opt/AxiForge/axiforge', version: '1.4.0', pid: 4242 })
   )
 }
 
-function makeClient(): AxiforgeClient {
-  return new AxiforgeClient({ dataDir, catalogCachePath: cachePath })
+function makeClient(opts?: { requestTimeoutMs?: number }): AxiforgeClient {
+  return new AxiforgeClient({ dataDir, catalogCachePath: cachePath, ...opts })
 }
 
 beforeEach(() => {
   dataDir = mkdtempSync(join(tmpdir(), 'axiforge-data-'))
-  cachePath = join(mkdtempSync(join(tmpdir(), 'axivale-cache-')), 'axiforge-catalog.json')
+  cacheDir = mkdtempSync(join(tmpdir(), 'axivale-cache-'))
+  cachePath = join(cacheDir, 'axiforge-catalog.json')
   requests = []
   writeFileSync(join(dataDir, 'builds.json'), JSON.stringify(FIXTURE_BUILDS))
   writeFileSync(join(dataDir, 'comps.json'), JSON.stringify(FIXTURE_COMPS))
@@ -67,9 +69,19 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
-  if (server) await new Promise((r) => server!.close(r))
+  if (server) {
+    await new Promise<void>((r) => {
+      // closeAllConnections available in Node 18.2+; keeps test from hanging on
+      // the never-responding stub used in the timeout test.
+      if (typeof (server as Server & { closeAllConnections?: () => void }).closeAllConnections === 'function') {
+        (server as Server & { closeAllConnections: () => void }).closeAllConnections()
+      }
+      server!.close(() => r())
+    })
+  }
   server = null
   rmSync(dataDir, { recursive: true, force: true })
+  rmSync(cacheDir, { recursive: true, force: true })
 })
 
 describe('forgeDataDir', () => {
@@ -187,6 +199,85 @@ describe('not-running detection and file fallback', () => {
     expect(err).not.toBeInstanceOf(AxiforgeNotRunningError)
     expect(err.message).toContain('nope')
   })
+
+  it('getBuild when builds.json is absent throws AxiforgeNotRunningError', async () => {
+    unlinkSync(join(dataDir, 'builds.json'))
+    const err = await makeClient().getBuild('b1').catch((e) => e)
+    expect(err).toBeInstanceOf(AxiforgeNotRunningError)
+    expect(err.message).toContain('no local data found')
+  })
+
+  it('getComp when comps.json is absent throws AxiforgeNotRunningError', async () => {
+    unlinkSync(join(dataDir, 'comps.json'))
+    const err = await makeClient().getComp('c1').catch((e) => e)
+    expect(err).toBeInstanceOf(AxiforgeNotRunningError)
+    expect(err.message).toContain('no local data found')
+  })
+})
+
+describe('fetch timeout', () => {
+  it('listBuilds rejects with AxiforgeNotRunningError when the server never responds', async () => {
+    // Start a server that accepts the connection but never sends a response
+    const hangingSockets: import('net').Socket[] = []
+    const hangingServer = await new Promise<Server>((resolve) => {
+      const s = createServer((req: IncomingMessage, _res: ServerResponse) => {
+        hangingSockets.push(req.socket)
+        // Never call res.end — connection just hangs
+      })
+      s.listen(0, '127.0.0.1', () => resolve(s))
+    })
+    const port = (hangingServer.address() as AddressInfo).port
+    writeDiscovery(port)
+
+    try {
+      // Use a very short timeout so the test runs fast.
+      // deleteBuild has no file fallback, so the timeout directly surfaces as NotRunning.
+      await expect(
+        makeClient({ requestTimeoutMs: 200 }).deleteBuild('b1')
+      ).rejects.toBeInstanceOf(AxiforgeNotRunningError)
+    } finally {
+      hangingSockets.forEach((s) => s.destroy())
+      await new Promise<void>((r) => hangingServer.close(() => r()))
+    }
+  }, 5000)
+})
+
+describe('401 self-heal', () => {
+  it('retries with fresh token after a 401 and succeeds on second request', async () => {
+    // First request always 401s regardless of token; subsequent ones accept any auth.
+    let callCount = 0
+    const selfHealServer = await new Promise<Server>((resolve) => {
+      const s = createServer((req: IncomingMessage, res: ServerResponse) => {
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', () => {
+          callCount++
+          requests.push({ method: req.method!, url: req.url!, auth: req.headers.authorization, body })
+          if (callCount === 1) {
+            // First call always 401
+            res.writeHead(401, { 'content-type': 'application/json' })
+            res.end(JSON.stringify({ error: 'unauthorized' }))
+            return
+          }
+          // Subsequent calls succeed
+          res.writeHead(200, { 'content-type': 'application/json' })
+          res.end(JSON.stringify(FIXTURE_BUILDS))
+        })
+      })
+      s.listen(0, '127.0.0.1', () => resolve(s))
+    })
+
+    const port = (selfHealServer.address() as AddressInfo).port
+    writeDiscovery(port)
+
+    try {
+      const builds = await makeClient().listBuilds()
+      expect(builds.map((b) => b.id)).toEqual(['b1', 'b2'])
+      expect(callCount).toBe(2)
+    } finally {
+      await new Promise<void>((r) => selfHealServer.close(() => r()))
+    }
+  })
 })
 
 describe('catalog cache', () => {
@@ -216,6 +307,47 @@ describe('catalog cache', () => {
     await makeClient().catalogProfession('Guardian', 'wvw')
     const cache = JSON.parse(readFileSync(cachePath, 'utf8'))
     expect(cache.entries['profession:Guardian:wvw']).toMatchObject({ id: 'Guardian' })
+  })
+
+  it('cache write failure is swallowed and fresh API data is still returned', async () => {
+    // Point cachePath at a path that cannot be written: a file used as a directory
+    const tmpFile = join(cacheDir, 'a-regular-file')
+    writeFileSync(tmpFile, 'not a dir')
+    const unwritableCachePath = join(tmpFile, 'sub', 'cache.json')
+
+    const professions = [{ id: 'Guardian', name: 'Guardian' }]
+    const port = await startStub({ 'GET /catalog/professions': { json: professions } })
+    writeDiscovery(port)
+
+    const client = new AxiforgeClient({ dataDir, catalogCachePath: unwritableCachePath })
+    const result = await client.catalogProfessions()
+    expect(result).toEqual(professions)
+  })
+
+  it('corrupt cache file is treated as empty (not a crash)', async () => {
+    writeFileSync(cachePath, 'not valid json }{{{')
+    // API also down, so it falls through to cache read
+    await expect(makeClient().catalogUpgrades()).rejects.toBeInstanceOf(AxiforgeNotRunningError)
+  })
+
+  it('cache with wrong schemaVersion is ignored, resulting in NotRunning when API is down', async () => {
+    // Write a cache with schemaVersion 2 (future/unknown)
+    writeFileSync(cachePath, JSON.stringify({
+      schemaVersion: 2,
+      entries: { upgrades: [{ id: 'u1' }] },
+      savedAt: new Date().toISOString()
+    }))
+    // API is down, cache should be rejected due to schema mismatch
+    await expect(makeClient().catalogUpgrades()).rejects.toBeInstanceOf(AxiforgeNotRunningError)
+  })
+
+  it('written cache file includes schemaVersion: 1', async () => {
+    const professions = [{ id: 'Guardian', name: 'Guardian' }]
+    const port = await startStub({ 'GET /catalog/professions': { json: professions } })
+    writeDiscovery(port)
+    await makeClient().catalogProfessions()
+    const cache = JSON.parse(readFileSync(cachePath, 'utf8'))
+    expect(cache.schemaVersion).toBe(1)
   })
 })
 
