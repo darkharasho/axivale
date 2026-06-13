@@ -1,4 +1,4 @@
-import type { AgentEvent, ProviderAdapter, ProviderConfig, TurnInput } from './types'
+import type { AgentEvent, ProviderAdapter, ProviderConfig, SessionState, TurnInput } from './types'
 import { toToolSpecs, gateAndRunTool, type ToolOutcome } from './toolSchema'
 import { sseData } from './sse'
 
@@ -29,6 +29,14 @@ export class OpenAIChatAdapter implements ProviderAdapter {
 
   reset(): void {
     this.history = []
+  }
+
+  serializeSession(): SessionState {
+    return { history: [...this.history] }
+  }
+
+  restoreSession(state: SessionState): void {
+    this.history = Array.isArray(state.history) ? (state.history as ChatMessage[]) : []
   }
 
   private target(): { url: string; headers: Record<string, string>; model: string; label: string } {

@@ -283,3 +283,31 @@ describe('GeminiAdapter', () => {
     expect(body.contents.map((c: { role: string }) => c.role)).toEqual(['user'])
   })
 })
+
+describe('GeminiAdapter session', () => {
+  const sessionConfig = (): ProviderConfig => ({
+    provider: 'gemini',
+    model: null,
+    oauthToken: null,
+    apiKey: 'k',
+    endpoint: null
+  })
+
+  it('round-trips content history', () => {
+    const a = new GeminiAdapter(sessionConfig)
+    const history = [{ role: 'user', parts: [{ text: 'hi' }] }]
+    a.restoreSession({ history })
+    expect(a.serializeSession()).toEqual({ history })
+  })
+
+  it('serializes empty history before any turn', () => {
+    expect(new GeminiAdapter(sessionConfig).serializeSession()).toEqual({ history: [] })
+  })
+
+  it('reset clears the restored history', () => {
+    const a = new GeminiAdapter(sessionConfig)
+    a.restoreSession({ history: [{ role: 'user', parts: [{ text: 'hi' }] }] })
+    a.reset()
+    expect(a.serializeSession()).toEqual({ history: [] })
+  })
+})

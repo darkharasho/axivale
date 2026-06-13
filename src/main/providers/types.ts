@@ -50,6 +50,14 @@ export const MCP_PREFIX = 'mcp__officer__'
 
 export type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
 
+/** Serialized per-conversation session, persisted by the ConversationStore. */
+export interface SessionState {
+  /** Claude resumes via this id. */
+  claudeSessionId?: string
+  /** OpenAI/Gemini replay this message history. */
+  history?: unknown[]
+}
+
 /** Snapshot of everything an adapter needs from settings — read fresh each turn. */
 export interface ProviderConfig {
   provider: ProviderName
@@ -78,4 +86,8 @@ export interface ProviderAdapter {
   runTurn(input: TurnInput): AsyncGenerator<AgentEvent>
   /** Clears conversation state (new conversation). */
   reset(): void
+  /** Snapshot of this adapter's session for persistence. */
+  serializeSession(): SessionState
+  /** Restore a previously-serialized session (best-effort resume). */
+  restoreSession(state: SessionState): void
 }

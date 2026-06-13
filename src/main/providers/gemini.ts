@@ -1,4 +1,4 @@
-import type { AgentEvent, ProviderAdapter, ProviderConfig, TurnInput } from './types'
+import type { AgentEvent, ProviderAdapter, ProviderConfig, SessionState, TurnInput } from './types'
 import { toToolSpecs, gateAndRunTool } from './toolSchema'
 import { sseData } from './sse'
 
@@ -69,6 +69,15 @@ export class GeminiAdapter implements ProviderAdapter {
 
   reset(): void {
     this.history = []
+    this.callSeq = 0
+  }
+
+  serializeSession(): SessionState {
+    return { history: [...this.history] }
+  }
+
+  restoreSession(state: SessionState): void {
+    this.history = Array.isArray(state.history) ? (state.history as GeminiContent[]) : []
     this.callSeq = 0
   }
 

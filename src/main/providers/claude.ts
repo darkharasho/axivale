@@ -7,6 +7,7 @@ import {
   type AgentEvent,
   type ProviderAdapter,
   type ProviderConfig,
+  type SessionState,
   type TurnInput
 } from './types'
 import { evaluateToolPermission } from './permission'
@@ -144,6 +145,14 @@ export class ClaudeAdapter implements ProviderAdapter {
 
   reset(): void {
     this.sessionId = null
+  }
+
+  serializeSession(): SessionState {
+    return this.sessionId ? { claudeSessionId: this.sessionId } : {}
+  }
+
+  restoreSession(state: SessionState): void {
+    this.sessionId = state.claudeSessionId ?? null
   }
 
   async *runTurn(input: TurnInput): AsyncGenerator<AgentEvent> {

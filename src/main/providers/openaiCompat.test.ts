@@ -223,3 +223,34 @@ describe('OpenAIChatAdapter', () => {
     expect(headers.Authorization).toBeUndefined()
   })
 })
+
+describe('OpenAIChatAdapter session', () => {
+  const sessionConfig = (): ProviderConfig => ({
+    provider: 'openai',
+    model: null,
+    oauthToken: null,
+    apiKey: 'k',
+    endpoint: null
+  })
+
+  it('round-trips message history', () => {
+    const a = new OpenAIChatAdapter(sessionConfig)
+    const history = [
+      { role: 'system', content: 'sys' },
+      { role: 'user', content: 'hi' }
+    ]
+    a.restoreSession({ history })
+    expect(a.serializeSession()).toEqual({ history })
+  })
+
+  it('serializes empty history before any turn', () => {
+    expect(new OpenAIChatAdapter(sessionConfig).serializeSession()).toEqual({ history: [] })
+  })
+
+  it('reset clears the restored history', () => {
+    const a = new OpenAIChatAdapter(sessionConfig)
+    a.restoreSession({ history: [{ role: 'user', content: 'hi' }] })
+    a.reset()
+    expect(a.serializeSession()).toEqual({ history: [] })
+  })
+})
