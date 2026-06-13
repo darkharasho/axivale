@@ -164,7 +164,7 @@ export function renderBody(tool: ToolCall): ReactElement {
   return <div className="copy">{text}</div>
 }
 
-function renderCouponBody(tool: ToolCall): ReactElement {
+export function renderCouponBody(tool: ToolCall): ReactElement {
   if (tool.display && !tool.isError) {
     const rich = RichDisplay({ display: tool.display })
     if (rich !== null) return rich

@@ -80,6 +80,7 @@ token is disabled by default.
 
 ```bash
 npm install        # needs ../gw2-class-icons checked out as a sibling
+                   # also needs ../axiforge (file: dep on @axiapps/forge-render)
 npm run dev        # electron-vite with HMR
 npm test           # vitest (capped at 2 workers)
 npm run typecheck  # tsc, main + renderer projects
