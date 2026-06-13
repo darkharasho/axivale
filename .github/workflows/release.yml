@@ -20,20 +20,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: axivale
-      - uses: actions/checkout@v4
-        with:
-          repository: darkharasho/gw2-class-icons
-          path: gw2-class-icons
-      # file:../axiforge (forge-render, gw2-data) and file:../axibridge
-      # (bridge-metrics) deps resolve against these sibling checkouts.
-      - uses: actions/checkout@v4
-        with:
-          repository: darkharasho/axiforge
-          path: axiforge
-      - uses: actions/checkout@v4
-        with:
-          repository: darkharasho/axibridge
-          path: axibridge
       - uses: actions/setup-node@v4
         with:
           node-version: 22
