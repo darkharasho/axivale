@@ -1,7 +1,7 @@
 import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, type ToolDeps } from './shared'
-import { AxiforgeNotRunningError } from '../axiforgeClient'
+import { AxiforgeError, AxiforgeNotRunningError } from '../axiforgeClient'
 
 /** Tools here that join the top-level DESTRUCTIVE_TOOLS list (deletes + public publishes). */
 export const AXIFORGE_DESTRUCTIVE_TOOLS = [
@@ -15,6 +15,26 @@ export const AXIFORGE_DESTRUCTIVE_TOOLS = [
 // `comp-card` display payloads attach here once the rendering plan extends
 // the tool-result AgentEvent with a `display` field (spec section 6).
 
+/**
+ * Strip base64 image data from a build before returning it to the model.
+ * Images are megabytes of data the model cannot use or modify; preserving them
+ * in context wastes tokens and risks corruption. The imageKeys field tells the
+ * model which image slots exist so it can inform the user.
+ */
+function stripImages(build: Record<string, unknown>): Record<string, unknown> {
+  const images = build.images
+  if (!images || typeof images !== 'object' || Array.isArray(images)) {
+    return build
+  }
+  const imageKeys = Object.keys(images as Record<string, unknown>)
+  if (imageKeys.length === 0) return build
+  return {
+    ...build,
+    images: undefined,
+    imageKeys
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
   // Auto-spawn-on-write: mutations hit the API; if AxiForge is closed, start it
@@ -26,7 +46,16 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     } catch (err) {
       if (!(err instanceof AxiforgeNotRunningError)) throw err
       await deps.axiforgeLauncher.ensureRunning()
-      return fn()
+      try {
+        return await fn()
+      } catch (retryErr) {
+        if (retryErr instanceof AxiforgeNotRunningError) {
+          throw new AxiforgeError(
+            'AxiForge was started but the operation still failed — try again, or open AxiForge manually.'
+          )
+        }
+        throw retryErr
+      }
     }
   }
 
@@ -52,15 +81,33 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'axiforge_builds_get',
-      'Fetch one full AxiForge build by id (traits, skills, equipment, notes). Works even when AxiForge is closed.',
+      'Fetch one full AxiForge build by id (traits, skills, equipment, notes). Works even when AxiForge is closed. Images are stripped from the response (they are megabytes of base64 data the model cannot use); imageKeys lists which image slots exist. Images are preserved automatically on save.',
       { build_id: z.string().describe('Build id from axiforge_builds_list') },
-      safe(async ({ build_id }) => deps.axiforge.getBuild(build_id))
+      safe(async ({ build_id }) => {
+        const build = await deps.axiforge.getBuild(build_id)
+        return stripImages(build as Record<string, unknown>)
+      })
     ),
     tool(
       'axiforge_builds_save',
-      'Create or update a build in the local AxiForge app. Pass the FULL build object — to edit, get the build first, modify the returned object, and save it back; omit id to create. Starts AxiForge headless automatically if it is closed. Ground every skill/trait/gear choice in axiforge_catalog first.',
-      { build: z.record(z.string(), z.unknown()).describe('Full build object (AxiForge build shape)') },
-      safe(async ({ build }) => write(() => deps.axiforge.saveBuild(build)))
+      'Create or update a build in the local AxiForge app. Pass the FULL build object — to edit, get the build first, modify the returned object, and save it back; omit id to create. Starts AxiForge headless automatically if it is closed. Ground every skill/trait/gear choice in axiforge_catalog first. Images are preserved automatically on update — this tool cannot add or modify images. Returns compact echo: { id, title, updatedAt }.',
+      { build: z.record(z.string(), z.unknown()).describe('Full build object (AxiForge build shape); images are ignored — stored images are preserved automatically') },
+      safe(async ({ build }) => {
+        // On update, always re-attach stored images — model cannot modify images.
+        let buildToSave = build
+        if (typeof build.id === 'string' && build.id) {
+          const stored = await deps.axiforge.getBuild(build.id).catch(() => null)
+          if (stored && typeof stored === 'object') {
+            const storedImages = (stored as Record<string, unknown>).images
+            if (storedImages && typeof storedImages === 'object' && !Array.isArray(storedImages)) {
+              buildToSave = { ...build, images: storedImages }
+            }
+          }
+        }
+        const saved = await write(() => deps.axiforge.saveBuild(buildToSave))
+        const s = saved as Record<string, unknown>
+        return { id: s.id, title: s.title, updatedAt: s.updatedAt ?? null }
+      })
     ),
     tool(
       'axiforge_builds_delete',
@@ -93,9 +140,13 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'axiforge_comps_save',
-      'Create or update a squad composition in the local AxiForge app. Pass the FULL comp object — to edit, get the comp first, modify it, save it back; omit id to create. Starts AxiForge headless automatically if it is closed.',
+      'Create or update a squad composition in the local AxiForge app. Pass the FULL comp object — to edit, get the comp first, modify it, save it back; omit id to create. Starts AxiForge headless automatically if it is closed. Comp shape: { name, notes, tags, folderId, gameMode ("pve"|"wvw"), partyLines: [{ id, capacity, slots: [buildId, ...] }], buildIds: [buildId, ...] } — slots and buildIds reference build IDs from axiforge_builds_list. Returns compact echo: { id, name, updatedAt }.',
       { comp: z.record(z.string(), z.unknown()).describe('Full comp object (AxiForge comp shape)') },
-      safe(async ({ comp }) => write(() => deps.axiforge.saveComp(comp)))
+      safe(async ({ comp }) => {
+        const saved = await write(() => deps.axiforge.saveComp(comp))
+        const s = saved as Record<string, unknown>
+        return { id: s.id, name: s.name, updatedAt: s.updatedAt ?? null }
+      })
     ),
     tool(
       'axiforge_comps_delete',
@@ -136,7 +187,7 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
       {
         kind: z.enum(['professions', 'profession', 'upgrades']).describe('Which catalog lookup to run'),
         profession_id: z.string().optional().describe('Profession id, e.g. Guardian (kind "profession")'),
-        game_mode: z.string().optional().describe('pve, wvw, or pvp (kind "profession")')
+        game_mode: z.enum(['pve', 'wvw', 'pvp']).optional().describe('pve, wvw, or pvp (kind "profession")')
       },
       safe(async ({ kind, profession_id, game_mode }) => {
         if (kind === 'professions') return deps.axiforge.catalogProfessions()

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildOfficerTools, DESTRUCTIVE_TOOLS } from './index'
 import type { ToolDeps } from './shared'
-import { AxiforgeNotRunningError } from '../axiforgeClient'
+import { AxiforgeError, AxiforgeNotRunningError } from '../axiforgeClient'
 
 function makeDeps(): ToolDeps {
   return {
@@ -13,13 +13,13 @@ function makeDeps(): ToolDeps {
       listBuilds: vi.fn().mockResolvedValue([
         { id: 'b1', title: 'Heal FB', profession: 'Guardian', tags: ['wvw'], folderId: 'f1', updatedAt: '2026-06-01T00:00:00.000Z', skills: { heal: 1 } }
       ]),
-      getBuild: vi.fn().mockResolvedValue({ id: 'b1', title: 'Heal FB', profession: 'Guardian' }),
-      saveBuild: vi.fn().mockResolvedValue({ id: 'b1', title: 'Renamed' }),
+      getBuild: vi.fn().mockResolvedValue({ id: 'b1', title: 'Heal FB', profession: 'Guardian', images: { icon: 'data:image/png;base64,abc123' } }),
+      saveBuild: vi.fn().mockResolvedValue({ id: 'b1', title: 'Renamed', updatedAt: '2026-06-10T00:00:00.000Z' }),
       deleteBuild: vi.fn().mockResolvedValue(undefined),
       publishBuild: vi.fn().mockResolvedValue({ url: 'https://axiforge.app/b/heal-fb' }),
       listComps: vi.fn().mockResolvedValue([{ id: 'c1', name: 'Zerg', folderId: null, updatedAt: '2026-06-02T00:00:00.000Z' }]),
       getComp: vi.fn().mockResolvedValue({ id: 'c1', name: 'Zerg' }),
-      saveComp: vi.fn().mockResolvedValue({ id: 'c1', name: 'Zerg v2' }),
+      saveComp: vi.fn().mockResolvedValue({ id: 'c1', name: 'Zerg v2', updatedAt: '2026-06-10T00:00:00.000Z' }),
       deleteComp: vi.fn().mockResolvedValue(undefined),
       publishComp: vi.fn().mockResolvedValue({ url: 'https://axiforge.app/c/zerg' }),
       listFolders: vi.fn().mockResolvedValue([{ id: 'f1', name: 'WvW' }]),
@@ -76,24 +76,28 @@ describe('axiforge tools', () => {
     expect(text).not.toContain('skills')
   })
 
-  it('builds_get returns the full build', async () => {
+  it('builds_get returns the build with images stripped', async () => {
     const deps = makeDeps()
     const result = await find(deps, 'axiforge_builds_get').handler({ build_id: 'b1' }, {})
     expect(deps.axiforge.getBuild).toHaveBeenCalledWith('b1')
-    expect((result.content[0] as { text: string }).text).toContain('Heal FB')
+    const parsed = JSON.parse((result.content[0] as { text: string }).text)
+    expect(parsed.title).toBe('Heal FB')
+    expect(parsed.images).toBeUndefined()
+    expect(parsed.imageKeys).toEqual(['icon'])
+    expect((result.content[0] as { text: string }).text).not.toContain('data:image/')
   })
 
-  it('builds_save passes the full build object through', async () => {
+  it('builds_save passes the full build object through (legacy: no id)', async () => {
     const deps = makeDeps()
-    await find(deps, 'axiforge_builds_save').handler({ build: { id: 'b1', title: 'Renamed' } }, {})
-    expect(deps.axiforge.saveBuild).toHaveBeenCalledWith({ id: 'b1', title: 'Renamed' })
+    await find(deps, 'axiforge_builds_save').handler({ build: { title: 'New Build' } }, {})
+    expect(deps.axiforge.saveBuild).toHaveBeenCalledWith({ title: 'New Build' })
   })
 
   it('auto-spawns headless AxiForge and retries once when a write hits a closed app', async () => {
     const deps = makeDeps()
     ;(deps.axiforge.saveBuild as ReturnType<typeof vi.fn>)
       .mockRejectedValueOnce(new AxiforgeNotRunningError())
-      .mockResolvedValueOnce({ id: 'b1', title: 'Renamed' })
+      .mockResolvedValueOnce({ id: 'b1', title: 'Renamed', updatedAt: '2026-06-10T00:00:00.000Z' })
     const result = await find(deps, 'axiforge_builds_save').handler({ build: { id: 'b1', title: 'Renamed' } }, {})
     expect(deps.axiforgeLauncher.ensureRunning).toHaveBeenCalledTimes(1)
     expect(deps.axiforge.saveBuild).toHaveBeenCalledTimes(2)
@@ -137,5 +141,66 @@ describe('axiforge tools', () => {
     expect(deps.axiforge.catalogUpgrades).toHaveBeenCalled()
     const bad = await catalog.handler({ kind: 'profession' }, {})
     expect(bad.isError).toBe(true)
+  })
+
+  // Pinning tests
+
+  it('builds_get strips image base64 and lists image keys', async () => {
+    const deps = makeDeps()
+    ;(deps.axiforge.getBuild as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: 'b1',
+      title: 'Heal FB',
+      profession: 'Guardian',
+      images: { icon: 'data:image/png;base64,LONGBASE64DATA', banner: 'data:image/jpeg;base64,MOREBIGDATA' }
+    })
+    const result = await find(deps, 'axiforge_builds_get').handler({ build_id: 'b1' }, {})
+    const text = (result.content[0] as { text: string }).text
+    expect(text).not.toContain('data:image/')
+    expect(text).not.toContain('LONGBASE64DATA')
+    const parsed = JSON.parse(text)
+    expect(parsed.images).toBeUndefined()
+    expect(parsed.imageKeys).toContain('icon')
+    expect(parsed.imageKeys).toContain('banner')
+  })
+
+  it('builds_save with id preserves stored images and returns compact echo', async () => {
+    const deps = makeDeps()
+    const storedImages = { icon: 'data:image/png;base64,STOREDIMAGE' }
+    ;(deps.axiforge.getBuild as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: 'b1',
+      title: 'Heal FB',
+      profession: 'Guardian',
+      images: storedImages
+    })
+    ;(deps.axiforge.saveBuild as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: 'b1',
+      title: 'Updated Title',
+      updatedAt: '2026-06-10T12:00:00.000Z'
+    })
+    const result = await find(deps, 'axiforge_builds_save').handler(
+      { build: { id: 'b1', title: 'Updated Title' } },
+      {}
+    )
+    // saveBuild must have been called with stored images re-attached
+    expect(deps.axiforge.saveBuild).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'b1', title: 'Updated Title', images: storedImages })
+    )
+    // Echo is compact: only id, title, updatedAt
+    const parsed = JSON.parse((result.content[0] as { text: string }).text)
+    expect(parsed.id).toBe('b1')
+    expect(parsed.title).toBe('Updated Title')
+    expect(parsed.updatedAt).toBeDefined()
+    expect(parsed.profession).toBeUndefined()
+  })
+
+  it('write() does NOT call ensureRunning on plain AxiforgeError', async () => {
+    const deps = makeDeps()
+    ;(deps.axiforge.saveBuild as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new AxiforgeError('Something went wrong in AxiForge')
+    )
+    const result = await find(deps, 'axiforge_builds_save').handler({ build: { title: 'Test' } }, {})
+    expect(deps.axiforgeLauncher.ensureRunning).not.toHaveBeenCalled()
+    expect(result.isError).toBe(true)
+    expect((result.content[0] as { text: string }).text).toContain('Something went wrong')
   })
 })
