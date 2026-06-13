@@ -112,4 +112,36 @@ describe('Gw2Client', () => {
     mockFetch.mockResolvedValue(new Response('', { status: 429 }))
     await expect(client.guildMembers('G-1')).rejects.toThrow(/rate limit/i)
   })
+
+  describe('resolveGuildId', () => {
+    it('passes a GUID through without calling the API', async () => {
+      const guid = '23b352fb-1234-5678-abcd-ef0123456789'
+      const result = await client.resolveGuildId(guid)
+      expect(result).toBe(guid)
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it('resolves a guild name via /guild/search', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(['23b352fb-aaaa-bbbb-cccc-dddddddddddd']))
+      const result = await client.resolveGuildId('Defiance')
+      expect(result).toBe('23b352fb-aaaa-bbbb-cccc-dddddddddddd')
+      const url = mockFetch.mock.calls[0][0] as string
+      expect(url).toContain('/guild/search?name=Defiance')
+    })
+
+    it('throws Gw2Error with a helpful message when no guild matches', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse([]))
+      const err = await client.resolveGuildId('NoSuchGuild').catch((e) => e)
+      expect(err).toBeInstanceOf(Gw2Error)
+      expect(err.message).toMatch(/NoSuchGuild/)
+      expect(err.message).toMatch(/gw2_account_info/)
+    })
+
+    it('URL-encodes the guild name in the search query', async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(['some-guid']))
+      await client.resolveGuildId('Guild With Spaces')
+      const url = mockFetch.mock.calls[0][0] as string
+      expect(url).toContain('Guild%20With%20Spaces')
+    })
+  })
 })

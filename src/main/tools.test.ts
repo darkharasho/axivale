@@ -45,7 +45,13 @@ function makeDeps(): ToolDeps {
       accountInfo: vi.fn().mockResolvedValue({ accountName: 'A.1', permissions: [], missingPermissions: [], guilds: [] }),
       guildMembers: vi.fn().mockResolvedValue([{ name: 'R.1', rank: 'Member', joined: null }]),
       guildLog: vi.fn().mockResolvedValue([]),
-      apiGet: vi.fn().mockResolvedValue({ id: 1, name: 'Zojja' })
+      apiGet: vi.fn().mockResolvedValue({ id: 1, name: 'Zojja' }),
+      resolveGuildId: vi.fn().mockImplementation(async (nameOrId: string) => {
+        // Simulate GUID passthrough and name→id resolution
+        if (/^[0-9a-f]{8}-/i.test(nameOrId)) return nameOrId
+        if (nameOrId === 'Defiance') return 'G-DEFI'
+        throw new Error(`No guild found matching name "${nameOrId}"`)
+      })
     } as never,
     discordGuildId: () => '123',
     gw2GuildId: () => 'G-1',
@@ -275,14 +281,49 @@ describe('officer tools', () => {
     expect(result.isError).toBeUndefined()
   })
 
-  it('gw2 guild tools error helpfully when no guild_id is given and none configured', async () => {
+  it('gw2 guild tools error helpfully when no guild given and none configured', async () => {
     const deps = makeDeps()
     deps.gw2GuildId = () => ''
     const tools = buildOfficerTools(deps)
     const members = tools.find((t) => t.name === 'gw2_guild_members')!
     const result = await members.handler({}, {})
     expect(result.isError).toBe(true)
-    expect((result.content[0] as { text: string }).text).toMatch(/guild_id/)
+    expect((result.content[0] as { text: string }).text).toMatch(/guild/)
+    expect((result.content[0] as { text: string }).text).toMatch(/gw2_account_info/)
+  })
+
+  it('gw2_guild_members resolves a guild name to an id via resolveGuildId', async () => {
+    const deps = makeDeps()
+    deps.gw2GuildId = () => '' // no default configured
+    const tools = buildOfficerTools(deps)
+    const members = tools.find((t) => t.name === 'gw2_guild_members')!
+    const result = await members.handler({ guild: 'Defiance' }, {})
+    expect(deps.gw2.resolveGuildId).toHaveBeenCalledWith('Defiance')
+    expect(deps.gw2.guildMembers).toHaveBeenCalledWith('G-DEFI')
+    expect(result.isError).toBeUndefined()
+  })
+
+  it('gw2_guild_log resolves a guild name to an id', async () => {
+    const deps = makeDeps()
+    deps.gw2GuildId = () => ''
+    const tools = buildOfficerTools(deps)
+    const log = tools.find((t) => t.name === 'gw2_guild_log')!
+    const result = await log.handler({ guild: 'Defiance' }, {})
+    expect(deps.gw2.resolveGuildId).toHaveBeenCalledWith('Defiance')
+    expect(deps.gw2.guildLog).toHaveBeenCalledWith('G-DEFI', undefined)
+    expect(result.isError).toBeUndefined()
+  })
+
+  it('gw2_guild_members passes a GUID through resolveGuildId without a search call', async () => {
+    const deps = makeDeps()
+    deps.gw2GuildId = () => ''
+    const tools = buildOfficerTools(deps)
+    const members = tools.find((t) => t.name === 'gw2_guild_members')!
+    const guid = '23b352fb-1111-2222-3333-444444444444'
+    const result = await members.handler({ guild: guid }, {})
+    expect(deps.gw2.resolveGuildId).toHaveBeenCalledWith(guid)
+    expect(deps.gw2.guildMembers).toHaveBeenCalledWith(guid)
+    expect(result.isError).toBeUndefined()
   })
 
   it('gw2_api queries an arbitrary endpoint', async () => {

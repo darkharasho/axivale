@@ -2,13 +2,20 @@ import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, type ToolDeps } from './shared'
 
-// Explicit guild_id wins; otherwise fall back to the configured guild.
-function resolveGw2Guild(deps: ToolDeps, explicit?: string): string {
-  if (explicit) return explicit
+/**
+ * Resolve the guild to query. Resolution order:
+ *   1. explicit `guild` param (name OR id) — resolved via resolveGuildId
+ *   2. legacy `guild_id` param (always a GUID, passed through)
+ *   3. configured default guild id from settings
+ * Throws with a helpful message if nothing resolves.
+ */
+async function resolveGw2Guild(deps: ToolDeps, guild?: string, guildId?: string): Promise<string> {
+  if (guild) return deps.gw2.resolveGuildId(guild)
+  if (guildId) return guildId
   const id = deps.gw2GuildId()
   if (id === '')
     throw new Error(
-      'No guild_id given and no default guild configured — pass guild_id (your key’s guild ids come from gw2_account_info, or resolve a name via gw2_api /guild/search?name=…), or set a default in Settings (05)'
+      'No guild given and no default guild configured — pass guild (a guild name like "Defiance" or id like "23b352fb-…") or guild_id, or set a default in Settings. Guild names and ids come from gw2_account_info.'
     )
   return id
 }
@@ -43,28 +50,48 @@ export function buildGw2Tools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> 
     ),
     tool(
       'gw2_account_info',
-      'Validate the stored GW2 API key and return the account name, granted/missing key permissions, and the account\'s guilds (id, name, tag, leader flag).',
+      "Validate the stored GW2 API key and return the account name, granted/missing key permissions, and the account's guilds (id, name, tag, leader flag).",
       {},
       safe(async () => deps.gw2.accountInfo())
     ),
     tool(
       'gw2_guild_members',
-      'List the member roster (name, rank, join date) of a GW2 guild the API key can access. Defaults to the configured guild; pass guild_id for any other guild from the account\'s guild list.',
-      { guild_id: z.string().optional().describe('Guild id to query; omit for the configured guild') },
-      safe(async ({ guild_id }) => deps.gw2.guildMembers(resolveGw2Guild(deps, guild_id)))
+      'List the member roster (name, rank, join date) of a GW2 guild the API key can access. Defaults to the configured guild; pass guild (name or id) for any other guild. Guild names, ids, and tags come from gw2_account_info.',
+      {
+        guild: z
+          .string()
+          .optional()
+          .describe(
+            'Guild name (e.g. "Defiance") or guild id (GUID) to query; omit for the configured guild'
+          ),
+        guild_id: z
+          .string()
+          .optional()
+          .describe('Legacy: guild id (GUID) to query — prefer guild instead')
+      },
+      safe(async ({ guild, guild_id }) => deps.gw2.guildMembers(await resolveGw2Guild(deps, guild, guild_id)))
     ),
     tool(
       'gw2_guild_log',
-      'Fetch the activity log (joins, kicks, rank changes, stash, upgrades…) of a GW2 guild the API key can access, newest first. Defaults to the configured guild; pass guild_id for any other guild from the account\'s guild list.',
+      'Fetch the activity log (joins, kicks, rank changes, stash, upgrades…) of a GW2 guild the API key can access, newest first. Defaults to the configured guild; pass guild (name or id) for any other guild. Guild names, ids, and tags come from gw2_account_info.',
       {
-        guild_id: z.string().optional().describe('Guild id to query; omit for the configured guild'),
+        guild: z
+          .string()
+          .optional()
+          .describe(
+            'Guild name (e.g. "Defiance") or guild id (GUID) to query; omit for the configured guild'
+          ),
+        guild_id: z
+          .string()
+          .optional()
+          .describe('Legacy: guild id (GUID) to query — prefer guild instead'),
         since_log_id: z
           .number()
           .optional()
           .describe('Only return entries newer than this log id')
       },
-      safe(async ({ guild_id, since_log_id }) =>
-        deps.gw2.guildLog(resolveGw2Guild(deps, guild_id), since_log_id)
+      safe(async ({ guild, guild_id, since_log_id }) =>
+        deps.gw2.guildLog(await resolveGw2Guild(deps, guild, guild_id), since_log_id)
       )
     )
   ]

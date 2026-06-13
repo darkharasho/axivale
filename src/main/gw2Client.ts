@@ -90,6 +90,23 @@ export class Gw2Client {
     }
   }
 
+  /**
+   * Resolve a guild name or id to a guild id.
+   * GUIDs (matching /^[0-9a-f]{8}-/i) are returned as-is.
+   * Otherwise, calls /guild/search?name=<encoded> and returns the first match.
+   * Throws Gw2Error if no match is found.
+   */
+  async resolveGuildId(nameOrId: string): Promise<string> {
+    if (/^[0-9a-f]{8}-/i.test(nameOrId)) return nameOrId
+    const results = await this.get<string[]>(`/guild/search?name=${encodeURIComponent(nameOrId)}`)
+    if (!Array.isArray(results) || results.length === 0) {
+      throw new Gw2Error(
+        `No guild found matching name "${nameOrId}" — check the spelling or pass the guild id directly (guild ids come from gw2_account_info).`
+      )
+    }
+    return results[0]
+  }
+
   guildMembers(guildId: string): Promise<GuildMember[]> {
     return this.get(`/guild/${guildId}/members`)
   }
