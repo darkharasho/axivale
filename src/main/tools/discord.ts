@@ -2,6 +2,16 @@ import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, requireDiscordGuild, type ToolDeps } from './shared'
 
+/** Shape the bot returns from /discord/messages (see _handle_discord_messages). */
+interface DiscordMessage {
+  id: string
+  author_id: string
+  author_name: string
+  content: string
+  created_at: string
+  pinned: boolean
+}
+
 /**
  * discord_action verbs that get the confirm dialog. Must mirror the
  * `destructive: True` entries in axitools' api/discord_actions.py registry.
@@ -49,6 +59,64 @@ export function buildDiscordTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
           after
         })
       )
+    ),
+    tool(
+      'discord_search',
+      'Search a Discord channel or thread for messages matching a substring and/or author and/or date range. Discord gives bots no true server search, so this scans a bounded window newest→older (up to max_messages, default 500, hard cap 1000) and filters in code. Returns { matches, scanned, reachedCap, oldestScannedAt }: when reachedCap is true the channel has more history than was scanned — tell the user and offer to narrow by `to`/`from` date or raise max_messages rather than implying an exhaustive search. Pass channel_id OR thread_id.',
+      {
+        channel_id: z.string().optional().describe('Channel id (from discord_overview)'),
+        thread_id: z.string().optional().describe('Thread id to search instead of a channel'),
+        query: z.string().optional().describe('Case-insensitive substring to match in message content'),
+        author: z.string().optional().describe('Author name (case-insensitive) or exact author id'),
+        from: z.string().optional().describe('ISO date — only messages at or after this time'),
+        to: z.string().optional().describe('ISO date — only messages at or before this time'),
+        max_messages: z
+          .number()
+          .optional()
+          .describe('How many messages to scan before stopping (default 500, hard cap 1000)')
+      },
+      safe(async ({ channel_id, thread_id, query, author, from, to, max_messages }) => {
+        const guildId = requireDiscordGuild(deps)
+        const cap = Math.min(Math.max(1, max_messages ?? 500), 1000)
+        const needle = query?.toLowerCase()
+        const authorNeedle = author?.toLowerCase()
+        const fromMs = from ? Date.parse(from) : undefined
+        const toMs = to ? Date.parse(to) : undefined
+
+        const matches: DiscordMessage[] = []
+        let scanned = 0
+        let oldestScannedAt: string | null = null
+        let before: string | undefined
+
+        while (scanned < cap) {
+          const pageSize = Math.min(100, cap - scanned)
+          const page = (await deps.axitools.discordMessages(guildId, {
+            channelId: channel_id,
+            threadId: thread_id,
+            limit: pageSize,
+            before
+          })) as DiscordMessage[]
+          if (page.length === 0) break
+          for (const m of page) {
+            scanned += 1
+            oldestScannedAt = m.created_at
+            if (needle && !m.content.toLowerCase().includes(needle)) continue
+            if (
+              authorNeedle &&
+              m.author_name.toLowerCase() !== authorNeedle &&
+              m.author_id !== author
+            )
+              continue
+            const ts = Date.parse(m.created_at)
+            if (fromMs !== undefined && ts < fromMs) continue
+            if (toMs !== undefined && ts > toMs) continue
+            matches.push(m)
+          }
+          before = page[page.length - 1].id
+          if (page.length < pageSize) break
+        }
+        return { matches, scanned, reachedCap: scanned >= cap, oldestScannedAt }
+      })
     ),
     tool(
       'discord_action',
