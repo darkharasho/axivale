@@ -764,7 +764,12 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
         {/* Account sub-section: clearly separated from the repo-link area above. */}
         <div
           className="subsection"
-          style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px dashed var(--rule)' }}
+          style={{
+            marginTop: '1.5rem',
+            paddingTop: '1.25rem',
+            paddingBottom: '1.5rem',
+            borderTop: '1px dashed var(--rule)'
+          }}
         >
           <h3 className="ssub">GitHub account</h3>
           <p className="shelp">
