@@ -1,11 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createServer, type Server } from 'node:http'
-import { AxibridgeClient, AxibridgeError } from './axibridgeClient'
+import { AxibridgeClient, AxibridgeError, downloadReport } from './axibridgeClient'
 
 const repo = { owner: 'darkharasho', repo: 'eww-reports' }
 let server: Server
 let base: string
 let requests: Array<{ url: string; auth: string | undefined }> = []
+// Mid-stream route: fail (truncate after 10 of 100 bytes) for the first 2 hits,
+// then serve the full body on the 3rd.
+let flakyHits = 0
+const fullBody = JSON.stringify({ meta: { id: 'flaky' }, pad: 'z'.repeat(80) })
 
 beforeAll(async () => {
   server = createServer((req, res) => {
@@ -39,6 +43,22 @@ beforeAll(async () => {
           }
         })
       )
+    } else if (req.url === '/raw/darkharasho/eww-reports/main/reports/flaky/report.json') {
+      // First two attempts: claim 100 bytes then truncate the socket at 10.
+      if (flakyHits < 2) {
+        flakyHits += 1
+        res.writeHead(200, { 'Content-Length': '100' })
+        res.write('0123456789')
+        res.socket?.destroy() // abort mid-stream
+        return
+      }
+      res.writeHead(200, { 'Content-Length': String(Buffer.byteLength(fullBody)) })
+      res.end(fullBody)
+    } else if (req.url === '/raw/darkharasho/eww-reports/main/reports/always-fail/report.json') {
+      // Always truncate — exhausts all retry attempts.
+      res.writeHead(200, { 'Content-Length': '100' })
+      res.write('0123456789')
+      res.socket?.destroy()
     } else if (req.url?.includes('rate-limited')) {
       res.writeHead(403).end('rate limit exceeded')
     } else {
@@ -91,5 +111,42 @@ describe('AxibridgeClient', () => {
       code: 'rate-limited',
       message: expect.stringContaining('PAT')
     })
+  })
+})
+
+describe('downloadReport', () => {
+  it('retries mid-stream failures with backoff and returns the full body', async () => {
+    flakyHits = 0
+    const progress: number[] = []
+    const delays: number[] = []
+    const body = await downloadReport(
+      makeClient(),
+      repo,
+      'flaky',
+      (p) => progress.push(p.receivedBytes),
+      async (ms) => {
+        delays.push(ms)
+      }
+    )
+    expect(body).toBe(fullBody)
+    expect(progress.length).toBeGreaterThan(0)
+    // Two failed attempts → two backoff sleeps before the 2nd and 3rd attempts.
+    expect(delays).toEqual([500, 1000])
+  })
+
+  it('throws a network AxibridgeError after exhausting retries', async () => {
+    const delays: number[] = []
+    await expect(
+      downloadReport(
+        makeClient(),
+        { owner: 'darkharasho', repo: 'eww-reports' },
+        'always-fail',
+        () => {},
+        async (ms) => {
+          delays.push(ms)
+        }
+      )
+    ).rejects.toMatchObject({ code: 'network' })
+    expect(delays).toEqual([500, 1000])
   })
 })

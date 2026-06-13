@@ -144,3 +144,65 @@ export class AxibridgeClient {
     return data
   }
 }
+
+export interface DownloadProgress {
+  repo: string
+  reportId: string
+  receivedBytes: number
+  totalBytes: number | null
+}
+
+const MAX_DOWNLOAD_ATTEMPTS = 3
+const RETRY_BASE_MS = 500
+
+/** Streamed report download with retry/backoff. Returns the full body text.
+ *  Mid-stream failures discard the partial buffer and retry; after
+ *  MAX_DOWNLOAD_ATTEMPTS the last error propagates. */
+export async function downloadReport(
+  client: AxibridgeClient,
+  repo: RepoRef,
+  reportId: string,
+  onProgress: (p: DownloadProgress) => void,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms))
+): Promise<string> {
+  let lastError: unknown = null
+  for (let attempt = 0; attempt < MAX_DOWNLOAD_ATTEMPTS; attempt += 1) {
+    if (attempt > 0) await sleep(RETRY_BASE_MS * 2 ** (attempt - 1))
+    for (const url of client.candidateUrls(repo, `reports/${reportId}/report.json`)) {
+      try {
+        // Raw GitHub URLs carry the PAT (private repos); Pages URLs never do.
+        const headers = client.isPagesUrl(repo, url)
+          ? { 'User-Agent': 'AxiVale' }
+          : client.authHeaders()
+        const resp = await fetch(url, { headers })
+        if (resp.status === 404) continue
+        if (resp.status === 403 || resp.status === 429) {
+          throw new AxibridgeError(
+            `GitHub rate-limited the download of ${reportId} from ${repoKey(repo)} — add a GitHub PAT in Settings.`,
+            'rate-limited'
+          )
+        }
+        if (!resp.ok || !resp.body) continue
+        const totalBytes = Number(resp.headers.get('content-length')) || null
+        const reader = resp.body.getReader()
+        const chunks: Uint8Array[] = []
+        let receivedBytes = 0
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          chunks.push(value)
+          receivedBytes += value.byteLength
+          onProgress({ repo: repoKey(repo), reportId, receivedBytes, totalBytes })
+        }
+        return Buffer.concat(chunks).toString('utf8') // only complete bodies reach here
+      } catch (err) {
+        if (err instanceof AxibridgeError && err.code === 'rate-limited') throw err
+        lastError = err // partial chunks are dropped; loop retries with backoff
+      }
+    }
+  }
+  throw new AxibridgeError(
+    `Download of report ${reportId} from ${repoKey(repo)} failed after ${MAX_DOWNLOAD_ATTEMPTS} attempts${lastError ? `: ${lastError instanceof Error ? lastError.message : String(lastError)}` : ''}.`,
+    'network'
+  )
+}
