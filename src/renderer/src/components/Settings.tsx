@@ -177,6 +177,22 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   const [ghCodeCopied, setGhCodeCopied] = useState(false)
   const [ghAuthStatus, setGhAuthStatus] = useState<{ msg: string; ok: boolean } | null>(null)
 
+  // Shared dispatches published to the GitHub Pages share site.
+  const [shareEntries, setShareEntries] = useState<
+    Array<{ id: string; kind: string; title: string; url: string; createdAt: string }>
+  >([])
+
+  async function refreshShares(): Promise<void> {
+    setShareEntries(await window.officer.shareList())
+  }
+
+  async function deleteShare(id: string): Promise<void> {
+    if (!window.confirm('Delete this share? The public link will stop working.')) return
+    const res = await window.officer.shareDelete(id)
+    if (res.ok) await refreshShares()
+    else window.alert(res.error ?? 'Could not delete the share.')
+  }
+
   async function copyGhCode(): Promise<void> {
     try {
       await navigator.clipboard.writeText(ghUserCode)
@@ -300,6 +316,7 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
       setVersion(await window.officer.appVersion())
       await refreshKeyLists()
+      void refreshShares()
       void checkForge()
       const repos = await window.officer.axibridgeReposList()
       setBridgeRepos(repos)
@@ -886,6 +903,36 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
             <div className={`sstatus ${ghAuthStatus.ok ? 'ok' : 'err'}`}>{ghAuthStatus.msg}</div>
           )}
         </div>
+      </div>
+
+      <div className="sgroup">
+        <h2>Shared dispatches</h2>
+        <p className="shelp">
+          Public links you have published to your GitHub Pages share site. Deleting one removes it
+          from the web.
+        </p>
+        {shareEntries.length === 0 ? (
+          <div className="sstatus">You haven&apos;t shared anything yet.</div>
+        ) : (
+          <ul className="share-list">
+            {shareEntries.map((s) => (
+              <li key={s.id} className="share-list-row">
+                <div className="share-list-meta">
+                  <span className="share-list-title">{s.title || 'Untitled'}</span>
+                  <span className="share-list-kind">{s.kind}</span>
+                </div>
+                <div className="share-list-acts">
+                  <a className="sbtn out" href={s.url} target="_blank" rel="noreferrer">
+                    Open
+                  </a>
+                  <button className="sbtn out" onClick={() => void deleteShare(s.id)}>
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="sgroup">
