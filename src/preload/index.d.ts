@@ -14,6 +14,15 @@ export interface RendererConversation {
   seenTurnCount: number
 }
 
+export interface ShareListEntry {
+  id: string
+  kind: 'conversation' | 'response'
+  title: string
+  url: string
+  sourceConversationId: string
+  createdAt: string
+}
+
 export interface OfficerApi {
   getSetting(key: string): Promise<string | null>
   setSetting(key: string, value: string): Promise<void>
@@ -79,6 +88,13 @@ export interface OfficerApi {
     repos?: Array<{ owner: string; repo: string }>
     error?: string
   }>
+  /** Publish a full conversation; returns its public URL. */
+  shareConversation(conversationId: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>
+  /** Publish a single AI response; returns its public URL. */
+  shareResponse(conversationId: string, turnId: number): Promise<{ ok: true; url: string } | { ok: false; error: string }>
+  shareList(): Promise<ShareListEntry[]>
+  shareDelete(id: string): Promise<{ ok: boolean; error?: string }>
+  shareStatus(): Promise<{ signedIn: boolean; repoReady: boolean; pagesUrl: string | null }>
   sendMessage(conversationId: string, text: string): Promise<void>
   resetSession(conversationId: string): Promise<void>
   cancelTurn(conversationId: string): Promise<void>
