@@ -169,6 +169,35 @@ describe('API path', () => {
       gameMode: 'wvw'
     })
   })
+
+  it('parseGw2Skills posts to the parse endpoint and returns the build (no save)', async () => {
+    const port = await startStub({
+      'POST /import/gw2skills/parse': { json: { profession: 'Guardian', gameMode: 'wvw', equipment: {} } }
+    })
+    writeDiscovery(port)
+    const build = await makeClient().parseGw2Skills({ url: 'http://gw2skills.net/editor/?abc', gameMode: 'wvw' })
+    expect(build).toMatchObject({ profession: 'Guardian', gameMode: 'wvw' })
+    expect(JSON.parse(requests[0].body)).toEqual({ url: 'http://gw2skills.net/editor/?abc', gameMode: 'wvw' })
+  })
+
+  it('parseGw2Skills omits gameMode from the body when not given', async () => {
+    const port = await startStub({
+      'POST /import/gw2skills/parse': { json: { profession: 'Ranger', gameMode: 'pve' } }
+    })
+    writeDiscovery(port)
+    await makeClient().parseGw2Skills({ url: 'http://gw2skills.net/editor/?abc' })
+    expect(JSON.parse(requests[0].body)).toEqual({ url: 'http://gw2skills.net/editor/?abc' })
+  })
+
+  it('parseGw2Skills surfaces a 400 from a bad link as AxiforgeError', async () => {
+    const port = await startStub({
+      'POST /import/gw2skills/parse': { status: 400, json: { error: "Couldn't read that gw2skills link" } }
+    })
+    writeDiscovery(port)
+    const err = await makeClient().parseGw2Skills({ url: 'http://bad' }).catch((e) => e)
+    expect(err).toBeInstanceOf(AxiforgeError)
+    expect(err.message).toContain('gw2skills link')
+  })
 })
 
 describe('not-running detection and file fallback', () => {

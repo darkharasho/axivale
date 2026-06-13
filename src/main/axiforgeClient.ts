@@ -293,6 +293,18 @@ export class AxiforgeClient {
     return this.request('POST', '/import/gw2skills', { url, ...opts })
   }
 
+  /**
+   * Decode a gw2skills.net editor URL into a structured build WITHOUT saving it
+   * (read-only preview/critique). Routes through request() — which converts a
+   * closed AxiForge into AxiforgeNotRunningError — because parsing needs
+   * AxiForge's live catalog. Returns the assembled build object.
+   */
+  parseGw2Skills(opts: { url: string; gameMode?: string }): Promise<ForgeBuild> {
+    const body: { url: string; gameMode?: string } =
+      opts.gameMode !== undefined ? { url: opts.url, gameMode: opts.gameMode } : { url: opts.url }
+    return this.request('POST', '/import/gw2skills/parse', body)
+  }
+
   // --- catalog (persistent cache so cards/grounding work offline) ----------------
 
   private async readCatalogCache(): Promise<CatalogCacheFile> {
