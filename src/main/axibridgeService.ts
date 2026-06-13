@@ -1,6 +1,6 @@
 import type { RepoRef } from './axibridgeRepos'
 import { repoKey } from './axibridgeRepos'
-import { AxibridgeClient, type ReportIndexEntry, type DownloadProgress } from './axibridgeClient'
+import type { AxibridgeClient, ReportIndexEntry, DownloadProgress } from './axibridgeClient'
 import { AxibridgeCache } from './axibridgeCache'
 import type { SummaryJob, SummaryJobResult } from './axibridgeSummarize'
 import {

@@ -45,16 +45,28 @@ export function runSummaryJobs(jobs: SummaryJob[]): SummaryJobResult {
  * Run the jobs in a worker thread so a season of 30 MB parses never blocks main.
  * The worker compiles to its own entry alongside the main bundle (electron.vite.config.ts);
  * the package is `type: module`, so the emitted `.js` worker loads as ESM.
+ *
+ * @param workerPath - override the worker bundle path (used in tests to inject a bad path).
  */
-export function summarizeInWorker(jobs: SummaryJob[]): Promise<SummaryJobResult> {
+export function summarizeInWorker(
+  jobs: SummaryJob[],
+  workerPath: string = join(dirname(fileURLToPath(import.meta.url)), 'axibridgeWorker.js'),
+): Promise<SummaryJobResult> {
   if (jobs.length === 0) return Promise.resolve({ summaries: [], skipped: [] })
-  const workerPath = join(dirname(fileURLToPath(import.meta.url)), 'axibridgeWorker.js')
   return new Promise((resolve, reject) => {
     const worker = new Worker(workerPath, { workerData: { jobs } })
+    let settled = false
     worker.once('message', (result: SummaryJobResult) => {
+      settled = true
       resolve(result)
       void worker.terminate()
     })
-    worker.once('error', reject)
+    worker.once('error', (err) => {
+      settled = true
+      reject(err)
+    })
+    worker.once('exit', (code) => {
+      if (!settled) reject(new Error(`Summary worker exited (code ${code}) before returning a result`))
+    })
   })
 }

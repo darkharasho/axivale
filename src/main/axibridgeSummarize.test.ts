@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mkdtempSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runSummaryJobs } from './axibridgeSummarize'
+import { runSummaryJobs, summarizeInWorker } from './axibridgeSummarize'
 
 let dir: string
 beforeEach(() => {
@@ -13,6 +13,15 @@ const report = {
   meta: { id: 'r1', title: 'Reset', dateStart: '2026-01-17T17:51:20Z', dateEnd: '2026-01-17T19:00:00Z' },
   stats: { total: 3, wins: 2, losses: 1, attendanceData: [{ account: 'P.1', characterNames: [], combatTimeMs: 1, squadTimeMs: 2, classTimes: [] }] }
 }
+
+describe('summarizeInWorker', () => {
+  it('rejects (not hangs) when pointed at a non-existent worker path', async () => {
+    const bogusPath = join(tmpdir(), 'does-not-exist-axibridgeWorker.js')
+    await expect(
+      summarizeInWorker([{ id: 'r1', reportPath: '/any', summaryPath: '/any.sum' }], bogusPath),
+    ).rejects.toThrow()
+  }, 10_000)
+})
 
 describe('runSummaryJobs', () => {
   it('parses reports, writes summary cache files, returns summaries', () => {
