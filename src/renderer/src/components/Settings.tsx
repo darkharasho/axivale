@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 
 type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
+type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'
 
 const PROVIDERS: Array<{ value: ProviderName; label: string }> = [
   { value: 'claude', label: 'Claude' },
@@ -140,11 +141,53 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
     setForgeStatus(await window.officer.axiforgeStatus())
   }
 
+  // AxiBridge
+  const [bridgeRepos, setBridgeRepos] = useState<Array<{ owner: string; repo: string }>>([])
+  const [bridgeInput, setBridgeInput] = useState('')
+  const [bridgeStatus, setBridgeStatus] = useState<{ msg: string; ok: boolean } | null>(null)
+  const [bridgeHealth, setBridgeHealth] = useState<
+    Array<{
+      repo: string
+      runs: number
+      lastRun: string | null
+      cachedReports: number
+      lastIndexFetch: number | null
+      error: string | null
+    }>
+  >([])
+  const [githubKeys, setGithubKeys] = useState<KeyLabel[]>([])
+  const [ghLabel, setGhLabel] = useState('')
+  const [ghKey, setGhKey] = useState('')
+
+  async function refreshBridgeHealth(): Promise<void> {
+    const res = await window.officer.axibridgeStatus()
+    if (res.ok) setBridgeHealth(res.repos)
+  }
+
+  async function addBridgeRepo(): Promise<void> {
+    const res = await window.officer.axibridgeReposAdd(bridgeInput)
+    if (!res.ok) {
+      setBridgeStatus({ msg: res.error ?? 'invalid repo', ok: false })
+      return
+    }
+    setBridgeRepos(res.repos)
+    setBridgeInput('')
+    setBridgeStatus({ msg: 'repo linked', ok: true })
+    await refreshBridgeHealth()
+    onChanged()
+  }
+
+  async function removeBridgeRepo(owner: string, repo: string): Promise<void> {
+    setBridgeRepos(await window.officer.axibridgeReposRemove(owner, repo))
+    onChanged()
+  }
+
   async function refreshKeyLists(): Promise<void> {
     setGw2Keys(await window.officer.listKeys('gw2'))
     setAxiKeys(await window.officer.listKeys('axivale'))
     setGeminiKeys(await window.officer.listKeys('gemini'))
     setOpenaiKeys(await window.officer.listKeys('openai'))
+    setGithubKeys(await window.officer.listKeys('github'))
   }
 
   useEffect(() => {
@@ -160,6 +203,8 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
       setVersion(await window.officer.appVersion())
       await refreshKeyLists()
       void checkForge()
+      setBridgeRepos(await window.officer.axibridgeReposList())
+      void refreshBridgeHealth()
     })()
   }, [])
 
@@ -225,13 +270,13 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
     onChanged()
   }
 
-  async function activateLlmKey(service: 'gemini' | 'openai', label: string): Promise<void> {
+  async function activateLlmKey(service: KeyService, label: string): Promise<void> {
     await window.officer.setActiveKey(service, label)
     await refreshKeyLists()
     onChanged()
   }
 
-  async function removeLlmKey(service: 'gemini' | 'openai', label: string): Promise<void> {
+  async function removeLlmKey(service: KeyService, label: string): Promise<void> {
     await window.officer.removeKey(service, label)
     await refreshKeyLists()
     onChanged()
@@ -625,6 +670,97 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
         <p className="shelp">
           AxiVale edits AxiForge builds and comps through its local API. No setup needed — the
           connection is discovered automatically when AxiForge runs on this machine.
+        </p>
+      </div>
+
+      <div className="sgroup">
+        <h2>AxiBridge report repos</h2>
+        {bridgeRepos.length > 0 && (
+          <div className="picker">
+            {bridgeRepos.map((r) => {
+              const health = bridgeHealth.find((h) => h.repo === `${r.owner}/${r.repo}`)
+              return (
+                <button key={`${r.owner}/${r.repo}`} className="pi">
+                  {r.owner}/{r.repo}
+                  {health && !health.error && (
+                    <span className="lead">
+                      {' '}
+                      · {health.runs} runs · {health.cachedReports} cached
+                    </span>
+                  )}
+                  {health?.error && <span className="lead"> · unreachable</span>}
+                  <span
+                    className="kx"
+                    title={`Unlink ${r.owner}/${r.repo}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void removeBridgeRepo(r.owner, r.repo)
+                    }}
+                  >
+                    ✕
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+        <label className="slabel">Link a repo</label>
+        <input
+          className="sinput"
+          type="text"
+          value={bridgeInput}
+          placeholder="owner/repo or https://owner.github.io/repo"
+          onChange={(e) => setBridgeInput(e.target.value)}
+        />
+        <div className="srow">
+          <button className="sbtn" disabled={!bridgeInput.trim()} onClick={addBridgeRepo}>
+            Link repo
+          </button>
+          <button className="sbtn out" onClick={refreshBridgeHealth}>
+            Check health
+          </button>
+        </div>
+        {bridgeStatus && (
+          <div className={`sstatus ${bridgeStatus.ok ? 'ok' : 'err'}`}>{bridgeStatus.msg}</div>
+        )}
+        <label className="slabel">GitHub token (optional — private repos / rate limits)</label>
+        <Keyring
+          keys={githubKeys}
+          onActivate={(label) => activateLlmKey('github', label)}
+          onRemove={(label) => removeLlmKey('github', label)}
+        />
+        <input
+          className="sinput"
+          type="text"
+          value={ghLabel}
+          placeholder="label, e.g. guild bot"
+          onChange={(e) => setGhLabel(e.target.value)}
+        />
+        <input
+          className="sinput"
+          type="password"
+          value={ghKey}
+          placeholder="paste a fine-grained PAT with contents:read"
+          onChange={(e) => setGhKey(e.target.value)}
+        />
+        <div className="srow">
+          <button
+            className="sbtn"
+            disabled={!ghKey}
+            onClick={async () => {
+              await window.officer.addKey('github', ghLabel.trim() || 'unnamed', ghKey)
+              setGhLabel('')
+              setGhKey('')
+              await refreshKeyLists()
+              onChanged()
+            }}
+          >
+            Add token
+          </button>
+        </div>
+        <p className="shelp">
+          Public report repos work without a token. Add one for private repos or if you hit GitHub
+          rate limits.
         </p>
       </div>
 

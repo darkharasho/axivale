@@ -17,6 +17,31 @@ export interface OfficerApi {
     runes: Array<{ id: number; name: string; icon?: string; bonuses?: string[] }>
     relics: Array<{ name: string; icon?: string }>
   } | null>
+  /** Linked AxiBridge report repos. */
+  axibridgeReposList(): Promise<Array<{ owner: string; repo: string }>>
+  /** Validate + add a repo (owner/repo or GitHub Pages URL); returns the updated list. */
+  axibridgeReposAdd(
+    input: string
+  ): Promise<
+    { ok: true; repos: Array<{ owner: string; repo: string }> } | { ok: false; error: string }
+  >
+  axibridgeReposRemove(owner: string, repo: string): Promise<Array<{ owner: string; repo: string }>>
+  /** Per-repo health: run counts, last run, cached reports, and any fetch error. */
+  axibridgeStatus(): Promise<
+    | {
+        ok: true
+        repos: Array<{
+          repo: string
+          runs: number
+          firstRun: string | null
+          lastRun: string | null
+          cachedReports: number
+          lastIndexFetch: number | null
+          error: string | null
+        }>
+      }
+    | { ok: false; error: string }
+  >
   sendMessage(text: string): Promise<void>
   resetSession(): Promise<void>
   cancelTurn(): Promise<void>
@@ -24,10 +49,10 @@ export interface OfficerApi {
   onConfirmRequest(cb: (req: unknown) => void): () => void
   respondConfirm(id: string, allowed: boolean): void
   windowControl(action: 'minimize' | 'maximize-toggle' | 'close'): void
-  listKeys(service: 'gw2' | 'axivale' | 'gemini' | 'openai'): Promise<Array<{ label: string; active: boolean }>>
-  addKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai', label: string, key: string): Promise<void>
-  removeKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai', label: string): Promise<void>
-  setActiveKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai', label: string): Promise<void>
+  listKeys(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'): Promise<Array<{ label: string; active: boolean }>>
+  addKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github', label: string, key: string): Promise<void>
+  removeKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github', label: string): Promise<void>
+  setActiveKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github', label: string): Promise<void>
   /** Whitelisted AxitoolsClient call on the connected guild (see PANEL_METHODS in main). */
   axitools(method: string, ...args: unknown[]): Promise<unknown>
   localStatus(): Promise<{ ok: boolean; models?: string[]; error?: string }>

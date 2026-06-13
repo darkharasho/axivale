@@ -17,7 +17,7 @@ import { AxiAppLauncher } from './axiAppLauncher'
 import { AxibridgeClient } from './axibridgeClient'
 import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridgeCache'
 import { AxibridgeService } from './axibridgeService'
-import { listLinkedRepos } from './axibridgeRepos'
+import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeInWorker } from './axibridgeSummarize'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
 import { AgentService } from './agent'
@@ -195,6 +195,36 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('axiforge:status', () => axiforge.status())
+
+  // AxiBridge linked report repos: list/add/remove persist to the axibridgeRepos
+  // setting; the service reads them fresh, so changes take effect without restart.
+  ipcMain.handle('axibridge:repos-list', () => listLinkedRepos(store.getSetting('axibridgeRepos')))
+  ipcMain.handle('axibridge:repos-add', (_event, input: string) => {
+    const ref = parseRepoRef(input)
+    if (!ref) {
+      return { ok: false, error: 'Enter owner/repo or a GitHub Pages URL (https://owner.github.io/repo).' }
+    }
+    const repos = listLinkedRepos(store.getSetting('axibridgeRepos')).filter(
+      (r) => !(r.owner === ref.owner && r.repo === ref.repo)
+    )
+    repos.push(ref)
+    store.setSetting('axibridgeRepos', serializeLinkedRepos(repos))
+    return { ok: true, repos }
+  })
+  ipcMain.handle('axibridge:repos-remove', (_event, owner: string, repo: string) => {
+    const repos = listLinkedRepos(store.getSetting('axibridgeRepos')).filter(
+      (r) => !(r.owner === owner && r.repo === repo)
+    )
+    store.setSetting('axibridgeRepos', serializeLinkedRepos(repos))
+    return repos
+  })
+  ipcMain.handle('axibridge:status', async () => {
+    try {
+      return { ok: true, ...(await axibridge.reposStatus()) }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) }
+    }
+  })
 
   // Inline build/comp cards need rune/relic names+icons even when AxiForge is
   // closed — a disk cache on top of the client's catalog fetch covers that.
