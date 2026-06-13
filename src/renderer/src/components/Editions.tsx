@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactElement } from 'react'
+import { useMemo, useRef, useState, type ReactElement } from 'react'
 import type { Turn } from '../state'
 import { splitHeadline, stripMarkdown } from './headline'
 
@@ -66,15 +66,23 @@ function Row({
 }): ReactElement {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
+  // Escape sets editing=false, which unmounts the input and fires its onBlur —
+  // this ref tells that blur-driven commit to stand down so Escape truly cancels.
+  const cancelling = useRef(false)
   const headline = autoHeadline(item)
 
   function startEdit(e: React.MouseEvent): void {
     e.stopPropagation()
+    cancelling.current = false
     setDraft(item.title ?? headline)
     setEditing(true)
   }
 
   function commit(): void {
+    if (cancelling.current) {
+      cancelling.current = false
+      return
+    }
     const trimmed = draft.trim()
     if (trimmed) onRename(item.id, trimmed)
     setEditing(false)
@@ -101,7 +109,10 @@ function Row({
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') commit()
-            if (e.key === 'Escape') setEditing(false)
+            if (e.key === 'Escape') {
+              cancelling.current = true
+              setEditing(false)
+            }
           }}
           onBlur={commit}
         />

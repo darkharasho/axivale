@@ -16,7 +16,6 @@ function conv(over: Partial<EditionItem> = {}): EditionItem {
   }
 }
 
-const noop = (): void => {}
 
 function baseProps(items: EditionItem[]) {
   return {
