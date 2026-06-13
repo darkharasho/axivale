@@ -61,6 +61,22 @@ function createWindow(): void {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
+  // Open links in the user's default browser, never inside the app window.
+  // setWindowOpenHandler covers target=_blank / window.open; will-navigate
+  // covers plain <a href> clicks. The renderer's own URL/file is allowed
+  // through so HMR and in-app routing still work.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+  win.webContents.on('will-navigate', (event, url) => {
+    const appUrl = process.env.ELECTRON_RENDERER_URL
+    if (appUrl && url.startsWith(appUrl)) return // dev HMR / in-app nav
+    if (url.startsWith('file://')) return // packaged renderer
+    event.preventDefault()
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
+  })
+
   mainWindow = win
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
