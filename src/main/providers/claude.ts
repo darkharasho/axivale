@@ -14,6 +14,23 @@ import { DisplayCorrelator } from './displayBus'
 import { DESTRUCTIVE_TOOLS, ACTION_GATED_TOOLS } from '../tools'
 
 /**
+ * Extracts a session_id from an SDK message as early as possible.
+ * Returns the id from a system/init message or a result message; null otherwise.
+ * Pure function — keeps runTurn's capture logic small and unit-testable.
+ */
+export function sessionIdFromMessage(msg: SDKMessage): string | null {
+  if (msg.type === 'system' && (msg as { subtype?: string }).subtype === 'init') {
+    const id = (msg as { session_id?: string }).session_id
+    return id ?? null
+  }
+  if (msg.type === 'result') {
+    const id = (msg as { session_id?: string }).session_id
+    return id ?? null
+  }
+  return null
+}
+
+/**
  * Translates one SDK message into zero or more renderer-facing events.
  * Pure function — unit-tested in agentEvents.test.ts.
  */
@@ -177,8 +194,11 @@ export class ClaudeAdapter implements ProviderAdapter {
         }
       })
       for await (const msg of q) {
+        // Capture session_id as early as possible (system/init or result) so
+        // that an aborted turn still updates sessionId for the next resume.
+        const earlyId = sessionIdFromMessage(msg)
+        if (earlyId) this.sessionId = earlyId
         for (const event of translateSdkMessage(msg)) {
-          if (event.kind === 'done' && event.sessionId) this.sessionId = event.sessionId
           yield correlator.observe(event)
         }
       }

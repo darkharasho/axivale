@@ -7,7 +7,7 @@ import type { ProviderAdapter } from './providers/types'
 export { MCP_PREFIX, evaluateToolPermission }
 export type { AgentEvent }
 export type { PermissionResult } from './providers/permission'
-export { translateSdkMessage } from './providers/claude'
+export { translateSdkMessage, sessionIdFromMessage } from './providers/claude'
 
 export const AXIVALE_SYSTEM_PROMPT = `You are AxiVale — a virtual guild officer for a Guild Wars 2 guild.
 You manage builds and squad compositions through the AxiTools Discord bot, and
