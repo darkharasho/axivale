@@ -35,4 +35,10 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toContain('axiforge_build_chat_link')
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/chat code/i)
   })
+
+  it('explains Discord paging and the discord_search scan cap', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toContain('discord_search')
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/before.*oldest/i)
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/reachedCap|scan cap/i)
+  })
 })
