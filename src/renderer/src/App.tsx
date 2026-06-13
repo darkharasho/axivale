@@ -175,7 +175,13 @@ export default function App(): ReactElement {
   }
 
   // Load conversations on mount; migrate the legacy localStorage transcript once.
+  // didInit guards against React StrictMode's double-invoked mount effect: both
+  // passes would otherwise race an empty store + legacy turns and create two
+  // migrated conversations. The ref is set synchronously before any await.
+  const didInit = useRef(false)
   useEffect(() => {
+    if (didInit.current) return
+    didInit.current = true
     void (async () => {
       let list = await window.officer.listConversations()
       const legacy = legacyTurns()
