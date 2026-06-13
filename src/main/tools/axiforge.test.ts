@@ -193,6 +193,90 @@ describe('axiforge tools', () => {
     expect(parsed.profession).toBeUndefined()
   })
 
+  describe('display payloads', () => {
+    it('builds_get attaches a build-card display with the FULL build (images intact) while the model text stays stripped', async () => {
+      const deps = makeDeps()
+      const build = {
+        id: 'b1',
+        title: 'Heal FB',
+        profession: 'Guardian',
+        images: { icon: 'data:image/png;base64,abc123' }
+      }
+      ;(deps.axiforge.getBuild as ReturnType<typeof vi.fn>).mockResolvedValueOnce(build)
+      const result = await find(deps, 'axiforge_builds_get').handler({ build_id: 'b1' }, {})
+      expect(result.display).toEqual({ kind: 'build-card', data: { build } })
+      // Model-visible JSON stays image-stripped — no display/image leakage.
+      const text = (result.content[0] as { text: string }).text
+      expect(text).not.toContain('data:image/')
+      const parsed = JSON.parse(text)
+      expect(parsed.images).toBeUndefined()
+      expect(parsed.imageKeys).toEqual(['icon'])
+    })
+
+    it('builds_save attaches a build-card display of the saved record, echo stays compact', async () => {
+      const deps = makeDeps()
+      const saved = {
+        id: 'b1',
+        title: 'Renamed',
+        profession: 'Guardian',
+        updatedAt: '2026-06-10T00:00:00.000Z'
+      }
+      ;(deps.axiforge.saveBuild as ReturnType<typeof vi.fn>).mockResolvedValueOnce(saved)
+      const result = await find(deps, 'axiforge_builds_save').handler(
+        { build: { title: 'Renamed' } },
+        {}
+      )
+      expect(result.display).toEqual({ kind: 'build-card', data: { build: saved } })
+      const parsed = JSON.parse((result.content[0] as { text: string }).text)
+      expect(parsed).toEqual({ id: 'b1', title: 'Renamed', updatedAt: '2026-06-10T00:00:00.000Z' })
+    })
+
+    it('comps_get attaches a comp-card display with referenced builds embedded by id', async () => {
+      const deps = makeDeps()
+      const comp = {
+        id: 'c1',
+        name: 'GvG',
+        partyLines: [{ id: 'p1', capacity: 5, slots: ['b1'] }],
+        buildIds: ['b2']
+      }
+      const b1 = { id: 'b1', title: 'FB', profession: 'Guardian' }
+      const b2 = { id: 'b2', title: 'Scrapper', profession: 'Engineer' }
+      ;(deps.axiforge.getComp as ReturnType<typeof vi.fn>).mockResolvedValueOnce(comp)
+      ;(deps.axiforge.getBuild as ReturnType<typeof vi.fn>).mockImplementation(async (id: string) =>
+        id === 'b1' ? b1 : b2
+      )
+      const result = await find(deps, 'axiforge_comps_get').handler({ comp_id: 'c1' }, {})
+      expect(result.display).toEqual({
+        kind: 'comp-card',
+        data: { comp, builds: { b1, b2 } }
+      })
+      expect((result.content[0] as { text: string }).text).toBe(JSON.stringify(comp))
+    })
+
+    it('comps_get tolerates failed build fetches: missing builds are left out, value still returns', async () => {
+      const deps = makeDeps()
+      const comp = { id: 'c1', name: 'GvG', partyLines: [{ slots: ['b1', 'b404'] }] }
+      const b1 = { id: 'b1', title: 'FB', profession: 'Guardian' }
+      ;(deps.axiforge.getComp as ReturnType<typeof vi.fn>).mockResolvedValueOnce(comp)
+      ;(deps.axiforge.getBuild as ReturnType<typeof vi.fn>).mockImplementation(async (id: string) => {
+        if (id === 'b1') return b1
+        throw new Error('not found')
+      })
+      const result = await find(deps, 'axiforge_comps_get').handler({ comp_id: 'c1' }, {})
+      expect(result.isError).toBeUndefined()
+      expect((result.content[0] as { text: string }).text).toBe(JSON.stringify(comp))
+      expect(result.display).toEqual({ kind: 'comp-card', data: { comp, builds: { b1 } } })
+    })
+
+    it('list tools carry no display', async () => {
+      const deps = makeDeps()
+      const builds = await find(deps, 'axiforge_builds_list').handler({}, {})
+      expect(builds.display).toBeUndefined()
+      const comps = await find(deps, 'axiforge_comps_list').handler({}, {})
+      expect(comps.display).toBeUndefined()
+    })
+  })
+
   it('write() does NOT call ensureRunning on plain AxiforgeError', async () => {
     const deps = makeDeps()
     ;(deps.axiforge.saveBuild as ReturnType<typeof vi.fn>).mockRejectedValueOnce(

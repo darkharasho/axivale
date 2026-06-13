@@ -1,6 +1,6 @@
 import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
-import { safe, type ToolDeps } from './shared'
+import { safe, safeRich, type ToolDeps } from './shared'
 import { AxiforgeError, AxiforgeNotRunningError } from '../axiforgeClient'
 
 /** Tools here that join the top-level DESTRUCTIVE_TOOLS list (deletes + public publishes). */
@@ -11,9 +11,9 @@ export const AXIFORGE_DESTRUCTIVE_TOOLS = [
   'axiforge_comp_publish'
 ]
 
-// NOTE: get/save results are plain compact JSON for now. Rich `build-card` /
-// `comp-card` display payloads attach here once the rendering plan extends
-// the tool-result AgentEvent with a `display` field (spec section 6).
+// get/save tools attach rich `build-card` / `comp-card` display payloads via
+// safeRich(): the model sees compact (image-stripped) JSON; the renderer gets
+// the full record — including images — for card visuals.
 
 /**
  * Strip base64 image data from a build before returning it to the model.
@@ -81,18 +81,22 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'axiforge_builds_get',
-      'Fetch one full AxiForge build by id (traits, skills, equipment, notes). Works even when AxiForge is closed. Images are stripped from the response (they are megabytes of base64 data the model cannot use); imageKeys lists which image slots exist. Images are preserved automatically on save.',
+      'Fetch one full AxiForge build by id (traits, skills, equipment, notes). Works even when AxiForge is closed. The user sees a rich build card for this result. Images are stripped from the response (they are megabytes of base64 data the model cannot use); imageKeys lists which image slots exist. Images are preserved automatically on save.',
       { build_id: z.string().describe('Build id from axiforge_builds_list') },
-      safe(async ({ build_id }) => {
-        const build = await deps.axiforge.getBuild(build_id)
-        return stripImages(build as Record<string, unknown>)
+      safeRich(async ({ build_id }) => {
+        const build = (await deps.axiforge.getBuild(build_id)) as Record<string, unknown>
+        // Model gets the image-stripped build; the card renders the full one.
+        return {
+          value: stripImages(build),
+          display: { kind: 'build-card', data: { build } }
+        }
       })
     ),
     tool(
       'axiforge_builds_save',
-      'Create or update a build in the local AxiForge app. Pass the FULL build object — to edit, get the build first, modify the returned object, and save it back; omit id to create. Starts AxiForge headless automatically if it is closed. Ground every skill/trait/gear choice in axiforge_catalog first. Images are preserved automatically on update — this tool cannot add or modify images. Returns compact echo: { id, title, updatedAt }.',
+      'Create or update a build in the local AxiForge app. Pass the FULL build object — to edit, get the build first, modify the returned object, and save it back; omit id to create. Starts AxiForge headless automatically if it is closed. Ground every skill/trait/gear choice in axiforge_catalog first. Images are preserved automatically on update — this tool cannot add or modify images. Returns compact echo: { id, title, updatedAt }. The user sees a rich build card for the saved build.',
       { build: z.record(z.string(), z.unknown()).describe('Full build object (AxiForge build shape); images are ignored — stored images are preserved automatically') },
-      safe(async ({ build }) => {
+      safeRich(async ({ build }) => {
         // On update, always re-attach stored images — model cannot modify images.
         let buildToSave = build
         if (typeof build.id === 'string' && build.id) {
@@ -106,7 +110,12 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
         }
         const saved = await write(() => deps.axiforge.saveBuild(buildToSave))
         const s = saved as Record<string, unknown>
-        return { id: s.id, title: s.title, updatedAt: s.updatedAt ?? null }
+        // Model echo stays compact; the card gets the full normalized build
+        // the server echoed back from the save.
+        return {
+          value: { id: s.id, title: s.title, updatedAt: s.updatedAt ?? null },
+          display: { kind: 'build-card', data: { build: s } }
+        }
       })
     ),
     tool(
@@ -134,9 +143,35 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'axiforge_comps_get',
-      'Fetch one full AxiForge squad composition by id. Works even when AxiForge is closed.',
+      'Fetch one full AxiForge squad composition by id. Works even when AxiForge is closed. The user sees a rich comp card for this result.',
       { comp_id: z.string().describe('Comp id from axiforge_comps_list') },
-      safe(async ({ comp_id }) => deps.axiforge.getComp(comp_id))
+      safeRich(async ({ comp_id }) => {
+        const comp = (await deps.axiforge.getComp(comp_id)) as Record<string, unknown>
+        // Embed the referenced builds so the card can render each slot. Any
+        // failure here only degrades the display — the comp value still returns.
+        try {
+          const fromParty = ((comp.partyLines ?? []) as Array<{ slots?: unknown[] }>).flatMap(
+            (l) => l.slots ?? []
+          )
+          const fromIds = Array.isArray(comp.buildIds) ? (comp.buildIds as unknown[]) : []
+          const ids = [...new Set([...fromParty, ...fromIds])].filter(
+            (x): x is string => typeof x === 'string' && x !== ''
+          )
+          const builds: Record<string, Record<string, unknown>> = {}
+          await Promise.all(
+            ids.map(async (buildId) => {
+              try {
+                builds[buildId] = (await deps.axiforge.getBuild(buildId)) as Record<string, unknown>
+              } catch {
+                /* missing builds render as placeholder cards */
+              }
+            })
+          )
+          return { value: comp, display: { kind: 'comp-card', data: { comp, builds } } }
+        } catch {
+          return { value: comp }
+        }
+      })
     ),
     tool(
       'axiforge_comps_save',
