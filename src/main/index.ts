@@ -19,7 +19,7 @@ import { AxibridgeClient } from './axibridgeClient'
 import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridgeCache'
 import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
-import { summarizeInWorker } from './axibridgeSummarize'
+import { summarizeResilient } from './axibridgeSummarize'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
 import {
   GITHUB_DEVICE_CLIENT_ID,
@@ -116,7 +116,7 @@ app.whenReady().then(async () => {
     repos: () => listLinkedRepos(store.getSetting('axibridgeRepos')),
     client: axibridgeClient,
     cache: axibridgeCache,
-    summarize: (jobs) => summarizeInWorker(jobs),
+    summarize: (jobs) => summarizeResilient(jobs),
     onProgress: (message) => {
       const win = mainWindow
       if (win && !win.isDestroyed()) win.webContents.send('axibridge:progress', message)

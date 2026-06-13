@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mkdtempSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { runSummaryJobs, summarizeInWorker } from './axibridgeSummarize'
+import { runSummaryJobs, summarizeInWorker, summarizeResilient } from './axibridgeSummarize'
 
 let dir: string
 beforeEach(() => {
@@ -21,6 +21,20 @@ describe('summarizeInWorker', () => {
       summarizeInWorker([{ id: 'r1', reportPath: '/any', summaryPath: '/any.sum' }], bogusPath),
     ).rejects.toThrow()
   }, 10_000)
+})
+
+describe('summarizeResilient', () => {
+  it('falls back to inline summarizing when the worker bundle is missing', async () => {
+    const reportPath = join(dir, 'report.json')
+    const summaryPath = join(dir, 'r1.summary.json')
+    writeFileSync(reportPath, JSON.stringify(report))
+    const bogusWorker = join(tmpdir(), 'does-not-exist-axibridgeWorker.js')
+    const res = await summarizeResilient([{ id: 'r1', reportPath, summaryPath }], bogusWorker)
+    expect(res.summaries).toHaveLength(1)
+    expect(res.summaries[0].id).toBe('r1')
+    expect(res.skipped).toHaveLength(0)
+    expect(existsSync(summaryPath)).toBe(true) // inline path still writes the summary cache
+  })
 })
 
 describe('runSummaryJobs', () => {

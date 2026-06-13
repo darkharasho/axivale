@@ -70,3 +70,30 @@ export function summarizeInWorker(
     })
   })
 }
+
+/**
+ * Worker-or-inline summarizer. Offloading to the worker thread is an
+ * optimization, not a requirement: if the worker bundle isn't on disk (dev runs
+ * where electron-vite doesn't emit the extra entry, or a stale build) or the
+ * worker fails to start, fall back to running the pure job runner on the main
+ * thread so analytics still work instead of erroring out.
+ */
+export async function summarizeResilient(
+  jobs: SummaryJob[],
+  workerPath: string = join(dirname(fileURLToPath(import.meta.url)), 'axibridgeWorker.js')
+): Promise<SummaryJobResult> {
+  if (jobs.length === 0) return { summaries: [], skipped: [] }
+  if (!existsSync(workerPath)) {
+    console.warn('[axibridge] worker bundle missing; summarizing inline on the main thread')
+    return runSummaryJobs(jobs)
+  }
+  try {
+    return await summarizeInWorker(jobs, workerPath)
+  } catch (err) {
+    console.warn(
+      '[axibridge] summary worker failed; falling back to inline:',
+      err instanceof Error ? err.message : err
+    )
+    return runSummaryJobs(jobs)
+  }
+}
