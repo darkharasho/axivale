@@ -20,12 +20,22 @@ async function copyArticleAsImage(node: HTMLElement): Promise<void> {
     .getPropertyValue('--bg')
     .trim() || '#16171a'
 
+  // Size the capture to the full content width (incl. any overflowing figure)
+  // and add the padding OUTSIDE it (content-box) so nothing is clipped on the
+  // right — border-box padding would shrink the content area and cut text off.
+  const contentWidth = node.scrollWidth
+
   const blob = await domToBlob(node, {
     type: 'image/png',
     backgroundColor: bgColor,
     scale: 2,
     // Breathing room around the clipping so text isn't flush to the edges.
-    style: { padding: '32px 36px', boxSizing: 'border-box' },
+    style: {
+      padding: '32px 36px',
+      boxSizing: 'content-box',
+      width: `${contentWidth}px`,
+      maxWidth: 'none'
+    },
     // Exclude the copy button from the capture
     filter: (el: Node) => {
       if (el instanceof HTMLElement && el.dataset.copyBtn === '1') return false
