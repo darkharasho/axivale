@@ -42,6 +42,20 @@ export interface OfficerApi {
       }
     | { ok: false; error: string }
   >
+  /** Start GitHub OAuth device flow: returns the user code + opens the verification page. */
+  githubAuthBegin(): Promise<{
+    userCode: string
+    verificationUri: string
+    deviceCode: string
+    interval: number
+    expiresIn: number
+  }>
+  /** Poll the device flow to completion, then file the token under its GitHub login. */
+  githubAuthComplete(
+    deviceCode: string,
+    interval: number,
+    expiresIn: number
+  ): Promise<{ ok: boolean; login?: string; error?: string }>
   sendMessage(text: string): Promise<void>
   resetSession(): Promise<void>
   cancelTurn(): Promise<void>

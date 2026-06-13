@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
@@ -21,6 +21,12 @@ import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeInWorker } from './axibridgeSummarize'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
+import {
+  GITHUB_DEVICE_CLIENT_ID,
+  beginDeviceAuth,
+  pollForToken,
+  fetchGithubLogin
+} from './githubAuth'
 import { AgentService } from './agent'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -239,6 +245,38 @@ app.whenReady().then(async () => {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }
     }
   })
+
+  // GitHub OAuth device flow — "Sign in with GitHub" (replaces manual PAT entry).
+  // begin returns the user code + opens the verification page; complete polls to
+  // completion, resolves the login, and files the token in the github keyring.
+  ipcMain.handle('github:auth-begin', async () => {
+    const begin = await beginDeviceAuth(GITHUB_DEVICE_CLIENT_ID)
+    await shell.openExternal(begin.verificationUri)
+    return {
+      userCode: begin.userCode,
+      verificationUri: begin.verificationUri,
+      deviceCode: begin.deviceCode,
+      interval: begin.interval,
+      expiresIn: begin.expiresIn
+    }
+  })
+  ipcMain.handle(
+    'github:auth-complete',
+    async (_event, deviceCode: string, interval: number, expiresIn: number) => {
+      try {
+        const token = await pollForToken(GITHUB_DEVICE_CLIENT_ID, deviceCode, {
+          intervalSeconds: interval,
+          expiresInSeconds: expiresIn
+        })
+        const login = await fetchGithubLogin(token)
+        store.addKey('github', login, token)
+        store.setActiveKey('github', login)
+        return { ok: true, login }
+      } catch (err) {
+        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+      }
+    }
+  )
 
   // Inline build/comp cards need rune/relic names+icons even when AxiForge is
   // closed — a disk cache on top of the client's catalog fetch covers that.

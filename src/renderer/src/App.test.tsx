@@ -18,6 +18,14 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     axibridgeReposAdd: vi.fn().mockResolvedValue({ ok: false, error: '' }),
     axibridgeReposRemove: vi.fn().mockResolvedValue([]),
     axibridgeStatus: vi.fn().mockResolvedValue({ ok: false, error: '' }),
+    githubAuthBegin: vi.fn().mockResolvedValue({
+      userCode: '',
+      verificationUri: '',
+      deviceCode: '',
+      interval: 5,
+      expiresIn: 900
+    }),
+    githubAuthComplete: vi.fn().mockResolvedValue({ ok: false }),
     forgeCatalogUpgrades: vi.fn().mockResolvedValue(null),
     sendMessage: vi.fn().mockResolvedValue(undefined),
     resetSession: vi.fn().mockResolvedValue(undefined),

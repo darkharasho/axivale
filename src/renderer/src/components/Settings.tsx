@@ -156,8 +156,10 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
     }>
   >([])
   const [githubKeys, setGithubKeys] = useState<KeyLabel[]>([])
-  const [ghLabel, setGhLabel] = useState('')
-  const [ghKey, setGhKey] = useState('')
+  // GitHub OAuth device-flow sign-in state.
+  const [ghSigningIn, setGhSigningIn] = useState(false)
+  const [ghUserCode, setGhUserCode] = useState('')
+  const [ghAuthStatus, setGhAuthStatus] = useState<{ msg: string; ok: boolean } | null>(null)
 
   async function refreshBridgeHealth(): Promise<void> {
     const res = await window.officer.axibridgeStatus()
@@ -180,6 +182,37 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   async function removeBridgeRepo(owner: string, repo: string): Promise<void> {
     setBridgeRepos(await window.officer.axibridgeReposRemove(owner, repo))
     onChanged()
+  }
+
+  // GitHub OAuth device flow: open the verification page, show the user code,
+  // then poll to completion and refresh the keyring with the signed-in account.
+  async function signInGithub(): Promise<void> {
+    setGhSigningIn(true)
+    setGhAuthStatus(null)
+    setGhUserCode('')
+    try {
+      const begin = await window.officer.githubAuthBegin()
+      setGhUserCode(begin.userCode)
+      const res = await window.officer.githubAuthComplete(
+        begin.deviceCode,
+        begin.interval,
+        begin.expiresIn
+      )
+      if (res.ok) {
+        setGhUserCode('')
+        setGhAuthStatus({ msg: `signed in · ${res.login ?? 'github'}`, ok: true })
+        await refreshKeyLists()
+        onChanged()
+      } else {
+        setGhUserCode('')
+        setGhAuthStatus({ msg: res.error ?? 'sign-in failed', ok: false })
+      }
+    } catch (err) {
+      setGhUserCode('')
+      setGhAuthStatus({ msg: err instanceof Error ? err.message : String(err), ok: false })
+    } finally {
+      setGhSigningIn(false)
+    }
   }
 
   async function refreshKeyLists(): Promise<void> {
@@ -723,45 +756,36 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
         {bridgeStatus && (
           <div className={`sstatus ${bridgeStatus.ok ? 'ok' : 'err'}`}>{bridgeStatus.msg}</div>
         )}
-        <label className="slabel">GitHub token (optional — private repos / rate limits)</label>
-        <Keyring
-          keys={githubKeys}
-          onActivate={(label) => activateLlmKey('github', label)}
-          onRemove={(label) => removeLlmKey('github', label)}
-        />
-        <input
-          className="sinput"
-          type="text"
-          value={ghLabel}
-          placeholder="label, e.g. guild bot"
-          onChange={(e) => setGhLabel(e.target.value)}
-        />
-        <input
-          className="sinput"
-          type="password"
-          value={ghKey}
-          placeholder="paste a fine-grained PAT with contents:read"
-          onChange={(e) => setGhKey(e.target.value)}
-        />
-        <div className="srow">
-          <button
-            className="sbtn"
-            disabled={!ghKey}
-            onClick={async () => {
-              await window.officer.addKey('github', ghLabel.trim() || 'unnamed', ghKey)
-              setGhLabel('')
-              setGhKey('')
-              await refreshKeyLists()
-              onChanged()
-            }}
-          >
-            Add token
-          </button>
+
+        {/* Account sub-section: clearly separated from the repo-link area above. */}
+        <div
+          className="subsection"
+          style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px dashed var(--rule)' }}
+        >
+          <h3 className="ssub">GitHub account</h3>
+          <p className="shelp">
+            Optional — for private repos / higher rate limits. Public report repos work without
+            signing in.
+          </p>
+          <Keyring
+            keys={githubKeys}
+            onActivate={(label) => activateLlmKey('github', label)}
+            onRemove={(label) => removeLlmKey('github', label)}
+          />
+          {ghUserCode && (
+            <div className="sstatus ok">
+              Enter code <b>{ghUserCode}</b> at github.com/login/device (opened in your browser).
+            </div>
+          )}
+          <div className="srow">
+            <button className="sbtn" disabled={ghSigningIn} onClick={signInGithub}>
+              {ghSigningIn ? 'Signing in…' : 'Sign in with GitHub'}
+            </button>
+          </div>
+          {ghAuthStatus && (
+            <div className={`sstatus ${ghAuthStatus.ok ? 'ok' : 'err'}`}>{ghAuthStatus.msg}</div>
+          )}
         </div>
-        <p className="shelp">
-          Public report repos work without a token. Add one for private repos or if you hit GitHub
-          rate limits.
-        </p>
       </div>
 
       <div className="sgroup">
