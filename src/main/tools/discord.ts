@@ -32,13 +32,22 @@ export function buildDiscordTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ),
     tool(
       'discord_messages',
-      'Read recent messages from a channel in the connected Discord server, newest first (default 25, max 100).',
+      'Read messages from a channel or thread in the connected Discord server, newest first (default 25, max 100). Pass channel_id OR thread_id (ids from discord_overview). To read OLDER messages, call again with `before` set to the oldest message id you got in the previous page. `before`/`after` each accept a message id or an ISO-8601 date (e.g. "2026-06-01"); after bounds the oldest, before bounds the newest.',
       {
-        channel_id: z.string().describe('Channel id (from discord_overview)'),
-        limit: z.number().optional().describe('How many messages, max 100')
+        channel_id: z.string().optional().describe('Channel id (from discord_overview)'),
+        thread_id: z.string().optional().describe('Thread id to read instead of a channel'),
+        limit: z.number().optional().describe('How many messages, max 100'),
+        before: z.string().optional().describe('Message id or ISO date — return messages older than this'),
+        after: z.string().optional().describe('Message id or ISO date — return messages newer than this')
       },
-      safe(async ({ channel_id, limit }) =>
-        deps.axitools.discordMessages(requireDiscordGuild(deps), channel_id, limit)
+      safe(async ({ channel_id, thread_id, limit, before, after }) =>
+        deps.axitools.discordMessages(requireDiscordGuild(deps), {
+          channelId: channel_id,
+          threadId: thread_id,
+          limit,
+          before,
+          after
+        })
       )
     ),
     tool(

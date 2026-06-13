@@ -120,12 +120,26 @@ describe('officer tools', () => {
     expect(deps.axitools.discordOverview).toHaveBeenCalledWith('123', true)
   })
 
-  it('discord_messages reads a channel', async () => {
+  it('discord_messages forwards channel/thread/limit/before/after', async () => {
     const deps = makeDeps()
     const tools = buildOfficerTools(deps)
     const messages = tools.find((t) => t.name === 'discord_messages')!
     await messages.handler({ channel_id: '555', limit: 50 }, {})
-    expect(deps.axitools.discordMessages).toHaveBeenCalledWith('123', '555', 50)
+    expect(deps.axitools.discordMessages).toHaveBeenCalledWith('123', {
+      channelId: '555',
+      threadId: undefined,
+      limit: 50,
+      before: undefined,
+      after: undefined
+    })
+    await messages.handler({ thread_id: '777', before: '101' }, {})
+    expect(deps.axitools.discordMessages).toHaveBeenCalledWith('123', {
+      channelId: undefined,
+      threadId: '777',
+      limit: undefined,
+      before: '101',
+      after: undefined
+    })
   })
 
   it('discord_action forwards action and params', async () => {
