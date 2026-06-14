@@ -688,6 +688,10 @@ app.whenReady().then(async () => {
       meta.updateMode(id, patch)
   )
   ipcMain.handle('meta:remove-mode', (_e, id: string) => meta.removeMode(id))
+  ipcMain.handle('meta:force-refresh', () => {
+    meta.markAllStale()
+    void metaRefresher.refreshStale()
+  })
 
   function drainConfirms(): void {
     for (const resolve of pendingConfirms.values()) resolve(false)

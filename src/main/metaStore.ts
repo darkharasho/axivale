@@ -210,6 +210,12 @@ export class MetaStore {
     this.scheduleWrite()
   }
 
+  /** Mark every mode stale so the next refresh re-crawls them (dev/manual force). */
+  markAllStale(): void {
+    for (const m of this.state.modes) m.refreshedAt = null
+    this.scheduleWrite()
+  }
+
   removeMode(id: string): void {
     this.state.modes = this.state.modes.filter((m) => m.id !== id)
     this.scheduleWrite()

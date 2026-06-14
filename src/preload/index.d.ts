@@ -136,6 +136,7 @@ export interface OfficerApi {
     patch: Partial<{ mode: string; sources: RendererMetaSource[]; notes: string }>
   ): Promise<RendererMetaMode | null>
   metaRemoveMode(id: string): Promise<void>
+  metaForceRefresh(): Promise<void>
   skillsList(): Promise<RendererSkill[]>
   skillsCreate(seed: { name: string; whenToUse: string; instructions: string }): Promise<RendererSkill>
   skillsUpdate(

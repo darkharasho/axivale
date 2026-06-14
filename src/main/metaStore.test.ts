@@ -110,6 +110,13 @@ describe('MetaStore provenance', () => {
     expect(after.refreshedAt).toBeTruthy()
   })
 
+  it('markAllStale nulls every mode refreshedAt', () => {
+    const s = new MetaStore(tmpPath())
+    s.list().forEach((m) => s.recordDistill(m.id, 'notes')) // sets refreshedAt
+    s.markAllStale()
+    expect(s.list().every((m) => m.refreshedAt === null)).toBe(true)
+  })
+
   it('updateMode preserves existing source provenance on a bare patch', () => {
     const s = new MetaStore(tmpPath())
     const m = s.list()[0]
