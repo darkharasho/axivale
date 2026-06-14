@@ -1,6 +1,8 @@
 import { buildOfficerTools, type ToolDeps } from './tools'
 import { buildTurnSystemPrompt } from './skillPrompt'
 import type { Skill } from './skillStore'
+import { buildMetaReference } from './metaPrompt'
+import type { MetaMode } from './metaStore'
 import { MCP_PREFIX, type AgentEvent, type ProviderConfig, type ProviderName } from './providers/types'
 import { evaluateToolPermission } from './providers/permission'
 import { createAdapter } from './providers'
@@ -127,6 +129,8 @@ export interface AgentDeps {
   saveSession: (conversationId: string, provider: ProviderName, session: SessionState) => void
   /** Enabled skills, read fresh per turn (registry + forced-recipe lookup). */
   skills: () => Skill[]
+  /** Meta-reference modes, read fresh per turn (build/comp bias). */
+  meta: () => MetaMode[]
 }
 
 interface LiveAdapter {
@@ -194,7 +198,9 @@ export class AgentService {
         : null
       const turn = adapter.runTurn({
         prompt: promptText,
-        systemPrompt: buildTurnSystemPrompt(AXIVALE_SYSTEM_PROMPT, skills, forced),
+        systemPrompt:
+          buildTurnSystemPrompt(AXIVALE_SYSTEM_PROMPT, skills, forced) +
+          buildMetaReference(this.deps.meta()),
         tools,
         confirm: this.deps.confirm,
         signal: abort.signal
