@@ -134,13 +134,10 @@ body {
   margin-bottom: 3px;
 }
 
-/* Newspaper columns: at most two, with a readable measure. column-width caps the
-   count (980/460 → 2) and collapses to one column on narrow screens; the body is
-   centered while the masthead/headline span the full page width. */
+/* Single-column body at a readable measure, centered. The masthead/headline
+   still span the full page width above it. */
 .sv-prose {
-  column-width: 460px;
-  column-gap: 44px;
-  max-width: 980px;
+  max-width: 760px;
   margin-inline: auto;
 }
 /* Figures, tables, charts and cards break the column flow and span full width,
