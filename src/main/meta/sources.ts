@@ -19,7 +19,7 @@ export const SOURCE_CONFIGS: SourceConfig[] = [
   { host: 'hardstuck.gg', kind: 'browser', selector: 'main' },
   { host: 'guildjen.com', kind: 'browser', selector: 'main' },
   { host: 'gw2mists.com', kind: 'browser', selector: 'body' },
-  { host: 'metabattle.com', kind: 'wiki', wikiApi: 'https://metabattle.com/api.php' }
+  { host: 'metabattle.com', kind: 'browser', selector: '#mw-content-text' }
 ]
 
 export function configForUrl(url: string): SourceConfig | null {
