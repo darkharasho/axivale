@@ -26,8 +26,16 @@ contextBridge.exposeInMainWorld('officer', {
   shareDelete: (id: string) => ipcRenderer.invoke('share:delete', id),
   shareStatus: () => ipcRenderer.invoke('share:status'),
   forgeCatalogUpgrades: () => ipcRenderer.invoke('axiforge:catalog-upgrades'),
-  sendMessage: (conversationId: string, text: string) =>
-    ipcRenderer.invoke('agent:send', conversationId, text),
+  sendMessage: (conversationId: string, text: string, forcedSkillId?: string) =>
+    ipcRenderer.invoke('agent:send', conversationId, text, forcedSkillId),
+  skillsList: () => ipcRenderer.invoke('skills:list'),
+  skillsCreate: (seed: { name: string; whenToUse: string; instructions: string }) =>
+    ipcRenderer.invoke('skills:create', seed),
+  skillsUpdate: (
+    id: string,
+    patch: Partial<{ name: string; whenToUse: string; instructions: string; enabled: boolean }>
+  ) => ipcRenderer.invoke('skills:update', id, patch),
+  skillsDelete: (id: string) => ipcRenderer.invoke('skills:delete', id),
   resetSession: (conversationId: string) => ipcRenderer.invoke('agent:reset', conversationId),
   cancelTurn: (conversationId: string) => ipcRenderer.invoke('agent:cancel', conversationId),
   listConversations: () => ipcRenderer.invoke('conversations:list'),

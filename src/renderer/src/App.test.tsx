@@ -39,6 +39,10 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
       .mockResolvedValue({ signedIn: false, repoReady: false, pagesUrl: null }),
     forgeCatalogUpgrades: vi.fn().mockResolvedValue(null),
     sendMessage: vi.fn().mockResolvedValue(undefined),
+    skillsList: vi.fn().mockResolvedValue([]),
+    skillsCreate: vi.fn().mockResolvedValue({} as never),
+    skillsUpdate: vi.fn().mockResolvedValue(null),
+    skillsDelete: vi.fn().mockResolvedValue(undefined),
     resetSession: vi.fn().mockResolvedValue(undefined),
     cancelTurn: vi.fn(),
     listConversations: vi.fn().mockResolvedValue([

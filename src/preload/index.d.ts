@@ -23,6 +23,16 @@ export interface ShareListEntry {
   createdAt: string
 }
 
+export interface RendererSkill {
+  id: string
+  name: string
+  whenToUse: string
+  instructions: string
+  enabled: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface OfficerApi {
   getSetting(key: string): Promise<string | null>
   setSetting(key: string, value: string): Promise<void>
@@ -95,7 +105,14 @@ export interface OfficerApi {
   shareList(): Promise<ShareListEntry[]>
   shareDelete(id: string): Promise<{ ok: boolean; error?: string }>
   shareStatus(): Promise<{ signedIn: boolean; repoReady: boolean; pagesUrl: string | null }>
-  sendMessage(conversationId: string, text: string): Promise<void>
+  sendMessage(conversationId: string, text: string, forcedSkillId?: string): Promise<void>
+  skillsList(): Promise<RendererSkill[]>
+  skillsCreate(seed: { name: string; whenToUse: string; instructions: string }): Promise<RendererSkill>
+  skillsUpdate(
+    id: string,
+    patch: Partial<{ name: string; whenToUse: string; instructions: string; enabled: boolean }>
+  ): Promise<RendererSkill | null>
+  skillsDelete(id: string): Promise<void>
   resetSession(conversationId: string): Promise<void>
   cancelTurn(conversationId: string): Promise<void>
   listConversations(): Promise<RendererConversation[]>
