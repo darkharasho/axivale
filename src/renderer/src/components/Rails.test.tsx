@@ -78,4 +78,26 @@ describe('RightRail notice cards', () => {
     expect(container.querySelector('.manifest')).toBeTruthy()
     expect(container.querySelector('.rich')).toBeNull()
   })
+
+  it('the expand button opens the modal without toggling the inline peek', () => {
+    const tool: ToolCall = {
+      id: 'tx',
+      name: 'axibridge_player_stats',
+      input: {},
+      resultText: '{"ok":true}',
+      isError: false,
+      display: {
+        kind: 'table',
+        data: { title: 'Players', columns: [{ key: 'n', label: 'Name' }], rows: [{ n: 'Tessa' }] }
+      }
+    }
+    const { container } = render(
+      <RightRail memberCount={null} buildsCount={null} turns={[turnWith(tool)]} />
+    )
+    fireEvent.click(container.querySelector('.ncard .expand')!)
+    // modal opened
+    expect(container.querySelector('.action-modal')).toBeTruthy()
+    // inline peek did NOT open (no .nx body inside the card)
+    expect(container.querySelector('.ncard .nx')).toBeNull()
+  })
 })
