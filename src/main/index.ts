@@ -38,6 +38,10 @@ import { AgentService } from './agent'
 import { ConversationStore, type Conversation } from './conversationStore'
 import { SkillStore } from './skillStore'
 import { MetaStore } from './metaStore'
+import { MetaCache } from './meta/cache'
+import { BrowserWindowFetcher } from './meta/fetcher'
+import { MetaRefresher } from './meta/refresh'
+import { runClaudeOnce } from './meta/model'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -171,6 +175,20 @@ app.whenReady().then(async () => {
 
   const skills = new SkillStore(join(app.getPath('userData'), 'skills.json'))
   const meta = new MetaStore(join(app.getPath('userData'), 'meta.json'))
+  const metaCache = new MetaCache(join(app.getPath('userData'), 'meta-cache'))
+  const metaFetcher = new BrowserWindowFetcher()
+  const metaRefresher = new MetaRefresher({
+    store: meta,
+    fetcher: metaFetcher,
+    cache: metaCache,
+    model: (prompt) =>
+      runClaudeOnce(prompt, {
+        oauthToken: store.getSecret('claudeOauthToken'),
+        model: 'claude-haiku-4-5-20251001'
+      }),
+    now: Date.now
+  })
+  let metaTimer: ReturnType<typeof setInterval> | null = null
   // Dev runs publish to a separate repo so testing never touches a user's real
   // public share site. app.isPackaged is false under `npm run dev`.
   const SHARE_REPO = app.isPackaged ? 'axivale-shares' : 'axivale-shares-dev'
@@ -220,6 +238,8 @@ app.whenReady().then(async () => {
     if (releasingForge) return
     releasingForge = true
     e.preventDefault()
+    if (metaTimer) clearInterval(metaTimer)
+    metaFetcher.destroy()
     void axiforgeLauncher.releaseIfSpawned().finally(() => app.quit())
   })
 
@@ -697,6 +717,8 @@ app.whenReady().then(async () => {
   setupUpdater(() => mainWindow)
 
   createWindow(store)
+  setTimeout(() => void metaRefresher.refreshStale(), 5_000)
+  metaTimer = setInterval(() => void metaRefresher.refreshStale(), 6 * 60 * 60 * 1000)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(store)
   })
