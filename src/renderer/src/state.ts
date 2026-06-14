@@ -58,6 +58,8 @@ export interface Turn {
   done: boolean
   error: string | null
   filedAt: string
+  /** Skill explicitly applied to this turn (auto-matched skills are detected from the load_skill tool call). */
+  skill?: string
 }
 
 export type AgentEvent =

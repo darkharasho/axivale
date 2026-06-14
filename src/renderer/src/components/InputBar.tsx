@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type ReactElement, type KeyboardEvent } from 'react'
 
 export interface InputBarSkill {
   id: string
@@ -24,6 +24,17 @@ export default function InputBar({
   onForceSkill
 }: InputBarProps): ReactElement {
   const [value, setValue] = useState('')
+  const [pickOpen, setPickOpen] = useState(false)
+  const pickRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!pickOpen) return
+    const onDoc = (e: MouseEvent): void => {
+      if (pickRef.current && !pickRef.current.contains(e.target as Node)) setPickOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [pickOpen])
 
   function submit(): void {
     const text = value.trim()
@@ -63,19 +74,36 @@ export default function InputBar({
             onKeyDown={onKeyDown}
           />
           {enabledSkills.length > 0 && (
-            <select
-              className="skill-pick"
-              value=""
-              onChange={(e) => e.target.value && onForceSkill(e.target.value)}
-              aria-label="Use a skill"
-            >
-              <option value="">/ skill…</option>
-              {enabledSkills.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            <div className="skill-pick-wrap" ref={pickRef}>
+              <button
+                type="button"
+                className={`skill-pick${pickOpen ? ' open' : ''}`}
+                onClick={() => setPickOpen((o) => !o)}
+                aria-label="Use a skill"
+                aria-haspopup="menu"
+                aria-expanded={pickOpen}
+              >
+                / skill…
+              </button>
+              {pickOpen && (
+                <div className="skill-menu" role="menu">
+                  {enabledSkills.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      role="menuitem"
+                      className="skill-opt"
+                      onClick={() => {
+                        onForceSkill(s.id)
+                        setPickOpen(false)
+                      }}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           {disabled ? (
             <button className="filebtn stop" onClick={onStop} title="Stop the current dispatch">

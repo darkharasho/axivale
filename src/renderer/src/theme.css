@@ -493,7 +493,17 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sk-name{font-family:'Playfair Display',serif;font-size:15px}
 .sk-when{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
 .sk-acts{display:flex;gap:8px;flex-shrink:0}
-/* ---- InputBar skill picker ---- */
-.skill-pick{background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;cursor:pointer}
+/* ---- InputBar skill picker (custom dark dropdown) ---- */
+.skill-pick-wrap{position:relative;display:inline-block;-webkit-app-region:no-drag}
+.skill-pick{background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;cursor:pointer}
+.skill-pick:hover,.skill-pick.open{color:var(--ink);border-color:var(--rule2)}
+.skill-menu{position:absolute;bottom:100%;right:0;margin-bottom:6px;min-width:170px;max-height:240px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);z-index:40}
+.skill-opt{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px dotted var(--line);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);cursor:pointer}
+.skill-opt:last-child{border-bottom:none}
+.skill-opt:hover{background:rgba(200,66,58,.12);color:var(--ink)}
 .skill-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(200,66,58,.10);border:1px solid var(--accent);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 4px 3px 8px}
 .skill-chip button{background:none;border:none;color:var(--accent-b);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+/* skill badge on a user message */
+.msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:1px solid rgba(224,90,80,.45);padding:1px 6px;letter-spacing:.12em}
+/* skill being edited in the panel */
+.sk-row.editing{border-left:2px solid var(--accent);padding-left:8px;background:rgba(200,66,58,.05)}

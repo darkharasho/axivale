@@ -76,6 +76,8 @@ export interface Turn {
   done: boolean
   error: string | null
   filedAt: string
+  /** Skill explicitly applied to this turn (persisted with the transcript). */
+  skill?: string
 }
 
 /** Serialized per-conversation session, persisted by the ConversationStore. */

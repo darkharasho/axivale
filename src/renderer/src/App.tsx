@@ -309,6 +309,7 @@ export default function App(): ReactElement {
     const id = activeId
     setTurnsByConv((prev) => {
       const convTurns = prev[id] ?? []
+      const skillName = forcedSkillId ? skills.find((s) => s.id === forcedSkillId)?.name : undefined
       const turn: Turn = {
         id: nextTurnId(convTurns),
         userText: text,
@@ -316,7 +317,8 @@ export default function App(): ReactElement {
         tools: [],
         done: false,
         error: null,
-        filedAt: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+        filedAt: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        ...(skillName ? { skill: skillName } : {})
       }
       const updated = [...convTurns, turn]
       scheduleSave(id, updated)

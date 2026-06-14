@@ -102,7 +102,17 @@ export default function Article({
   return (
     <>
       <div className="msg user">
-        <div className="kick">From the Commander's Desk</div>
+        <div className="kick">
+          From the Commander&apos;s Desk
+          {(() => {
+            const skill =
+              turn.skill ??
+              (turn.tools.find((t) => t.name.endsWith('load_skill') && !t.isError)?.input?.name as
+                | string
+                | undefined)
+            return skill ? <span className="kick-skill">{skill}</span> : null
+          })()}
+        </div>
         <div className="body">{turn.userText}</div>
       </div>
       <div className="rip">
