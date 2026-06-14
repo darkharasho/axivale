@@ -15,7 +15,7 @@ import InputBar from './components/InputBar'
 import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
 import UpdateBanner from './components/UpdateBanner'
-import type { RendererConversation } from '../../preload/index.d'
+import type { RendererConversation, RendererSkill } from '../../preload/index.d'
 
 const SECTION_TITLES: Record<Section, string> = {
   dispatches: 'Dispatches',
@@ -74,6 +74,8 @@ export default function App(): ReactElement {
   const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
   const [shareState, setShareState] = useState<ShareState>({ status: 'idle' })
+  const [skills, setSkills] = useState<RendererSkill[]>([])
+  const [forcedSkillId, setForcedSkillId] = useState<string | null>(null)
 
   async function shareResponse(conversationId: string, turnId: number): Promise<void> {
     setShareState({ status: 'publishing' })
@@ -133,6 +135,11 @@ export default function App(): ReactElement {
   useEffect(() => {
     void window.officer.appVersion().then(setAppVersion)
   }, [])
+  // Reload the skill list when the Skills panel is closed so the InputBar
+  // picker reflects the latest edits.
+  useEffect(() => {
+    if (section !== 'skills') void window.officer.skillsList().then(setSkills)
+  }, [section])
 
   async function refreshStatus(): Promise<void> {
     setClaudeTokenSaved(await window.officer.hasSecret('claudeOauthToken'))
@@ -317,7 +324,10 @@ export default function App(): ReactElement {
     })
     setRunning(true)
     setBridgeProgress(null)
-    void window.officer.sendMessage(id, text).catch(() => setRunning(false))
+    void window.officer
+      .sendMessage(id, text, forcedSkillId ?? undefined)
+      .catch(() => setRunning(false))
+    setForcedSkillId(null)
   }
 
   function respondConfirm(id: string, allowed: boolean): void {
@@ -432,7 +442,14 @@ export default function App(): ReactElement {
         <div className="bridge-progress">{bridgeProgress}</div>
       )}
       {section === 'dispatches' && (
-        <InputBar disabled={running} onSubmit={submit} onStop={stopTurn} />
+        <InputBar
+          disabled={running}
+          onSubmit={submit}
+          onStop={stopTurn}
+          skills={skills}
+          forcedSkillId={forcedSkillId}
+          onForceSkill={setForcedSkillId}
+        />
       )}
       {confirmQueue.length > 0 && <ConfirmDialog req={confirmQueue[0]} onRespond={respondConfirm} />}
       <ShareDialog state={shareState} onClose={() => setShareState({ status: 'idle' })} />
