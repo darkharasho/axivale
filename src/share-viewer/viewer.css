@@ -29,10 +29,11 @@ body {
   padding: 34px 40px 80px;
 }
 
-/* Wide-monitor marginalia: flanking double-rules + vertical small-caps fill the
-   gutters beside the 880px column. Only shown when there's room (>=1180px);
-   hidden by default so narrow screens stay clean. */
-.svmarg {
+/* Wide-monitor marginalia: a kit of newspaper tropes fills the gutters beside
+   the 880px column — a vertical ticker, printer's registration crosshairs, a
+   faux barcode/ISSN, and a price box. Only shown when there's room (>=1180px);
+   hidden by default so tablet/mobile stays clean. */
+.svgut {
   display: none;
 }
 @media (min-width: 1180px) {
@@ -40,41 +41,119 @@ body {
   .share-page::after {
     content: '';
     position: absolute;
-    top: 8px;
-    bottom: 40px;
+    top: 30px;
+    bottom: 78px;
     width: 0;
-    border-left: 3px double var(--rule2, #46494f);
+    border-left: 1px solid var(--rule, #3a3d44);
   }
   .share-page::before {
-    left: -48px;
+    left: -40px;
   }
   .share-page::after {
-    right: -48px;
+    right: -40px;
   }
-  .svmarg {
+  .svgut {
     display: flex;
     position: absolute;
     top: 0;
-    bottom: 40px;
-    width: 60px;
+    bottom: 0;
+    width: 104px;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    pointer-events: none;
+  }
+  .svgut.l {
+    left: -144px;
+  }
+  .svgut.r {
+    right: -144px;
+  }
+  /* printer's registration crosshair */
+  .svgut .reg {
+    position: relative;
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+  }
+  .svgut .reg::before,
+  .svgut .reg::after {
+    content: '';
+    position: absolute;
+    background: var(--rule2, #46494f);
+  }
+  .svgut .reg::before {
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+  }
+  .svgut .reg::after {
+    top: 8px;
+    left: 0;
+    right: 0;
+    height: 1px;
+  }
+  .svgut .reg i {
+    position: absolute;
+    inset: 3px;
+    border: 1px solid var(--rule2, #46494f);
+    border-radius: 50%;
+  }
+  /* vertical ticker */
+  .svgut .tick {
+    flex: 1;
+    writing-mode: vertical-rl;
+    margin: 10px 0;
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.42em;
+    font-size: 10px;
+    letter-spacing: 0.34em;
     text-transform: uppercase;
     color: var(--faint, #6a6b6e);
-    pointer-events: none;
     white-space: nowrap;
+    overflow: hidden;
   }
-  .svmarg.l {
-    left: -112px;
-    writing-mode: vertical-rl;
+  .svgut.l .tick {
     transform: rotate(180deg);
   }
-  .svmarg.r {
-    right: -112px;
-    writing-mode: vertical-rl;
+  /* faux barcode + ISSN */
+  .svgut .barcode {
+    width: 74px;
+    height: 34px;
+    opacity: 0.7;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--ink-dim, #a6a69e) 0 2px,
+      transparent 2px 3px,
+      var(--ink-dim, #a6a69e) 3px 6px,
+      transparent 6px 7px,
+      var(--ink-dim, #a6a69e) 7px 8px,
+      transparent 8px 11px
+    );
+  }
+  .svgut .code {
+    margin: 4px 0 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 7px;
+    letter-spacing: 0.18em;
+    color: var(--faint, #6a6b6e);
+  }
+  /* price box */
+  .svgut .price {
+    margin-bottom: 14px;
+    padding: 7px 5px;
+    border: 1px solid var(--rule2, #46494f);
+    text-align: center;
+    line-height: 1.5;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-dim, #a6a69e);
+  }
+  .svgut .price b {
+    color: var(--accent-b, #e05a50);
+    font-weight: 500;
   }
 }
 

@@ -112,12 +112,31 @@ export default function ShareApp(): ReactElement {
 
   return (
     <div className="share-page">
-      <span className="svmarg l" aria-hidden="true">
-        Est. MMXXVI · Guild Intelligence · Late Edition
-      </span>
-      <span className="svmarg r" aria-hidden="true">
-        All the guild intel that&apos;s fit to print · AxiVale
-      </span>
+      <div className="svgut l" aria-hidden="true">
+        <span className="reg">
+          <i />
+        </span>
+        <div className="tick">
+          AxiVale · Guild Intelligence · AxiVale · Guild Intelligence · AxiVale · Guild Intelligence
+        </div>
+        <div className="barcode" />
+        <div className="code">ISSN 2026-AXIV</div>
+      </div>
+      <div className="svgut r" aria-hidden="true">
+        <span className="reg">
+          <i />
+        </span>
+        <div className="tick">
+          All the guild intel that&apos;s fit to print · All the guild intel that&apos;s fit to print
+        </div>
+        <div className="price">
+          Free
+          <br />
+          <b>to</b>
+          <br />
+          Members
+        </div>
+      </div>
       <header className="smh">
         <div className="smh-top">
           <span>The Commander&apos;s Dispatch</span>
