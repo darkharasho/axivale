@@ -14,11 +14,13 @@ export interface SourceConfig {
   wikiApi?: string
   // depth-1: CSS selector for build-page links on the landing page
   linkSelector?: string
+  // depth-1: follow links N levels deep from the landing page (default 1)
+  crawlDepth?: number
 }
 
 export const SOURCE_CONFIGS: SourceConfig[] = [
-  { host: 'snowcrows.com', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/builds/"]' },
-  { host: 'hardstuck.gg', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/gw2/builds/"]' },
+  { host: 'snowcrows.com', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/builds/"]', crawlDepth: 2 },
+  { host: 'hardstuck.gg', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/gw2/builds/"]', crawlDepth: 2 },
   { host: 'guildjen.com', kind: 'browser', selector: 'main' },
   { host: 'gw2mists.com', kind: 'browser', selector: 'body' },
   { host: 'metabattle.com', kind: 'browser', selector: '#mw-content-text', linkSelector: '#mw-content-text a[href*="/wiki/"]' }

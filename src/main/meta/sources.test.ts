@@ -38,4 +38,10 @@ describe('source registry', () => {
     expect(configForUrl('https://metabattle.com/wiki/Category:PvE_builds')?.linkSelector).toBeTruthy()
     expect(configForUrl('https://hardstuck.gg/gw2/builds/')?.linkSelector).toBeTruthy()
   })
+
+  it('crawls the build databases two levels deep', () => {
+    expect(configForUrl('https://snowcrows.com/builds')?.crawlDepth).toBe(2)
+    expect(configForUrl('https://hardstuck.gg/gw2/builds/')?.crawlDepth).toBe(2)
+    expect(configForUrl('https://metabattle.com/wiki/Category:PvE_builds')?.crawlDepth).toBeUndefined()
+  })
 })
