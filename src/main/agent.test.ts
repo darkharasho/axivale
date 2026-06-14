@@ -140,7 +140,8 @@ describe('AgentService turn serialization', () => {
         axiforge: {} as never,
         axiforgeLauncher: { ensureRunning: async () => {} },
         axibridge: () => ({}) as never,
-        loadSkill: () => null
+        loadSkill: () => null,
+        metaIndex: () => ({}) as never
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -197,7 +198,8 @@ describe('AgentService turn serialization', () => {
         axiforge: {} as never,
         axiforgeLauncher: { ensureRunning: async () => {} },
         axibridge: () => ({}) as never,
-        loadSkill: () => null
+        loadSkill: () => null,
+        metaIndex: () => ({}) as never
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -246,7 +248,8 @@ describe('AgentService persistence', () => {
         axiforge: {} as never,
         axiforgeLauncher: { ensureRunning: async () => {} },
         axibridge: () => ({}) as never,
-        loadSkill: () => null
+        loadSkill: () => null,
+        metaIndex: () => ({}) as never
       }),
       config: () => ({
         provider: 'claude' as const,

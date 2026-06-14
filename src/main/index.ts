@@ -305,6 +305,10 @@ app.whenReady().then(async () => {
       loadSkill: (name: string) => {
         const s = skills.getByName(name)
         return s && s.enabled ? s.instructions : null
+      },
+      // Real LanceDB-backed index is wired in a later task; stub until then.
+      metaIndex: () => {
+        throw new Error('meta index not yet wired')
       }
     }),
     skills: () => skills.list().filter((s) => s.enabled),

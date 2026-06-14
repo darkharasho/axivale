@@ -58,7 +58,8 @@ function makeDeps(): ToolDeps {
     axiforge: {} as never,
     axiforgeLauncher: { ensureRunning: async () => {} },
     axibridge: () => ({}) as never,
-    loadSkill: () => null
+    loadSkill: () => null,
+    metaIndex: () => ({}) as never
   }
 }
 

@@ -39,7 +39,8 @@ describe('toToolSpecs', () => {
       axiforge: {} as never,
       axiforgeLauncher: { ensureRunning: async () => {} },
       axibridge: () => ({}) as never,
-      loadSkill: () => null
+      loadSkill: () => null,
+      metaIndex: () => ({}) as never
     })
     const specs = toToolSpecs(tools)
     expect(specs.length).toBe(tools.length)
