@@ -525,3 +525,9 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .action-modal__body{padding:16px 18px;overflow:auto}
 .action-modal__raw{padding:0 18px 16px}
 .action-raw{margin-top:8px;max-height:280px;overflow:auto;background:var(--bg);border:1px solid var(--rule);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
+
+/* ---- Meta panel ---- */
+.meta-mode h2{margin-bottom:6px}
+.meta-sources{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
+.meta-src{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-b);text-decoration:none;border:1px solid var(--rule);padding:3px 8px}
+.meta-src:hover{color:var(--ink);border-color:var(--rule2)}

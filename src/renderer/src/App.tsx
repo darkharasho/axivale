@@ -7,6 +7,7 @@ import Comps from './components/panels/Comps'
 import Roster from './components/panels/Roster'
 import Bureau from './components/panels/Bureau'
 import Skills from './components/panels/Skills'
+import Meta from './components/panels/Meta'
 import { RightRail } from './components/Rails'
 import Editions, { type EditionItem } from './components/Editions'
 import Article from './components/Article'
@@ -24,6 +25,7 @@ const SECTION_TITLES: Record<Section, string> = {
   roster: 'Roster',
   bureau: 'Bureau',
   skills: 'Skills',
+  meta: 'Meta',
   settings: 'Settings'
 }
 
@@ -410,6 +412,7 @@ export default function App(): ReactElement {
           {section === 'roster' && <Roster />}
           {section === 'bureau' && <Bureau />}
           {section === 'skills' && <Skills />}
+          {section === 'meta' && <Meta />}
           {section === 'dispatches' && (
             <div className="chat" ref={chatRef}>
               {turns.length === 0 ? (

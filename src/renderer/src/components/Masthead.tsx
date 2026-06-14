@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 
-export type Section = 'dispatches' | 'builds' | 'comps' | 'roster' | 'bureau' | 'skills' | 'settings'
+export type Section = 'dispatches' | 'builds' | 'comps' | 'roster' | 'bureau' | 'skills' | 'meta' | 'settings'
 
 /** 0 has no Roman numeral, so keep it literal; otherwise standard Roman. */
 function toRoman(n: number): string {
@@ -307,7 +307,8 @@ export default function Masthead(props: MastheadProps): ReactElement {
             ['04', 'roster', 'Roster'],
             ['05', 'bureau', 'Bureau'],
             ['06', 'skills', 'Skills'],
-            ['07', 'settings', 'Settings']
+            ['07', 'meta', 'Meta'],
+            ['08', 'settings', 'Settings']
           ] as Array<[string, Section, string]>
         ).map(([no, key, label]) => (
           <button key={key} className={section === key ? 'on' : ''} onClick={() => onSection(key)}>
