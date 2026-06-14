@@ -1,7 +1,19 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react'
-import { Gw2GuildSwitcher } from './Masthead'
+import { Gw2GuildSwitcher, versionFolio } from './Masthead'
+
+describe('versionFolio', () => {
+  it('maps semver to a newspaper folio (major→Vol Roman, minor→No, patch→Ed)', () => {
+    expect(versionFolio('0.3.2')).toBe('Vol. 0 · No. 3 · Ed. 2')
+    expect(versionFolio('1.5.0')).toBe('Vol. I · No. 5 · Ed. 0')
+    expect(versionFolio('4.0.12')).toBe('Vol. IV · No. 0 · Ed. 12')
+  })
+  it('is resilient to short or pre-release versions', () => {
+    expect(versionFolio('2')).toBe('Vol. II · No. 0 · Ed. 0')
+    expect(versionFolio('1.2.3-beta.1')).toBe('Vol. I · No. 2 · Ed. 3')
+  })
+})
 
 // Minimal window.officer stub — the switcher only touches getSetting,
 // validateGw2Key and setSetting.

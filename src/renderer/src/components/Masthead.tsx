@@ -2,8 +2,31 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 export type Section = 'dispatches' | 'builds' | 'comps' | 'roster' | 'bureau' | 'settings'
 
+/** 0 has no Roman numeral, so keep it literal; otherwise standard Roman. */
+function toRoman(n: number): string {
+  if (n <= 0) return '0'
+  const table: Array<[number, string]> = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ]
+  let out = ''
+  for (const [v, s] of table) while (n >= v) (out += s), (n -= v)
+  return out
+}
+
+/** Cheeky newspaper folio from the app's semver: major→Vol. (Roman), minor→No.,
+ *  patch→Ed. e.g. 0.3.2 → "Vol. 0 · No. 3 · Ed. 2". */
+export function versionFolio(version: string): string {
+  const p = version.split('.')
+  const maj = parseInt(p[0] ?? '', 10) || 0
+  const min = parseInt(p[1] ?? '', 10) || 0
+  const pat = parseInt(p[2] ?? '', 10) || 0
+  return `Vol. ${toRoman(maj)} · No. ${min} · Ed. ${pat}`
+}
+
 export interface MastheadProps {
-  issueNo: number
+  version: string
   axiConnected: boolean
   gw2AccountName: string | null
   guildName: string | null
@@ -192,7 +215,7 @@ export function Gw2GuildSwitcher({ onSwitched }: { onSwitched: () => void }): Re
 
 export default function Masthead(props: MastheadProps): ReactElement {
   const {
-    issueNo,
+    version,
     axiConnected,
     gw2AccountName,
     guildName,
@@ -213,7 +236,7 @@ export default function Masthead(props: MastheadProps): ReactElement {
   return (
     <div className="masthead">
       <div className="mtop">
-        <span>Vol. II · No. {issueNo}</span>
+        <span>{versionFolio(version)}</span>
         <span className="r">Final Edition · Free to Members</span>
         <span className="winctl">
           <button title="Minimize" onClick={() => window.officer.windowControl('minimize')}>

@@ -25,11 +25,6 @@ const SECTION_TITLES: Record<Section, string> = {
   settings: 'Settings'
 }
 
-function dayOfYear(d: Date): number {
-  const start = new Date(d.getFullYear(), 0, 0)
-  const diff = d.getTime() - start.getTime()
-  return Math.floor(diff / 86400000)
-}
 
 const TURNS_KEY = 'axivale.turns'
 
@@ -132,7 +127,10 @@ export default function App(): ReactElement {
       month: 'long',
       year: 'numeric'
     }) + ' · Evening Edition'
-  const issueNo = dayOfYear(new Date()) % 100
+  const [appVersion, setAppVersion] = useState('0.0.0')
+  useEffect(() => {
+    void window.officer.appVersion().then(setAppVersion)
+  }, [])
 
   async function refreshStatus(): Promise<void> {
     setClaudeTokenSaved(await window.officer.hasSecret('claudeOauthToken'))
@@ -341,7 +339,7 @@ export default function App(): ReactElement {
     <>
       <UpdateBanner />
       <Masthead
-        issueNo={issueNo}
+        version={appVersion}
         axiConnected={axiConnected}
         gw2AccountName={gw2AccountName}
         guildName={guildName}
