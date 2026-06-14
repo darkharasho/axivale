@@ -148,8 +148,25 @@ describe('Article copy-as-image button', () => {
 })
 
 describe('Article inline figures', () => {
-  const tableTool = {
+  const chartTool = {
     id: 't1',
+    name: 'axibridge_render_chart',
+    input: {},
+    resultText: '{}',
+    display: {
+      kind: 'chart' as const,
+      data: {
+        type: 'bar' as const,
+        title: 'Kills',
+        xKey: 'day',
+        series: [{ key: 'k', label: 'Kills' }],
+        rows: [{ day: 'Mon', k: 4 }]
+      }
+    }
+  }
+  // Tool DATA tables are not inlined — they live in the Actions rail.
+  const tableTool = {
+    id: 't2',
     name: 'axibridge_run_summary',
     input: {},
     resultText: '{}',
@@ -159,37 +176,46 @@ describe('Article inline figures', () => {
     }
   }
 
-  it('renders a tool figure at the {{figure}} marker position', () => {
-    render(
+  it('renders a chart figure at the {{figure}} marker position', () => {
+    const { container } = render(
       <Article
         turn={doneTurn({
           agentText: 'Headline\n\nBefore the chart.\n\n{{figure}}\n\nAfter the chart.',
-          tools: [tableTool]
+          tools: [chartTool]
         })}
         conversationId={null}
       />
     )
-    // The table figure rendered (column label from RichTable)
-    expect(screen.getByText('Wins')).toBeTruthy()
+    expect(container.querySelector('.post-figure .richchart')).toBeTruthy()
     expect(screen.getByText('Before the chart.')).toBeTruthy()
     expect(screen.getByText('After the chart.')).toBeTruthy()
   })
 
-  it('appends figures at the end when no marker is present', () => {
-    render(<Article turn={doneTurn({ agentText: 'Headline\n\nNo marker here.', tools: [tableTool] })} conversationId={null} />)
-    expect(screen.getByText('Wins')).toBeTruthy()
+  it('appends a chart figure at the end when no marker is present', () => {
+    const { container } = render(
+      <Article turn={doneTurn({ agentText: 'Headline\n\nNo marker here.', tools: [chartTool] })} conversationId={null} />
+    )
+    expect(container.querySelector('.post-figure .richchart')).toBeTruthy()
+  })
+
+  it('does NOT inline a tool data table (it belongs in the Actions rail)', () => {
+    const { container } = render(
+      <Article turn={doneTurn({ agentText: 'Headline\n\n{{figure}}', tools: [tableTool] })} conversationId={null} />
+    )
+    expect(container.querySelector('.richtable')).toBeNull()
+    expect(screen.queryByText('Wins')).toBeNull()
   })
 
   it('does not render a figure for an errored tool', () => {
-    render(
+    const { container } = render(
       <Article
         turn={doneTurn({
           agentText: 'Headline\n\n{{figure}}',
-          tools: [{ ...tableTool, isError: true }]
+          tools: [{ ...chartTool, isError: true }]
         })}
         conversationId={null}
       />
     )
-    expect(screen.queryByText('Wins')).toBeNull()
+    expect(container.querySelector('.richchart')).toBeNull()
   })
 })
