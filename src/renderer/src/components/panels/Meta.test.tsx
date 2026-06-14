@@ -1,40 +1,47 @@
 // @vitest-environment jsdom
 // src/renderer/src/components/panels/Meta.test.tsx
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import Meta from './Meta'
 
-function officer(over: Record<string, unknown> = {}) {
+function officer() {
   return {
-    metaList: vi.fn().mockResolvedValue([
-      { id: '1', mode: 'WvW', sources: [{ label: 'MetaBattle', url: 'https://metabattle.com' }], notes: 'scourge', updatedAt: '' }
-    ]),
-    metaAddMode: vi.fn().mockResolvedValue({ id: '2', mode: 'PvE', sources: [], notes: '', updatedAt: '' }),
-    metaUpdateMode: vi.fn().mockResolvedValue(null),
-    metaRemoveMode: vi.fn().mockResolvedValue(undefined),
-    ...over
+    metaList: () =>
+      Promise.resolve([
+        {
+          id: '1',
+          mode: 'WvW',
+          notes: 'Scourge + Firebrand core.',
+          refreshedAt: '2026-06-10T00:00:00.000Z',
+          updatedAt: '',
+          sources: [
+            { label: 'MetaBattle', url: 'https://metabattle.com', status: 'ok', fetchedAt: '2026-06-10T00:00:00.000Z', error: null },
+            { label: 'Hardstuck', url: 'https://hardstuck.gg', status: 'error', fetchedAt: null, error: 'timeout' },
+            { label: 'gw2mists', url: 'https://gw2mists.com', status: 'never', fetchedAt: null, error: null }
+          ]
+        }
+      ])
   }
 }
 beforeEach(() => {
   ;(window as unknown as { officer: unknown }).officer = officer()
 })
 
-describe('Meta panel', () => {
-  it('lists modes with their notes', async () => {
+describe('Meta panel (read-only)', () => {
+  it('renders the distilled summary and source chips', async () => {
     render(<Meta />)
     expect(await screen.findByText('WvW')).toBeTruthy()
-    expect(screen.getByDisplayValue('scourge')).toBeTruthy()
+    expect(screen.getByText('Scourge + Firebrand core.')).toBeTruthy()
+    expect(screen.getByText('MetaBattle')).toBeTruthy()
+    expect(screen.getByText('ok')).toBeTruthy()
+    expect(screen.getByText('error')).toBeTruthy()
+    expect(screen.getByText('never')).toBeTruthy()
   })
 
-  it('saves edited notes', async () => {
-    const update = vi.fn().mockResolvedValue(null)
-    ;(window as unknown as { officer: unknown }).officer = officer({ metaUpdateMode: update })
+  it('has no editor — no textbox and no save button', async () => {
     render(<Meta />)
-    const ta = (await screen.findByDisplayValue('scourge')) as HTMLTextAreaElement
-    fireEvent.change(ta, { target: { value: 'spellbreaker meta' } })
-    fireEvent.click(screen.getAllByRole('button', { name: /save/i })[0])
-    await waitFor(() =>
-      expect(update).toHaveBeenCalledWith('1', expect.objectContaining({ notes: 'spellbreaker meta' }))
-    )
+    await screen.findByText('WvW')
+    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
   })
 })
