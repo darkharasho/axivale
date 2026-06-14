@@ -29,6 +29,7 @@ export type SettingKey =
   | 'githubActiveKey'
   | 'axibridgeRepos'
   | 'axibridgeCacheCapBytes'
+  | 'windowBounds'
 
 /** Services that hold a ring of labeled keys with one active. */
 export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'

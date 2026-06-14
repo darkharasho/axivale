@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
@@ -49,10 +49,53 @@ let mainWindow: BrowserWindow | null = null
 // Module-scoped so the window's closed handler can drain them.
 const pendingConfirms = new Map<string, (allowed: boolean) => void>()
 
-function createWindow(): void {
+interface WindowBounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * Load the last saved window bounds, but only if they still land on a connected
+ * display — otherwise a window remembered on a now-disconnected monitor would
+ * open off-screen. Mirrors AxiForge's restore logic.
+ */
+function loadWindowBounds(store: SettingsStore): WindowBounds | null {
+  const raw = store.getSetting('windowBounds')
+  if (!raw) return null
+  let b: Partial<WindowBounds>
+  try {
+    b = JSON.parse(raw) as Partial<WindowBounds>
+  } catch {
+    return null
+  }
+  if (
+    typeof b.x !== 'number' ||
+    typeof b.y !== 'number' ||
+    typeof b.width !== 'number' ||
+    typeof b.height !== 'number'
+  ) {
+    return null
+  }
+  const bounds = b as WindowBounds
+  const onScreen = screen.getAllDisplays().some(({ bounds: d }) =>
+    bounds.x < d.x + d.width &&
+    bounds.x + bounds.width > d.x &&
+    bounds.y < d.y + d.height &&
+    bounds.y + bounds.height > d.y
+  )
+  return onScreen ? bounds : null
+}
+
+function createWindow(store: SettingsStore): void {
+  const saved = loadWindowBounds(store)
   const win = new BrowserWindow({
-    width: 1280,
-    height: 840,
+    width: saved?.width ?? 1280,
+    height: saved?.height ?? 840,
+    ...(saved ? { x: saved.x, y: saved.y } : {}),
+    minWidth: 940,
+    minHeight: 640,
     frame: false,
     backgroundColor: '#16171a',
     webPreferences: {
@@ -61,6 +104,13 @@ function createWindow(): void {
       nodeIntegration: false,
       sandbox: false // required for ESM (.mjs) preload in Electron 20+
     }
+  })
+
+  // Persist position + size so the window reopens where the user left it.
+  // getBounds() reflects the normal (non-maximized) frame; persisting on close
+  // is enough and avoids churning the settings file on every drag.
+  win.on('close', () => {
+    store.setSetting('windowBounds', JSON.stringify(win.getBounds()))
   })
 
   if (process.env.ELECTRON_RENDERER_URL) {
@@ -597,9 +647,9 @@ app.whenReady().then(async () => {
 
   setupUpdater(() => mainWindow)
 
-  createWindow()
+  createWindow(store)
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(store)
   })
 })
 
