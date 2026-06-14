@@ -12,3 +12,6 @@ dist/
 
 # packaged builds
 release/
+
+# Playwright MCP scratch output
+.playwright-mcp/
