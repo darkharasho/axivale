@@ -305,6 +305,17 @@ export class AxiforgeClient {
     return this.request('POST', '/import/gw2skills/parse', body)
   }
 
+  /**
+   * Decode an in-game build template chat code into a structured build WITHOUT
+   * saving it (read-only preview). Like parseGw2Skills but for a raw chat code;
+   * routes through request() so a closed AxiForge surfaces AxiforgeNotRunningError.
+   */
+  parseChatLink(opts: { link: string; gameMode?: string }): Promise<ForgeBuild> {
+    const body: { link: string; gameMode?: string } =
+      opts.gameMode !== undefined ? { link: opts.link, gameMode: opts.gameMode } : { link: opts.link }
+    return this.request('POST', '/import/chat-link/parse', body)
+  }
+
   // --- catalog (persistent cache so cards/grounding work offline) ----------------
 
   private async readCatalogCache(): Promise<CatalogCacheFile> {
