@@ -45,6 +45,7 @@ import { TransformersEmbedder } from './meta/rag/embedder'
 import { LanceMetaIndex } from './meta/rag/index'
 import { runClaudeOnce } from './meta/model'
 import { fetchEliteSpecMap } from './meta/specMap'
+import { WikiFactsClient } from './meta/wikiFacts'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -181,6 +182,7 @@ app.whenReady().then(async () => {
   const metaCache = new MetaCache(join(app.getPath('userData'), 'meta-cache'))
   const metaEmbedder = new TransformersEmbedder(join(app.getPath('userData'), 'meta-models'))
   const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
+  const wikiFacts = new WikiFactsClient()
   const metaFetcher = new BrowserWindowFetcher()
   const metaRefresher = new MetaRefresher({
     store: meta,
@@ -315,7 +317,8 @@ app.whenReady().then(async () => {
         const s = skills.getByName(name)
         return s && s.enabled ? s.instructions : null
       },
-      metaIndex: () => metaIndex
+      metaIndex: () => metaIndex,
+      wikiFacts
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),
