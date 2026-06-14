@@ -12,14 +12,16 @@ export interface SourceConfig {
   selector?: string
   /** required for kind==='wiki': MediaWiki api.php base; page title is parsed from the URL */
   wikiApi?: string
+  // depth-1: CSS selector for build-page links on the landing page
+  linkSelector?: string
 }
 
 export const SOURCE_CONFIGS: SourceConfig[] = [
-  { host: 'snowcrows.com', kind: 'browser', selector: 'main' },
-  { host: 'hardstuck.gg', kind: 'browser', selector: 'main' },
+  { host: 'snowcrows.com', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/builds/"]' },
+  { host: 'hardstuck.gg', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/gw2/builds/"]' },
   { host: 'guildjen.com', kind: 'browser', selector: 'main' },
   { host: 'gw2mists.com', kind: 'browser', selector: 'body' },
-  { host: 'metabattle.com', kind: 'wiki', wikiApi: 'https://metabattle.com/api.php' }
+  { host: 'metabattle.com', kind: 'browser', selector: '#mw-content-text', linkSelector: '#mw-content-text a[href*="/wiki/"]' }
 ]
 
 export function configForUrl(url: string): SourceConfig | null {

@@ -15,8 +15,10 @@ describe('source registry', () => {
     expect(configForUrl('https://snowcrows.com/builds')?.kind).toBe('browser')
   })
 
-  it('matches metabattle to a wiki config', () => {
-    expect(configForUrl('https://metabattle.com/wiki/Category:WvW_Zerg_Builds')?.kind).toBe('wiki')
+  it('matches metabattle to a browser config with the wiki content selector', () => {
+    const c = configForUrl('https://metabattle.com/wiki/Category:WvW_Zerg_Builds')
+    expect(c?.kind).toBe('browser')
+    expect(c?.selector).toBe('#mw-content-text')
   })
 
   it('ignores a leading www', () => {
@@ -29,5 +31,11 @@ describe('source registry', () => {
 
   it('returns null for a malformed url', () => {
     expect(configForUrl('not a url')).toBeNull()
+  })
+
+  it('configures depth-1 link selectors for the build databases', () => {
+    expect(configForUrl('https://snowcrows.com/builds')?.linkSelector).toBeTruthy()
+    expect(configForUrl('https://metabattle.com/wiki/Category:PvE_builds')?.linkSelector).toBeTruthy()
+    expect(configForUrl('https://hardstuck.gg/gw2/builds/')?.linkSelector).toBeTruthy()
   })
 })

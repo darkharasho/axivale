@@ -20,9 +20,11 @@ export async function distill(
 
   const prompt =
     `You are compiling the CURRENT Guild Wars 2 ${modeName} meta from community sources.\n` +
-    `Write a tight summary (a few sentences, or short bullets) of the builds, professions, ` +
-    `and comp staples that are currently meta for ${modeName}. State only what the excerpts ` +
-    `support; do not invent specifics. No preamble.\n\n` +
+    `The excerpts are raw page text and contain navigation menus, ads, and headings — ` +
+    `IGNORE that boilerplate. Extract the meta builds: name the profession and ELITE SPEC ` +
+    `for each, its role (e.g. heal/quickness, power DPS, condi DPS, boon support), and any ` +
+    `tier/rating if present. Group by role or tier. Be specific and concise; state only what ` +
+    `the excerpts support and do not invent traits or gear. No preamble.\n\n` +
     `SOURCE EXCERPTS:\n${joined}`
 
   const out = (await model(prompt)).trim()

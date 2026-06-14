@@ -1,6 +1,6 @@
 // src/main/meta/fetcher.test.ts
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchWiki } from './fetcher'
+import { fetchWiki, pickCrawlLinks } from './fetcher'
 
 const cfg = { host: 'metabattle.com', kind: 'wiki' as const, wikiApi: 'https://metabattle.com/api.php' }
 
@@ -30,5 +30,43 @@ describe('fetchWiki', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }))
     const r = await fetchWiki('https://metabattle.com/wiki/Nope', cfg)
     expect(r.ok).toBe(false)
+  })
+})
+
+describe('pickCrawlLinks', () => {
+  it('dedupes by origin+pathname and caps to max', () => {
+    const links = pickCrawlLinks(
+      ['https://snowcrows.com/builds/a', 'https://snowcrows.com/builds/a?x=1', 'https://snowcrows.com/builds/b', 'https://snowcrows.com/builds/c'],
+      'https://snowcrows.com/builds',
+      2
+    )
+    expect(links).toEqual(['https://snowcrows.com/builds/a', 'https://snowcrows.com/builds/b'])
+  })
+
+  it('drops the landing page itself (ignoring trailing slash)', () => {
+    const links = pickCrawlLinks(['https://hardstuck.gg/gw2/builds/', 'https://hardstuck.gg/gw2/builds/x'], 'https://hardstuck.gg/gw2/builds', 5)
+    expect(links).toEqual(['https://hardstuck.gg/gw2/builds/x'])
+  })
+
+  it('skips namespaced wiki paths (a colon in the path)', () => {
+    const links = pickCrawlLinks(
+      ['https://metabattle.com/wiki/Category:PvE_builds', 'https://metabattle.com/wiki/Template:Foo', 'https://metabattle.com/wiki/Power_Tempest'],
+      'https://metabattle.com/wiki/Category:PvE_builds',
+      5
+    )
+    expect(links).toEqual(['https://metabattle.com/wiki/Power_Tempest'])
+  })
+
+  it('skips malformed hrefs', () => {
+    expect(pickCrawlLinks(['not a url', 'https://x.com/a'], 'https://x.com', 5)).toEqual(['https://x.com/a'])
+  })
+
+  it('skips off-site links', () => {
+    const links = pickCrawlLinks(
+      ['https://snowcrows.com/builds/a', 'https://discord.gg/x', 'https://twitter.com/y'],
+      'https://snowcrows.com/builds',
+      5
+    )
+    expect(links).toEqual(['https://snowcrows.com/builds/a'])
   })
 })
