@@ -38,25 +38,25 @@ const DEFAULT_SEED: SeedShape[] = [
   {
     mode: 'PvE',
     sources: [
-      { label: 'Snowcrows', url: 'https://snowcrows.com' },
-      { label: 'MetaBattle (PvE)', url: 'https://metabattle.com/wiki/Category:PvE_builds' },
-      { label: 'Hardstuck (PvE)', url: 'https://hardstuck.gg/gw2/builds/' }
+      { label: 'Snowcrows (Raids)', url: 'https://snowcrows.com/builds/raids' },
+      { label: 'MetaBattle (Raids)', url: 'https://metabattle.com/wiki/Raid_Builds' },
+      { label: 'Hardstuck (Group PvE)', url: 'https://hardstuck.gg/gw2/builds?t[]=group-pve&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support' }
     ]
   },
   {
     mode: 'WvW',
     sources: [
-      { label: 'MetaBattle (WvW)', url: 'https://metabattle.com/wiki/Category:WvW_Zerg_Builds' },
-      { label: 'gw2mists', url: 'https://gw2mists.com' },
-      { label: 'Hardstuck', url: 'https://hardstuck.gg' }
+      { label: 'MetaBattle (WvW)', url: 'https://metabattle.com/wiki/WvW' },
+      { label: 'Snowcrows (WvW)', url: 'https://snowcrows.com/builds/wvw' },
+      { label: 'gw2mists (Zerg)', url: 'https://gw2mists.com/en/builds?mode=zerg' },
+      { label: 'Hardstuck (WvW)', url: 'https://hardstuck.gg/gw2/builds?t[]=wvw&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support' }
     ]
   },
   {
     mode: 'WvW Roaming',
     sources: [
-      { label: 'MetaBattle (Roaming)', url: 'https://metabattle.com/wiki/Category:WvW_Roaming_Builds' },
-      { label: 'GuildJen', url: 'https://guildjen.com' },
-      { label: 'Hardstuck', url: 'https://hardstuck.gg' }
+      { label: 'MetaBattle (Roaming)', url: 'https://metabattle.com/wiki/WvW_Roaming' },
+      { label: 'GuildJen (Roaming)', url: 'https://guildjen.com/gw2-wvw-builds/' }
     ]
   }
 ]
@@ -75,7 +75,8 @@ export class MetaStore {
     }
   }
 
-  /** Merge any canonical seed modes/sources missing from the stored file. */
+  /** Sync each mode's sources to the seed (authoritative): drop sources no longer in
+   *  the seed, add new ones, update labels, and preserve provenance for survivors. */
   private reconcile(): boolean {
     let changed = false
     for (const seed of DEFAULT_SEED) {
@@ -85,11 +86,15 @@ export class MetaStore {
         changed = true
         continue
       }
-      for (const src of seed.sources) {
-        if (!existing.sources.some((s) => s.url === src.url)) {
-          existing.sources.push({ label: src.label, url: src.url, status: 'never', fetchedAt: null, error: null })
-          changed = true
-        }
+      const synced: MetaSource[] = seed.sources.map((s) => {
+        const prev = existing.sources.find((p) => p.url === s.url)
+        return prev
+          ? { ...prev, label: s.label }
+          : { label: s.label, url: s.url, status: 'never', fetchedAt: null, error: null }
+      })
+      if (JSON.stringify(existing.sources) !== JSON.stringify(synced)) {
+        existing.sources = synced
+        changed = true
       }
     }
     return changed
