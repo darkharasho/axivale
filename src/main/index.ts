@@ -107,10 +107,26 @@ function createWindow(store: SettingsStore): void {
   })
 
   // Persist position + size so the window reopens where the user left it.
-  // getBounds() reflects the normal (non-maximized) frame; persisting on close
-  // is enough and avoids churning the settings file on every drag.
+  // Save debounced on move/resize (not only on close) so the bounds survive even
+  // a hard kill of the dev process — `close` doesn't fire when the dev server is
+  // Ctrl-C'd. getNormalBounds() returns the restored (un-maximized) frame, so
+  // maximizing doesn't overwrite the size we want to restore to.
+  let boundsTimer: ReturnType<typeof setTimeout> | null = null
+  const persistBounds = (): void => {
+    if (boundsTimer) clearTimeout(boundsTimer)
+    boundsTimer = setTimeout(() => {
+      if (!win.isDestroyed()) {
+        store.setSetting('windowBounds', JSON.stringify(win.getNormalBounds()))
+      }
+    }, 400)
+  }
+  win.on('resize', persistBounds)
+  win.on('move', persistBounds)
   win.on('close', () => {
-    store.setSetting('windowBounds', JSON.stringify(win.getBounds()))
+    if (boundsTimer) clearTimeout(boundsTimer)
+    if (!win.isDestroyed()) {
+      store.setSetting('windowBounds', JSON.stringify(win.getNormalBounds()))
+    }
   })
 
   if (process.env.ELECTRON_RENDERER_URL) {
