@@ -134,11 +134,9 @@ body {
   margin-bottom: 3px;
 }
 
-/* Single-column body at a readable measure, centered. The masthead/headline
-   still span the full page width above it. */
+/* Single-column body spanning the full page width. */
 .sv-prose {
-  max-width: 760px;
-  margin-inline: auto;
+  max-width: none;
 }
 /* Figures, tables, charts and cards break the column flow and span full width,
    like a newspaper cut. */
