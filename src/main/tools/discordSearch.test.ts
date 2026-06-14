@@ -45,7 +45,8 @@ function makeDeps(corpus: Msg[]): { deps: ToolDeps; calls: Array<Record<string, 
     gw2GuildId: () => 'g1',
     axiforge: {} as never,
     axiforgeLauncher: { ensureRunning: async () => {} },
-    axibridge: () => ({}) as never
+    axibridge: () => ({}) as never,
+    loadSkill: () => null
   } satisfies ToolDeps
   return { deps, calls }
 }

@@ -38,7 +38,8 @@ describe('toToolSpecs', () => {
       gw2GuildId: () => 'g1',
       axiforge: {} as never,
       axiforgeLauncher: { ensureRunning: async () => {} },
-      axibridge: () => ({}) as never
+      axibridge: () => ({}) as never,
+      loadSkill: () => null
     })
     const specs = toToolSpecs(tools)
     expect(specs.length).toBe(tools.length)

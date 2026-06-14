@@ -57,7 +57,8 @@ function makeDeps(): ToolDeps {
     gw2GuildId: () => 'G-1',
     axiforge: {} as never,
     axiforgeLauncher: { ensureRunning: async () => {} },
-    axibridge: () => ({}) as never
+    axibridge: () => ({}) as never,
+    loadSkill: () => null
   }
 }
 

@@ -6,7 +6,8 @@ function call(loadSkill: (n: string) => string | null, name: string): Promise<st
   // SDK tool handler returns { content: [{ type:'text', text }] }
   return tool
     .handler({ name }, {} as never)
-    .then((r: { content: Array<{ text: string }> }) => r.content[0].text)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .then((r: any) => (r.content[0] as { text: string }).text)
 }
 
 describe('load_skill tool', () => {
