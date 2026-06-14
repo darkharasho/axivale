@@ -76,6 +76,12 @@ export class BrowserWindowFetcher implements MetaFetcher {
       const trimmed = (text ?? '').trim()
       return trimmed ? { ok: true, text: trimmed } : { ok: false, error: 'empty' }
     } catch (e) {
+      // Abort any in-flight load so a timed-out page can't leak into the next fetch.
+      try {
+        if (this.win && !this.win.isDestroyed()) this.win.webContents.stop()
+      } catch {
+        /* ignore */
+      }
       return { ok: false, error: e instanceof Error ? e.message : 'browser: failed' }
     }
   }
