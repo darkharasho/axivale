@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type {
   RendererMetaIndexStats,
   RendererMetaChunkRow,
@@ -14,10 +14,22 @@ export default function MetaIndexInspector(): ReactElement {
   const [hits, setHits] = useState<RendererMetaSearchHit[] | null>(null)
   const [rows, setRows] = useState<RendererMetaChunkRow[] | null>(null)
   const [busy, setBusy] = useState(false)
+  const [modeOpen, setModeOpen] = useState(false)
+  const modeRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
     void window.officer.metaIndexStats().then(setStats)
   }, [])
+
+  // Custom dark dropdown — close on outside click (native <select> popup is light).
+  useEffect(() => {
+    if (!modeOpen) return
+    const onDoc = (e: MouseEvent): void => {
+      if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false)
+    }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [modeOpen])
 
   async function runSearch(): Promise<void> {
     if (!query.trim()) return
@@ -61,13 +73,32 @@ export default function MetaIndexInspector(): ReactElement {
             if (e.key === 'Enter') void runSearch()
           }}
         />
-        <select className="sinput mi-mode" value={mode} onChange={(e) => setMode(e.target.value)}>
-          {MODES.map((m) => (
-            <option key={m} value={m}>
-              {m || 'All modes'}
-            </option>
-          ))}
-        </select>
+        <span className="mi-pick-wrap" ref={modeRef}>
+          <button
+            type="button"
+            className={`mi-pick${modeOpen ? ' open' : ''}`}
+            onClick={() => setModeOpen((o) => !o)}
+          >
+            {mode || 'All modes'} <span className="mi-caret">▾</span>
+          </button>
+          {modeOpen && (
+            <div className="mi-menu">
+              {MODES.map((m) => (
+                <button
+                  type="button"
+                  key={m}
+                  className={`mi-opt${mode === m ? ' sel' : ''}`}
+                  onClick={() => {
+                    setMode(m)
+                    setModeOpen(false)
+                  }}
+                >
+                  {m || 'All modes'}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
         <button className="sbtn" disabled={busy} onClick={() => void runSearch()}>
           Search
         </button>
