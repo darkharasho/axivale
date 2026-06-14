@@ -10,6 +10,7 @@
 // page/time caps, and concatenate the visited pages' content.
 import { BrowserWindow, session } from 'electron'
 import { configForUrl, type SourceConfig } from './sources'
+import { fetchSnowcrowsStatic } from './snowcrows'
 
 export interface FetchedPage {
   url: string
@@ -166,6 +167,7 @@ export class BrowserWindowFetcher implements MetaFetcher {
     const cfg = configForUrl(url)
     if (!cfg) return { ok: false, error: 'no extractor' }
     if (cfg.kind === 'wiki') return fetchWiki(url, cfg)
+    if (cfg.kind === 'static') return fetchSnowcrowsStatic(url, { crawlDepth: cfg.crawlDepth })
 
     const selector = cfg.selector ?? 'body'
     const depth = cfg.linkSelector ? (cfg.crawlDepth ?? 1) : 0
