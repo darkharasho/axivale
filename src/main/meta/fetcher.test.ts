@@ -14,7 +14,13 @@ describe('fetchWiki', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
     const r = await fetchWiki('https://metabattle.com/wiki/Category:WvW_Zerg_Builds', cfg)
-    expect(r).toEqual({ ok: true, text: 'Zerg builds: Scourge, Firebrand' })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.text).toBe('Zerg builds: Scourge, Firebrand')
+      expect(r.pages).toEqual([
+        { url: 'https://metabattle.com/wiki/Category:WvW_Zerg_Builds', title: 'Category:WvW_Zerg_Builds', text: 'Zerg builds: Scourge, Firebrand' }
+      ])
+    }
     const calledUrl = fetchMock.mock.calls[0][0] as string
     expect(calledUrl).toContain('https://metabattle.com/api.php')
     expect(calledUrl).toContain('Category%3AWvW_Zerg_Builds')

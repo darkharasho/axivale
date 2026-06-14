@@ -46,7 +46,8 @@ function makeDeps(corpus: Msg[]): { deps: ToolDeps; calls: Array<Record<string, 
     axiforge: {} as never,
     axiforgeLauncher: { ensureRunning: async () => {} },
     axibridge: () => ({}) as never,
-    loadSkill: () => null
+    loadSkill: () => null,
+    metaIndex: () => ({}) as never
   } satisfies ToolDeps
   return { deps, calls }
 }

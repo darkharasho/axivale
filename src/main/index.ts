@@ -41,6 +41,8 @@ import { MetaStore } from './metaStore'
 import { MetaCache } from './meta/cache'
 import { BrowserWindowFetcher } from './meta/fetcher'
 import { MetaRefresher } from './meta/refresh'
+import { TransformersEmbedder } from './meta/rag/embedder'
+import { LanceMetaIndex } from './meta/rag/index'
 import { runClaudeOnce } from './meta/model'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
@@ -176,11 +178,14 @@ app.whenReady().then(async () => {
   const skills = new SkillStore(join(app.getPath('userData'), 'skills.json'))
   const meta = new MetaStore(join(app.getPath('userData'), 'meta.json'))
   const metaCache = new MetaCache(join(app.getPath('userData'), 'meta-cache'))
+  const metaEmbedder = new TransformersEmbedder(join(app.getPath('userData'), 'meta-models'))
+  const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
   const metaFetcher = new BrowserWindowFetcher()
   const metaRefresher = new MetaRefresher({
     store: meta,
     fetcher: metaFetcher,
     cache: metaCache,
+    index: metaIndex,
     model: (prompt) =>
       runClaudeOnce(prompt, {
         oauthToken: store.getSecret('claudeOauthToken'),
@@ -305,7 +310,8 @@ app.whenReady().then(async () => {
       loadSkill: (name: string) => {
         const s = skills.getByName(name)
         return s && s.enabled ? s.instructions : null
-      }
+      },
+      metaIndex: () => metaIndex
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),

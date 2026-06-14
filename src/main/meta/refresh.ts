@@ -9,6 +9,8 @@ import type { MetaFetcher } from './fetcher'
 import type { RawCache } from './cache'
 import { distill, type MetaModel } from './distill'
 import { configForUrl } from './sources'
+import type { MetaIndex } from './rag/index'
+import { chunkPage, sha1 } from './rag/chunk'
 
 const SEVEN_DAYS_MS = 7 * 86_400_000
 
@@ -26,6 +28,7 @@ export interface RefresherDeps {
   now: () => number
   staleMs?: number
   emit?: (e: MetaProgress) => void
+  index?: MetaIndex
 }
 
 function isStale(mode: MetaMode, now: number, staleMs: number): boolean {
@@ -53,6 +56,7 @@ export class MetaRefresher {
           if (r.ok) {
             cache.put(src.url, r.text)
             raws.push(r.text)
+            await this.ingest(mode.mode, src.url, r.pages)
           }
         }
         if (raws.length > 0) {
@@ -63,6 +67,27 @@ export class MetaRefresher {
       }
     } finally {
       emit({ type: 'idle' })
+    }
+  }
+
+  private async ingest(mode: string, source: string, pages: { url: string; title: string; text: string }[]): Promise<void> {
+    const index = this.deps.index
+    if (!index) return
+    const host = ((): string => {
+      try {
+        return new URL(source).host.replace(/^www\./, '')
+      } catch {
+        return source
+      }
+    })()
+    for (const page of pages) {
+      try {
+        if ((await index.indexedHash(page.url)) === sha1(page.text)) continue
+        const chunks = chunkPage(page.text, { mode, source: host, url: page.url, title: page.title })
+        if (chunks.length > 0) await index.replacePage(page.url, chunks)
+      } catch {
+        /* index failure for one page is isolated; never breaks the refresh */
+      }
     }
   }
 }
