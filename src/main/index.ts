@@ -699,6 +699,27 @@ app.whenReady().then(async () => {
     meta.markAllStale()
     void metaRefresher.refreshStale()
   })
+  ipcMain.handle('meta:index-stats', async () => {
+    try {
+      return await metaIndex.stats()
+    } catch {
+      return { total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }
+    }
+  })
+  ipcMain.handle('meta:index-sample', async (_e, opts: { mode?: string; limit: number }) => {
+    try {
+      return await metaIndex.sample(opts)
+    } catch {
+      return []
+    }
+  })
+  ipcMain.handle('meta:index-search', async (_e, query: string, mode?: string) => {
+    try {
+      return await metaIndex.search(query, { mode, k: 8 })
+    } catch {
+      return []
+    }
+  })
 
   function drainConfirms(): void {
     for (const resolve of pendingConfirms.values()) resolve(false)

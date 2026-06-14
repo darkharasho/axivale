@@ -37,6 +37,9 @@ contextBridge.exposeInMainWorld('officer', {
   ) => ipcRenderer.invoke('meta:update-mode', id, patch),
   metaRemoveMode: (id: string) => ipcRenderer.invoke('meta:remove-mode', id),
   metaForceRefresh: () => ipcRenderer.invoke('meta:force-refresh'),
+  metaIndexStats: () => ipcRenderer.invoke('meta:index-stats'),
+  metaIndexSample: (opts: { mode?: string; limit: number }) => ipcRenderer.invoke('meta:index-sample', opts),
+  metaIndexSearch: (query: string, mode?: string) => ipcRenderer.invoke('meta:index-search', query, mode),
   skillsList: () => ipcRenderer.invoke('skills:list'),
   skillsCreate: (seed: { name: string; whenToUse: string; instructions: string }) =>
     ipcRenderer.invoke('skills:create', seed),
