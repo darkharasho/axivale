@@ -5,7 +5,7 @@
 // most bot-blocking); MediaWiki sources hit api.php directly. The wiki path is
 // a pure module function (testable with mocked fetch); the BrowserWindow
 // adapter is a thin wrapper verified by the manual smoke test.
-import { BrowserWindow } from 'electron'
+import { BrowserWindow, session } from 'electron'
 import { configForUrl, type SourceConfig } from './sources'
 
 export type FetchResult = { ok: true; text: string } | { ok: false; error: string }
@@ -15,6 +15,12 @@ export interface MetaFetcher {
 }
 
 const FETCH_TIMEOUT_MS = 20_000
+
+// Meta sites embed ad/tracker/image subresources that don't affect innerText
+// and spam the console (ERR_CONNECTION_REFUSED behind ad-blockers). Run the
+// scrape window in an isolated in-memory session and drop those resource types.
+const SCRAPE_PARTITION = 'meta-scrape'
+const BLOCKED_TYPES = new Set(['image', 'media', 'font', 'object', 'ping', 'cspReport', 'subFrame'])
 
 export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchResult> {
   let title: string
@@ -40,12 +46,25 @@ export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchRe
 export class BrowserWindowFetcher implements MetaFetcher {
   private win: BrowserWindow | null = null
   private chain: Promise<unknown> = Promise.resolve()
+  private filtered = false
 
   private window(): BrowserWindow {
     if (this.win && !this.win.isDestroyed()) return this.win
+    const ses = session.fromPartition(SCRAPE_PARTITION)
+    if (!this.filtered) {
+      ses.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, cb) =>
+        cb({ cancel: BLOCKED_TYPES.has(details.resourceType) })
+      )
+      this.filtered = true
+    }
     this.win = new BrowserWindow({
       show: false,
-      webPreferences: { offscreen: true, nodeIntegration: false, contextIsolation: true }
+      webPreferences: {
+        offscreen: true,
+        partition: SCRAPE_PARTITION,
+        nodeIntegration: false,
+        contextIsolation: true
+      }
     })
     return this.win
   }
