@@ -203,6 +203,7 @@ export function assembleBuildDoc(title: string, parsed: ParsedArmory, names: Arm
 
 const MAX_PAGES = 30
 const BUDGET_MS = 120_000
+const MAX_TOTAL_CHARS = 16_000 // bound the joined excerpt handed to the distiller (parity with the browser path)
 
 export interface SnowcrowsDeps {
   fetchImpl?: FetchLike
@@ -257,6 +258,6 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
   }
 
   if (pages.length === 0) return { ok: false, error: 'empty' }
-  const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n')
+  const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n').slice(0, MAX_TOTAL_CHARS)
   return { ok: true, text, pages }
 }

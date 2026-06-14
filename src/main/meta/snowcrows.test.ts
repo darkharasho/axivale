@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { parseArmory, extractHrefs, pickBuildLinks } from './snowcrows'
 import { resolveArmoryNames, __resetArmoryCache, type FetchLike } from './snowcrows'
-import { beforeEach, vi } from 'vitest'
+import { beforeEach } from 'vitest'
 
 beforeEach(() => __resetArmoryCache())
 
