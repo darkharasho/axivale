@@ -7,6 +7,7 @@ import { MetaStore } from '../metaStore'
 import { MetaRefresher } from './refresh'
 import type { RawCache } from './cache'
 import type { MetaFetcher, FetchResult } from './fetcher'
+import { FakeMetaIndex } from './rag/testFake'
 
 function store(): MetaStore {
   return new MetaStore(join(mkdtempSync(join(tmpdir(), 'refresh-')), 'meta.json'))
@@ -118,5 +119,65 @@ describe('MetaRefresher progress', () => {
     expect(events).toContain('source-start')
     expect(events).toContain('mode-done')
     expect(events[events.length - 1]).toBe('idle')
+  })
+})
+
+describe('MetaRefresher ingestion', () => {
+  it('indexes each fetched page via replacePage', async () => {
+    const s = store()
+    s.list().forEach((x) => { if (x.mode !== 'PvE') s.recordDistill(x.id, 'fresh') })
+    const pve = s.list().find((x) => x.mode === 'PvE')!
+    const url = pve.sources[0].url
+    const idx = new FakeMetaIndex()
+    await new MetaRefresher({
+      store: s,
+      fetcher: {
+        fetch: async () => ({ ok: true, text: 'raw', pages: [{ url: 'https://snowcrows.com/builds/a', title: 'A', text: 'build a detail' }] })
+      },
+      cache: fakeCache(),
+      model: () => Promise.resolve('notes'),
+      now: () => Date.now(),
+      index: idx
+    }).refreshStale()
+    expect(idx.replaced).toContain('https://snowcrows.com/builds/a')
+    void url
+  })
+
+  it('skips replacePage when the page contentHash is unchanged', async () => {
+    const s = store()
+    s.list().forEach((x) => { if (x.mode !== 'PvE') s.recordDistill(x.id, 'fresh') })
+    const idx = new FakeMetaIndex()
+    const page = { url: 'https://snowcrows.com/builds/a', title: 'A', text: 'same text' }
+    const baseDeps = {
+      store: s,
+      fetcher: { fetch: async (): Promise<FetchResult> => ({ ok: true, text: 'raw', pages: [page] }) },
+      cache: fakeCache(),
+      model: () => Promise.resolve('notes'),
+      index: idx
+    }
+    await new MetaRefresher({ ...baseDeps, now: () => Date.now() }).refreshStale()
+    // re-run later (force staleness via a future now); same text => no second replace
+    await new MetaRefresher({ ...baseDeps, now: () => Date.now() + 8 * 86_400_000 }).refreshStale()
+    expect(idx.replaced.filter((u) => u === page.url)).toHaveLength(1)
+  })
+
+  it('isolates an index failure — summaries still update', async () => {
+    const s = store()
+    s.list().forEach((x) => { if (x.mode !== 'PvE') s.recordDistill(x.id, 'fresh') })
+    const pve = s.list().find((x) => x.mode === 'PvE')!
+    const failingIndex = {
+      indexedHash: async () => null,
+      replacePage: async () => { throw new Error('disk full') },
+      search: async () => []
+    }
+    await new MetaRefresher({
+      store: s,
+      fetcher: { fetch: async () => ({ ok: true, text: 'raw', pages: [{ url: 'p', title: 't', text: 'x' }] }) },
+      cache: fakeCache(),
+      model: () => Promise.resolve('distilled'),
+      now: () => Date.now(),
+      index: failingIndex
+    }).refreshStale()
+    expect(s.get(pve.id)!.notes).toBe('distilled')
   })
 })
