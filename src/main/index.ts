@@ -37,6 +37,7 @@ import { makeShareId } from './shareId'
 import { AgentService } from './agent'
 import { ConversationStore, type Conversation } from './conversationStore'
 import { SkillStore } from './skillStore'
+import { MetaStore } from './metaStore'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -169,6 +170,7 @@ app.whenReady().then(async () => {
   const shares = new ShareStore(join(app.getPath('userData'), 'shares.json'))
 
   const skills = new SkillStore(join(app.getPath('userData'), 'skills.json'))
+  const meta = new MetaStore(join(app.getPath('userData'), 'meta.json'))
   // Dev runs publish to a separate repo so testing never touches a user's real
   // public share site. app.isPackaged is false under `npm run dev`.
   const SHARE_REPO = app.isPackaged ? 'axivale-shares' : 'axivale-shares-dev'
@@ -280,6 +282,7 @@ app.whenReady().then(async () => {
       }
     }),
     skills: () => skills.list().filter((s) => s.enabled),
+    meta: () => meta.list(),
     config: providerConfig,
     loadSession: (conversationId: string): SessionState =>
       conversations.get(conversationId)?.session ?? {},
@@ -642,6 +645,17 @@ app.whenReady().then(async () => {
       skills.update(id, patch)
   )
   ipcMain.handle('skills:delete', (_e, id: string) => skills.remove(id))
+
+  ipcMain.handle('meta:list', () => meta.list())
+  ipcMain.handle('meta:add-mode', (_e, seed: { mode: string; sources: { label: string; url: string }[]; notes?: string }) =>
+    meta.addMode(seed)
+  )
+  ipcMain.handle(
+    'meta:update-mode',
+    (_e, id: string, patch: Partial<{ mode: string; sources: { label: string; url: string }[]; notes: string }>) =>
+      meta.updateMode(id, patch)
+  )
+  ipcMain.handle('meta:remove-mode', (_e, id: string) => meta.removeMode(id))
 
   function drainConfirms(): void {
     for (const resolve of pendingConfirms.values()) resolve(false)

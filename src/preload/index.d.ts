@@ -23,6 +23,18 @@ export interface ShareListEntry {
   createdAt: string
 }
 
+export interface RendererMetaSource {
+  label: string
+  url: string
+}
+export interface RendererMetaMode {
+  id: string
+  mode: string
+  sources: RendererMetaSource[]
+  notes: string
+  updatedAt: string
+}
+
 export interface RendererSkill {
   id: string
   name: string
@@ -106,6 +118,13 @@ export interface OfficerApi {
   shareDelete(id: string): Promise<{ ok: boolean; error?: string }>
   shareStatus(): Promise<{ signedIn: boolean; repoReady: boolean; pagesUrl: string | null }>
   sendMessage(conversationId: string, text: string, forcedSkillId?: string): Promise<void>
+  metaList(): Promise<RendererMetaMode[]>
+  metaAddMode(seed: { mode: string; sources: RendererMetaSource[]; notes?: string }): Promise<RendererMetaMode>
+  metaUpdateMode(
+    id: string,
+    patch: Partial<{ mode: string; sources: RendererMetaSource[]; notes: string }>
+  ): Promise<RendererMetaMode | null>
+  metaRemoveMode(id: string): Promise<void>
   skillsList(): Promise<RendererSkill[]>
   skillsCreate(seed: { name: string; whenToUse: string; instructions: string }): Promise<RendererSkill>
   skillsUpdate(

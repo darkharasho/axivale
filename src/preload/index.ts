@@ -28,6 +28,14 @@ contextBridge.exposeInMainWorld('officer', {
   forgeCatalogUpgrades: () => ipcRenderer.invoke('axiforge:catalog-upgrades'),
   sendMessage: (conversationId: string, text: string, forcedSkillId?: string) =>
     ipcRenderer.invoke('agent:send', conversationId, text, forcedSkillId),
+  metaList: () => ipcRenderer.invoke('meta:list'),
+  metaAddMode: (seed: { mode: string; sources: { label: string; url: string }[]; notes?: string }) =>
+    ipcRenderer.invoke('meta:add-mode', seed),
+  metaUpdateMode: (
+    id: string,
+    patch: Partial<{ mode: string; sources: { label: string; url: string }[]; notes: string }>
+  ) => ipcRenderer.invoke('meta:update-mode', id, patch),
+  metaRemoveMode: (id: string) => ipcRenderer.invoke('meta:remove-mode', id),
   skillsList: () => ipcRenderer.invoke('skills:list'),
   skillsCreate: (seed: { name: string; whenToUse: string; instructions: string }) =>
     ipcRenderer.invoke('skills:create', seed),
