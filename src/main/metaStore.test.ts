@@ -134,9 +134,9 @@ describe('MetaStore reconcile', () => {
     const s = new MetaStore(tmpPath())
     const pve = s.list().find((m) => m.mode === 'PvE')!
     const urls = pve.sources.map((x) => x.url)
-    expect(urls).toContain('https://snowcrows.com')
-    expect(urls).toContain('https://metabattle.com/wiki/Category:PvE_builds')
-    expect(urls).toContain('https://hardstuck.gg/gw2/builds/')
+    expect(urls).toContain('https://snowcrows.com/builds/raids')
+    expect(urls).toContain('https://metabattle.com/wiki/Raid_Builds')
+    expect(urls).toContain('https://hardstuck.gg/gw2/builds?t[]=group-pve&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support')
   })
 
   it('adds missing canonical sources to an existing mode without touching notes/provenance', () => {
@@ -149,7 +149,7 @@ describe('MetaStore reconcile', () => {
             id: 'a',
             mode: 'PvE',
             sources: [
-              { label: 'Snowcrows', url: 'https://snowcrows.com', status: 'ok', fetchedAt: '2026-01-01T00:00:00.000Z', error: null }
+              { label: 'Snowcrows (Raids)', url: 'https://snowcrows.com/builds/raids', status: 'ok', fetchedAt: '2026-01-01T00:00:00.000Z', error: null }
             ],
             notes: 'kept',
             refreshedAt: '2026-01-01T00:00:00.000Z',
@@ -161,9 +161,24 @@ describe('MetaStore reconcile', () => {
     const s = new MetaStore(p)
     const pve = s.list().find((m) => m.mode === 'PvE')!
     expect(pve.notes).toBe('kept')
-    expect(pve.sources.find((x) => x.url === 'https://snowcrows.com')!.status).toBe('ok')
-    expect(pve.sources.map((x) => x.url)).toContain('https://metabattle.com/wiki/Category:PvE_builds')
-    expect(pve.sources.map((x) => x.url)).toContain('https://hardstuck.gg/gw2/builds/')
+    expect(pve.sources.find((x) => x.url === 'https://snowcrows.com/builds/raids')!.status).toBe('ok')
+    expect(pve.sources.map((x) => x.url)).toContain('https://metabattle.com/wiki/Raid_Builds')
+    expect(pve.sources.map((x) => x.url)).toContain('https://hardstuck.gg/gw2/builds?t[]=group-pve&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support')
+  })
+
+  it('reconcile drops sources no longer in the seed', () => {
+    const p = tmpPath()
+    writeFileSync(p, JSON.stringify({ modes: [{ id: 'a', mode: 'WvW Roaming', sources: [
+      { label: 'Old Hardstuck', url: 'https://hardstuck.gg', status: 'ok', fetchedAt: '2026-01-01T00:00:00.000Z', error: null },
+      { label: 'MetaBattle (Roaming)', url: 'https://metabattle.com/wiki/WvW_Roaming', status: 'never', fetchedAt: null, error: null }
+    ], notes: 'keep', refreshedAt: null, updatedAt: '' }] }))
+    const s = new MetaStore(p)
+    const m = s.list().find((x) => x.mode === 'WvW Roaming')!
+    const urls = m.sources.map((x) => x.url)
+    expect(urls).not.toContain('https://hardstuck.gg')          // dropped (not in seed)
+    expect(urls).toContain('https://metabattle.com/wiki/WvW_Roaming')
+    expect(urls).toContain('https://guildjen.com/gw2-wvw-builds/') // added from seed
+    expect(m.notes).toBe('keep')
   })
 
   it('is idempotent — a second construct adds nothing', () => {

@@ -1,6 +1,6 @@
 // src/main/meta/fetcher.test.ts
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchWiki, pickCrawlLinks, normalizeUrl } from './fetcher'
+import { fetchWiki, pickCrawlLinks, normalizeUrl, isChallengePage } from './fetcher'
 
 const cfg = { host: 'metabattle.com', kind: 'wiki' as const, wikiApi: 'https://metabattle.com/api.php' }
 
@@ -74,6 +74,15 @@ describe('pickCrawlLinks', () => {
       5
     )
     expect(links).toEqual(['https://snowcrows.com/builds/a'])
+  })
+})
+
+describe('isChallengePage', () => {
+  it('flags a Cloudflare interstitial', () => {
+    expect(isChallengePage('Just a moment...', 'Checking your browser before accessing the site. Performance & Security by Cloudflare')).toBe(true)
+  })
+  it('does not flag real build content', () => {
+    expect(isChallengePage('Power Virtuoso - Hardstuck', 'Build Fundamentals: stack vulnerability with Bladesongs. Sigil of Force...')).toBe(false)
   })
 })
 

@@ -35,8 +35,30 @@ const MAX_CRAWL_TOTAL_CHARS = 16_000 // cap the combined landing+build-pages exc
 // Meta sites embed ad/tracker/image subresources that don't affect innerText
 // and spam the console (ERR_CONNECTION_REFUSED behind ad-blockers). Run the
 // scrape window in an isolated in-memory session and drop those resource types.
-const SCRAPE_PARTITION = 'meta-scrape'
-const BLOCKED_TYPES = new Set(['image', 'media', 'font', 'object', 'ping', 'cspReport', 'subFrame'])
+const SCRAPE_PARTITION = 'persist:meta-scrape'
+const BLOCKED_TYPES = new Set(['image', 'media', 'font', 'object', 'ping', 'cspReport'])
+
+const SCRAPE_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
+const CRAWL_PAGE_DELAY_MS = 400 // ease rate-based challenges between page loads
+
+/** Heuristic: does this look like a Cloudflare (or similar) bot-challenge interstitial
+ *  rather than real content? Used to avoid indexing challenge boilerplate. */
+export function isChallengePage(title: string, text: string): boolean {
+  const hay = `${title}\n${text}`.toLowerCase()
+  return (
+    hay.includes('just a moment') ||
+    hay.includes('checking your browser') ||
+    hay.includes('verifying you are human') ||
+    hay.includes('enable javascript and cookies to continue') ||
+    hay.includes('attention required') ||
+    hay.includes('cf-browser-verification') ||
+    hay.includes('performance & security by cloudflare') ||
+    (hay.includes('cloudflare') && hay.includes('ray id'))
+  )
+}
 
 export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchResult> {
   let title: string
@@ -123,6 +145,7 @@ export class BrowserWindowFetcher implements MetaFetcher {
         contextIsolation: true
       }
     })
+    this.win.webContents.setUserAgent(SCRAPE_UA)
     return this.win
   }
 
@@ -153,12 +176,13 @@ export class BrowserWindowFetcher implements MetaFetcher {
         if (key === null || visited.has(key)) continue
         visited.add(key)
 
-        let extracted: { title: string; text: string }
+        let extracted: { title: string; text: string } | null
         try {
-          extracted = await this.loadAndExtract(pageUrl, selector)
+          extracted = await this.loadChecked(pageUrl, selector)
         } catch {
           continue // skip a bad page; keep walking
         }
+        if (extracted === null) continue // challenged — skip, keep walking
         if (extracted.text) {
           pages.push({ url: pageUrl, title: extracted.title, text: extracted.text.slice(0, MAX_EXTRACT_CHARS) })
         }
@@ -172,6 +196,7 @@ export class BrowserWindowFetcher implements MetaFetcher {
             if (k !== null && !visited.has(k)) queue.push({ url: link, level: level + 1 })
           }
         }
+        await sleep(CRAWL_PAGE_DELAY_MS)
       }
 
       if (pages.length === 0) return { ok: false, error: 'empty' }
@@ -185,6 +210,18 @@ export class BrowserWindowFetcher implements MetaFetcher {
       }
       return { ok: false, error: e instanceof Error ? e.message : 'browser: failed' }
     }
+  }
+
+  /** loadAndExtract + challenge handling: retries once on a Cloudflare interstitial,
+   *  returns null if the page is still challenged (caller skips it). */
+  private async loadChecked(url: string, selector: string): Promise<{ title: string; text: string } | null> {
+    let out = await this.loadAndExtract(url, selector)
+    if (isChallengePage(out.title, out.text)) {
+      await sleep(3_000)
+      out = await this.loadAndExtract(url, selector)
+      if (isChallengePage(out.title, out.text)) return null
+    }
+    return out
   }
 
   /**
