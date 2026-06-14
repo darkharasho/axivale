@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 // src/renderer/src/components/panels/Meta.test.tsx
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import Meta from './Meta'
 
 function officer() {
+  let progressCb: ((e: unknown) => void) | null = null
   return {
     metaList: () =>
       Promise.resolve([
@@ -20,7 +21,12 @@ function officer() {
             { label: 'gw2mists', url: 'https://gw2mists.com', status: 'never', fetchedAt: null, error: null }
           ]
         }
-      ])
+      ]),
+    onMetaProgress: (cb: (e: unknown) => void) => {
+      progressCb = cb
+      return () => {}
+    },
+    __fire: (e: unknown) => progressCb?.(e)
   }
 }
 beforeEach(() => {
@@ -43,5 +49,16 @@ describe('Meta panel (read-only)', () => {
     await screen.findByText('WvW')
     expect(screen.queryByRole('textbox')).toBeNull()
     expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
+  })
+
+  it('shows a refreshing indicator while a mode is in progress', async () => {
+    const o = officer()
+    ;(window as unknown as { officer: unknown }).officer = o
+    render(<Meta />)
+    await screen.findByText('WvW')
+    act(() => {
+      ;(o as unknown as { __fire: (e: unknown) => void }).__fire({ type: 'mode-start', modeId: '1' })
+    })
+    expect(screen.getByText(/refreshing/i)).toBeTruthy()
   })
 })

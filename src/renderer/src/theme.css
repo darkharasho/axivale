@@ -568,3 +568,30 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-chip.never {
   opacity: 0.4;
 }
+.meta-refreshing {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--accent-b);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.meta-spin {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--rule2);
+  border-top-color: var(--accent-b);
+  border-radius: 50%;
+  display: inline-block;
+  animation: meta-spin 0.7s linear infinite;
+}
+@keyframes meta-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.meta-chip.fetching {
+  color: var(--accent-b);
+  border-color: var(--accent-b);
+  opacity: 1;
+}

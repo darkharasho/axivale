@@ -186,7 +186,11 @@ app.whenReady().then(async () => {
         oauthToken: store.getSecret('claudeOauthToken'),
         model: 'claude-haiku-4-5-20251001'
       }),
-    now: Date.now
+    now: Date.now,
+    emit: (e) => {
+      const win = mainWindow
+      if (win && !win.isDestroyed()) win.webContents.send('meta:progress', e)
+    }
   })
   let metaTimer: ReturnType<typeof setInterval> | null = null
   let metaStartTimer: ReturnType<typeof setTimeout> | null = null

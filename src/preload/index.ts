@@ -93,5 +93,10 @@ contextBridge.exposeInMainWorld('officer', {
     const listener = (_e: unknown, message: unknown): void => cb(message)
     ipcRenderer.on('axibridge:progress', listener)
     return () => ipcRenderer.removeListener('axibridge:progress', listener)
+  },
+  onMetaProgress: (cb: (e: unknown) => void) => {
+    const handler = (_e: unknown, payload: unknown): void => cb(payload)
+    ipcRenderer.on('meta:progress', handler)
+    return () => ipcRenderer.removeListener('meta:progress', handler)
   }
 })
