@@ -121,3 +121,56 @@ describe('MetaStore provenance', () => {
     expect(after.fetchedAt).toBeTruthy()
   })
 })
+
+describe('MetaStore reconcile', () => {
+  it('seeds PvE with snowcrows + metabattle + hardstuck', () => {
+    const s = new MetaStore(tmpPath())
+    const pve = s.list().find((m) => m.mode === 'PvE')!
+    const urls = pve.sources.map((x) => x.url)
+    expect(urls).toContain('https://snowcrows.com')
+    expect(urls).toContain('https://metabattle.com/wiki/Category:PvE_builds')
+    expect(urls).toContain('https://hardstuck.gg/gw2/builds/')
+  })
+
+  it('adds missing canonical sources to an existing mode without touching notes/provenance', () => {
+    const p = tmpPath()
+    writeFileSync(
+      p,
+      JSON.stringify({
+        modes: [
+          {
+            id: 'a',
+            mode: 'PvE',
+            sources: [
+              { label: 'Snowcrows', url: 'https://snowcrows.com', status: 'ok', fetchedAt: '2026-01-01T00:00:00.000Z', error: null }
+            ],
+            notes: 'kept',
+            refreshedAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: ''
+          }
+        ]
+      })
+    )
+    const s = new MetaStore(p)
+    const pve = s.list().find((m) => m.mode === 'PvE')!
+    expect(pve.notes).toBe('kept')
+    expect(pve.sources.find((x) => x.url === 'https://snowcrows.com')!.status).toBe('ok')
+    expect(pve.sources.map((x) => x.url)).toContain('https://metabattle.com/wiki/Category:PvE_builds')
+    expect(pve.sources.map((x) => x.url)).toContain('https://hardstuck.gg/gw2/builds/')
+  })
+
+  it('is idempotent — a second construct adds nothing', () => {
+    const p = tmpPath()
+    const a = new MetaStore(p)
+    const before = a.list().find((m) => m.mode === 'PvE')!.sources.length
+    const b = new MetaStore(p)
+    expect(b.list().find((m) => m.mode === 'PvE')!.sources.length).toBe(before)
+  })
+
+  it('adds a wholly missing canonical mode', () => {
+    const p = tmpPath()
+    writeFileSync(p, JSON.stringify({ modes: [{ id: 'a', mode: 'PvE', sources: [], notes: '', refreshedAt: null, updatedAt: '' }] }))
+    const s = new MetaStore(p)
+    expect(s.list().map((m) => m.mode)).toContain('WvW')
+  })
+})

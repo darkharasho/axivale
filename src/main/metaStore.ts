@@ -35,7 +35,14 @@ interface FileShape {
 const DEBOUNCE_MS = 300
 
 const DEFAULT_SEED: SeedShape[] = [
-  { mode: 'PvE', sources: [{ label: 'Snowcrows', url: 'https://snowcrows.com' }] },
+  {
+    mode: 'PvE',
+    sources: [
+      { label: 'Snowcrows', url: 'https://snowcrows.com' },
+      { label: 'MetaBattle (PvE)', url: 'https://metabattle.com/wiki/Category:PvE_builds' },
+      { label: 'Hardstuck (PvE)', url: 'https://hardstuck.gg/gw2/builds/' }
+    ]
+  },
   {
     mode: 'WvW',
     sources: [
@@ -63,7 +70,29 @@ export class MetaStore {
     if (this.state.modes.length === 0) {
       this.state = { modes: DEFAULT_SEED.map((s) => this.makeMode(s)) }
       this.flush()
+    } else if (this.reconcile()) {
+      this.flush()
     }
+  }
+
+  /** Merge any canonical seed modes/sources missing from the stored file. */
+  private reconcile(): boolean {
+    let changed = false
+    for (const seed of DEFAULT_SEED) {
+      const existing = this.state.modes.find((m) => m.mode === seed.mode)
+      if (!existing) {
+        this.state.modes.push(this.makeMode(seed))
+        changed = true
+        continue
+      }
+      for (const src of seed.sources) {
+        if (!existing.sources.some((s) => s.url === src.url)) {
+          existing.sources.push({ label: src.label, url: src.url, status: 'never', fetchedAt: null, error: null })
+          changed = true
+        }
+      }
+    }
+    return changed
   }
 
   private makeMode(seed: SeedShape): MetaMode {
