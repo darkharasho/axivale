@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import './theme.css'
 import { applyEvent, type AgentEvent, type Turn } from './state'
 import Masthead, { type Section } from './components/Masthead'
+import MetaLearningBanner from './components/MetaLearningBanner'
 import Builds from './components/panels/Builds'
 import Comps from './components/panels/Comps'
 import Roster from './components/panels/Roster'
@@ -366,6 +367,7 @@ export default function App(): ReactElement {
         onSection={setSection}
         onSwitched={refreshStatus}
       />
+      <MetaLearningBanner />
       <div className="sheet">
         <Editions
           items={editionItems}

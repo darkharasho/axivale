@@ -4,7 +4,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { MetaStore } from '../metaStore'
-import { MetaRefresher } from './refresh'
+import { MetaRefresher, type MetaProgress } from './refresh'
 import type { RawCache } from './cache'
 import type { MetaFetcher, FetchResult } from './fetcher'
 import { FakeMetaIndex } from './rag/testFake'
@@ -115,10 +115,32 @@ describe('MetaRefresher progress', () => {
       now: () => Date.now(),
       emit: (e) => events.push(e.type)
     }).refreshStale()
-    expect(events[0]).toBe('mode-start')
+    expect(events[0]).toBe('refresh-start')
+    expect(events).toContain('mode-start')
     expect(events).toContain('source-start')
     expect(events).toContain('mode-done')
     expect(events[events.length - 1]).toBe('idle')
+  })
+
+  it('refresh-start carries total equal to the number of stale modes', async () => {
+    const s = store()
+    // mark all-but-one mode fresh so exactly one is stale
+    s.list().forEach((x) => {
+      if (x.mode !== 'PvE') s.recordDistill(x.id, 'fresh')
+    })
+    const pve = s.list().find((x) => x.mode === 'PvE')!
+    const events: MetaProgress[] = []
+    await new MetaRefresher({
+      store: s,
+      fetcher: fetcher(Object.fromEntries(pve.sources.map((x) => [x.url, { ok: true, text: 'r', pages: [] }]))),
+      cache: fakeCache(),
+      model: vi.fn().mockResolvedValue('notes'),
+      now: () => Date.now(),
+      emit: (e) => events.push(e)
+    }).refreshStale()
+    const start = events.find((e) => e.type === 'refresh-start')
+    expect(start).toBeTruthy()
+    expect(start).toEqual({ type: 'refresh-start', total: 1 })
   })
 })
 

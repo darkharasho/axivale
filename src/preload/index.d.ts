@@ -40,6 +40,7 @@ export interface RendererMetaMode {
 }
 
 export type RendererMetaProgress =
+  | { type: 'refresh-start'; total: number }
   | { type: 'mode-start'; modeId: string }
   | { type: 'source-start'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
