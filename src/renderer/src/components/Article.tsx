@@ -161,11 +161,10 @@ export default function Article({
               {turn.tools.length === 1 ? '' : 's'} taken
             </div>
             <div className="prose">
-              {/* Inline figures are charts and build/comp cards — placed where
-                  the model writes {{figure}}. Tool *table* displays are excluded
-                  here on purpose: a raw data lookup belongs in the Actions rail
-                  (which renders the full card), not dumped into the article.
-                  AI-authored markdown tables still render inline via the prose. */}
+              {/* Inline figures (charts, build/comp cards) render ONLY where the
+                  model writes {{figure}}, in order. Unmarked tool displays are
+                  not dumped here — they live in the Actions rail. Tool data
+                  tables are excluded from inline entirely. */}
               {(() => {
                 const figures = turn.tools.filter(
                   (t) => t.display && t.display.kind !== 'table' && !t.isError
@@ -191,9 +190,6 @@ export default function Article({
                         {i < segments.length - 1 && figures[i] && renderFigure(figures[i])}
                       </Fragment>
                     ))}
-                    {/* Leftover figures (fewer markers than figures, incl. the
-                        no-marker case) render after the prose. */}
-                    {figures.slice(Math.max(0, segments.length - 1)).map(renderFigure)}
                   </>
                 )
               })()}

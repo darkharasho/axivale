@@ -191,11 +191,12 @@ describe('Article inline figures', () => {
     expect(screen.getByText('After the chart.')).toBeTruthy()
   })
 
-  it('appends a chart figure at the end when no marker is present', () => {
+  it('does NOT render a chart figure inline when there is no {{figure}} marker', () => {
     const { container } = render(
       <Article turn={doneTurn({ agentText: 'Headline\n\nNo marker here.', tools: [chartTool] })} conversationId={null} />
     )
-    expect(container.querySelector('.post-figure .richchart')).toBeTruthy()
+    expect(container.querySelector('.post-figure')).toBeNull()
+    expect(container.querySelector('.richchart')).toBeNull()
   })
 
   it('does NOT inline a tool data table (it belongs in the Actions rail)', () => {
