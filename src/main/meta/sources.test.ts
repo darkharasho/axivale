@@ -32,4 +32,10 @@ describe('source registry', () => {
   it('returns null for a malformed url', () => {
     expect(configForUrl('not a url')).toBeNull()
   })
+
+  it('configures depth-1 link selectors for the build databases', () => {
+    expect(configForUrl('https://snowcrows.com/builds')?.linkSelector).toBeTruthy()
+    expect(configForUrl('https://metabattle.com/wiki/Category:PvE_builds')?.linkSelector).toBeTruthy()
+    expect(configForUrl('https://hardstuck.gg/gw2/builds/')?.linkSelector).toBeTruthy()
+  })
 })
