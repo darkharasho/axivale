@@ -46,4 +46,20 @@ describe('distill', () => {
     expect(prompt.toLowerCase()).toContain('table')
     expect(prompt.toLowerCase()).toContain('notes')
   })
+
+  it('injects the authoritative spec→profession map when provided', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('PvE', ['raw'], model, { Luminary: 'Guardian', Amalgam: 'Engineer' })
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt).toContain('Luminary = Guardian')
+    expect(prompt).toContain('Amalgam = Engineer')
+    expect(prompt.toLowerCase()).toContain('ground truth')
+  })
+
+  it('omits the map block when no map is given', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('PvE', ['raw'], model)
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt).not.toContain('AUTHORITATIVE elite-spec')
+  })
 })

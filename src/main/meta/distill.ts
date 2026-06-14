@@ -10,13 +10,21 @@ export type MetaModel = (prompt: string) => Promise<string>
 export async function distill(
   modeName: string,
   rawTexts: string[],
-  model: MetaModel
+  model: MetaModel,
+  specMap: Record<string, string> = {}
 ): Promise<string | null> {
   const joined = rawTexts
     .map((t) => t.trim())
     .filter(Boolean)
     .join('\n\n---\n\n')
   if (!joined) return null
+
+  const specLines = Object.entries(specMap)
+    .map(([spec, prof]) => `${spec} = ${prof}`)
+    .join('; ')
+  const specBlock = specLines
+    ? `\n\nAUTHORITATIVE elite-spec → profession map (from the official GW2 API — this is GROUND TRUTH and OVERRIDES both the source text and your own assumptions). When the source names an elite spec, ALWAYS pair it with the profession listed here:\n${specLines}\n`
+    : ''
 
   const prompt =
     `You are compiling the CURRENT Guild Wars 2 ${modeName} meta from community sources.\n` +
@@ -38,8 +46,13 @@ export async function distill(
     `profession each elite spec belongs to. Do NOT rename, "correct", reassign, or substitute ` +
     `any name from your own knowledge; if an elite spec looks unfamiliar (e.g. Amalgam, ` +
     `Luminary, Paragon, Ritualist), keep it exactly as written with whatever profession the ` +
-    `source pairs it with. Never pair a profession and elite spec the source did not pair.\n\n` +
-    `SOURCE EXCERPTS:\n${joined}`
+    `source pairs it with. Never pair a profession and elite spec the source did not pair.` +
+    (specBlock
+      ? ` When a spec appears in the AUTHORITATIVE map below, that map is GROUND TRUTH and ` +
+        `overrides any conflicting pairing in the source text.`
+      : '') +
+    specBlock +
+    `\n\nSOURCE EXCERPTS:\n${joined}`
 
   const out = (await model(prompt)).trim()
   return out || null

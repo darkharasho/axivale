@@ -44,6 +44,7 @@ import { MetaRefresher } from './meta/refresh'
 import { TransformersEmbedder } from './meta/rag/embedder'
 import { LanceMetaIndex } from './meta/rag/index'
 import { runClaudeOnce } from './meta/model'
+import { fetchEliteSpecMap } from './meta/specMap'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -194,6 +195,7 @@ app.whenReady().then(async () => {
         model: 'claude-sonnet-4-6'
       }),
     now: Date.now,
+    eliteSpecs: () => fetchEliteSpecMap(),
     emit: (e) => {
       const win = mainWindow
       if (win && !win.isDestroyed()) win.webContents.send('meta:progress', e)
