@@ -19,7 +19,7 @@ export interface SourceConfig {
 }
 
 export const SOURCE_CONFIGS: SourceConfig[] = [
-  { host: 'snowcrows.com', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/builds/"]', crawlDepth: 2 },
+  { host: 'snowcrows.com', kind: 'browser', selector: 'main', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },
   { host: 'hardstuck.gg', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/gw2/builds/"]', crawlDepth: 2 },
   { host: 'guildjen.com', kind: 'browser', selector: 'main' },
   { host: 'gw2mists.com', kind: 'browser', selector: 'body' },
