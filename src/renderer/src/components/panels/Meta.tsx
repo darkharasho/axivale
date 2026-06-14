@@ -2,30 +2,31 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import type { RendererMetaMode } from '../../../../preload/index.d'
 
+function ago(iso: string | null): string {
+  if (!iso) return 'never'
+  const ms = Date.now() - Date.parse(iso)
+  if (Number.isNaN(ms)) return 'never'
+  const days = Math.floor(ms / 86_400_000)
+  if (days >= 1) return `updated ${days}d ago`
+  const hrs = Math.floor(ms / 3_600_000)
+  if (hrs >= 1) return `updated ${hrs}h ago`
+  return 'updated just now'
+}
+
 export default function Meta(): ReactElement {
   const [modes, setModes] = useState<RendererMetaMode[]>([])
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
 
-  async function refresh(): Promise<void> {
-    const list = await window.officer.metaList()
-    setModes(list)
-    setDrafts(Object.fromEntries(list.map((m) => [m.id, m.notes])))
-  }
   useEffect(() => {
-    void refresh()
+    void window.officer.metaList().then(setModes)
   }, [])
-
-  async function save(m: RendererMetaMode): Promise<void> {
-    await window.officer.metaUpdateMode(m.id, { notes: drafts[m.id] ?? '' })
-    await refresh()
-  }
 
   return (
     <div className="settings meta-panel">
       <div className="sgroup">
         <p className="shelp">
-          The AI treats these per-mode sources as current-meta ground truth for
-          build/comp advice and cites them. Edit the notes as the meta shifts.
+          AxiVale keeps its own read of the current meta per game mode, refreshed
+          automatically from these sources in the background. It uses this to bias
+          build and comp advice. Nothing to edit — this is what it currently knows.
         </p>
       </div>
       {modes.length === 0 ? (
@@ -33,24 +34,21 @@ export default function Meta(): ReactElement {
       ) : (
         modes.map((m) => (
           <div className="sgroup meta-mode" key={m.id}>
-            <h2>{m.mode}</h2>
+            <h2>
+              {m.mode} <span className="meta-fresh">{ago(m.refreshedAt)}</span>
+            </h2>
+            <p className="meta-summary">{m.notes || 'No summary yet — awaiting first refresh.'}</p>
             <div className="meta-sources">
               {m.sources.map((s) => (
-                <a key={s.url} className="meta-src" href={s.url} target="_blank" rel="noreferrer">
-                  {s.label}
-                </a>
+                <span className="meta-srcrow" key={s.url}>
+                  <a className="meta-src" href={s.url} target="_blank" rel="noreferrer">
+                    {s.label}
+                  </a>
+                  <span className={`meta-chip ${s.status}`} title={s.error ?? undefined}>
+                    {s.status}
+                  </span>
+                </span>
               ))}
-            </div>
-            <textarea
-              className="sinput sk-area"
-              placeholder="Current meta notes for this mode (e.g. comp staples, standout builds)"
-              value={drafts[m.id] ?? ''}
-              onChange={(e) => setDrafts((d) => ({ ...d, [m.id]: e.target.value }))}
-            />
-            <div className="srow">
-              <button className="sbtn" onClick={() => void save(m)}>
-                Save notes
-              </button>
             </div>
           </div>
         ))

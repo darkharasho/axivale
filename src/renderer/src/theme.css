@@ -531,3 +531,40 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-sources{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
 .meta-src{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-b);text-decoration:none;border:1px solid var(--rule);padding:3px 8px}
 .meta-src:hover{color:var(--ink);border-color:var(--rule2)}
+.meta-summary {
+  margin: 6px 0 10px;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.meta-fresh {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink);
+  opacity: 0.55;
+}
+.meta-srcrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 12px;
+}
+.meta-chip {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border: 1px solid var(--rule2);
+  border-radius: 2px;
+  opacity: 0.75;
+}
+.meta-chip.ok {
+  color: #2c7a3f;
+  border-color: #2c7a3f;
+}
+.meta-chip.error {
+  color: #a33;
+  border-color: #a33;
+}
+.meta-chip.never {
+  opacity: 0.4;
+}

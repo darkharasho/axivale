@@ -4,6 +4,10 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { MetaStore } from './metaStore'
 
+function tmpPath(): string {
+  return join(mkdtempSync(join(tmpdir(), 'metastore-')), 'meta.json')
+}
+
 let dir: string
 let path: string
 beforeEach(() => {
@@ -39,5 +43,81 @@ describe('MetaStore', () => {
   it('survives a corrupt file by reseeding defaults', () => {
     writeFileSync(path, 'not json')
     expect(new MetaStore(path).list().length).toBeGreaterThan(0)
+  })
+})
+
+describe('MetaStore provenance', () => {
+  it('seeds sources with never-fetched provenance', () => {
+    const s = new MetaStore(tmpPath())
+    const src = s.list()[0].sources[0]
+    expect(src.status).toBe('never')
+    expect(src.fetchedAt).toBeNull()
+    expect(src.error).toBeNull()
+    expect(s.list()[0].refreshedAt).toBeNull()
+  })
+
+  it('backfills provenance on legacy files missing the fields', () => {
+    const p = tmpPath()
+    writeFileSync(
+      p,
+      JSON.stringify({
+        modes: [
+          {
+            id: 'a',
+            mode: 'WvW',
+            sources: [{ label: 'MB', url: 'https://metabattle.com' }],
+            notes: 'old',
+            updatedAt: ''
+          }
+        ]
+      })
+    )
+    const s = new MetaStore(p)
+    const m = s.list()[0]
+    expect(m.refreshedAt).toBeNull()
+    expect(m.sources[0].status).toBe('never')
+    expect(m.sources[0].fetchedAt).toBeNull()
+    expect(m.sources[0].error).toBeNull()
+    expect(m.notes).toBe('old')
+  })
+
+  it('recordFetch sets ok status + timestamp, clears error', () => {
+    const s = new MetaStore(tmpPath())
+    const m = s.list()[0]
+    const url = m.sources[0].url
+    s.recordFetch(m.id, url, { ok: true })
+    const after = s.get(m.id)!.sources[0]
+    expect(after.status).toBe('ok')
+    expect(after.fetchedAt).toBeTruthy()
+    expect(after.error).toBeNull()
+  })
+
+  it('recordFetch sets error status + message', () => {
+    const s = new MetaStore(tmpPath())
+    const m = s.list()[0]
+    s.recordFetch(m.id, m.sources[0].url, { ok: false, error: 'timeout' })
+    const after = s.get(m.id)!.sources[0]
+    expect(after.status).toBe('error')
+    expect(after.error).toBe('timeout')
+  })
+
+  it('recordDistill sets notes + refreshedAt', () => {
+    const s = new MetaStore(tmpPath())
+    const m = s.list()[0]
+    s.recordDistill(m.id, 'current meta is X')
+    const after = s.get(m.id)!
+    expect(after.notes).toBe('current meta is X')
+    expect(after.refreshedAt).toBeTruthy()
+  })
+
+  it('updateMode preserves existing source provenance on a bare patch', () => {
+    const s = new MetaStore(tmpPath())
+    const m = s.list()[0]
+    const url = m.sources[0].url
+    s.recordFetch(m.id, url, { ok: true })
+    s.updateMode(m.id, { sources: m.sources.map((x) => ({ label: x.label, url: x.url })) })
+    const after = s.get(m.id)!.sources[0]
+    expect(after.status).toBe('ok')
+    expect(after.fetchedAt).toBeTruthy()
   })
 })

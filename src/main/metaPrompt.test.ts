@@ -4,8 +4,8 @@ import type { MetaMode } from './metaStore'
 
 function mode(over: Partial<MetaMode> = {}): MetaMode {
   return {
-    id: 'a', mode: 'WvW', sources: [{ label: 'MetaBattle', url: 'https://metabattle.com' }],
-    notes: '', updatedAt: 'x', ...over
+    id: 'a', mode: 'WvW', sources: [{ label: 'MetaBattle', url: 'https://metabattle.com', status: 'never', fetchedAt: null, error: null }],
+    notes: '', refreshedAt: null, updatedAt: 'x', ...over
   }
 }
 

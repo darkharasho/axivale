@@ -26,12 +26,16 @@ export interface ShareListEntry {
 export interface RendererMetaSource {
   label: string
   url: string
+  status: 'ok' | 'error' | 'never'
+  fetchedAt: string | null
+  error: string | null
 }
 export interface RendererMetaMode {
   id: string
   mode: string
   sources: RendererMetaSource[]
   notes: string
+  refreshedAt: string | null
   updatedAt: string
 }
 
