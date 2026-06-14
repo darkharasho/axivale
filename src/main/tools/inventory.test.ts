@@ -65,6 +65,7 @@ describe('tools module split', () => {
       'discord_search',
       'gw2_account_info',
       'gw2_api',
+      'gw2_build_card',
       'gw2_guild_log',
       'gw2_guild_members',
       'gw2_wiki_facts',

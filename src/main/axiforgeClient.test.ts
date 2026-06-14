@@ -198,6 +198,35 @@ describe('API path', () => {
     expect(err).toBeInstanceOf(AxiforgeError)
     expect(err.message).toContain('gw2skills link')
   })
+
+  it('parseChatLink POSTs the link + gameMode to /import/chat-link/parse and returns the build (no save)', async () => {
+    const port = await startStub({
+      'POST /import/chat-link/parse': { json: { profession: 'Guardian', gameMode: 'wvw', equipment: {} } }
+    })
+    writeDiscovery(port)
+    const build = await makeClient().parseChatLink({ link: '[&DQEAAA==]', gameMode: 'wvw' })
+    expect(build).toMatchObject({ profession: 'Guardian', gameMode: 'wvw' })
+    expect(JSON.parse(requests[0].body)).toEqual({ link: '[&DQEAAA==]', gameMode: 'wvw' })
+  })
+
+  it('parseChatLink omits gameMode from the body when not given', async () => {
+    const port = await startStub({
+      'POST /import/chat-link/parse': { json: { profession: 'Ranger' } }
+    })
+    writeDiscovery(port)
+    await makeClient().parseChatLink({ link: '[&DQEAAA==]' })
+    expect(JSON.parse(requests[0].body)).toEqual({ link: '[&DQEAAA==]' })
+  })
+
+  it('parseChatLink surfaces a 400 from a bad code as AxiforgeError', async () => {
+    const port = await startStub({
+      'POST /import/chat-link/parse': { status: 400, json: { error: "Couldn't read that chat code" } }
+    })
+    writeDiscovery(port)
+    const err = await makeClient().parseChatLink({ link: 'garbage' }).catch((e) => e)
+    expect(err).toBeInstanceOf(AxiforgeError)
+    expect(err.message).toContain('chat code')
+  })
 })
 
 describe('not-running detection and file fallback', () => {

@@ -35,6 +35,13 @@ function makeDeps(): ToolDeps {
         gameMode: 'wvw',
         equipment: {},
         images: { icon: 'data:image/png;base64,abc123' }
+      }),
+      parseChatLink: vi.fn().mockResolvedValue({
+        title: 'Heal FB',
+        profession: 'Guardian',
+        gameMode: 'wvw',
+        equipment: {},
+        images: { icon: 'data:image/png;base64,abc123' }
       })
     } as never,
     axiforgeLauncher: { ensureRunning: vi.fn().mockResolvedValue(undefined) },
@@ -50,7 +57,7 @@ function find(deps: ToolDeps, name: string) {
 }
 
 describe('axiforge tools', () => {
-  it('registers all 15 axiforge tools', () => {
+  it('registers all 16 axiforge tools', () => {
     const names = buildOfficerTools(makeDeps()).map((t) => t.name)
     for (const n of [
       'axiforge_builds_list',
@@ -66,6 +73,7 @@ describe('axiforge tools', () => {
       'axiforge_import_chat_link',
       'axiforge_import_gw2skills',
       'gw2skills_parse',
+      'gw2_build_card',
       'axiforge_build_chat_link',
       'axiforge_catalog'
     ]) {
@@ -356,6 +364,70 @@ describe('axiforge tools', () => {
 
     it('is not destructive', () => {
       expect(DESTRUCTIVE_TOOLS).not.toContain('gw2skills_parse')
+    })
+  })
+
+  describe('gw2_build_card', () => {
+    it('decodes a chat code into a build-card display (images stripped from model value)', async () => {
+      const deps = makeDeps()
+      const result = await find(deps, 'gw2_build_card').handler(
+        { chat_code: '[&DQEAAA==]', game_mode: 'wvw' },
+        {}
+      )
+      expect(deps.axiforge.parseChatLink).toHaveBeenCalledWith({
+        link: '[&DQEAAA==]',
+        gameMode: 'wvw'
+      })
+      const text = (result.content[0] as { text: string }).text
+      expect(text).not.toContain('data:image/')
+      const parsed = JSON.parse(text)
+      expect(parsed.profession).toBe('Guardian')
+      expect(parsed.images).toBeUndefined()
+      // Full build (images intact) goes to the card.
+      expect(result.display).toEqual({
+        kind: 'build-card',
+        data: {
+          build: {
+            title: 'Heal FB',
+            profession: 'Guardian',
+            gameMode: 'wvw',
+            equipment: {},
+            images: { icon: 'data:image/png;base64,abc123' }
+          }
+        }
+      })
+      expect(result.isError).toBeUndefined()
+    })
+
+    it('omits gameMode from the client call when game_mode not provided', async () => {
+      const deps = makeDeps()
+      await find(deps, 'gw2_build_card').handler({ chat_code: '[&DQEAAA==]' }, {})
+      expect(deps.axiforge.parseChatLink).toHaveBeenCalledWith({ link: '[&DQEAAA==]' })
+    })
+
+    it('auto-spawns AxiForge and retries once when it is closed', async () => {
+      const deps = makeDeps()
+      ;(deps.axiforge.parseChatLink as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(new AxiforgeNotRunningError())
+        .mockResolvedValueOnce({ title: 'Decoded', profession: 'Guardian', equipment: {} })
+      const result = await find(deps, 'gw2_build_card').handler({ chat_code: '[&DQEAAA==]' }, {})
+      expect(deps.axiforgeLauncher.ensureRunning).toHaveBeenCalledTimes(1)
+      expect(deps.axiforge.parseChatLink).toHaveBeenCalledTimes(2)
+      expect(result.isError).toBeUndefined()
+    })
+
+    it('never throws: a decode error comes back as an error result', async () => {
+      const deps = makeDeps()
+      ;(deps.axiforge.parseChatLink as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new AxiforgeError("Couldn't read that chat code")
+      )
+      const result = await find(deps, 'gw2_build_card').handler({ chat_code: 'garbage' }, {})
+      expect(result.isError).toBe(true)
+      expect((result.content[0] as { text: string }).text).toContain('chat code')
+    })
+
+    it('is not destructive', () => {
+      expect(DESTRUCTIVE_TOOLS).not.toContain('gw2_build_card')
     })
   })
 

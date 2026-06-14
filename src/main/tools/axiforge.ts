@@ -238,6 +238,26 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
       })
     ),
     tool(
+      'gw2_build_card',
+      'Render the exact build card for a meta build from its in-game build template chat code ([&...]). Pass a chat code you found in meta_search results (MetaBattle build pages embed them). Decodes it WITHOUT saving and shows a build card; place it inline with a {{figure}} marker to illustrate a specific recommended build. Read-only.',
+      {
+        chat_code: z.string().describe('In-game build template chat code, e.g. [&DQ...]'),
+        game_mode: z
+          .enum(['pve', 'wvw', 'pvp'])
+          .optional()
+          .describe('Fallback game mode for stat context (optional)')
+      },
+      safeRich(async ({ chat_code, game_mode }) => {
+        const build = (await write(() =>
+          deps.axiforge.parseChatLink(game_mode ? { link: chat_code, gameMode: game_mode } : { link: chat_code })
+        )) as Record<string, unknown>
+        return {
+          value: stripImages(build),
+          display: { kind: 'build-card', data: { build } }
+        }
+      })
+    ),
+    tool(
       'axiforge_build_chat_link',
       'Generate the in-game build template chat code for an AxiForge build. The user can paste this code in Guild Wars 2 to load the build, or into gw2skills.net to view it. Read-only. Returns { chatLink }.',
       { build_id: z.string().describe('Build id from axiforge_builds_list') },
