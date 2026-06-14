@@ -80,7 +80,11 @@
     "asarUnpack": [
       "**/node_modules/@anthropic-ai/claude-agent-sdk*/**",
       "**/node_modules/@lancedb/**",
-      "**/node_modules/@xenova/**"
+      "**/node_modules/@xenova/**",
+      "**/node_modules/onnxruntime-node/**",
+      "**/node_modules/onnxruntime-web/**",
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**"
     ],
     "linux": {
       "target": [
