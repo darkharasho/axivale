@@ -15,6 +15,9 @@ export interface MetaFetcher {
 }
 
 const FETCH_TIMEOUT_MS = 20_000
+const CONTENT_WAIT_MS = 12_000 // max in-page wait for SPA content to render
+const MIN_CONTENT_CHARS = 400 // consider the page "rendered" past this much text
+const MAX_EXTRACT_CHARS = 8_000 // cap the excerpt handed to the distiller
 
 // Meta sites embed ad/tracker/image subresources that don't affect innerText
 // and spam the console (ERR_CONNECTION_REFUSED behind ad-blockers). Run the
@@ -89,13 +92,22 @@ export class BrowserWindowFetcher implements MetaFetcher {
         setTimeout(() => rej(new Error('timeout')), FETCH_TIMEOUT_MS)
       )
       await Promise.race([load, timeout])
-      const text = (await win.webContents.executeJavaScript(
-        `(document.querySelector(${JSON.stringify(selector)})||document.body).innerText`
-      )) as string
-      const trimmed = (text ?? '').trim()
+      // Wait IN-PAGE for content to populate (SPA hydration), then extract.
+      const script = `new Promise((resolve) => {
+        const sel = ${JSON.stringify(selector)};
+        const start = Date.now();
+        const tick = () => {
+          const el = document.querySelector(sel) || document.body;
+          const txt = el && el.innerText ? el.innerText : '';
+          if (txt.length >= ${MIN_CONTENT_CHARS} || Date.now() - start > ${CONTENT_WAIT_MS}) resolve(txt);
+          else setTimeout(tick, 500);
+        };
+        tick();
+      })`
+      const text = (await win.webContents.executeJavaScript(script)) as string
+      const trimmed = (text ?? '').trim().slice(0, MAX_EXTRACT_CHARS)
       return trimmed ? { ok: true, text: trimmed } : { ok: false, error: 'empty' }
     } catch (e) {
-      // Abort any in-flight load so a timed-out page can't leak into the next fetch.
       try {
         if (this.win && !this.win.isDestroyed()) this.win.webContents.stop()
       } catch {
