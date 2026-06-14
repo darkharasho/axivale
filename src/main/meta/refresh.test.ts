@@ -210,7 +210,9 @@ describe('MetaRefresher ingestion', () => {
     const failingIndex = {
       indexedHash: async () => null,
       replacePage: async () => { throw new Error('disk full') },
-      search: async () => []
+      search: async () => [],
+      stats: async () => ({ total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }),
+      sample: async () => []
     }
     await new MetaRefresher({
       store: s,
