@@ -189,7 +189,9 @@ app.whenReady().then(async () => {
     model: (prompt) =>
       runClaudeOnce(prompt, {
         oauthToken: store.getSecret('claudeOauthToken'),
-        model: 'claude-haiku-4-5-20251001'
+        // Sonnet (not Haiku): faithfully copies unfamiliar latest-expansion spec
+        // names from the source instead of "correcting" them from stale knowledge.
+        model: 'claude-sonnet-4-6'
       }),
     now: Date.now,
     emit: (e) => {
