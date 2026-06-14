@@ -11,7 +11,7 @@ export default function MetaLearningBanner(): ReactElement | null {
   useEffect(() => {
     return window.officer.onMetaProgress((e: RendererMetaProgress) => {
       if (e.type === 'refresh-start') setState({ active: true, done: 0, total: e.total })
-      else if (e.type === 'mode-done') setState((s) => ({ ...s, done: s.done + 1 }))
+      else if (e.type === 'source-done') setState((s) => ({ ...s, done: s.done + 1 }))
       else if (e.type === 'idle') setState((s) => ({ ...s, active: false }))
     })
   }, [])

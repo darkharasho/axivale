@@ -15,9 +15,10 @@ import { chunkPage, sha1 } from './rag/chunk'
 const SEVEN_DAYS_MS = 7 * 86_400_000
 
 export type MetaProgress =
-  | { type: 'refresh-start'; total: number }
+  | { type: 'refresh-start'; total: number } // total = configured sources across stale modes
   | { type: 'mode-start'; modeId: string }
   | { type: 'source-start'; modeId: string; url: string }
+  | { type: 'source-done'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
   | { type: 'idle' }
 
@@ -46,7 +47,13 @@ export class MetaRefresher {
     const staleMs = this.deps.staleMs ?? SEVEN_DAYS_MS
     try {
       const stale = store.list().filter((m) => isStale(m, now(), staleMs))
-      if (stale.length > 0) emit({ type: 'refresh-start', total: stale.length })
+      // Progress is per-source (not per-mode) so the bar moves as each source
+      // finishes its crawl, instead of sitting still for a whole mode.
+      const totalSources = stale.reduce(
+        (n, m) => n + m.sources.filter((s) => configForUrl(s.url)).length,
+        0
+      )
+      if (totalSources > 0) emit({ type: 'refresh-start', total: totalSources })
       for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
         const raws: string[] = []
@@ -60,6 +67,7 @@ export class MetaRefresher {
             raws.push(r.text)
             await this.ingest(mode.mode, src.url, r.pages)
           }
+          emit({ type: 'source-done', modeId: mode.id, url: src.url })
         }
         if (raws.length > 0) {
           const notes = await distill(mode.mode, raws, model)

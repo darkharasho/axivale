@@ -118,11 +118,12 @@ describe('MetaRefresher progress', () => {
     expect(events[0]).toBe('refresh-start')
     expect(events).toContain('mode-start')
     expect(events).toContain('source-start')
+    expect(events).toContain('source-done')
     expect(events).toContain('mode-done')
     expect(events[events.length - 1]).toBe('idle')
   })
 
-  it('refresh-start carries total equal to the number of stale modes', async () => {
+  it('refresh-start total equals the configured-source count across stale modes', async () => {
     const s = store()
     // mark all-but-one mode fresh so exactly one is stale
     s.list().forEach((x) => {
@@ -140,7 +141,8 @@ describe('MetaRefresher progress', () => {
     }).refreshStale()
     const start = events.find((e) => e.type === 'refresh-start')
     expect(start).toBeTruthy()
-    expect(start).toEqual({ type: 'refresh-start', total: 1 })
+    // PvE seeds three configured sources (Snowcrows, MetaBattle, Hardstuck).
+    expect(start).toEqual({ type: 'refresh-start', total: pve.sources.length })
   })
 })
 
