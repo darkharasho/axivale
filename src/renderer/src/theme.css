@@ -511,3 +511,17 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:1px solid rgba(224,90,80,.45);padding:1px 6px;letter-spacing:.12em}
 /* skill being edited in the panel */
 .sk-row.editing{border-left:2px solid var(--accent);padding-left:8px;background:rgba(200,66,58,.05)}
+
+/* ---- Action expand button + modal ---- */
+.ncard .expand{margin-left:8px;background:none;border:none;color:var(--faint);cursor:pointer;font-size:12px;line-height:1;padding:0 2px;flex:none}
+.ncard .expand:hover{color:var(--accent-b)}
+.action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1100}
+.action-modal{position:relative;display:flex;flex-direction:column;max-height:86vh;width:min(900px,92vw);background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.action-modal__head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--rule);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.action-modal__head .nm{color:var(--ink)}
+.action-modal__x{margin-left:auto;background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:14px;line-height:1}
+.action-modal__x:hover{color:var(--accent-b)}
+.action-modal__inputs{padding:8px 18px;border-bottom:1px dotted var(--line);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--faint);word-break:break-word}
+.action-modal__body{padding:16px 18px;overflow:auto}
+.action-modal__raw{padding:0 18px 16px}
+.action-raw{margin-top:8px;max-height:280px;overflow:auto;background:var(--bg);border:1px solid var(--rule);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
