@@ -38,4 +38,12 @@ describe('distill', () => {
     expect(prompt.toLowerCase()).toContain('verbatim')
     expect(prompt.toLowerCase()).toContain('do not')
   })
+
+  it('requests a markdown table of builds plus a notes section', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('WvW', ['raw'], model)
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt.toLowerCase()).toContain('table')
+    expect(prompt.toLowerCase()).toContain('notes')
+  })
 })
