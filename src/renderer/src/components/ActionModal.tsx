@@ -33,7 +33,9 @@ export default function ActionModal({
       <div className="action-modal" onClick={(e) => e.stopPropagation()}>
         <div className="action-modal__head">
           <span className="nm">{couponLabel(tool.name)}</span>
-          {tool.isError ? (
+          {tool.resultText === undefined && !tool.isError ? (
+            <span className="st work">… working</span>
+          ) : tool.isError ? (
             <span className="st fail">✗ failed</span>
           ) : (
             <span className="st">✓ filed</span>
