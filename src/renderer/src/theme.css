@@ -656,3 +656,17 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   background: var(--accent-b);
   transition: width 0.4s ease;
 }
+.mi-inspector { margin-top: 14px; border-top: 1px dashed var(--rule2); padding-top: 10px; }
+.mi-dev { font-size: 10px; text-transform: uppercase; color: var(--accent-b); border: 1px solid var(--accent-b); border-radius: 2px; padding: 0 4px; }
+.mi-stats { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; margin: 6px 0; color: var(--ink); }
+.mi-stats .mi-sub { opacity: 0.6; flex-basis: 100%; }
+.mi-row { display: flex; gap: 6px; align-items: center; }
+.mi-row .sinput { flex: 1; }
+.mi-row .mi-mode { flex: 0 0 auto; }
+.mi-results { margin-top: 8px; max-height: 320px; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.mi-hit { border: 1px solid var(--rule2); border-radius: 3px; padding: 6px 8px; }
+.mi-hit-head { font-size: 12px; display: flex; gap: 6px; align-items: baseline; }
+.mi-score { color: var(--accent-b); font-variant-numeric: tabular-nums; }
+.mi-src { opacity: 0.6; font-size: 11px; }
+.mi-snip { font-size: 11px; opacity: 0.8; margin-top: 3px; white-space: pre-wrap; }
+.mi-empty { font-size: 12px; opacity: 0.6; }
