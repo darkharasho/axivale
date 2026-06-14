@@ -39,6 +39,12 @@ export interface RendererMetaMode {
   updatedAt: string
 }
 
+export type RendererMetaProgress =
+  | { type: 'mode-start'; modeId: string }
+  | { type: 'source-start'; modeId: string; url: string }
+  | { type: 'mode-done'; modeId: string }
+  | { type: 'idle' }
+
 export interface RendererSkill {
   id: string
   name: string
@@ -167,6 +173,7 @@ export interface OfficerApi {
   installUpdate(): Promise<void>
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
   onAxibridgeProgress(cb: (message: string) => void): () => void
+  onMetaProgress(cb: (e: RendererMetaProgress) => void): () => void
 }
 
 export type UpdateStatus =
