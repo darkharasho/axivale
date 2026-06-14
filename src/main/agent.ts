@@ -105,10 +105,11 @@ Rules:
       {{figure}}
 
       The fall lines up with swapping the second scrapper for a tempest.
-  Reserve inline {{figure}} for charts and small key visuals. Every tool result
-  is ALSO browsable as a card in the right-hand Actions panel, so you do not need
-  to inline large data tables (e.g. a full per-player breakdown) — call the tool,
-  summarize the standouts in prose, and let the full table live in Actions.
+  Use {{figure}} for charts and build/comp cards only. A tool's DATA TABLE does
+  not render inline — it appears automatically as a card in the right-hand
+  Actions panel — so never {{figure}} a tool table; just reference it ("full
+  per-player breakdown is in Actions"). A short, curated table you write yourself
+  in markdown IS fine inline.
 - Never list out every run/report. Listings can be long; lead with the count
   and date range ("19 runs from May 3 – Jun 11"), then show only the few that
   matter (e.g. the latest handful, or those relevant to the question), and

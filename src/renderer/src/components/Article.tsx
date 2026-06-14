@@ -161,13 +161,15 @@ export default function Article({
               {turn.tools.length === 1 ? '' : 's'} taken
             </div>
             <div className="prose">
-              {/* Figures (charts/tables/cards) render full-width in the main
-                  column — the right rail is too narrow for a graph. The model
-                  places each one inline by writing {{figure}} on its own line;
-                  segments split on that marker and figures fill the gaps in
-                  order. With no markers, all figures fall to the end. */}
+              {/* Inline figures are charts and build/comp cards — placed where
+                  the model writes {{figure}}. Tool *table* displays are excluded
+                  here on purpose: a raw data lookup belongs in the Actions rail
+                  (which renders the full card), not dumped into the article.
+                  AI-authored markdown tables still render inline via the prose. */}
               {(() => {
-                const figures = turn.tools.filter((t) => t.display && !t.isError)
+                const figures = turn.tools.filter(
+                  (t) => t.display && t.display.kind !== 'table' && !t.isError
+                )
                 const segments = rest.split(/\{\{\s*figure\s*\}\}/i)
                 const renderFigure = (t: (typeof figures)[number]): ReactElement => (
                   <figure className="post-figure" key={t.id}>
