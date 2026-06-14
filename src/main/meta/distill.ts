@@ -21,10 +21,17 @@ export async function distill(
   const prompt =
     `You are compiling the CURRENT Guild Wars 2 ${modeName} meta from community sources.\n` +
     `The excerpts are raw page text and contain navigation menus, ads, and headings — ` +
-    `IGNORE that boilerplate. Extract the meta builds: name the profession and ELITE SPEC ` +
-    `for each, its role (e.g. heal/quickness, power DPS, condi DPS, boon support), and any ` +
-    `tier/rating if present. Group by role or tier. Be specific and concise; state only what ` +
-    `the excerpts support and do not invent traits or gear. No preamble.\n\n` +
+    `IGNORE that boilerplate. Extract the meta builds: the profession and ELITE SPEC for each, ` +
+    `its role (e.g. heal/quickness, power DPS, condi DPS, boon support), and any tier/rating.\n\n` +
+    `FORMAT your answer exactly as:\n` +
+    `1. A markdown TABLE of the meta builds — one row per build, columns: ` +
+    `\`Build\` (Profession + Elite Spec) | \`Role\` | \`Tier\` (if the source gives one) | ` +
+    `\`Notes\` (key weapons/sigils/runes or a one-line why). Leave a cell blank if the source ` +
+    `doesn't say. If the source groups by tier (S/A/B…) or role, order the rows that way.\n` +
+    `2. Then a short \`### Notes\` section — a few bullets on standout picks, the tradeoffs ` +
+    `between variants, and any recent shifts the sources mention.\n` +
+    `Be specific and concise; state only what the excerpts support and do not invent traits ` +
+    `or gear. No preamble before the table.\n\n` +
     `CRITICAL — faithfulness over prior knowledge: Guild Wars 2 has expansions and elite ` +
     `specializations released after your training. Treat every profession, elite-spec, build, ` +
     `and item name in the excerpts as AUTHORITATIVE and copy it VERBATIM — including which ` +
