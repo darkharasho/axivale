@@ -109,3 +109,69 @@ export function pickBuildLinks(hrefs: string[], landingUrl: string, max: number)
   }
   return out
 }
+
+export type FetchLike = (
+  url: string
+) => Promise<{ ok: boolean; json(): Promise<unknown>; text(): Promise<string> }>
+
+export interface ArmoryNames {
+  items: Record<number, string>
+  itemstats: Record<number, string>
+  skills: Record<number, string>
+  specs: Record<number, string>
+  traits: Record<number, string>
+}
+
+const defaultFetch: FetchLike = (url) => fetch(url, { headers: { 'User-Agent': 'AxiVale' } })
+
+const ENDPOINTS = ['items', 'itemstats', 'skills', 'specializations', 'traits'] as const
+const nameCaches: Record<string, Map<number, string>> = Object.fromEntries(
+  ENDPOINTS.map((e) => [e, new Map<number, string>()])
+)
+export function __resetArmoryCache(): void {
+  for (const e of ENDPOINTS) nameCaches[e].clear()
+}
+
+async function resolveType(endpoint: string, ids: number[], fetchImpl: FetchLike): Promise<Record<number, string>> {
+  const cache = nameCaches[endpoint]
+  const out: Record<number, string> = {}
+  const need: number[] = []
+  for (const id of ids) {
+    if (cache.has(id)) out[id] = cache.get(id)!
+    else if (!need.includes(id)) need.push(id)
+  }
+  for (let i = 0; i < need.length; i += 200) {
+    const batch = need.slice(i, i + 200)
+    try {
+      const res = await fetchImpl(`https://api.guildwars2.com/v2/${endpoint}?ids=${batch.join(',')}&lang=en`)
+      if (!res.ok) throw new Error(`gw2 ${endpoint}`)
+      const arr = (await res.json()) as Array<{ id: number; name?: string }>
+      for (const e of arr) {
+        const name = e.name || String(e.id)
+        cache.set(e.id, name)
+        out[e.id] = name
+      }
+    } catch {
+      /* batch failed — leave these ids to the id-string fallback below */
+    }
+  }
+  for (const id of ids) if (out[id] === undefined) out[id] = String(id)
+  return out
+}
+
+export async function resolveArmoryNames(
+  parsed: ParsedArmory,
+  fetchImpl: FetchLike = defaultFetch
+): Promise<ArmoryNames> {
+  const itemIds = [...new Set([...parsed.items.map((i) => i.id), ...parsed.items.flatMap((i) => i.upgradeIds)])]
+  const statIds = [...new Set(parsed.items.map((i) => i.statId).filter((n): n is number => n != null))]
+  const traitIds = [...new Set(parsed.specs.flatMap((s) => s.traitIds))]
+  const [items, itemstats, skills, specs, traits] = await Promise.all([
+    resolveType('items', itemIds, fetchImpl),
+    resolveType('itemstats', statIds, fetchImpl),
+    resolveType('skills', parsed.skills, fetchImpl),
+    resolveType('specializations', parsed.specs.map((s) => s.id), fetchImpl),
+    resolveType('traits', traitIds, fetchImpl)
+  ])
+  return { items, itemstats, skills, specs, traits }
+}

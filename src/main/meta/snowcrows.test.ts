@@ -1,6 +1,53 @@
 // src/main/meta/snowcrows.test.ts
 import { describe, it, expect } from 'vitest'
 import { parseArmory, extractHrefs, pickBuildLinks } from './snowcrows'
+import { resolveArmoryNames, __resetArmoryCache, type FetchLike } from './snowcrows'
+import { beforeEach, vi } from 'vitest'
+
+beforeEach(() => __resetArmoryCache())
+
+function fakeFetch(map: Record<string, unknown[]>): FetchLike & { calls: string[] } {
+  const calls: string[] = []
+  const fn = (async (url: string) => {
+    calls.push(url)
+    const endpoint = new URL(url).pathname.split('/').pop() as string
+    return { ok: true, json: async () => map[endpoint] ?? [], text: async () => '' }
+  }) as FetchLike & { calls: string[] }
+  fn.calls = calls
+  return fn
+}
+
+describe('resolveArmoryNames', () => {
+  const parsed = { items: [{ id: 48081, statId: 1077, upgradeIds: [74978] }], skills: [5503], specs: [{ id: 31, traitIds: [296] }] }
+  it('resolves ids to names per endpoint', async () => {
+    const f = fakeFetch({
+      items: [{ id: 48081, name: "Zojja's Masque" }, { id: 74978, name: 'Sigil of Force' }],
+      itemstats: [{ id: 1077, name: "Berserker's" }],
+      skills: [{ id: 5503, name: 'Fire Attunement' }],
+      specializations: [{ id: 31, name: 'Fire' }],
+      traits: [{ id: 296, name: 'Empowering Flame' }]
+    })
+    const n = await resolveArmoryNames(parsed, f)
+    expect(n.items[48081]).toBe("Zojja's Masque")
+    expect(n.items[74978]).toBe('Sigil of Force')
+    expect(n.itemstats[1077]).toBe("Berserker's")
+    expect(n.skills[5503]).toBe('Fire Attunement')
+    expect(n.specs[31]).toBe('Fire')
+    expect(n.traits[296]).toBe('Empowering Flame')
+  })
+  it('caches across calls (no refetch of known ids)', async () => {
+    const f = fakeFetch({ items: [{ id: 48081, name: 'X' }, { id: 74978, name: 'Y' }], itemstats: [{ id: 1077, name: 'Z' }], skills: [{ id: 5503, name: 'S' }], specializations: [{ id: 31, name: 'F' }], traits: [{ id: 296, name: 'T' }] })
+    await resolveArmoryNames(parsed, f)
+    const before = f.calls.length
+    await resolveArmoryNames(parsed, f)
+    expect(f.calls.length).toBe(before) // fully cached
+  })
+  it('falls back to the id string when a batch fails', async () => {
+    const f = (async () => ({ ok: false, json: async () => [], text: async () => '' })) as FetchLike
+    const n = await resolveArmoryNames(parsed, f)
+    expect(n.skills[5503]).toBe('5503')
+  })
+})
 
 const ITEM = '<div data-armory-embed="items" data-armory-ids="48081" data-armory-48081-stat="1077" data-armory-48081-upgrades="74978"></div>'
 const SPEC = '<div data-armory-embed="specializations" data-armory-ids="31" data-armory-31-traits="296,334,1510"></div>'
