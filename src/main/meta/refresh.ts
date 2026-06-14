@@ -31,6 +31,7 @@ export interface RefresherDeps {
   staleMs?: number
   emit?: (e: MetaProgress) => void
   index?: MetaIndex
+  eliteSpecs?: () => Promise<Record<string, string>>
 }
 
 function isStale(mode: MetaMode, now: number, staleMs: number): boolean {
@@ -54,6 +55,9 @@ export class MetaRefresher {
         0
       )
       if (totalSources > 0) emit({ type: 'refresh-start', total: totalSources })
+      // Resolve the authoritative elite-spec map ONCE per run (only when there's
+      // stale work), so every distill in this run is grounded by the same map.
+      const specMap = totalSources > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
       for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
         const raws: string[] = []
@@ -70,7 +74,7 @@ export class MetaRefresher {
           emit({ type: 'source-done', modeId: mode.id, url: src.url })
         }
         if (raws.length > 0) {
-          const notes = await distill(mode.mode, raws, model)
+          const notes = await distill(mode.mode, raws, model, specMap)
           if (notes) store.recordDistill(mode.id, notes)
         }
         emit({ type: 'mode-done', modeId: mode.id })

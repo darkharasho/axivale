@@ -84,6 +84,24 @@ describe('MetaRefresher', () => {
     expect(after.refreshedAt).toBeNull()
   })
 
+  it('passes the elite-spec map to the distiller', async () => {
+    const s = store()
+    s.list().forEach((x) => { if (x.mode !== 'PvE') s.recordDistill(x.id, 'fresh') })
+    const pve = s.list().find((x) => x.mode === 'PvE')!
+    const model = vi.fn().mockResolvedValue('notes')
+    const eliteSpecs = vi.fn().mockResolvedValue({ Luminary: 'Guardian' })
+    await new MetaRefresher({
+      store: s,
+      fetcher: fetcher(Object.fromEntries(pve.sources.map((x) => [x.url, { ok: true, text: 'r', pages: [] }]))),
+      cache: fakeCache(),
+      model,
+      now: () => Date.now(),
+      eliteSpecs
+    }).refreshStale()
+    expect(eliteSpecs).toHaveBeenCalledTimes(1)
+    expect(model.mock.calls[0][0]).toContain('Luminary = Guardian')
+  })
+
   it('keeps old notes when every source fails (never calls the model)', async () => {
     const s = store()
     const m = s.list().find((x) => x.mode === 'PvE')!
