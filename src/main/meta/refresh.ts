@@ -15,6 +15,7 @@ import { chunkPage, sha1 } from './rag/chunk'
 const SEVEN_DAYS_MS = 7 * 86_400_000
 
 export type MetaProgress =
+  | { type: 'refresh-start'; total: number }
   | { type: 'mode-start'; modeId: string }
   | { type: 'source-start'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
@@ -44,8 +45,9 @@ export class MetaRefresher {
     const emit = this.deps.emit ?? ((): void => {})
     const staleMs = this.deps.staleMs ?? SEVEN_DAYS_MS
     try {
-      for (const mode of store.list()) {
-        if (!isStale(mode, now(), staleMs)) continue
+      const stale = store.list().filter((m) => isStale(m, now(), staleMs))
+      if (stale.length > 0) emit({ type: 'refresh-start', total: stale.length })
+      for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
         const raws: string[] = []
         for (const src of mode.sources) {
@@ -82,11 +84,16 @@ export class MetaRefresher {
     })()
     for (const page of pages) {
       try {
-        if ((await index.indexedHash(page.url)) === sha1(page.text)) continue
+        if ((await index.indexedHash(page.url)) === sha1(page.text)) {
+          console.log('[meta] skip (unchanged):', page.url)
+          continue
+        }
         const chunks = chunkPage(page.text, { mode, source: host, url: page.url, title: page.title })
         if (chunks.length > 0) await index.replacePage(page.url, chunks)
-      } catch {
+        console.log('[meta] indexed', chunks.length, 'chunks:', page.url)
+      } catch (e) {
         /* index failure for one page is isolated; never breaks the refresh */
+        console.warn('[meta] index failed:', page.url, e)
       }
     }
   }

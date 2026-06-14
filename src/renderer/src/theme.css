@@ -595,3 +595,30 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   border-color: var(--accent-b);
   opacity: 1;
 }
+.learn-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px;
+  background: var(--paper, #f4f1ea);
+  border-bottom: 1px solid var(--rule, #cabfa6);
+  font-size: 11px;
+}
+.learn-label {
+  color: var(--accent-b);
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.learn-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--rule2, #e3dcc9);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.learn-fill {
+  height: 100%;
+  background: var(--accent-b);
+  transition: width 0.4s ease;
+}

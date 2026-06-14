@@ -1,6 +1,6 @@
 // src/main/meta/fetcher.test.ts
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchWiki, pickCrawlLinks } from './fetcher'
+import { fetchWiki, pickCrawlLinks, normalizeUrl } from './fetcher'
 
 const cfg = { host: 'metabattle.com', kind: 'wiki' as const, wikiApi: 'https://metabattle.com/api.php' }
 
@@ -74,5 +74,17 @@ describe('pickCrawlLinks', () => {
       5
     )
     expect(links).toEqual(['https://snowcrows.com/builds/a'])
+  })
+})
+
+describe('normalizeUrl', () => {
+  it('strips trailing slash, query, and hash', () => {
+    expect(normalizeUrl('https://x.com/a/b/?q=1#f')).toBe('https://x.com/a/b')
+  })
+  it('keeps a bare path', () => {
+    expect(normalizeUrl('https://x.com/a')).toBe('https://x.com/a')
+  })
+  it('returns null for malformed input', () => {
+    expect(normalizeUrl('not a url')).toBeNull()
   })
 })

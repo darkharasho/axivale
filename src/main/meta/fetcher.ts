@@ -5,8 +5,9 @@
 // most bot-blocking); MediaWiki sources hit api.php directly. The wiki path is
 // a pure module function (testable with mocked fetch); the BrowserWindow
 // adapter is a thin wrapper verified by the manual smoke test.
-// Browser sources with a linkSelector do a depth-1 crawl: follow build-page
-// links off the landing page and concatenate their content.
+// Browser sources with a linkSelector do a depth-aware breadth-first crawl:
+// follow links off the landing page down to the source's crawlDepth, with hard
+// page/time caps, and concatenate the visited pages' content.
 import { BrowserWindow, session } from 'electron'
 import { configForUrl, type SourceConfig } from './sources'
 
@@ -27,8 +28,8 @@ const FETCH_TIMEOUT_MS = 20_000
 const CONTENT_WAIT_MS = 12_000 // max in-page wait for SPA content to render
 const MIN_CONTENT_CHARS = 400 // consider the page "rendered" past this much text
 const MAX_EXTRACT_CHARS = 8_000 // cap the excerpt handed to the distiller
-const MAX_CRAWL_PAGES = 6 // depth-1: build pages to follow from a landing page
-const CRAWL_BUDGET_MS = 60_000 // stop following more build pages once a source exceeds this
+const MAX_CRAWL_PAGES = 30 // total pages to visit per source across all crawl levels
+const CRAWL_BUDGET_MS = 120_000 // per-source wall-clock cap on the whole crawl
 const MAX_CRAWL_TOTAL_CHARS = 16_000 // cap the combined landing+build-pages excerpt
 
 // Meta sites embed ad/tracker/image subresources that don't affect innerText
@@ -57,21 +58,28 @@ export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchRe
   }
 }
 
+/** Canonical key for a URL (origin + pathname, no query/hash, no trailing slash). null if malformed. */
+export function normalizeUrl(u: string): string | null {
+  try {
+    const url = new URL(u)
+    return (url.origin + url.pathname).replace(/\/$/, '')
+  } catch {
+    return null
+  }
+}
+
 /** From raw hrefs found on a landing page, pick distinct build-page URLs to crawl:
  *  drop the landing page itself, skip namespaced wiki paths (a ':' in the path),
  *  dedupe by origin+pathname, and cap the count. Pure + unit-tested. */
 export function pickCrawlLinks(hrefs: string[], landingUrl: string, max: number): string[] {
-  const norm = (u: URL): string => (u.origin + u.pathname).replace(/\/$/, '')
-  let landing = ''
+  const landingKey = normalizeUrl(landingUrl)
   let landingOrigin = ''
   try {
-    const lu = new URL(landingUrl)
-    landing = norm(lu)
-    landingOrigin = lu.origin
+    landingOrigin = new URL(landingUrl).origin
   } catch {
-    /* leave landing empty */
+    /* leave empty */
   }
-  const seen = new Set<string>(landing ? [landing] : [])
+  const seen = new Set<string>(landingKey ? [landingKey] : [])
   const out: string[] = []
   for (const h of hrefs) {
     let u: URL
@@ -82,10 +90,10 @@ export function pickCrawlLinks(hrefs: string[], landingUrl: string, max: number)
     }
     if (landingOrigin && u.origin !== landingOrigin) continue
     if (u.pathname.includes(':')) continue
-    const key = norm(u)
+    const key = (u.origin + u.pathname).replace(/\/$/, '')
     if (seen.has(key)) continue
     seen.add(key)
-    out.push(u.origin + u.pathname)
+    out.push(key)
     if (out.length >= max) break
   }
   return out
@@ -131,22 +139,37 @@ export class BrowserWindowFetcher implements MetaFetcher {
     if (cfg.kind === 'wiki') return fetchWiki(url, cfg)
 
     const selector = cfg.selector ?? 'body'
+    const depth = cfg.linkSelector ? (cfg.crawlDepth ?? 1) : 0
     try {
-      const landing = await this.loadAndExtract(url, selector)
       const pages: FetchedPage[] = []
-      if (landing.text) pages.push({ url, title: landing.title, text: landing.text.slice(0, MAX_EXTRACT_CHARS) })
+      const visited = new Set<string>()
+      const queue: Array<{ url: string; level: number }> = [{ url, level: 0 }]
+      const crawlStart = Date.now()
 
-      if (cfg.linkSelector) {
-        const hrefs = await this.collectLinks(cfg.linkSelector)
-        const links = pickCrawlLinks(hrefs, url, MAX_CRAWL_PAGES)
-        const crawlStart = Date.now()
-        for (const link of links) {
-          if (Date.now() - crawlStart > CRAWL_BUDGET_MS) break
-          try {
-            const p = await this.loadAndExtract(link, selector)
-            if (p.text) pages.push({ url: link, title: p.title, text: p.text.slice(0, MAX_EXTRACT_CHARS) })
-          } catch {
-            /* skip a bad sub-page; keep what we have */
+      while (queue.length > 0) {
+        if (pages.length >= MAX_CRAWL_PAGES || Date.now() - crawlStart > CRAWL_BUDGET_MS) break
+        const { url: pageUrl, level } = queue.shift()!
+        const key = normalizeUrl(pageUrl)
+        if (key === null || visited.has(key)) continue
+        visited.add(key)
+
+        let extracted: { title: string; text: string }
+        try {
+          extracted = await this.loadAndExtract(pageUrl, selector)
+        } catch {
+          continue // skip a bad page; keep walking
+        }
+        if (extracted.text) {
+          pages.push({ url: pageUrl, title: extracted.title, text: extracted.text.slice(0, MAX_EXTRACT_CHARS) })
+        }
+
+        // Expand links if we haven't hit the depth limit. collectLinks runs on the
+        // page we just loaded (pageUrl), so we read its links before navigating away.
+        if (level < depth && cfg.linkSelector) {
+          const hrefs = await this.collectLinks(cfg.linkSelector)
+          for (const link of pickCrawlLinks(hrefs, pageUrl, MAX_CRAWL_PAGES)) {
+            const k = normalizeUrl(link)
+            if (k !== null && !visited.has(k)) queue.push({ url: link, level: level + 1 })
           }
         }
       }
