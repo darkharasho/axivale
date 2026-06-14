@@ -36,6 +36,7 @@ import { buildSharePayload } from './shareSanitize'
 import { makeShareId } from './shareId'
 import { AgentService } from './agent'
 import { ConversationStore, type Conversation } from './conversationStore'
+import { SkillStore } from './skillStore'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -166,6 +167,8 @@ app.whenReady().then(async () => {
   const conversations = new ConversationStore(join(app.getPath('userData'), 'conversations.json'))
 
   const shares = new ShareStore(join(app.getPath('userData'), 'shares.json'))
+
+  const skills = new SkillStore(join(app.getPath('userData'), 'skills.json'))
   // Dev runs publish to a separate repo so testing never touches a user's real
   // public share site. app.isPackaged is false under `npm run dev`.
   const SHARE_REPO = app.isPackaged ? 'axivale-shares' : 'axivale-shares-dev'
@@ -270,8 +273,13 @@ app.whenReady().then(async () => {
       gw2GuildId: () => store.getSetting('gw2GuildId') ?? '',
       axiforge,
       axiforgeLauncher,
-      axibridge: () => axibridge
+      axibridge: () => axibridge,
+      loadSkill: (name: string) => {
+        const s = skills.getByName(name)
+        return s && s.enabled ? s.instructions : null
+      }
     }),
+    skills: () => skills.list().filter((s) => s.enabled),
     config: providerConfig,
     loadSession: (conversationId: string): SessionState =>
       conversations.get(conversationId)?.session ?? {},
@@ -616,13 +624,24 @@ app.whenReady().then(async () => {
     return client[method](guildId, ...args)
   })
 
-  ipcMain.handle('agent:send', async (event, conversationId: string, prompt: string) => {
+  ipcMain.handle('agent:send', async (event, conversationId: string, prompt: string, forcedSkillId?: string) => {
     await agent.runTurn(conversationId, prompt, (agentEvent) => {
       if (!event.sender.isDestroyed()) {
         event.sender.send('agent:event', { ...agentEvent, conversationId })
       }
-    })
+    }, { forcedSkillId })
   })
+
+  ipcMain.handle('skills:list', () => skills.list())
+  ipcMain.handle('skills:create', (_e, seed: { name: string; whenToUse: string; instructions: string }) =>
+    skills.create(seed)
+  )
+  ipcMain.handle(
+    'skills:update',
+    (_e, id: string, patch: Partial<{ name: string; whenToUse: string; instructions: string; enabled: boolean }>) =>
+      skills.update(id, patch)
+  )
+  ipcMain.handle('skills:delete', (_e, id: string) => skills.remove(id))
 
   function drainConfirms(): void {
     for (const resolve of pendingConfirms.values()) resolve(false)
