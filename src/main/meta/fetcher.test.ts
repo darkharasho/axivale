@@ -63,6 +63,18 @@ describe('pickCrawlLinks', () => {
     expect(links).toEqual(['https://metabattle.com/wiki/Power_Tempest'])
   })
 
+  it('keeps Build: namespace pages (MetaBattle real builds)', () => {
+    const links = pickCrawlLinks(
+      [
+        'https://metabattle.com/wiki/Build:Berserker_-_Power_DPS',
+        'https://metabattle.com/wiki/Category:PvE_builds'
+      ],
+      'https://metabattle.com/wiki/Raid_Builds',
+      5
+    )
+    expect(links).toEqual(['https://metabattle.com/wiki/Build:Berserker_-_Power_DPS'])
+  })
+
   it('skips malformed hrefs', () => {
     expect(pickCrawlLinks(['not a url', 'https://x.com/a'], 'https://x.com', 5)).toEqual(['https://x.com/a'])
   })

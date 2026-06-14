@@ -80,6 +80,10 @@ export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchRe
   }
 }
 
+/** MediaWiki meta/admin namespaces to skip when crawling (NOT content like Build:). */
+const WIKI_NS_SKIP =
+  /\/(Category|Template|File|Help|Special|Talk|User|MediaWiki|Property|Form|Module|Project)(_talk)?:/i
+
 /** Canonical key for a URL (origin + pathname, no query/hash, no trailing slash). null if malformed. */
 export function normalizeUrl(u: string): string | null {
   try {
@@ -111,7 +115,9 @@ export function pickCrawlLinks(hrefs: string[], landingUrl: string, max: number)
       continue
     }
     if (landingOrigin && u.origin !== landingOrigin) continue
-    if (u.pathname.includes(':')) continue
+    // Skip MediaWiki meta-namespaces (Category:, Template:, etc.) but KEEP content
+    // namespaces like Build: — MetaBattle's actual build pages live at /wiki/Build:<name>.
+    if (WIKI_NS_SKIP.test(u.pathname)) continue
     const key = (u.origin + u.pathname).replace(/\/$/, '')
     if (seen.has(key)) continue
     seen.add(key)
