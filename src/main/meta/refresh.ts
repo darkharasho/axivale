@@ -12,6 +12,12 @@ import { configForUrl } from './sources'
 
 const SEVEN_DAYS_MS = 7 * 86_400_000
 
+export type MetaProgress =
+  | { type: 'mode-start'; modeId: string }
+  | { type: 'source-start'; modeId: string; url: string }
+  | { type: 'mode-done'; modeId: string }
+  | { type: 'idle' }
+
 export interface RefresherDeps {
   store: MetaStore
   fetcher: MetaFetcher
@@ -19,6 +25,7 @@ export interface RefresherDeps {
   model: MetaModel
   now: () => number
   staleMs?: number
+  emit?: (e: MetaProgress) => void
 }
 
 function isStale(mode: MetaMode, now: number, staleMs: number): boolean {
@@ -31,22 +38,31 @@ export class MetaRefresher {
 
   async refreshStale(): Promise<void> {
     const { store, fetcher, cache, model, now } = this.deps
+    const emit = this.deps.emit ?? ((): void => {})
     const staleMs = this.deps.staleMs ?? SEVEN_DAYS_MS
-    for (const mode of store.list()) {
-      if (!isStale(mode, now(), staleMs)) continue
-      const raws: string[] = []
-      for (const src of mode.sources) {
-        if (!configForUrl(src.url)) continue
-        const r = await fetcher.fetch(src.url)
-        store.recordFetch(mode.id, src.url, r.ok ? { ok: true } : { ok: false, error: r.error })
-        if (r.ok) {
-          cache.put(src.url, r.text)
-          raws.push(r.text)
+    try {
+      for (const mode of store.list()) {
+        if (!isStale(mode, now(), staleMs)) continue
+        emit({ type: 'mode-start', modeId: mode.id })
+        const raws: string[] = []
+        for (const src of mode.sources) {
+          if (!configForUrl(src.url)) continue
+          emit({ type: 'source-start', modeId: mode.id, url: src.url })
+          const r = await fetcher.fetch(src.url)
+          store.recordFetch(mode.id, src.url, r.ok ? { ok: true } : { ok: false, error: r.error })
+          if (r.ok) {
+            cache.put(src.url, r.text)
+            raws.push(r.text)
+          }
         }
+        if (raws.length > 0) {
+          const notes = await distill(mode.mode, raws, model)
+          if (notes) store.recordDistill(mode.id, notes)
+        }
+        emit({ type: 'mode-done', modeId: mode.id })
       }
-      if (raws.length === 0) continue
-      const notes = await distill(mode.mode, raws, model)
-      if (notes) store.recordDistill(mode.id, notes)
+    } finally {
+      emit({ type: 'idle' })
     }
   }
 }
