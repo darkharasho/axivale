@@ -23,9 +23,9 @@ body {
 }
 
 .share-page {
-  max-width: 820px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 34px 28px 80px;
+  padding: 34px 40px 80px;
 }
 
 /* ---- Masthead ---- */
@@ -132,6 +132,26 @@ body {
   text-transform: uppercase;
   color: var(--faint);
   margin-bottom: 3px;
+}
+
+/* Newspaper columns: fill the wide page while keeping a readable line length.
+   Collapses to a single column on narrow screens automatically. */
+.sv-prose {
+  column-width: 340px;
+  column-gap: 36px;
+}
+/* Figures, tables, charts and cards break the column flow and span full width,
+   like a newspaper cut. */
+.sv-prose > .post-figure,
+.sv-prose figure,
+.sv-prose .rich,
+.sv-prose .richchart,
+.sv-prose .richtable,
+.sv-prose table,
+.sv-prose pre,
+.sv-endmark {
+  column-span: all;
+  break-inside: avoid;
 }
 
 /* Drop cap on the first paragraph of the body (theme.css supplies .prose). */
