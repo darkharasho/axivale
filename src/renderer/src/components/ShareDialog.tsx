@@ -1,11 +1,11 @@
 // src/renderer/src/components/ShareDialog.tsx
 import { useState, type ReactElement } from 'react'
-import { Info, Loader } from 'lucide-react'
+import { Check, Info, Loader } from 'lucide-react'
 
 export type ShareState =
   | { status: 'idle' }
   | { status: 'publishing' }
-  | { status: 'done'; url: string }
+  | { status: 'done'; url: string; live: boolean }
   | { status: 'error'; error: string }
 
 /** Newspaper "Special Edition" clipping for a freshly filed public share. */
@@ -50,7 +50,10 @@ export default function ShareDialog({
           {state.status === 'publishing' && (
             <div className="sd-pending">
               <Loader size={15} className="sd-spin" />
-              <span>Setting type and pulling a proof… your link will be ready in a moment.</span>
+              <span>
+                Setting type and waiting for the presses (GitHub Pages) to run — your link goes out
+                the moment it&apos;s live.
+              </span>
             </div>
           )}
 
@@ -68,13 +71,20 @@ export default function ShareDialog({
                   {copied ? 'Copied' : 'Copy link'}
                 </button>
               </div>
-              <div className="sd-note">
-                <Info size={13} />
-                <span>
-                  First time sharing? GitHub Pages can take about a minute to go live — the link may
-                  404 briefly before the press run starts.
-                </span>
-              </div>
+              {state.live ? (
+                <div className="sd-note sd-note--ok">
+                  <Check size={13} />
+                  <span>Live and ready — the link is serving now.</span>
+                </div>
+              ) : (
+                <div className="sd-note">
+                  <Info size={13} />
+                  <span>
+                    Still going to press — GitHub Pages is taking longer than usual. The link will
+                    work shortly; give it a minute before sharing it around.
+                  </span>
+                </div>
+              )}
             </>
           )}
 

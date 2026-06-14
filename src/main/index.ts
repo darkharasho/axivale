@@ -368,7 +368,7 @@ app.whenReady().then(async () => {
         createdAt: new Date().toISOString(),
         appVersion: app.getVersion()
       })
-      const { url } = await sharePublisher.publishDoc(doc)
+      const { url, live } = await sharePublisher.publishDoc(doc)
       shares.add({
         id,
         kind: 'conversation',
@@ -377,7 +377,7 @@ app.whenReady().then(async () => {
         sourceConversationId: conversationId,
         createdAt: doc.createdAt
       })
-      return { ok: true as const, url }
+      return { ok: true as const, url, live }
     } catch (err) {
       return { ok: false as const, error: err instanceof Error ? err.message : 'Share failed.' }
     }
@@ -394,7 +394,7 @@ app.whenReady().then(async () => {
         appVersion: app.getVersion(),
         turnId
       })
-      const { url } = await sharePublisher.publishDoc(doc)
+      const { url, live } = await sharePublisher.publishDoc(doc)
       shares.add({
         id,
         kind: 'response',
@@ -403,7 +403,7 @@ app.whenReady().then(async () => {
         sourceConversationId: conversationId,
         createdAt: doc.createdAt
       })
-      return { ok: true as const, url }
+      return { ok: true as const, url, live }
     } catch (err) {
       return { ok: false as const, error: err instanceof Error ? err.message : 'Share failed.' }
     }

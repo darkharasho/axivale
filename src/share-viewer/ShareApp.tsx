@@ -1,9 +1,11 @@
 // src/share-viewer/ShareApp.tsx
 //
 // Standalone reader for a single share. Resolves the id from the hash route
-// (#/s/<id>), fetches shares/<id>.json relative to the page, and renders each
-// turn with the SAME markdown + figure pipeline AxiVale uses (imported from the
-// renderer components), so it looks identical to the app.
+// (#/s/<id>), fetches shares/<id>.json relative to the page, and renders it as a
+// newspaper page. Body markdown + figures use the SAME pipeline AxiVale uses
+// (imported from the renderer components) so article content looks identical to
+// the app; the page chrome (masthead, headline, byline, footer) is styled by
+// viewer.css.
 import { Fragment, useEffect, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -25,7 +27,7 @@ function docUrl(id: string): string {
   return new URL(`shares/${id}.json`, base).toString()
 }
 
-function ArticleView({ turn }: { turn: SharedTurn }): ReactElement {
+function ArticleView({ turn, kicker }: { turn: SharedTurn; kicker: string }): ReactElement {
   const { headline, rest } = splitHeadline(turn.agentText)
   const figures = turn.tools.filter((t) => t.display)
   const segments = rest.split(/\{\{\s*figure\s*\}\}/i)
@@ -35,45 +37,38 @@ function ArticleView({ turn }: { turn: SharedTurn }): ReactElement {
       <figcaption>{couponLabel(t.name)}</figcaption>
     </figure>
   )
+  const actions = turn.tools.length
   return (
-    <>
+    <article className="sv-article">
       {turn.userText && (
-        <>
-          <div className="msg user">
-            <div className="kick">From the Commander&apos;s Desk</div>
-            <div className="body">{turn.userText}</div>
-          </div>
-          <div className="rip">
-            <span className="t"></span>
-            <span className="lbl">AxiVale Reports</span>
-            <span className="t"></span>
-          </div>
-        </>
+        <blockquote className="sv-ask">
+          <span className="who">From the Commander&apos;s Desk</span>
+          {turn.userText}
+        </blockquote>
       )}
-      <div className="msg off" style={{ position: 'relative' }}>
-        <div className="lede">{stripMarkdown(headline)}</div>
-        <div className="byline">
-          By <b>AxiVale</b> · filed {turn.filedAt} · {turn.tools.length} action
-          {turn.tools.length === 1 ? '' : 's'} taken
-        </div>
-        <div className="prose">
-          {segments.map((seg, i) => (
-            <Fragment key={i}>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeEmojiIcons]}
-                components={{ span: renderEmojiSpan }}
-              >
-                {seg}
-              </ReactMarkdown>
-              {i < segments.length - 1 && figures[i] && renderFigure(figures[i], i)}
-            </Fragment>
-          ))}
-          {figures.slice(Math.max(0, segments.length - 1)).map((t, i) => renderFigure(t, 1000 + i))}
-          <span className="endmark"> ∎</span>
-        </div>
+      <div className="sv-kicker">{kicker}</div>
+      <h2 className="sv-headline">{stripMarkdown(headline)}</h2>
+      <div className="sv-byline">
+        By <b>AxiVale</b> · Filed {turn.filedAt}
+        {actions > 0 && <> · {actions} action{actions === 1 ? '' : 's'} taken</>}
       </div>
-    </>
+      <div className="prose sv-prose">
+        {segments.map((seg, i) => (
+          <Fragment key={i}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeEmojiIcons]}
+              components={{ span: renderEmojiSpan }}
+            >
+              {seg}
+            </ReactMarkdown>
+            {i < segments.length - 1 && figures[i] && renderFigure(figures[i], i)}
+          </Fragment>
+        ))}
+        {figures.slice(Math.max(0, segments.length - 1)).map((t, i) => renderFigure(t, 1000 + i))}
+        <span className="sv-endmark">∎</span>
+      </div>
+    </article>
   )
 }
 
@@ -97,24 +92,55 @@ export default function ShareApp(): ReactElement {
   }, [])
 
   if (error) return <div className="share-state">{error}</div>
-  if (!doc) return <div className="share-state">Loading dispatch…</div>
+  if (!doc) return <div className="share-state">Setting the type…</div>
 
-  const dateline = new Date(doc.createdAt).toLocaleDateString('en-US', {
+  const filed = new Date(doc.createdAt).toLocaleDateString('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric'
   })
+  // Honest kicker from the share kind — no fabricated categories.
+  const kicker = doc.kind === 'response' ? 'Field Dispatch' : 'Full Dispatch'
 
   return (
     <div className="share-page">
-      <div className="share-masthead">
-        <div className="title">AxiVale</div>
-        <div className="dateline">Filed {dateline}</div>
-      </div>
+      <header className="smh">
+        <div className="smh-top">
+          <span>The Commander&apos;s Dispatch</span>
+          <span className="smh-top-mid">Public Dispatch</span>
+          <span>Filed {filed}</span>
+        </div>
+        <h1 className="smh-title">
+          Axi<em>Vale</em>
+        </h1>
+        <div className="smh-motto">“All the guild intel that&apos;s fit to print.”</div>
+        <div className="smh-band">
+          <span className="ln" />
+          <span>Guild Wars 2 · Guild Intelligence · Late Edition</span>
+          <span className="ln" />
+        </div>
+      </header>
+
       {doc.turns.map((turn, i) => (
-        <ArticleView key={i} turn={turn} />
+        <Fragment key={i}>
+          {i > 0 && (
+            <div className="sv-rip">
+              <span className="t" />
+              <span>Next Dispatch</span>
+              <span className="t" />
+            </div>
+          )}
+          <ArticleView turn={turn} kicker={kicker} />
+        </Fragment>
       ))}
-      <div className="share-footer">Shared from AxiVale · {doc.app.name} v{doc.app.version}</div>
+
+      <footer className="sv-foot">
+        <div className="ast">⁂</div>
+        <div className="line">Filed from the AxiVale newsroom · Published via GitHub Pages</div>
+        <div className="brand">
+          Shared from {doc.app.name} · v{doc.app.version}
+        </div>
+      </footer>
     </div>
   )
 }

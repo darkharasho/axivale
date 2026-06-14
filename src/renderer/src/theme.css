@@ -466,6 +466,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sd-copy:hover{background:var(--accent-b)}
 .sd-note{display:flex;gap:7px;align-items:flex-start;margin-top:14px;font-size:11.5px;line-height:1.45;color:var(--faint)}
 .sd-note svg{flex:none;margin-top:1px}
+.sd-note--ok{color:var(--green)}
 .sd-pending{display:flex;gap:9px;align-items:center;color:var(--ink-dim);font-size:13px}
 .sd-spin{flex:none;animation:sd-rot 1s linear infinite}
 @keyframes sd-rot{to{transform:rotate(360deg)}}

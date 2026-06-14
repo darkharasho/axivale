@@ -33,6 +33,14 @@ export interface SharePublisherDeps {
   /** Load the built viewer bundle (from disk in production). */
   viewer: () => ViewerBundle
   repo: string
+  /** Plain fetch for polling the public Pages URL (no auth). Injectable for tests. */
+  fetchFn?: typeof fetch
+  /** Sleep between polls. Injectable so tests don't actually wait. */
+  delayFn?: (ms: number) => Promise<void>
+  /** How long to wait for GitHub Pages to serve the share before giving up. */
+  pollTimeoutMs?: number
+  /** Interval between liveness polls. */
+  pollIntervalMs?: number
 }
 
 export interface ShareStatus {
@@ -62,7 +70,32 @@ export class SharePublisher {
     )
   }
 
-  async publishDoc(doc: ShareDoc): Promise<{ url: string }> {
+  /**
+   * Poll the public share JSON until GitHub Pages serves it (HTTP 200) or the
+   * timeout elapses. Returns whether it went live. A freshly-created repo's
+   * first Pages build takes ~30-60s; subsequent shares deploy in a few seconds.
+   */
+  private async waitUntilLive(jsonUrl: string): Promise<boolean> {
+    const fetchFn = this.deps.fetchFn ?? fetch
+    const delayFn = this.deps.delayFn ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
+    const timeoutMs = this.deps.pollTimeoutMs ?? 90_000
+    const intervalMs = this.deps.pollIntervalMs ?? 3_000
+    const deadline = Date.now() + timeoutMs
+
+    for (;;) {
+      try {
+        // cache-bust so a CDN 404 isn't served from cache once it goes live
+        const res = await fetchFn(`${jsonUrl}?t=${Date.now()}`, { method: 'GET', cache: 'no-store' })
+        if (res.ok) return true
+      } catch {
+        // network hiccup mid-deploy — keep polling until the deadline
+      }
+      if (Date.now() >= deadline) return false
+      await delayFn(intervalMs)
+    }
+  }
+
+  async publishDoc(doc: ShareDoc): Promise<{ url: string; live: boolean }> {
     const client = this.deps.client()
     const login = await client.login()
     await client.ensureRepo(this.deps.repo)
@@ -74,7 +107,9 @@ export class SharePublisher {
     const sha = (await client.getFileSha(this.deps.repo, path)) ?? undefined
     await client.putFile(this.deps.repo, path, base64, `share: ${doc.id}`, sha)
 
-    return { url: `https://${login}.github.io/${this.deps.repo}/#/s/${doc.id}` }
+    const base = `https://${login}.github.io/${this.deps.repo}/`
+    const live = await this.waitUntilLive(`${base}shares/${doc.id}.json`)
+    return { url: `${base}#/s/${doc.id}`, live }
   }
 
   async deleteDoc(id: string): Promise<void> {

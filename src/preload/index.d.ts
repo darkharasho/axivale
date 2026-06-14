@@ -88,10 +88,10 @@ export interface OfficerApi {
     repos?: Array<{ owner: string; repo: string }>
     error?: string
   }>
-  /** Publish a full conversation; returns its public URL. */
-  shareConversation(conversationId: string): Promise<{ ok: true; url: string } | { ok: false; error: string }>
-  /** Publish a single AI response; returns its public URL. */
-  shareResponse(conversationId: string, turnId: number): Promise<{ ok: true; url: string } | { ok: false; error: string }>
+  /** Publish a full conversation; returns its public URL (live=true once Pages serves it). */
+  shareConversation(conversationId: string): Promise<{ ok: true; url: string; live: boolean } | { ok: false; error: string }>
+  /** Publish a single AI response; returns its public URL (live=true once Pages serves it). */
+  shareResponse(conversationId: string, turnId: number): Promise<{ ok: true; url: string; live: boolean } | { ok: false; error: string }>
   shareList(): Promise<ShareListEntry[]>
   shareDelete(id: string): Promise<{ ok: boolean; error?: string }>
   shareStatus(): Promise<{ signedIn: boolean; repoReady: boolean; pagesUrl: string | null }>

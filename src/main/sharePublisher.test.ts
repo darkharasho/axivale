@@ -35,14 +35,31 @@ const DOC: ShareDoc = {
   turns: []
 }
 
+/** A fetch stub that returns `status` for every request. */
+function fetchReturning(status: number): typeof fetch {
+  return vi.fn(async () => new Response('{}', { status })) as unknown as typeof fetch
+}
+
+/** Build a publisher with the liveness poll stubbed live-by-default and no real delays. */
+function makePub(client: GithubShareClient, over: Partial<ConstructorParameters<typeof SharePublisher>[0]> = {}) {
+  return new SharePublisher({
+    client: () => client,
+    viewer: () => VIEWER,
+    repo: 'axivale-shares',
+    fetchFn: fetchReturning(200),
+    delayFn: async () => {},
+    pollIntervalMs: 1,
+    pollTimeoutMs: 50,
+    ...over
+  })
+}
+
 describe('SharePublisher.publishDoc', () => {
   it('first run: creates repo, pushes viewer + marker, enables Pages, writes the doc', async () => {
     const client = stubClient()
-    const pub = new SharePublisher({ client: () => client, viewer: () => VIEWER, repo: 'axivale-shares' })
-    const res = await pub.publishDoc(DOC)
+    const res = await makePub(client).publishDoc(DOC)
 
     expect(client.ensureRepo).toHaveBeenCalledWith('axivale-shares')
-    // viewer files + marker pushed
     const written = (client.putFile as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1])
     expect(written).toContain('index.html')
     expect(written).toContain('assets/app.js')
@@ -54,8 +71,7 @@ describe('SharePublisher.publishDoc', () => {
 
   it('skips viewer push when the marker already matches', async () => {
     const client = stubClient({ getFileContent: vi.fn(async (_r, p) => (p === 'viewer-version' ? 'v1' : null)) })
-    const pub = new SharePublisher({ client: () => client, viewer: () => VIEWER, repo: 'axivale-shares' })
-    await pub.publishDoc(DOC)
+    await makePub(client).publishDoc(DOC)
     const written = (client.putFile as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[1])
     expect(written).not.toContain('index.html')
     expect(written).toContain('shares/abc.json')
@@ -66,30 +82,50 @@ describe('SharePublisher.publishDoc', () => {
       getFileContent: vi.fn(async () => 'v1'),
       getFileSha: vi.fn(async (_r, p) => (p === 'shares/abc.json' ? 'oldsha' : null))
     })
-    const pub = new SharePublisher({ client: () => client, viewer: () => VIEWER, repo: 'axivale-shares' })
-    await pub.publishDoc(DOC)
+    await makePub(client).publishDoc(DOC)
     const docCall = (client.putFile as ReturnType<typeof vi.fn>).mock.calls.find((c) => c[1] === 'shares/abc.json')
     expect(docCall![4]).toBe('oldsha')
   })
 
   it('response shares get the right url', async () => {
     const client = stubClient({ getFileContent: vi.fn(async () => 'v1') })
-    const pub = new SharePublisher({ client: () => client, viewer: () => VIEWER, repo: 'axivale-shares' })
-    const res = await pub.publishDoc({ ...DOC, id: 'xyz', kind: 'response' })
+    const res = await makePub(client).publishDoc({ ...DOC, id: 'xyz', kind: 'response' })
     expect(res.url).toBe('https://alice.github.io/axivale-shares/#/s/xyz')
+  })
+
+  it('reports live:true once the share JSON is served, polling the right URL', async () => {
+    const client = stubClient({ getFileContent: vi.fn(async () => 'v1') })
+    const fetchFn = fetchReturning(200)
+    const res = await makePub(client, { fetchFn }).publishDoc(DOC)
+    expect(res.live).toBe(true)
+    const polled = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
+    expect(polled).toContain('https://alice.github.io/axivale-shares/shares/abc.json')
+  })
+
+  it('waits for a pending build: 404s then 200 → live:true', async () => {
+    const client = stubClient({ getFileContent: vi.fn(async () => 'v1') })
+    let n = 0
+    const fetchFn = vi.fn(async () => new Response('', { status: n++ < 2 ? 404 : 200 })) as unknown as typeof fetch
+    const res = await makePub(client, { fetchFn }).publishDoc(DOC)
+    expect(res.live).toBe(true)
+    expect((fetchFn as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('reports live:false when the page never serves before timeout', async () => {
+    const client = stubClient({ getFileContent: vi.fn(async () => 'v1') })
+    const res = await makePub(client, { fetchFn: fetchReturning(404), pollTimeoutMs: 5, pollIntervalMs: 1 }).publishDoc(DOC)
+    expect(res.live).toBe(false)
   })
 })
 
 describe('SharePublisher.deleteDoc', () => {
   it('deletes the doc file using its sha; no-op when already gone', async () => {
     const client = stubClient({ getFileSha: vi.fn(async () => 'sha1') })
-    const pub = new SharePublisher({ client: () => client, viewer: () => VIEWER, repo: 'axivale-shares' })
-    await pub.deleteDoc('abc')
+    await makePub(client).deleteDoc('abc')
     expect(client.deleteFile).toHaveBeenCalledWith('axivale-shares', 'shares/abc.json', expect.any(String), 'sha1')
 
     const gone = stubClient({ getFileSha: vi.fn(async () => null) })
-    const pub2 = new SharePublisher({ client: () => gone, viewer: () => VIEWER, repo: 'axivale-shares' })
-    await pub2.deleteDoc('abc')
+    await makePub(gone).deleteDoc('abc')
     expect(gone.deleteFile).not.toHaveBeenCalled()
   })
 })

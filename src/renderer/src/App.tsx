@@ -81,13 +81,13 @@ export default function App(): ReactElement {
   async function shareResponse(conversationId: string, turnId: number): Promise<void> {
     setShareState({ status: 'publishing' })
     const res = await window.officer.shareResponse(conversationId, turnId)
-    setShareState(res.ok ? { status: 'done', url: res.url } : { status: 'error', error: res.error })
+    setShareState(res.ok ? { status: 'done', url: res.url, live: res.live } : { status: 'error', error: res.error })
   }
 
   async function shareConversation(conversationId: string): Promise<void> {
     setShareState({ status: 'publishing' })
     const res = await window.officer.shareConversation(conversationId)
-    setShareState(res.ok ? { status: 'done', url: res.url } : { status: 'error', error: res.error })
+    setShareState(res.ok ? { status: 'done', url: res.url, live: res.live } : { status: 'error', error: res.error })
   }
 
   const turns = (activeId && turnsByConv[activeId]) || []

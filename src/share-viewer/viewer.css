@@ -1,10 +1,11 @@
 /* src/share-viewer/viewer.css
-   Centers the shared article(s) inside AxiVale's newspaper theme (theme.css is
-   imported in main.tsx, supplying .msg.off / .lede / .byline / .prose etc.). */
+   Newspaper page chrome for the public share viewer. theme.css is imported first
+   in main.tsx (supplies .prose body typography + the rich figure/table/card
+   classes); this file adds the masthead, headline, byline, ask block, and
+   footer, and undoes the app's fixed-panel body rules so the page scrolls. */
 
-/* theme.css sets `body{overflow:hidden}` and `#root{display:flex}` for the app's
-   fixed-panel layout. The standalone viewer is a normal scrolling document, so
-   undo both here (this stylesheet is imported last, so it wins). */
+/* theme.css sets body{overflow:hidden} and #root{display:flex} for the app's
+   fixed-panel layout. The standalone viewer is a normal scrolling document. */
 html,
 body {
   height: auto;
@@ -13,45 +14,194 @@ body {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg, #16171a);
-  color: var(--ink, #e9e6df);
+  background: var(--bg, #16171a)
+    radial-gradient(1100px 500px at 50% -15%, rgba(255, 255, 255, 0.03), transparent);
+  color: var(--ink, #e4e3dc);
 }
 #root {
   display: block;
 }
+
 .share-page {
   max-width: 820px;
   margin: 0 auto;
-  padding: 40px 24px 80px;
+  padding: 34px 28px 80px;
 }
-.share-masthead {
+
+/* ---- Masthead ---- */
+.smh {
   text-align: center;
-  border-bottom: 3px double var(--rule, #3a3a3a);
-  padding-bottom: 12px;
-  margin-bottom: 28px;
 }
-.share-masthead .title {
-  font-family: 'Playfair Display', Georgia, serif;
-  font-size: 40px;
-  font-weight: 900;
-  letter-spacing: 0.5px;
-}
-.share-masthead .dateline {
-  font-size: 12px;
+.smh-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  opacity: 0.7;
+  color: var(--faint);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 7px;
+}
+.smh-top-mid {
+  color: var(--ink-dim);
+}
+.smh-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(40px, 9vw, 62px);
+  line-height: 0.95;
+  letter-spacing: 0.5px;
+  margin: 14px 0 6px;
+}
+.smh-title em {
+  color: var(--accent-b);
+  font-style: normal;
+}
+.smh-motto {
+  font-style: italic;
+  font-size: 12.5px;
+  color: var(--ink-dim);
+  margin-bottom: 12px;
+}
+.smh-band {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.smh-band .ln {
+  flex: 1;
+  height: 0;
+  border-top: 3px double var(--rule2);
+}
+
+/* ---- Article ---- */
+.sv-article {
+  margin-top: 30px;
+}
+.sv-kicker {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--accent-b);
+  text-align: center;
+  margin-bottom: 10px;
+}
+.sv-headline {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 900;
+  font-size: clamp(28px, 5vw, 38px);
+  line-height: 1.08;
+  text-align: center;
+  margin: 0 0 12px;
+}
+.sv-byline {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  text-align: center;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 8px 0;
+  margin-bottom: 22px;
+}
+.sv-ask {
+  border-left: 2px solid var(--accent);
+  background: rgba(200, 66, 58, 0.06);
+  padding: 9px 13px;
+  margin: 0 0 18px;
+  font-style: italic;
+  color: var(--ink-dim);
+}
+.sv-ask .who {
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-style: normal;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 3px;
+}
+
+/* Drop cap on the first paragraph of the body (theme.css supplies .prose). */
+.sv-prose > p:first-of-type::first-letter {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 900;
+  float: left;
+  font-size: 58px;
+  line-height: 0.78;
+  padding: 4px 10px 0 0;
+  color: var(--accent-b);
+}
+.sv-endmark {
+  display: block;
+  text-align: center;
+  color: var(--accent-b);
+  margin-top: 18px;
+  font-size: 18px;
+}
+
+/* Section divider between turns in a full-conversation share. */
+.sv-rip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 30px 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.sv-rip .t {
+  flex: 1;
+  border-top: 1px dashed var(--rule);
+}
+
+/* ---- Footer ---- */
+.sv-foot {
+  margin-top: 44px;
+  text-align: center;
+}
+.sv-foot .ast {
+  color: var(--rule2);
+  letter-spacing: 0.5em;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.sv-foot .line {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.sv-foot .brand {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 700;
+  color: var(--ink-dim);
+  font-size: 13px;
   margin-top: 6px;
 }
+
+/* ---- Loading / error ---- */
 .share-state {
+  max-width: 820px;
+  margin: 0 auto;
   text-align: center;
   font-family: Georgia, serif;
-  opacity: 0.8;
-  padding: 80px 20px;
-}
-.share-footer {
-  text-align: center;
-  font-size: 12px;
-  opacity: 0.6;
-  margin-top: 40px;
+  font-style: italic;
+  color: var(--ink-dim);
+  padding: 120px 20px;
 }

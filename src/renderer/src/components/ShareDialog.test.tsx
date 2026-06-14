@@ -13,15 +13,15 @@ describe('ShareDialog', () => {
   it('shows a pending message while publishing', () => {
     render(<ShareDialog state={{ status: 'publishing' }} onClose={() => {}} />)
     expect(screen.getByText(/going to press/i)).toBeTruthy()
-    expect(screen.getByText(/ready in a moment/i)).toBeTruthy()
+    expect(screen.getByText(/the moment it.?s live/i)).toBeTruthy()
   })
 
   it('shows the url and copies it on click', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
-    const state: ShareState = { status: 'done', url: 'https://x.github.io/axivale-shares/#/s/abc' }
+    const state: ShareState = { status: 'done', url: 'https://x.github.io/axivale-shares/#/s/abc', live: true }
     render(<ShareDialog state={state} onClose={() => {}} />)
-    expect(screen.getByDisplayValue(state.url!)).toBeTruthy()
+    expect(screen.getByDisplayValue('https://x.github.io/axivale-shares/#/s/abc')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /copy link/i }))
     expect(writeText).toHaveBeenCalledWith(state.url)
   })
