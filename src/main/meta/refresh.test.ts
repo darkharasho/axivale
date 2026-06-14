@@ -23,8 +23,8 @@ const DAY = 86_400_000
 describe('MetaRefresher', () => {
   it('skips modes refreshed within the stale window', async () => {
     const s = store()
+    s.list().forEach((x) => s.recordDistill(x.id, 'fresh notes'))
     const m = s.list()[0]
-    s.recordDistill(m.id, 'fresh notes')
     const f = fetcher({})
     await new MetaRefresher({
       store: s, fetcher: f, cache: fakeCache(), model: vi.fn(),
