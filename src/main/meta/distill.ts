@@ -25,6 +25,13 @@ export async function distill(
     `for each, its role (e.g. heal/quickness, power DPS, condi DPS, boon support), and any ` +
     `tier/rating if present. Group by role or tier. Be specific and concise; state only what ` +
     `the excerpts support and do not invent traits or gear. No preamble.\n\n` +
+    `CRITICAL — faithfulness over prior knowledge: Guild Wars 2 has expansions and elite ` +
+    `specializations released after your training. Treat every profession, elite-spec, build, ` +
+    `and item name in the excerpts as AUTHORITATIVE and copy it VERBATIM — including which ` +
+    `profession each elite spec belongs to. Do NOT rename, "correct", reassign, or substitute ` +
+    `any name from your own knowledge; if an elite spec looks unfamiliar (e.g. Amalgam, ` +
+    `Luminary, Paragon, Ritualist), keep it exactly as written with whatever profession the ` +
+    `source pairs it with. Never pair a profession and elite spec the source did not pair.\n\n` +
     `SOURCE EXCERPTS:\n${joined}`
 
   const out = (await model(prompt)).trim()

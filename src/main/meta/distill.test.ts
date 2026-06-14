@@ -30,4 +30,12 @@ describe('distill', () => {
     expect(prompt.toLowerCase()).toContain('ignore')
     expect(prompt.toLowerCase()).toContain('elite spec')
   })
+
+  it('forbids substituting names from prior knowledge (latest-expansion faithfulness)', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('PvE', ['raw'], model)
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt.toLowerCase()).toContain('verbatim')
+    expect(prompt.toLowerCase()).toContain('do not')
+  })
 })
