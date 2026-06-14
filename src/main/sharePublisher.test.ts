@@ -93,13 +93,18 @@ describe('SharePublisher.publishDoc', () => {
     expect(res.url).toBe('https://alice.github.io/axivale-shares/#/s/xyz')
   })
 
-  it('reports live:true once the share JSON is served, polling the right URL', async () => {
+  it('reports live:true after polling the Pages site and the raw share JSON', async () => {
     const client = stubClient({ getFileContent: vi.fn(async () => 'v1') })
     const fetchFn = fetchReturning(200)
     const res = await makePub(client, { fetchFn }).publishDoc(DOC)
     expect(res.live).toBe(true)
-    const polled = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string
-    expect(polled).toContain('https://alice.github.io/axivale-shares/shares/abc.json')
+    const urls = (fetchFn as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0] as string)
+    expect(urls.some((u) => u.startsWith('https://alice.github.io/axivale-shares/?'))).toBe(true)
+    expect(
+      urls.some((u) =>
+        u.startsWith('https://raw.githubusercontent.com/alice/axivale-shares/main/shares/abc.json')
+      )
+    ).toBe(true)
   })
 
   it('waits for a pending build: 404s then 200 → live:true', async () => {

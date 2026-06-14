@@ -70,22 +70,14 @@ export class SharePublisher {
     )
   }
 
-  /**
-   * Poll the public share JSON until GitHub Pages serves it (HTTP 200) or the
-   * timeout elapses. Returns whether it went live. A freshly-created repo's
-   * first Pages build takes ~30-60s; subsequent shares deploy in a few seconds.
-   */
-  private async waitUntilLive(jsonUrl: string): Promise<boolean> {
+  /** Poll one URL until it returns 200 (cache-busted) or the deadline passes. */
+  private async pollOk(url: string, deadline: number): Promise<boolean> {
     const fetchFn = this.deps.fetchFn ?? fetch
     const delayFn = this.deps.delayFn ?? ((ms) => new Promise((r) => setTimeout(r, ms)))
-    const timeoutMs = this.deps.pollTimeoutMs ?? 90_000
     const intervalMs = this.deps.pollIntervalMs ?? 3_000
-    const deadline = Date.now() + timeoutMs
-
     for (;;) {
       try {
-        // cache-bust so a CDN 404 isn't served from cache once it goes live
-        const res = await fetchFn(`${jsonUrl}?t=${Date.now()}`, { method: 'GET', cache: 'no-store' })
+        const res = await fetchFn(`${url}?t=${Date.now()}`, { method: 'GET', cache: 'no-store' })
         if (res.ok) return true
       } catch {
         // network hiccup mid-deploy — keep polling until the deadline
@@ -93,6 +85,21 @@ export class SharePublisher {
       if (Date.now() >= deadline) return false
       await delayFn(intervalMs)
     }
+  }
+
+  /**
+   * A share is "live" when both (a) the static viewer site is being served and
+   * (b) the share JSON is fetchable. The viewer reads the JSON from
+   * raw.githubusercontent.com, which reflects a commit within seconds — so only
+   * the first-ever share waits on the one-time Pages build of the site; later
+   * shares are gated only by the near-instant raw availability.
+   */
+  private async waitUntilLive(siteUrl: string, rawJsonUrl: string): Promise<boolean> {
+    const timeoutMs = this.deps.pollTimeoutMs ?? 90_000
+    const deadline = Date.now() + timeoutMs
+    const site = await this.pollOk(siteUrl, deadline)
+    const data = await this.pollOk(rawJsonUrl, deadline)
+    return site && data
   }
 
   async publishDoc(doc: ShareDoc): Promise<{ url: string; live: boolean }> {
@@ -107,9 +114,10 @@ export class SharePublisher {
     const sha = (await client.getFileSha(this.deps.repo, path)) ?? undefined
     await client.putFile(this.deps.repo, path, base64, `share: ${doc.id}`, sha)
 
-    const base = `https://${login}.github.io/${this.deps.repo}/`
-    const live = await this.waitUntilLive(`${base}shares/${doc.id}.json`)
-    return { url: `${base}#/s/${doc.id}`, live }
+    const siteUrl = `https://${login}.github.io/${this.deps.repo}/`
+    const rawJsonUrl = `https://raw.githubusercontent.com/${login}/${this.deps.repo}/main/${path}`
+    const live = await this.waitUntilLive(siteUrl, rawJsonUrl)
+    return { url: `${siteUrl}#/s/${doc.id}`, live }
   }
 
   async deleteDoc(id: string): Promise<void> {

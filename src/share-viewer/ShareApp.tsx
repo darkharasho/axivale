@@ -22,7 +22,15 @@ function shareIdFromHash(): string | null {
 }
 
 function docUrl(id: string): string {
-  // Page lives at /<repo>/ (hash route); the doc sits next to it under shares/.
+  // Prefer raw.githubusercontent.com: a committed file is served there within
+  // seconds (CORS-enabled), whereas the Pages-built path only updates after a
+  // full site rebuild (~30s). Falls back to the relative Pages path for custom
+  // domains or any non-*.github.io host.
+  const owner = window.location.hostname.match(/^([^.]+)\.github\.io$/)?.[1]
+  const repo = window.location.pathname.split('/').filter(Boolean)[0]
+  if (owner && repo) {
+    return `https://raw.githubusercontent.com/${owner}/${repo}/main/shares/${id}.json`
+  }
   const base = window.location.href.split('#')[0]
   return new URL(`shares/${id}.json`, base).toString()
 }
