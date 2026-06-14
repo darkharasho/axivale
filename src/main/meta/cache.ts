@@ -31,8 +31,13 @@ export class MetaCache implements RawCache {
     const target = this.path(url)
     const tmp = `${target}.tmp`
     const body: Entry = { url, text, at: new Date().toISOString() }
-    writeFileSync(tmp, JSON.stringify(body), { mode: 0o600 })
-    renameSync(tmp, target)
+    // Best-effort: a disk error here must not abort the background refresh loop.
+    try {
+      writeFileSync(tmp, JSON.stringify(body), { mode: 0o600 })
+      renameSync(tmp, target)
+    } catch {
+      /* ignore — the cache is a convenience, the distill ran from in-memory raw */
+    }
   }
 
   get(url: string): string | null {
