@@ -7,6 +7,7 @@ import { buildAxiforgeTools, AXIFORGE_DESTRUCTIVE_TOOLS } from './axiforge'
 import { buildAxibridgeTools } from './axibridge'
 import { buildSkillTools } from './skills'
 import { buildMetaSearchTools } from './metaSearch'
+import { buildGw2WikiTools } from './gw2Wiki'
 
 export type { ToolDeps } from './shared'
 export { DESTRUCTIVE_DISCORD_ACTIONS }
@@ -51,6 +52,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ...buildAxiforgeTools(deps),
     ...buildAxibridgeTools(deps.axibridge),
     ...buildSkillTools(deps.loadSkill),
-    ...buildMetaSearchTools(deps.metaIndex)
+    ...buildMetaSearchTools(deps.metaIndex),
+    ...buildGw2WikiTools(deps.wikiFacts)
   ]
 }
