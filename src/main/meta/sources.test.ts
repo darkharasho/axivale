@@ -44,4 +44,20 @@ describe('source registry', () => {
     expect(configForUrl('https://hardstuck.gg/gw2/builds/')?.crawlDepth).toBe(2)
     expect(configForUrl('https://metabattle.com/wiki/Category:PvE_builds')?.crawlDepth).toBeUndefined()
   })
+
+  it('uses tight per-build content selectors (slice 1)', () => {
+    const hs = configForUrl('https://hardstuck.gg/gw2/builds/mesmer/power-virtuoso')
+    expect(hs?.selector).toBe('section.gw2-build-page')
+    const gj = configForUrl('https://guildjen.com/gw2-wvw-builds/')
+    expect(gj?.selector).toBe('.entry-content')
+    expect(gj?.linkSelector).toBeTruthy()
+    expect(gj?.crawlDepth).toBe(2)
+    const gm = configForUrl('https://gw2mists.com/en/builds?mode=zerg')
+    expect(gm?.selector).toBeTruthy()
+    expect(gm?.selector).not.toBe('body')
+    expect(gm?.linkSelector).toBeTruthy()
+    expect(gm?.crawlDepth).toBe(2)
+    // MetaBattle unchanged
+    expect(configForUrl('https://metabattle.com/wiki/Build:X')?.selector).toBe('#mw-content-text')
+  })
 })
