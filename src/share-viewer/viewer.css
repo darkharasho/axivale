@@ -134,11 +134,14 @@ body {
   margin-bottom: 3px;
 }
 
-/* Newspaper columns: fill the wide page while keeping a readable line length.
-   Collapses to a single column on narrow screens automatically. */
+/* Newspaper columns: at most two, with a readable measure. column-width caps the
+   count (980/460 → 2) and collapses to one column on narrow screens; the body is
+   centered while the masthead/headline span the full page width. */
 .sv-prose {
-  column-width: 340px;
-  column-gap: 36px;
+  column-width: 460px;
+  column-gap: 44px;
+  max-width: 980px;
+  margin-inline: auto;
 }
 /* Figures, tables, charts and cards break the column flow and span full width,
    like a newspaper cut. */
