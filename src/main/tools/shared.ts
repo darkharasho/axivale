@@ -4,6 +4,7 @@ import type { AxiforgeClient } from '../axiforgeClient'
 import type { AxibridgeService } from '../axibridgeService'
 import type { DisplayPayload } from '../providers/types'
 import type { MetaIndex } from '../meta/rag/index'
+import type { WikiFacts } from '../meta/wikiFacts'
 
 /** Structural launcher type so tests stub one method instead of the whole class. */
 export interface AxiforgeLauncherLike {
@@ -27,6 +28,8 @@ export interface ToolDeps {
   loadSkill: (name: string) => string | null
   /** Hybrid meta corpus search (lazy; resolved per-call). */
   metaIndex: () => MetaIndex
+  /** On-demand GW2 wiki skill/trait facts with PvE/WvW/PvP splits. */
+  wikiFacts: WikiFacts
 }
 
 export interface ToolResult {

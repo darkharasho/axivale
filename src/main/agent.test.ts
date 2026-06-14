@@ -141,7 +141,8 @@ describe('AgentService turn serialization', () => {
         axiforgeLauncher: { ensureRunning: async () => {} },
         axibridge: () => ({}) as never,
         loadSkill: () => null,
-        metaIndex: () => ({}) as never
+        metaIndex: () => ({}) as never,
+        wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) }
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -199,7 +200,8 @@ describe('AgentService turn serialization', () => {
         axiforgeLauncher: { ensureRunning: async () => {} },
         axibridge: () => ({}) as never,
         loadSkill: () => null,
-        metaIndex: () => ({}) as never
+        metaIndex: () => ({}) as never,
+        wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) }
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -249,7 +251,8 @@ describe('AgentService persistence', () => {
         axiforgeLauncher: { ensureRunning: async () => {} },
         axibridge: () => ({}) as never,
         loadSkill: () => null,
-        metaIndex: () => ({}) as never
+        metaIndex: () => ({}) as never,
+        wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) }
       }),
       config: () => ({
         provider: 'claude' as const,

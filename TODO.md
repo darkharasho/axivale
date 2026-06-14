@@ -1,0 +1,5 @@
+- [ ] Long guild names push the AxiVale. header off center
+- [ ] improve the attendance blob for axibridge to allow for like date filtering. its too big to fetch all at once
+- [ ] still showing raw tables like the attendance https://darkharasho.github.io/axivale-shares-dev/#/s/QB1AiUva8SqQqgqHr3fl
+- [ ] on the actions modal the X is not fully pressable
+- [ ] should understand comp basic structure: 5 per line, stab + heal/cleanse + strip + dps + flex (utility, 2nd stab, etc)

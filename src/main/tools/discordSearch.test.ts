@@ -47,7 +47,8 @@ function makeDeps(corpus: Msg[]): { deps: ToolDeps; calls: Array<Record<string, 
     axiforgeLauncher: { ensureRunning: async () => {} },
     axibridge: () => ({}) as never,
     loadSkill: () => null,
-    metaIndex: () => ({}) as never
+    metaIndex: () => ({}) as never,
+    wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) }
   } satisfies ToolDeps
   return { deps, calls }
 }
