@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import type { ToolCall, Turn } from '../state'
 import { couponLabel, humanInput, renderCouponBody } from './ToolCoupon'
+import ActionModal from './ActionModal'
 
 export interface RailsProps {
   memberCount: number | null
@@ -17,7 +18,13 @@ interface Notice {
 
 const FEED_CAP = 20
 
-function NoticeCard({ notice }: { notice: Notice }): ReactElement {
+function NoticeCard({
+  notice,
+  onExpand
+}: {
+  notice: Notice
+  onExpand: (tool: ToolCall) => void
+}): ReactElement {
   const [open, setOpen] = useState(false)
   const { tool, seq, filedAt, current } = notice
   const working = tool.resultText === undefined && !tool.isError
@@ -40,6 +47,17 @@ function NoticeCard({ notice }: { notice: Notice }): ReactElement {
       <div className="th">
         <span className="nm">{couponLabel(tool.name)}</span>
         {status}
+        <button
+          className="expand"
+          aria-label="Expand action"
+          title="Expand"
+          onClick={(e) => {
+            e.stopPropagation()
+            onExpand(tool)
+          }}
+        >
+          ⤢
+        </button>
       </div>
       <div className="tb">
         {gist !== '' && <div className="gist">{gist}</div>}
@@ -53,6 +71,7 @@ function NoticeCard({ notice }: { notice: Notice }): ReactElement {
 }
 
 export function RightRail({ turns }: RailsProps): ReactElement {
+  const [expanded, setExpanded] = useState<ToolCall | null>(null)
   let seq = 0
   const feed: Notice[] = turns
     .flatMap((turn, ti) =>
@@ -74,8 +93,11 @@ export function RightRail({ turns }: RailsProps): ReactElement {
           <b>The wire is quiet</b>no actions filed yet
         </div>
       ) : (
-        feed.map((notice) => <NoticeCard key={notice.tool.id} notice={notice} />)
+        feed.map((notice) => (
+          <NoticeCard key={notice.tool.id} notice={notice} onExpand={setExpanded} />
+        ))
       )}
+      <ActionModal tool={expanded} onClose={() => setExpanded(null)} />
     </div>
   )
 }
