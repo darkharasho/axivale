@@ -21,6 +21,7 @@ const CONTENT_WAIT_MS = 12_000 // max in-page wait for SPA content to render
 const MIN_CONTENT_CHARS = 400 // consider the page "rendered" past this much text
 const MAX_EXTRACT_CHARS = 8_000 // cap the excerpt handed to the distiller
 const MAX_CRAWL_PAGES = 6 // depth-1: build pages to follow from a landing page
+const CRAWL_BUDGET_MS = 60_000 // stop following more build pages once a source exceeds this
 const LANDING_CHARS = 3_000 // keep a slice of the index/landing overview
 const MAX_CRAWL_TOTAL_CHARS = 16_000 // cap the combined landing+build-pages excerpt
 
@@ -56,8 +57,11 @@ export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchRe
 export function pickCrawlLinks(hrefs: string[], landingUrl: string, max: number): string[] {
   const norm = (u: URL): string => (u.origin + u.pathname).replace(/\/$/, '')
   let landing = ''
+  let landingOrigin = ''
   try {
-    landing = norm(new URL(landingUrl))
+    const lu = new URL(landingUrl)
+    landing = norm(lu)
+    landingOrigin = lu.origin
   } catch {
     /* leave landing empty */
   }
@@ -70,6 +74,7 @@ export function pickCrawlLinks(hrefs: string[], landingUrl: string, max: number)
     } catch {
       continue
     }
+    if (landingOrigin && u.origin !== landingOrigin) continue
     if (u.pathname.includes(':')) continue
     const key = norm(u)
     if (seen.has(key)) continue
@@ -131,7 +136,9 @@ export class BrowserWindowFetcher implements MetaFetcher {
       const hrefs = await this.collectLinks(cfg.linkSelector)
       const links = pickCrawlLinks(hrefs, url, MAX_CRAWL_PAGES)
       const parts = [landing.slice(0, LANDING_CHARS)]
+      const crawlStart = Date.now()
       for (const link of links) {
+        if (Date.now() - crawlStart > CRAWL_BUDGET_MS) break
         try {
           parts.push(await this.loadAndExtract(link, selector))
         } catch {

@@ -60,4 +60,13 @@ describe('pickCrawlLinks', () => {
   it('skips malformed hrefs', () => {
     expect(pickCrawlLinks(['not a url', 'https://x.com/a'], 'https://x.com', 5)).toEqual(['https://x.com/a'])
   })
+
+  it('skips off-site links', () => {
+    const links = pickCrawlLinks(
+      ['https://snowcrows.com/builds/a', 'https://discord.gg/x', 'https://twitter.com/y'],
+      'https://snowcrows.com/builds',
+      5
+    )
+    expect(links).toEqual(['https://snowcrows.com/builds/a'])
+  })
 })
