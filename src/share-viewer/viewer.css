@@ -23,9 +23,59 @@ body {
 }
 
 .share-page {
+  position: relative;
   max-width: 880px;
   margin: 0 auto;
   padding: 34px 40px 80px;
+}
+
+/* Wide-monitor marginalia: flanking double-rules + vertical small-caps fill the
+   gutters beside the 880px column. Only shown when there's room (>=1180px);
+   hidden by default so narrow screens stay clean. */
+.svmarg {
+  display: none;
+}
+@media (min-width: 1180px) {
+  .share-page::before,
+  .share-page::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 40px;
+    width: 0;
+    border-left: 3px double var(--rule2, #46494f);
+  }
+  .share-page::before {
+    left: -48px;
+  }
+  .share-page::after {
+    right: -48px;
+  }
+  .svmarg {
+    display: flex;
+    position: absolute;
+    top: 0;
+    bottom: 40px;
+    width: 60px;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.42em;
+    text-transform: uppercase;
+    color: var(--faint, #6a6b6e);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .svmarg.l {
+    left: -112px;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+  .svmarg.r {
+    right: -112px;
+    writing-mode: vertical-rl;
+  }
 }
 
 /* ---- Masthead ---- */

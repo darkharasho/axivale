@@ -112,6 +112,12 @@ export default function ShareApp(): ReactElement {
 
   return (
     <div className="share-page">
+      <span className="svmarg l" aria-hidden="true">
+        Est. MMXXVI · Guild Intelligence · Late Edition
+      </span>
+      <span className="svmarg r" aria-hidden="true">
+        All the guild intel that&apos;s fit to print · AxiVale
+      </span>
       <header className="smh">
         <div className="smh-top">
           <span>The Commander&apos;s Dispatch</span>
