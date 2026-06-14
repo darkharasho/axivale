@@ -215,6 +215,30 @@ body {
   margin-top: 6px;
 }
 
+/* ---- Small screens ---- */
+/* column-width already collapses the body to one column; this just tightens the
+   gutters and keeps the masthead top row from crowding on phones. */
+@media (max-width: 600px) {
+  .share-page {
+    padding: 22px 18px 60px;
+  }
+  .smh-top {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px 12px;
+    font-size: 8px;
+  }
+  .smh-top-mid {
+    display: none;
+  }
+  .smh-motto {
+    padding: 0 6px;
+  }
+  .sv-prose > p:first-of-type::first-letter {
+    font-size: 46px;
+  }
+}
+
 /* ---- Loading / error ---- */
 .share-state {
   max-width: 820px;
