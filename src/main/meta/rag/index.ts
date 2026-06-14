@@ -78,6 +78,9 @@ export class LanceMetaIndex implements MetaIndex {
     await tbl.delete(`url = ${quote(url)}`)
     if (chunks.length === 0) return
     const vectors = await this.embedder.embed(chunks.map((c) => c.text))
+    if (vectors.length !== chunks.length) {
+      throw new Error(`embed returned ${vectors.length} vectors for ${chunks.length} chunks`)
+    }
     const indexedAt = new Date().toISOString()
     const rows = chunks.map((c, i) => ({
       id: c.id,
@@ -110,7 +113,7 @@ export class LanceMetaIndex implements MetaIndex {
       url: r.url,
       title: r.title,
       snippet: String(r.text).slice(0, 600),
-      score: r._relevance_score ?? r._distance ?? 0
+      score: r._relevance_score ?? 0
     }))
   }
 }
