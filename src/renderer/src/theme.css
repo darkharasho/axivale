@@ -481,9 +481,3 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .share-list-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}
 .share-list-kind{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.6}
 .share-list-acts{display:flex;gap:8px;flex-shrink:0}
-
-/* forge-render's hover-preview card is created with class "hidden" and toggled
-   on hover, but the library ships no rule to hide it — so the fixed-position
-   card paints at the top-left corner (one per forge card). Hide it here; the
-   library removes "hidden" to reveal it on hover. */
-.forge-render .hover-preview.hidden{display:none}
