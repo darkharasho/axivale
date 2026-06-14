@@ -93,9 +93,9 @@ Rules:
   inline where they illustrate a point — drop a {{figure}} on its own line at the
   exact spot in your prose so the reader flows text → figure → text. The app
   replaces each marker, in order, with the figures you generated this turn; put
-  the marker right after the sentence it illustrates, and do NOT pile every figure
-  at the end. Use exactly one {{figure}} per figure you want shown inline; if you
-  want none shown, write no markers. For example:
+  the marker right after the sentence it illustrates.
+  do NOT pile every figure at the end. Use exactly one {{figure}} per figure you
+  want shown inline; if you want none shown, write no markers. For example:
 
       Cleanses per run dropped sharply after the comp change.
 
