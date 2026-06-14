@@ -531,10 +531,44 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-sources{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
 .meta-src{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-b);text-decoration:none;border:1px solid var(--rule);padding:3px 8px}
 .meta-src:hover{color:var(--ink);border-color:var(--rule2)}
+.meta-summary-wrap {
+  margin: 6px 0 10px;
+}
 .meta-summary {
+  color: var(--ink);
+}
+.meta-summary-empty {
   margin: 6px 0 10px;
   color: var(--ink);
-  white-space: pre-wrap;
+  opacity: 0.6;
+}
+.meta-summary.collapsed {
+  max-height: 8.5em;
+  overflow: hidden;
+  position: relative;
+}
+.meta-summary.collapsed::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.2em;
+  background: linear-gradient(transparent, var(--paper));
+  pointer-events: none;
+}
+.meta-summary.expanded {
+  max-height: none;
+}
+.meta-more {
+  background: none;
+  border: none;
+  color: var(--accent-b);
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 0;
 }
 .meta-fresh {
   font-size: 11px;
