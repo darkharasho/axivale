@@ -36,25 +36,13 @@ body {
 .svgut {
   display: none;
 }
-@media (min-width: 1180px) {
-  .share-page::before,
-  .share-page::after {
-    content: '';
-    position: absolute;
-    top: 30px;
-    bottom: 78px;
-    width: 0;
-    border-left: 1px solid var(--rule, #3a3d44);
-  }
-  .share-page::before {
-    left: -40px;
-  }
-  .share-page::after {
-    right: -40px;
-  }
+@media (min-width: 1240px) {
+  /* Fixed to the viewport (not the page) so the rails stay a constant frame and
+     never stretch with long articles. Placed in the margin beside the centered
+     880px column (half-column 440 + 40 gap + 104 width = 584 offset). */
   .svgut {
     display: flex;
-    position: absolute;
+    position: fixed;
     top: 0;
     bottom: 0;
     width: 104px;
@@ -63,10 +51,25 @@ body {
     pointer-events: none;
   }
   .svgut.l {
-    left: -144px;
+    left: calc(50% - 584px);
   }
   .svgut.r {
-    right: -144px;
+    right: calc(50% - 584px);
+  }
+  /* column-facing rule, owned by the fixed gutter so it travels with it */
+  .svgut::after {
+    content: '';
+    position: absolute;
+    top: 34px;
+    bottom: 34px;
+    width: 0;
+    border-left: 1px solid var(--rule, #3a3d44);
+  }
+  .svgut.l::after {
+    right: 0;
+  }
+  .svgut.r::after {
+    left: 0;
   }
   /* printer's registration crosshair */
   .svgut .reg {
