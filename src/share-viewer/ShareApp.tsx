@@ -16,6 +16,29 @@ import { couponLabel } from '../renderer/src/components/ToolCoupon'
 import RichDisplay from '../renderer/src/components/rich/RichDisplay'
 import type { ShareDoc, SharedTurn } from './shareTypes'
 
+/** Roman numeral; 0 has none, so keep it literal. */
+function toRoman(n: number): string {
+  if (n <= 0) return '0'
+  const table: Array<[number, string]> = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ]
+  let out = ''
+  for (const [v, s] of table) while (n >= v) (out += s), (n -= v)
+  return out
+}
+
+/** Cheeky folio from the share's app version — mirrors the app masthead.
+ *  Duplicated from renderer/components/Masthead.tsx (viewer stays standalone). */
+function versionFolio(version: string): string {
+  const p = version.split('.')
+  const maj = parseInt(p[0] ?? '', 10) || 0
+  const min = parseInt(p[1] ?? '', 10) || 0
+  const pat = parseInt(p[2] ?? '', 10) || 0
+  return `Vol. ${toRoman(maj)} · No. ${min} · Ed. ${pat}`
+}
+
 function shareIdFromHash(): string | null {
   const m = window.location.hash.match(/^#\/s\/([0-9A-Za-z]+)/)
   return m ? m[1] : null
@@ -140,7 +163,7 @@ export default function ShareApp(): ReactElement {
       <header className="smh">
         <div className="smh-top">
           <span>The Commander&apos;s Dispatch</span>
-          <span className="smh-top-mid">Public Dispatch</span>
+          <span className="smh-top-mid">{versionFolio(doc.app.version)}</span>
           <span>Filed {filed}</span>
         </div>
         <h1 className="smh-title">
