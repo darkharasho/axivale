@@ -1,5 +1,7 @@
 // src/renderer/src/components/panels/Meta.tsx
-import { useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { RendererMetaMode, RendererMetaProgress } from '../../../../preload/index.d'
 
 function ago(iso: string | null): string {
@@ -11,6 +13,35 @@ function ago(iso: string | null): string {
   const hrs = Math.floor(ms / 3_600_000)
   if (hrs >= 1) return `updated ${hrs}h ago`
   return 'updated just now'
+}
+
+/** Distilled summary rendered as markdown, capped behind a "see more" toggle so a
+ *  long write-up doesn't dominate the panel until the reader asks for it. */
+function ModeSummary({ notes }: { notes: string }): ReactElement {
+  const [expanded, setExpanded] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (el) setOverflows(el.scrollHeight > el.clientHeight + 4)
+  }, [notes])
+
+  if (!notes) {
+    return <p className="meta-summary meta-summary-empty">No summary yet — awaiting first refresh.</p>
+  }
+  return (
+    <div className="meta-summary-wrap">
+      <div ref={ref} className={`meta-summary prose ${expanded ? 'expanded' : 'collapsed'}`}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{notes}</ReactMarkdown>
+      </div>
+      {(overflows || expanded) && (
+        <button className="meta-more" onClick={() => setExpanded((e) => !e)}>
+          {expanded ? 'See less' : 'See more'}
+        </button>
+      )}
+    </div>
+  )
 }
 
 export default function Meta(): ReactElement {
@@ -65,7 +96,7 @@ export default function Meta(): ReactElement {
                 <span className="meta-fresh">{ago(m.refreshedAt)}</span>
               )}
             </h2>
-            <p className="meta-summary">{m.notes || 'No summary yet — awaiting first refresh.'}</p>
+            <ModeSummary notes={m.notes} />
             <div className="meta-sources">
               {m.sources.map((s) => {
                 const isFetching = fetching[m.id] === s.url
