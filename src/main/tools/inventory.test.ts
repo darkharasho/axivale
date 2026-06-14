@@ -8,7 +8,8 @@ const deps: ToolDeps = {
   gw2GuildId: () => 'g1',
   axiforge: {} as never,
   axiforgeLauncher: { ensureRunning: async () => {} },
-  axibridge: () => ({}) as never
+  axibridge: () => ({}) as never,
+  loadSkill: () => null
 }
 
 describe('tools module split', () => {
@@ -64,7 +65,8 @@ describe('tools module split', () => {
       'gw2_api',
       'gw2_guild_log',
       'gw2_guild_members',
-      'gw2skills_parse'
+      'gw2skills_parse',
+      'load_skill'
     ])
   })
 

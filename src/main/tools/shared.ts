@@ -22,6 +22,8 @@ export interface ToolDeps {
   axiforgeLauncher: AxiforgeLauncherLike
   /** AxiBridge analytics service, resolved per-call so repos/PAT stay fresh from settings. */
   axibridge: () => AxibridgeService
+  /** Resolve an enabled skill's instructions by exact name, or null if missing/disabled. */
+  loadSkill: (name: string) => string | null
 }
 
 export interface ToolResult {

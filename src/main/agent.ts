@@ -1,4 +1,6 @@
 import { buildOfficerTools, type ToolDeps } from './tools'
+import { buildTurnSystemPrompt } from './skillPrompt'
+import type { Skill } from './skillStore'
 import { MCP_PREFIX, type AgentEvent, type ProviderConfig, type ProviderName } from './providers/types'
 import { evaluateToolPermission } from './providers/permission'
 import { createAdapter } from './providers'
@@ -119,6 +121,8 @@ export interface AgentDeps {
   loadSession: (conversationId: string) => SessionState
   /** Persist a conversation's session after each completed turn. */
   saveSession: (conversationId: string, provider: ProviderName, session: SessionState) => void
+  /** Enabled skills, read fresh per turn (registry + forced-recipe lookup). */
+  skills: () => Skill[]
 }
 
 interface LiveAdapter {
@@ -162,7 +166,8 @@ export class AgentService {
   async runTurn(
     conversationId: string,
     promptText: string,
-    onEvent: (e: AgentEvent) => void
+    onEvent: (e: AgentEvent) => void,
+    opts?: { forcedSkillId?: string }
   ): Promise<void> {
     if (this.running.has(conversationId)) {
       onEvent({
@@ -179,9 +184,13 @@ export class AgentService {
     const adapter = this.adapterFor(conversationId)
     try {
       const tools = buildOfficerTools(this.deps.toolDeps())
+      const skills = this.deps.skills()
+      const forced = opts?.forcedSkillId
+        ? (skills.find((s) => s.id === opts.forcedSkillId) ?? null)
+        : null
       const turn = adapter.runTurn({
         prompt: promptText,
-        systemPrompt: AXIVALE_SYSTEM_PROMPT,
+        systemPrompt: buildTurnSystemPrompt(AXIVALE_SYSTEM_PROMPT, skills, forced),
         tools,
         confirm: this.deps.confirm,
         signal: abort.signal

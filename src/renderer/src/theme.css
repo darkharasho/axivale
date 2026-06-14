@@ -482,3 +482,18 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .share-list-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}
 .share-list-kind{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.6}
 .share-list-acts{display:flex;gap:8px;flex-shrink:0}
+
+/* ---- Skills panel ---- */
+.skills-panel .sk-in{display:block;width:100%;box-sizing:border-box;margin:6px 0}
+.skills-panel .sk-area{min-height:96px;resize:vertical;line-height:1.5}
+.sk-list{list-style:none;margin:8px 0 0;padding:0}
+.sk-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--rule)}
+.sk-row.off{opacity:.5}
+.sk-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sk-name{font-family:'Playfair Display',serif;font-size:15px}
+.sk-when{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
+.sk-acts{display:flex;gap:8px;flex-shrink:0}
+/* ---- InputBar skill picker ---- */
+.skill-pick{background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 6px;cursor:pointer}
+.skill-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(200,66,58,.10);border:1px solid var(--accent);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 4px 3px 8px}
+.skill-chip button{background:none;border:none;color:var(--accent-b);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}

@@ -5,6 +5,7 @@ import { buildDiscordTools, DESTRUCTIVE_DISCORD_ACTIONS } from './discord'
 import { buildGw2Tools } from './gw2'
 import { buildAxiforgeTools, AXIFORGE_DESTRUCTIVE_TOOLS } from './axiforge'
 import { buildAxibridgeTools } from './axibridge'
+import { buildSkillTools } from './skills'
 
 export type { ToolDeps } from './shared'
 export { DESTRUCTIVE_DISCORD_ACTIONS }
@@ -47,6 +48,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ...buildDiscordTools(deps),
     ...buildGw2Tools(deps),
     ...buildAxiforgeTools(deps),
-    ...buildAxibridgeTools(deps.axibridge)
+    ...buildAxibridgeTools(deps.axibridge),
+    ...buildSkillTools(deps.loadSkill)
   ]
 }

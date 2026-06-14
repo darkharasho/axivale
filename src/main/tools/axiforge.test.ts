@@ -38,7 +38,8 @@ function makeDeps(): ToolDeps {
       })
     } as never,
     axiforgeLauncher: { ensureRunning: vi.fn().mockResolvedValue(undefined) },
-    axibridge: () => ({}) as never
+    axibridge: () => ({}) as never,
+    loadSkill: () => null
   }
 }
 
