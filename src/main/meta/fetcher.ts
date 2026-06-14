@@ -264,12 +264,15 @@ export class BrowserWindowFetcher implements MetaFetcher {
         return Array.from(labels);
       };
       const tick = () => {
-        const el = document.querySelector(sel) || document.body;
+        const el = document.querySelector(sel);
         const txt = el && el.innerText ? el.innerText : '';
-        if (txt.length >= ${MIN_CONTENT_CHARS} || Date.now() - start > ${CONTENT_WAIT_MS}) {
+        if (txt.length >= ${MIN_CONTENT_CHARS}) {
           const labels = harvest(el);
           const extra = labels.length ? '\\n\\n[components] ' + labels.join(' · ') : '';
           resolve({ title: document.title || '', text: txt + extra });
+        } else if (Date.now() - start > ${CONTENT_WAIT_MS}) {
+          // Selector never rendered enough content (list/cookie/filter page) — yield nothing.
+          resolve({ title: document.title || '', text: '' });
         } else setTimeout(tick, 500);
       };
       tick();
