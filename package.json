@@ -78,7 +78,9 @@
       "package.json"
     ],
     "asarUnpack": [
-      "**/node_modules/@anthropic-ai/claude-agent-sdk*/**"
+      "**/node_modules/@anthropic-ai/claude-agent-sdk*/**",
+      "**/node_modules/@lancedb/**",
+      "**/node_modules/@xenova/**"
     ],
     "linux": {
       "target": [
