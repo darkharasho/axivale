@@ -19,10 +19,12 @@ export interface SourceConfig {
 }
 
 export const SOURCE_CONFIGS: SourceConfig[] = [
+  // Snowcrows: build data is API-loaded (fails headless) — yields empty under the
+  // no-body-fallback rule until Slice 2 gives it a static extractor. Left as-is.
   { host: 'snowcrows.com', kind: 'browser', selector: 'main', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },
-  { host: 'hardstuck.gg', kind: 'browser', selector: 'main', linkSelector: 'main a[href*="/gw2/builds/"]', crawlDepth: 2 },
-  { host: 'guildjen.com', kind: 'browser', selector: 'main' },
-  { host: 'gw2mists.com', kind: 'browser', selector: 'body' },
+  { host: 'hardstuck.gg', kind: 'browser', selector: 'section.gw2-build-page', linkSelector: 'main a[href*="/gw2/builds/"]', crawlDepth: 2 },
+  { host: 'guildjen.com', kind: 'browser', selector: '.entry-content', linkSelector: 'a[href*="-build"]', crawlDepth: 2 },
+  { host: 'gw2mists.com', kind: 'browser', selector: '.gm-build-detail-page', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },
   { host: 'metabattle.com', kind: 'browser', selector: '#mw-content-text', linkSelector: '#mw-content-text a[href*="/wiki/"]' }
 ]
 
