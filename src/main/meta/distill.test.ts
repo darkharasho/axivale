@@ -22,4 +22,12 @@ describe('distill', () => {
   it('returns null when the model yields an empty string', async () => {
     expect(await distill('PvE', ['raw'], vi.fn().mockResolvedValue('   '))).toBeNull()
   })
+
+  it('instructs the model to ignore navigation boilerplate and name specs', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('WvW', ['raw'], model)
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt.toLowerCase()).toContain('ignore')
+    expect(prompt.toLowerCase()).toContain('elite spec')
+  })
 })
