@@ -69,8 +69,9 @@ export class SkillStore {
     return this.state.skills.find((s) => s.id === id) ?? null
   }
 
+  /** First enabled skill with this exact name (skills are looked up only to be used). */
   getByName(name: string): Skill | null {
-    return this.state.skills.find((s) => s.name === name) ?? null
+    return this.state.skills.find((s) => s.name === name && s.enabled) ?? null
   }
 
   create(seed: SkillSeed): Skill {
