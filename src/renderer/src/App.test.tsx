@@ -43,6 +43,7 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     metaAddMode: vi.fn().mockResolvedValue({} as never),
     metaUpdateMode: vi.fn().mockResolvedValue(null),
     metaRemoveMode: vi.fn().mockResolvedValue(undefined),
+    metaForceRefresh: vi.fn().mockResolvedValue(undefined),
     skillsList: vi.fn().mockResolvedValue([]),
     skillsCreate: vi.fn().mockResolvedValue({} as never),
     skillsUpdate: vi.fn().mockResolvedValue(null),

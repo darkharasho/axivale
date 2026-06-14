@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('officer', {
     patch: Partial<{ mode: string; sources: { label: string; url: string }[]; notes: string }>
   ) => ipcRenderer.invoke('meta:update-mode', id, patch),
   metaRemoveMode: (id: string) => ipcRenderer.invoke('meta:remove-mode', id),
+  metaForceRefresh: () => ipcRenderer.invoke('meta:force-refresh'),
   skillsList: () => ipcRenderer.invoke('skills:list'),
   skillsCreate: (seed: { name: string; whenToUse: string; instructions: string }) =>
     ipcRenderer.invoke('skills:create', seed),

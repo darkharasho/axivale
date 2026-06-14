@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 // src/renderer/src/components/panels/Meta.test.tsx
-import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, act } from '@testing-library/react'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { render, screen, act, fireEvent } from '@testing-library/react'
 import Meta from './Meta'
 
 function officer() {
   let progressCb: ((e: unknown) => void) | null = null
   return {
+    metaForceRefresh: vi.fn().mockResolvedValue(undefined),
     metaList: () =>
       Promise.resolve([
         {
@@ -60,5 +61,20 @@ describe('Meta panel (read-only)', () => {
       ;(o as unknown as { __fire: (e: unknown) => void }).__fire({ type: 'mode-start', modeId: '1' })
     })
     expect(screen.getByText(/refreshing/i)).toBeTruthy()
+  })
+
+  it('dev force-recrawl button triggers metaForceRefresh', async () => {
+    const force = vi.fn().mockResolvedValue(undefined)
+    ;(window as unknown as { officer: unknown }).officer = { ...officer(), metaForceRefresh: force }
+    render(<Meta />)
+    await screen.findByText('WvW')
+    const btn = screen.queryByRole('button', { name: /force re-crawl/i })
+    // import.meta.env.DEV is true under vitest, so the button should render
+    if (btn) {
+      fireEvent.click(btn)
+      expect(force).toHaveBeenCalled()
+    } else {
+      throw new Error('dev button not rendered — check import.meta.env.DEV in test env')
+    }
   })
 })

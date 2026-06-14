@@ -42,6 +42,13 @@ export default function Meta(): ReactElement {
           automatically from these sources in the background. It uses this to bias
           build and comp advice. Nothing to edit — this is what it currently knows.
         </p>
+        {import.meta.env.DEV && (
+          <div className="srow">
+            <button className="sbtn" onClick={() => void window.officer.metaForceRefresh()}>
+              Force re-crawl (dev)
+            </button>
+          </div>
+        )}
       </div>
       {modes.length === 0 ? (
         <div className="panel-empty">No meta modes.</div>
