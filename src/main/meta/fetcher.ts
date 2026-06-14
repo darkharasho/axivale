@@ -10,7 +10,14 @@
 import { BrowserWindow, session } from 'electron'
 import { configForUrl, type SourceConfig } from './sources'
 
-export type FetchResult = { ok: true; text: string } | { ok: false; error: string }
+export interface FetchedPage {
+  url: string
+  title: string
+  text: string
+}
+export type FetchResult =
+  | { ok: true; text: string; pages: FetchedPage[] }
+  | { ok: false; error: string }
 
 export interface MetaFetcher {
   fetch(url: string): Promise<FetchResult>
@@ -22,7 +29,6 @@ const MIN_CONTENT_CHARS = 400 // consider the page "rendered" past this much tex
 const MAX_EXTRACT_CHARS = 8_000 // cap the excerpt handed to the distiller
 const MAX_CRAWL_PAGES = 6 // depth-1: build pages to follow from a landing page
 const CRAWL_BUDGET_MS = 60_000 // stop following more build pages once a source exceeds this
-const LANDING_CHARS = 3_000 // keep a slice of the index/landing overview
 const MAX_CRAWL_TOTAL_CHARS = 16_000 // cap the combined landing+build-pages excerpt
 
 // Meta sites embed ad/tracker/image subresources that don't affect innerText
@@ -45,7 +51,7 @@ export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchRe
     const data = (await res.json()) as { parse?: { wikitext?: string } }
     const text = data?.parse?.wikitext
     if (!text) return { ok: false, error: 'wiki: no content' }
-    return { ok: true, text }
+    return { ok: true, text, pages: [{ url, title, text }] }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'wiki: network' }
   }
@@ -127,26 +133,27 @@ export class BrowserWindowFetcher implements MetaFetcher {
     const selector = cfg.selector ?? 'body'
     try {
       const landing = await this.loadAndExtract(url, selector)
-      if (!cfg.linkSelector) {
-        const t = landing.slice(0, MAX_EXTRACT_CHARS)
-        return t ? { ok: true, text: t } : { ok: false, error: 'empty' }
-      }
-      // depth-1 crawl: gather build-page links (while still on the landing page)
-      // and extract each, concatenating onto a slice of the landing overview.
-      const hrefs = await this.collectLinks(cfg.linkSelector)
-      const links = pickCrawlLinks(hrefs, url, MAX_CRAWL_PAGES)
-      const parts = [landing.slice(0, LANDING_CHARS)]
-      const crawlStart = Date.now()
-      for (const link of links) {
-        if (Date.now() - crawlStart > CRAWL_BUDGET_MS) break
-        try {
-          parts.push(await this.loadAndExtract(link, selector))
-        } catch {
-          /* skip a bad sub-page; keep what we have */
+      const pages: FetchedPage[] = []
+      if (landing.text) pages.push({ url, title: landing.title, text: landing.text.slice(0, MAX_EXTRACT_CHARS) })
+
+      if (cfg.linkSelector) {
+        const hrefs = await this.collectLinks(cfg.linkSelector)
+        const links = pickCrawlLinks(hrefs, url, MAX_CRAWL_PAGES)
+        const crawlStart = Date.now()
+        for (const link of links) {
+          if (Date.now() - crawlStart > CRAWL_BUDGET_MS) break
+          try {
+            const p = await this.loadAndExtract(link, selector)
+            if (p.text) pages.push({ url: link, title: p.title, text: p.text.slice(0, MAX_EXTRACT_CHARS) })
+          } catch {
+            /* skip a bad sub-page; keep what we have */
+          }
         }
       }
-      const text = parts.join('\n\n=== build page ===\n\n').trim().slice(0, MAX_CRAWL_TOTAL_CHARS)
-      return text ? { ok: true, text } : { ok: false, error: 'empty' }
+
+      if (pages.length === 0) return { ok: false, error: 'empty' }
+      const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n').slice(0, MAX_CRAWL_TOTAL_CHARS)
+      return { ok: true, text, pages }
     } catch (e) {
       try {
         if (this.win && !this.win.isDestroyed()) this.win.webContents.stop()
@@ -157,8 +164,8 @@ export class BrowserWindowFetcher implements MetaFetcher {
     }
   }
 
-  /** Load a URL, wait in-page for content to render, return trimmed innerText. Throws on load timeout. */
-  private async loadAndExtract(url: string, selector: string): Promise<string> {
+  /** Load a URL, wait in-page for content to render, return its title + trimmed innerText. Throws on load timeout. */
+  private async loadAndExtract(url: string, selector: string): Promise<{ title: string; text: string }> {
     const win = this.window()
     const load = win.loadURL(url)
     const timeout = new Promise<never>((_, rej) =>
@@ -171,13 +178,14 @@ export class BrowserWindowFetcher implements MetaFetcher {
       const tick = () => {
         const el = document.querySelector(sel) || document.body;
         const txt = el && el.innerText ? el.innerText : '';
-        if (txt.length >= ${MIN_CONTENT_CHARS} || Date.now() - start > ${CONTENT_WAIT_MS}) resolve(txt);
+        if (txt.length >= ${MIN_CONTENT_CHARS} || Date.now() - start > ${CONTENT_WAIT_MS})
+          resolve({ title: document.title || '', text: txt });
         else setTimeout(tick, 500);
       };
       tick();
     })`
-    const text = (await win.webContents.executeJavaScript(script)) as string
-    return (text ?? '').trim()
+    const out = (await win.webContents.executeJavaScript(script)) as { title: string; text: string }
+    return { title: (out?.title ?? '').trim(), text: (out?.text ?? '').trim() }
   }
 
   /** Collect candidate build-page hrefs from the currently-loaded landing page. */

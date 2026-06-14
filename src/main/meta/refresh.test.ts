@@ -41,7 +41,7 @@ describe('MetaRefresher', () => {
     const cache = fakeCache()
     const model = vi.fn().mockResolvedValue('distilled pve meta')
     await new MetaRefresher({
-      store: s, fetcher: fetcher({ [url]: { ok: true, text: 'raw pve' } }),
+      store: s, fetcher: fetcher({ [url]: { ok: true, text: 'raw pve', pages: [] } }),
       cache, model, now: () => Date.now()
     }).refreshStale()
     expect(cache.puts[url]).toBe('raw pve')
@@ -58,7 +58,7 @@ describe('MetaRefresher', () => {
     const model = vi.fn().mockResolvedValue('partial meta')
     await new MetaRefresher({
       store: s,
-      fetcher: fetcher({ [a.url]: { ok: true, text: 'good' }, [b.url]: { ok: false, error: 'timeout' } }),
+      fetcher: fetcher({ [a.url]: { ok: true, text: 'good', pages: [] }, [b.url]: { ok: false, error: 'timeout' } }),
       cache: fakeCache(), model, now: () => Date.now()
     }).refreshStale()
     const after = s.get(m.id)!
@@ -74,7 +74,7 @@ describe('MetaRefresher', () => {
     const m = s.list().find((x) => x.mode === 'PvE')!
     const url = m.sources[0].url
     await new MetaRefresher({
-      store: s, fetcher: fetcher({ [url]: { ok: true, text: 'raw' } }),
+      store: s, fetcher: fetcher({ [url]: { ok: true, text: 'raw', pages: [] } }),
       cache: fakeCache(), model: vi.fn().mockResolvedValue(''), now: () => Date.now()
     }).refreshStale()
     const after = s.get(m.id)!
@@ -108,7 +108,7 @@ describe('MetaRefresher progress', () => {
     const events: string[] = []
     await new MetaRefresher({
       store: s,
-      fetcher: fetcher(Object.fromEntries(pve.sources.map((x) => [x.url, { ok: true, text: 'r' }]))),
+      fetcher: fetcher(Object.fromEntries(pve.sources.map((x) => [x.url, { ok: true, text: 'r', pages: [] }]))),
       cache: fakeCache(),
       model: vi.fn().mockResolvedValue('notes'),
       now: () => Date.now(),
