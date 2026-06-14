@@ -175,3 +175,28 @@ export async function resolveArmoryNames(
   ])
   return { items, itemstats, skills, specs, traits }
 }
+
+export function assembleBuildDoc(title: string, parsed: ParsedArmory, names: ArmoryNames): string {
+  const lines: string[] = [`${title} — Snowcrows`]
+  const specNames = parsed.specs.map((s) => names.specs[s.id]).filter(Boolean)
+  if (specNames.length) lines.push(`Specializations: ${specNames.join(', ')}`)
+  const traitNames = [...new Set(parsed.specs.flatMap((s) => s.traitIds.map((t) => names.traits[t])).filter(Boolean))]
+  if (traitNames.length) lines.push(`Traits: ${traitNames.join(', ')}`)
+  const skillNames = [...new Set(parsed.skills.map((s) => names.skills[s]).filter(Boolean))]
+  if (skillNames.length) lines.push(`Skills: ${skillNames.join(', ')}`)
+  const gear = [
+    ...new Set(
+      parsed.items
+        .map((it) => {
+          const nm = names.items[it.id]
+          if (!nm) return null
+          const stat = it.statId != null ? names.itemstats[it.statId] : null
+          const ups = it.upgradeIds.map((u) => names.items[u]).filter(Boolean)
+          return nm + (stat ? ` (${stat})` : '') + (ups.length ? ` + ${ups.join(', ')}` : '')
+        })
+        .filter((x): x is string => Boolean(x))
+    )
+  ]
+  if (gear.length) lines.push(`Gear: ${gear.join('; ')}`)
+  return lines.join('\n')
+}

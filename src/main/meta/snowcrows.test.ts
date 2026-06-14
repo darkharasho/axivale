@@ -49,6 +49,31 @@ describe('resolveArmoryNames', () => {
   })
 })
 
+import { assembleBuildDoc } from './snowcrows'
+
+describe('assembleBuildDoc', () => {
+  it('builds a structured doc from parsed + names', () => {
+    const parsed = { items: [{ id: 1, statId: 10, upgradeIds: [2] }], skills: [5], specs: [{ id: 31, traitIds: [296] }] }
+    const names = {
+      items: { 1: 'Helm', 2: 'Sigil of Force' },
+      itemstats: { 10: "Berserker's" },
+      skills: { 5: 'Fire Attunement' },
+      specs: { 31: 'Fire' },
+      traits: { 296: 'Empowering Flame' }
+    }
+    const doc = assembleBuildDoc('Power Weaver', parsed, names)
+    expect(doc).toContain('Power Weaver — Snowcrows')
+    expect(doc).toContain('Specializations: Fire')
+    expect(doc).toContain('Traits: Empowering Flame')
+    expect(doc).toContain('Skills: Fire Attunement')
+    expect(doc).toContain("Gear: Helm (Berserker's) + Sigil of Force")
+  })
+  it('omits sections with no resolved data', () => {
+    const doc = assembleBuildDoc('X', { items: [], skills: [], specs: [] }, { items: {}, itemstats: {}, skills: {}, specs: {}, traits: {} })
+    expect(doc).toBe('X — Snowcrows')
+  })
+})
+
 const ITEM = '<div data-armory-embed="items" data-armory-ids="48081" data-armory-48081-stat="1077" data-armory-48081-upgrades="74978"></div>'
 const SPEC = '<div data-armory-embed="specializations" data-armory-ids="31" data-armory-31-traits="296,334,1510"></div>'
 const SKILLS = '<div data-armory-embed="skills" data-armory-ids="5503,40183,5503"></div>'
