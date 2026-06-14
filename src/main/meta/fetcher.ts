@@ -187,7 +187,14 @@ export class BrowserWindowFetcher implements MetaFetcher {
     }
   }
 
-  /** Load a URL, wait in-page for content to render, return its title + trimmed innerText. Throws on load timeout. */
+  /**
+   * Load a URL, wait in-page for content to render, return its title + trimmed
+   * innerText PLUS a deduped "[components]" list harvested from icon/link
+   * metadata. Many build sites render skills/traits/sigils as bare icons with no
+   * visible text — innerText misses those entirely — but the names usually live
+   * in `img[alt]`, `[title]`/`[aria-label]`, or the wiki-link href path. Harvesting
+   * those recovers component names that pure innerText drops. Throws on load timeout.
+   */
   private async loadAndExtract(url: string, selector: string): Promise<{ title: string; text: string }> {
     const win = this.window()
     const load = win.loadURL(url)
@@ -198,12 +205,29 @@ export class BrowserWindowFetcher implements MetaFetcher {
     const script = `new Promise((resolve) => {
       const sel = ${JSON.stringify(selector)};
       const start = Date.now();
+      const harvest = (root) => {
+        const labels = new Set();
+        const add = (s) => { if (s == null) return; const t = String(s).trim(); if (t.length >= 2 && t.length <= 80) labels.add(t); };
+        root.querySelectorAll('img[alt]').forEach((n) => add(n.getAttribute('alt')));
+        root.querySelectorAll('[title]').forEach((n) => add(n.getAttribute('title')));
+        root.querySelectorAll('[aria-label]').forEach((n) => add(n.getAttribute('aria-label')));
+        root.querySelectorAll('a[href]').forEach((n) => {
+          try {
+            const seg = new URL(n.href).pathname.split('/').filter(Boolean).pop() || '';
+            const name = decodeURIComponent(seg).replace(/[_-]+/g, ' ').trim();
+            if (name && !/^[0-9]+$/.test(name) && /[a-zA-Z]/.test(name)) add(name);
+          } catch (e) { /* skip a bad href */ }
+        });
+        return Array.from(labels);
+      };
       const tick = () => {
         const el = document.querySelector(sel) || document.body;
         const txt = el && el.innerText ? el.innerText : '';
-        if (txt.length >= ${MIN_CONTENT_CHARS} || Date.now() - start > ${CONTENT_WAIT_MS})
-          resolve({ title: document.title || '', text: txt });
-        else setTimeout(tick, 500);
+        if (txt.length >= ${MIN_CONTENT_CHARS} || Date.now() - start > ${CONTENT_WAIT_MS}) {
+          const labels = harvest(el);
+          const extra = labels.length ? '\\n\\n[components] ' + labels.join(' · ') : '';
+          resolve({ title: document.title || '', text: txt + extra });
+        } else setTimeout(tick, 500);
       };
       tick();
     })`
