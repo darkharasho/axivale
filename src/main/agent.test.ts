@@ -139,7 +139,8 @@ describe('AgentService turn serialization', () => {
         gw2GuildId: () => 'g1',
         axiforge: {} as never,
         axiforgeLauncher: { ensureRunning: async () => {} },
-        axibridge: () => ({}) as never
+        axibridge: () => ({}) as never,
+        loadSkill: () => null
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -150,7 +151,8 @@ describe('AgentService turn serialization', () => {
       }),
       confirm: vi.fn().mockResolvedValue(true),
       loadSession: () => ({}),
-      saveSession: vi.fn()
+      saveSession: vi.fn(),
+      skills: () => []
     }
 
     const agent = new AgentService(mockDeps)
@@ -193,7 +195,8 @@ describe('AgentService turn serialization', () => {
         gw2GuildId: () => 'g1',
         axiforge: {} as never,
         axiforgeLauncher: { ensureRunning: async () => {} },
-        axibridge: () => ({}) as never
+        axibridge: () => ({}) as never,
+        loadSkill: () => null
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -204,7 +207,8 @@ describe('AgentService turn serialization', () => {
       }),
       confirm: vi.fn().mockResolvedValue(true),
       loadSession: () => ({}),
-      saveSession: vi.fn()
+      saveSession: vi.fn(),
+      skills: () => []
     }
     const agent = new AgentService(deps)
 
@@ -239,7 +243,8 @@ describe('AgentService persistence', () => {
         gw2GuildId: () => 'g1',
         axiforge: {} as never,
         axiforgeLauncher: { ensureRunning: async () => {} },
-        axibridge: () => ({}) as never
+        axibridge: () => ({}) as never,
+        loadSkill: () => null
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -250,7 +255,8 @@ describe('AgentService persistence', () => {
       }),
       confirm: vi.fn().mockResolvedValue(true),
       loadSession: () => ({}),
-      saveSession
+      saveSession,
+      skills: () => []
     }
     const agent = new AgentService(deps)
     await agent.runTurn('c9', 'hello', () => {})
