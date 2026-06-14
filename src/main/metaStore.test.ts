@@ -109,4 +109,15 @@ describe('MetaStore provenance', () => {
     expect(after.notes).toBe('current meta is X')
     expect(after.refreshedAt).toBeTruthy()
   })
+
+  it('updateMode preserves existing source provenance on a bare patch', () => {
+    const s = new MetaStore(tmpPath())
+    const m = s.list()[0]
+    const url = m.sources[0].url
+    s.recordFetch(m.id, url, { ok: true })
+    s.updateMode(m.id, { sources: m.sources.map((x) => ({ label: x.label, url: x.url })) })
+    const after = s.get(m.id)!.sources[0]
+    expect(after.status).toBe('ok')
+    expect(after.fetchedAt).toBeTruthy()
+  })
 })

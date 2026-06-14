@@ -24,9 +24,9 @@ export interface MetaMode {
   updatedAt: string
 }
 
-export type MetaModeSeed = { mode: string; sources: Array<{ label: string; url: string }> } & Partial<
-  Pick<MetaMode, 'notes'>
->
+type SeedShape = { mode: string; sources: Array<{ label: string; url: string }>; notes?: string }
+
+export type MetaModeSeed = SeedShape
 
 interface FileShape {
   modes: MetaMode[]
@@ -34,7 +34,7 @@ interface FileShape {
 
 const DEBOUNCE_MS = 300
 
-const DEFAULT_SEED: Array<{ mode: string; sources: Array<{ label: string; url: string }> }> = [
+const DEFAULT_SEED: SeedShape[] = [
   { mode: 'PvE', sources: [{ label: 'Snowcrows', url: 'https://snowcrows.com' }] },
   {
     mode: 'WvW',
@@ -66,7 +66,7 @@ export class MetaStore {
     }
   }
 
-  private makeMode(seed: { mode: string; sources: Array<{ label: string; url: string }>; notes?: string }): MetaMode {
+  private makeMode(seed: SeedShape): MetaMode {
     return {
       id: randomUUID(),
       mode: seed.mode,
