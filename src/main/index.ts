@@ -189,6 +189,7 @@ app.whenReady().then(async () => {
     now: Date.now
   })
   let metaTimer: ReturnType<typeof setInterval> | null = null
+  let metaStartTimer: ReturnType<typeof setTimeout> | null = null
   // Dev runs publish to a separate repo so testing never touches a user's real
   // public share site. app.isPackaged is false under `npm run dev`.
   const SHARE_REPO = app.isPackaged ? 'axivale-shares' : 'axivale-shares-dev'
@@ -239,6 +240,7 @@ app.whenReady().then(async () => {
     releasingForge = true
     e.preventDefault()
     if (metaTimer) clearInterval(metaTimer)
+    if (metaStartTimer) clearTimeout(metaStartTimer)
     metaFetcher.destroy()
     void axiforgeLauncher.releaseIfSpawned().finally(() => app.quit())
   })
@@ -717,7 +719,7 @@ app.whenReady().then(async () => {
   setupUpdater(() => mainWindow)
 
   createWindow(store)
-  setTimeout(() => void metaRefresher.refreshStale(), 5_000)
+  metaStartTimer = setTimeout(() => void metaRefresher.refreshStale(), 5_000)
   metaTimer = setInterval(() => void metaRefresher.refreshStale(), 6 * 60 * 60 * 1000)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(store)
