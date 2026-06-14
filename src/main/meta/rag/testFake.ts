@@ -1,6 +1,6 @@
 // src/main/meta/rag/testFake.ts
 import type { Chunk } from './chunk'
-import type { MetaIndex, MetaSearchHit } from './index'
+import type { MetaIndex, MetaSearchHit, MetaChunkRow, MetaIndexStats } from './index'
 
 /** In-memory MetaIndex for unit tests. */
 export class FakeMetaIndex implements MetaIndex {
@@ -18,5 +18,20 @@ export class FakeMetaIndex implements MetaIndex {
   async search(query: string, opts: { mode?: string; k?: number }): Promise<MetaSearchHit[]> {
     this.queries.push({ query, mode: opts.mode, k: opts.k })
     return this.hits
+  }
+  sampleRows: MetaChunkRow[] = []
+  async stats(): Promise<MetaIndexStats> {
+    const byMode: Record<string, number> = {}
+    const bySource: Record<string, number> = {}
+    let lastIndexedAt: string | null = null
+    for (const r of this.sampleRows) {
+      byMode[r.mode] = (byMode[r.mode] ?? 0) + 1
+      bySource[r.source] = (bySource[r.source] ?? 0) + 1
+      if (r.indexedAt && (!lastIndexedAt || r.indexedAt > lastIndexedAt)) lastIndexedAt = r.indexedAt
+    }
+    return { total: this.sampleRows.length, byMode, bySource, lastIndexedAt }
+  }
+  async sample(opts: { mode?: string; limit: number }): Promise<MetaChunkRow[]> {
+    return this.sampleRows.filter((r) => !opts.mode || r.mode === opts.mode).slice(0, opts.limit)
   }
 }

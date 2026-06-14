@@ -17,6 +17,22 @@ export interface MetaSearchHit {
   score: number
 }
 
+export interface MetaChunkRow {
+  id: string
+  mode: string
+  source: string
+  url: string
+  title: string
+  snippet: string
+  indexedAt: string
+}
+export interface MetaIndexStats {
+  total: number
+  byMode: Record<string, number>
+  bySource: Record<string, number>
+  lastIndexedAt: string | null
+}
+
 export interface MetaIndex {
   /** The contentHash currently indexed for a url, or null if unindexed. */
   indexedHash(url: string): Promise<string | null>
@@ -24,6 +40,10 @@ export interface MetaIndex {
   replacePage(url: string, chunks: Chunk[]): Promise<void>
   /** Hybrid search; embeds the query internally. */
   search(queryText: string, opts: { mode?: string; k?: number }): Promise<MetaSearchHit[]>
+  /** Index stats for the dev inspector. */
+  stats(): Promise<MetaIndexStats>
+  /** Browse a sample of indexed chunks (dev inspector). */
+  sample(opts: { mode?: string; limit: number }): Promise<MetaChunkRow[]>
 }
 
 const TABLE = 'meta_chunks'
@@ -115,6 +135,47 @@ export class LanceMetaIndex implements MetaIndex {
       snippet: String(r.text).slice(0, 600),
       score: r._relevance_score ?? 0
     }))
+  }
+
+  async stats(): Promise<MetaIndexStats> {
+    try {
+      const tbl = await this.table()
+      const total = await tbl.countRows()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = (await tbl.query().select(['mode', 'source', 'indexedAt']).limit(100_000).toArray()) as any[]
+      const byMode: Record<string, number> = {}
+      const bySource: Record<string, number> = {}
+      let lastIndexedAt: string | null = null
+      for (const r of rows) {
+        byMode[r.mode] = (byMode[r.mode] ?? 0) + 1
+        bySource[r.source] = (bySource[r.source] ?? 0) + 1
+        if (r.indexedAt && (!lastIndexedAt || r.indexedAt > lastIndexedAt)) lastIndexedAt = r.indexedAt
+      }
+      return { total, byMode, bySource, lastIndexedAt }
+    } catch {
+      return { total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }
+    }
+  }
+
+  async sample(opts: { mode?: string; limit: number }): Promise<MetaChunkRow[]> {
+    try {
+      const tbl = await this.table()
+      let q = tbl.query().select(['id', 'mode', 'source', 'url', 'title', 'text', 'indexedAt'])
+      if (opts.mode) q = q.where(`mode = ${quote(opts.mode)}`)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = (await q.limit(opts.limit).toArray()) as any[]
+      return rows.map((r) => ({
+        id: r.id,
+        mode: r.mode,
+        source: r.source,
+        url: r.url,
+        title: r.title,
+        snippet: String(r.text ?? '').slice(0, 300),
+        indexedAt: r.indexedAt ?? ''
+      }))
+    } catch {
+      return []
+    }
   }
 }
 

@@ -47,6 +47,29 @@ export type RendererMetaProgress =
   | { type: 'mode-done'; modeId: string }
   | { type: 'idle' }
 
+export interface RendererMetaChunkRow {
+  id: string
+  mode: string
+  source: string
+  url: string
+  title: string
+  snippet: string
+  indexedAt: string
+}
+export interface RendererMetaIndexStats {
+  total: number
+  byMode: Record<string, number>
+  bySource: Record<string, number>
+  lastIndexedAt: string | null
+}
+export interface RendererMetaSearchHit {
+  source: string
+  url: string
+  title: string
+  snippet: string
+  score: number
+}
+
 export interface RendererSkill {
   id: string
   name: string
@@ -138,6 +161,9 @@ export interface OfficerApi {
   ): Promise<RendererMetaMode | null>
   metaRemoveMode(id: string): Promise<void>
   metaForceRefresh(): Promise<void>
+  metaIndexStats(): Promise<RendererMetaIndexStats>
+  metaIndexSample(opts: { mode?: string; limit: number }): Promise<RendererMetaChunkRow[]>
+  metaIndexSearch(query: string, mode?: string): Promise<RendererMetaSearchHit[]>
   skillsList(): Promise<RendererSkill[]>
   skillsCreate(seed: { name: string; whenToUse: string; instructions: string }): Promise<RendererSkill>
   skillsUpdate(

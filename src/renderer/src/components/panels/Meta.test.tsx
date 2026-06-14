@@ -8,6 +8,9 @@ function officer() {
   let progressCb: ((e: unknown) => void) | null = null
   return {
     metaForceRefresh: vi.fn().mockResolvedValue(undefined),
+    metaIndexStats: vi.fn().mockResolvedValue({ total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }),
+    metaIndexSample: vi.fn().mockResolvedValue([]),
+    metaIndexSearch: vi.fn().mockResolvedValue([]),
     metaList: () =>
       Promise.resolve([
         {
@@ -48,7 +51,9 @@ describe('Meta panel (read-only)', () => {
   it('has no editor — no textbox and no save button', async () => {
     render(<Meta />)
     await screen.findByText('WvW')
-    expect(screen.queryByRole('textbox')).toBeNull()
+    // The only textbox is the dev-gated index inspector's test-search box, not a notes editor.
+    const textboxes = screen.queryAllByRole('textbox')
+    expect(textboxes.every((t) => t.getAttribute('placeholder') === 'test search…')).toBe(true)
     expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
   })
 

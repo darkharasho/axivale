@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { RendererMetaMode, RendererMetaProgress } from '../../../../preload/index.d'
+import MetaIndexInspector from '../MetaIndexInspector'
 
 function ago(iso: string | null): string {
   if (!iso) return 'never'
@@ -118,6 +119,7 @@ export default function Meta(): ReactElement {
           </div>
         ))
       )}
+      {import.meta.env.DEV && <MetaIndexInspector />}
     </div>
   )
 }
