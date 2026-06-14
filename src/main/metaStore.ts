@@ -11,16 +11,22 @@ import { randomUUID } from 'crypto'
 export interface MetaSource {
   label: string
   url: string
+  status: 'ok' | 'error' | 'never'
+  fetchedAt: string | null
+  error: string | null
 }
 export interface MetaMode {
   id: string
   mode: string
   sources: MetaSource[]
   notes: string
+  refreshedAt: string | null
   updatedAt: string
 }
 
-export type MetaModeSeed = Pick<MetaMode, 'mode' | 'sources'> & Partial<Pick<MetaMode, 'notes'>>
+export type MetaModeSeed = { mode: string; sources: Array<{ label: string; url: string }> } & Partial<
+  Pick<MetaMode, 'notes'>
+>
 
 interface FileShape {
   modes: MetaMode[]
@@ -28,7 +34,7 @@ interface FileShape {
 
 const DEBOUNCE_MS = 300
 
-const DEFAULT_SEED: Array<Pick<MetaMode, 'mode' | 'sources'>> = [
+const DEFAULT_SEED: Array<{ mode: string; sources: Array<{ label: string; url: string }> }> = [
   { mode: 'PvE', sources: [{ label: 'Snowcrows', url: 'https://snowcrows.com' }] },
   {
     mode: 'WvW',
@@ -60,12 +66,19 @@ export class MetaStore {
     }
   }
 
-  private makeMode(seed: Pick<MetaMode, 'mode' | 'sources'> & { notes?: string }): MetaMode {
+  private makeMode(seed: { mode: string; sources: Array<{ label: string; url: string }>; notes?: string }): MetaMode {
     return {
       id: randomUUID(),
       mode: seed.mode,
-      sources: seed.sources,
+      sources: seed.sources.map((s) => ({
+        label: s.label,
+        url: s.url,
+        status: 'never' as const,
+        fetchedAt: null,
+        error: null
+      })),
       notes: seed.notes ?? '',
+      refreshedAt: null,
       updatedAt: new Date().toISOString()
     }
   }
@@ -74,9 +87,24 @@ export class MetaStore {
     if (!existsSync(this.path)) return { modes: [] }
     try {
       const parsed = JSON.parse(readFileSync(this.path, 'utf8')) as Partial<FileShape>
-      return { modes: Array.isArray(parsed.modes) ? parsed.modes : [] }
+      const modes = Array.isArray(parsed.modes) ? parsed.modes : []
+      return { modes: modes.map((m) => this.normalize(m)) }
     } catch {
       return { modes: [] }
+    }
+  }
+
+  private normalize(m: MetaMode): MetaMode {
+    return {
+      ...m,
+      refreshedAt: m.refreshedAt ?? null,
+      sources: (m.sources ?? []).map((s) => ({
+        label: s.label,
+        url: s.url,
+        status: s.status ?? 'never',
+        fetchedAt: s.fetchedAt ?? null,
+        error: s.error ?? null
+      }))
     }
   }
 
@@ -115,11 +143,42 @@ export class MetaStore {
     const mode = this.get(id)
     if (!mode) return null
     if (patch.mode !== undefined) mode.mode = patch.mode
-    if (patch.sources !== undefined) mode.sources = patch.sources
+    if (patch.sources !== undefined)
+      mode.sources = patch.sources.map((s) => {
+        const prev = mode.sources.find((p) => p.url === s.url)
+        return {
+          label: s.label,
+          url: s.url,
+          status: prev?.status ?? 'never',
+          fetchedAt: prev?.fetchedAt ?? null,
+          error: prev?.error ?? null
+        }
+      })
     if (patch.notes !== undefined) mode.notes = patch.notes
     mode.updatedAt = new Date().toISOString()
     this.scheduleWrite()
     return mode
+  }
+
+  recordFetch(modeId: string, url: string, result: { ok: true } | { ok: false; error: string }): void {
+    const mode = this.get(modeId)
+    if (!mode) return
+    const src = mode.sources.find((s) => s.url === url)
+    if (!src) return
+    src.status = result.ok ? 'ok' : 'error'
+    src.error = result.ok ? null : result.error
+    src.fetchedAt = new Date().toISOString()
+    mode.updatedAt = new Date().toISOString()
+    this.scheduleWrite()
+  }
+
+  recordDistill(modeId: string, notes: string): void {
+    const mode = this.get(modeId)
+    if (!mode) return
+    mode.notes = notes
+    mode.refreshedAt = new Date().toISOString()
+    mode.updatedAt = new Date().toISOString()
+    this.scheduleWrite()
   }
 
   removeMode(id: string): void {
