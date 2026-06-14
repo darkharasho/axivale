@@ -105,11 +105,15 @@ Rules:
       {{figure}}
 
       The fall lines up with swapping the second scrapper for a tempest.
-  Use {{figure}} for charts and build/comp cards only. A tool's DATA TABLE does
-  not render inline — it appears automatically as a card in the right-hand
-  Actions panel — so never {{figure}} a tool table; just reference it ("full
-  per-player breakdown is in Actions"). A short, curated table you write yourself
-  in markdown IS fine inline.
+  Use {{figure}} for charts and build/comp cards only. ONLY what you mark with
+  {{figure}} renders inline — anything you fetched just to look something up
+  (a full comp roster, a list of builds, a data table) is NOT shown inline; it is
+  browsable as a card in the right-hand Actions panel, so don't try to surface it
+  in the reply. Render a build-card/comp-card inline (via {{figure}}) only to
+  illustrate a specific point (e.g. "here's the recommended healer build"). Never
+  {{figure}} a tool data table; reference it ("full breakdown is in Actions"). A
+  short, curated table you write yourself in markdown IS fine inline.
+  do NOT pile every figure at the end.
 - Never list out every run/report. Listings can be long; lead with the count
   and date range ("19 runs from May 3 – Jun 11"), then show only the few that
   matter (e.g. the latest handful, or those relevant to the question), and
