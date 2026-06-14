@@ -7,7 +7,7 @@
 export interface SourceConfig {
   /** host suffix matched against the source URL's host (www. stripped) */
   host: string
-  kind: 'browser' | 'wiki'
+  kind: 'browser' | 'wiki' | 'static'
   /** required for kind==='browser': element whose innerText we extract */
   selector?: string
   /** required for kind==='wiki': MediaWiki api.php base; page title is parsed from the URL */
@@ -19,9 +19,9 @@ export interface SourceConfig {
 }
 
 export const SOURCE_CONFIGS: SourceConfig[] = [
-  // Snowcrows: build data is API-loaded (fails headless) — yields empty under the
-  // no-body-fallback rule until Slice 2 gives it a static extractor. Left as-is.
-  { host: 'snowcrows.com', kind: 'browser', selector: 'main', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },
+  // Snowcrows: build data is API-loaded (fails headless) — extracted statically
+  // via the GW2-Armory data attributes in the server HTML (see meta/snowcrows.ts).
+  { host: 'snowcrows.com', kind: 'static', crawlDepth: 2 },
   { host: 'hardstuck.gg', kind: 'browser', selector: 'section.gw2-build-page', linkSelector: 'main a[href*="/gw2/builds/"]', crawlDepth: 2 },
   { host: 'guildjen.com', kind: 'browser', selector: '.entry-content', linkSelector: 'a[href*="-build"]', crawlDepth: 2 },
   { host: 'gw2mists.com', kind: 'browser', selector: '.gm-build-detail-page', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },

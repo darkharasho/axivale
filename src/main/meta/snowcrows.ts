@@ -200,3 +200,63 @@ export function assembleBuildDoc(title: string, parsed: ParsedArmory, names: Arm
   if (gear.length) lines.push(`Gear: ${gear.join('; ')}`)
   return lines.join('\n')
 }
+
+const MAX_PAGES = 30
+const BUDGET_MS = 120_000
+
+export interface SnowcrowsDeps {
+  fetchImpl?: FetchLike
+  resolve?: (parsed: ParsedArmory) => Promise<ArmoryNames>
+  crawlDepth?: number
+  now?: () => number
+}
+
+export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}): Promise<FetchResult> {
+  const fetchImpl = deps.fetchImpl ?? ((u: string) => fetch(u, { headers: { 'User-Agent': SCRAPE_UA } }))
+  const resolve = deps.resolve ?? ((p: ParsedArmory) => resolveArmoryNames(p, fetchImpl))
+  const depth = deps.crawlDepth ?? 2
+  const now = deps.now ?? Date.now
+
+  const getHtml = async (u: string): Promise<string | null> => {
+    try {
+      const r = await fetchImpl(u)
+      return r.ok ? await r.text() : null
+    } catch {
+      return null
+    }
+  }
+
+  const pages: FetchedPage[] = []
+  const visited = new Set<string>()
+  const queue: Array<{ url: string; level: number }> = [{ url, level: 0 }]
+  const start = now()
+
+  while (queue.length > 0) {
+    if (pages.length >= MAX_PAGES || now() - start > BUDGET_MS) break
+    const { url: pageUrl, level } = queue.shift()!
+    const key = normKey(pageUrl)
+    if (key === null || visited.has(key)) continue
+    visited.add(key)
+
+    const html = await getHtml(pageUrl)
+    if (!html) continue
+
+    const parsed = parseArmory(html)
+    if (parsed.items.length || parsed.skills.length || parsed.specs.length) {
+      const title = (/<h1[^>]*>([^<]+)<\/h1>/i.exec(html)?.[1] ?? pageUrl).trim()
+      const names = await resolve(parsed)
+      const text = assembleBuildDoc(title, parsed, names)
+      if (text) pages.push({ url: pageUrl, title, text })
+    }
+    if (level < depth) {
+      for (const link of pickBuildLinks(extractHrefs(html, pageUrl), pageUrl, MAX_PAGES)) {
+        const k = normKey(link)
+        if (k !== null && !visited.has(k)) queue.push({ url: link, level: level + 1 })
+      }
+    }
+  }
+
+  if (pages.length === 0) return { ok: false, error: 'empty' }
+  const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n')
+  return { ok: true, text, pages }
+}

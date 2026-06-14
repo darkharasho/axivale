@@ -74,6 +74,36 @@ describe('assembleBuildDoc', () => {
   })
 })
 
+import { fetchSnowcrowsStatic } from './snowcrows'
+
+describe('fetchSnowcrowsStatic', () => {
+  const buildHtml = '<h1>Power Weaver</h1>' +
+    '<div data-armory-embed="specializations" data-armory-ids="31" data-armory-31-traits="296"></div>' +
+    '<div data-armory-embed="skills" data-armory-ids="5503"></div>'
+  const landingHtml = '<a href="/builds/raids/ele/power-weaver">Power Weaver</a>'
+
+  it('crawls landing -> build page and returns assembled pages', async () => {
+    const f = (async (url: string) => ({
+      ok: true,
+      json: async () => [],
+      text: async () => (url.includes('/power-weaver') ? buildHtml : landingHtml)
+    })) as FetchLike
+    const resolve = async () => ({ items: {}, itemstats: {}, skills: { 5503: 'Fire Attunement' }, specs: { 31: 'Fire' }, traits: { 296: 'Empowering Flame' } })
+    const r = await fetchSnowcrowsStatic('https://snowcrows.com/builds/raids', { fetchImpl: f, resolve, crawlDepth: 2 })
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.pages.map((p) => p.url)).toContain('https://snowcrows.com/builds/raids/ele/power-weaver')
+      expect(r.pages.find((p) => p.url.includes('power-weaver'))!.text).toContain('Skills: Fire Attunement')
+    }
+  })
+
+  it('returns {ok:false} when nothing parses', async () => {
+    const f = (async () => ({ ok: true, json: async () => [], text: async () => '<p>nothing</p>' })) as FetchLike
+    const r = await fetchSnowcrowsStatic('https://snowcrows.com/builds/raids', { fetchImpl: f, resolve: async () => ({ items: {}, itemstats: {}, skills: {}, specs: {}, traits: {} }) })
+    expect(r.ok).toBe(false)
+  })
+})
+
 const ITEM = '<div data-armory-embed="items" data-armory-ids="48081" data-armory-48081-stat="1077" data-armory-48081-upgrades="74978"></div>'
 const SPEC = '<div data-armory-embed="specializations" data-armory-ids="31" data-armory-31-traits="296,334,1510"></div>'
 const SKILLS = '<div data-armory-embed="skills" data-armory-ids="5503,40183,5503"></div>'
