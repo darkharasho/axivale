@@ -198,4 +198,15 @@ describe('MetaStore reconcile', () => {
     const s = new MetaStore(p)
     expect(s.list().map((m) => m.mode)).toContain('WvW')
   })
+
+  it('seeds WvW with comp-rule + mechanics sources', () => {
+    const store = new MetaStore(tmpPath())
+    const wvw = store.list().find((m) => m.mode === 'WvW')!
+    const urls = wvw.sources.map((s) => s.url)
+    expect(urls).toContain('https://wiki.guildwars2.com/wiki/Squad')
+    expect(urls).toContain('https://wiki.guildwars2.com/wiki/Boon')
+    expect(urls).toContain('https://snowcrows.com/guides/wvw/wvw-basics-understanding-roles')
+    expect(urls).toContain('https://guildorder.com/games/gw2/guides/wvw-squad-leadership')
+    expect(urls).toContain('https://snowcrows.com/news/wvw')
+  })
 })

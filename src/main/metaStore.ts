@@ -48,8 +48,16 @@ const DEFAULT_SEED: SeedShape[] = [
   {
     mode: 'WvW',
     sources: [
+      // Layer 3 — mechanics truth (wiki)
+      { label: 'GW2 Wiki (Squad)', url: 'https://wiki.guildwars2.com/wiki/Squad' },
+      { label: 'GW2 Wiki (Boon)', url: 'https://wiki.guildwars2.com/wiki/Boon' },
+      // Layer 1 — composition rules (WvW guides)
+      { label: 'Snowcrows (WvW Roles)', url: 'https://snowcrows.com/guides/wvw/wvw-basics-understanding-roles' },
+      { label: 'Guild Order (WvW Squad Leadership)', url: 'https://guildorder.com/games/gw2/guides/wvw-squad-leadership' },
+      // Layer 2 — role-tagged builds
       { label: 'MetaBattle (WvW)', url: 'https://metabattle.com/wiki/WvW' },
       { label: 'Snowcrows (WvW)', url: 'https://snowcrows.com/builds/wvw' },
+      { label: 'Snowcrows (WvW DPS tier list)', url: 'https://snowcrows.com/news/wvw' },
       { label: 'gw2mists (Zerg)', url: 'https://gw2mists.com/en/builds?mode=zerg' }
     ]
   },
