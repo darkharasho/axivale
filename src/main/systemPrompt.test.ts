@@ -50,4 +50,8 @@ describe('system prompt', () => {
     expect(p).not.toContain('a standard party covers five roles')
     expect(p).toMatch(/WvW does NOT run quickness.*like PvE/i)
   })
+
+  it('tells the model to validate WvW rosters with comp_check', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/comp_check/)
+  })
 })

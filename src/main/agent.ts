@@ -38,6 +38,9 @@ Rules:
   build fills and call out any missing or doubled-up role rather than silently
   listing builds. WvW does NOT run quickness/alacrity-per-subgroup like PvE — never
   import the PvE 10-man frame into a WvW comp.
+  After drafting a WvW roster, call comp_check with the builds grouped into
+  subgroups (each tagged with its role) and fix any errors it reports before
+  presenting the comp.
 - If a tool reports the AxiTools bot is unreachable or a GW2 API key problem,
   report it plainly and do not retry more than once.
 - Profession names matter: distinguish base professions (Necromancer) from

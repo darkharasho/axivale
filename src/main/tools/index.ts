@@ -9,6 +9,7 @@ import { buildSkillTools } from './skills'
 import { buildMetaSearchTools } from './metaSearch'
 import { buildGw2WikiTools } from './gw2Wiki'
 import { buildGw2WikiSearchTools } from './gw2WikiSearch'
+import { buildCompCheckTools } from './compCheck'
 
 export type { ToolDeps } from './shared'
 export { DESTRUCTIVE_DISCORD_ACTIONS }
@@ -54,6 +55,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ...buildAxibridgeTools(deps.axibridge),
     ...buildSkillTools(deps.loadSkill),
     ...buildMetaSearchTools(deps.metaIndex),
+    ...buildCompCheckTools(),
     ...buildGw2WikiTools(deps.wikiFacts),
     ...buildGw2WikiSearchTools(deps.wikiIndex)
   ]
