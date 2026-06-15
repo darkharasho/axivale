@@ -164,6 +164,44 @@ describe('MetaRefresher progress', () => {
   })
 })
 
+describe('MetaRefresher comp distillation', () => {
+  it('combines build notes and comp notes when mode has both rule and build sources', async () => {
+    const s = store()
+    // Make only WvW stale; mark all other modes fresh
+    s.list().forEach((x) => { if (x.mode !== 'WvW') s.recordDistill(x.id, 'fresh') })
+    const wvw = s.list().find((x) => x.mode === 'WvW')!
+    // Use one RULE url (wiki → resolveContent returns 'rules')
+    // and one BUILD url (metabattle → resolveContent returns 'builds')
+    const ruleUrl = 'https://wiki.guildwars2.com/wiki/Boon'
+    const buildUrl = 'https://metabattle.com/wiki/WvW'
+    expect(wvw.sources.map((s) => s.url)).toContain(ruleUrl)
+    expect(wvw.sources.map((s) => s.url)).toContain(buildUrl)
+    const model = async (prompt: string): Promise<string> => {
+      if (prompt.includes('Squad Composition')) return '## Squad Composition\n- rule line'
+      return '| Build | Role |\n|---|---|\n| Firebrand | Primary Support |'
+    }
+    await new MetaRefresher({
+      store: s,
+      fetcher: fetcher(
+        Object.fromEntries(
+          wvw.sources.map((src) => [
+            src.url,
+            src.url === ruleUrl || src.url === buildUrl
+              ? { ok: true, text: `raw for ${src.url}`, pages: [] }
+              : { ok: false, error: 'unconfigured' }
+          ])
+        )
+      ),
+      cache: fakeCache(),
+      model,
+      now: () => Date.now()
+    }).refreshStale()
+    const after = s.get(wvw.id)!
+    expect(after.notes).toContain('Squad Composition')
+    expect(after.notes).toContain('| Build | Role |')
+  })
+})
+
 describe('MetaRefresher ingestion', () => {
   it('indexes each fetched page via replacePage', async () => {
     const s = store()
