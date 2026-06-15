@@ -10,7 +10,7 @@ import { Fragment, useEffect, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { rehypeEmojiIcons } from '../renderer/src/components/rehypeEmojiIcons'
-import { renderEmojiSpan } from '../renderer/src/components/emojiIcons'
+import { renderEmojiSpan, renderExtLink } from '../renderer/src/components/emojiIcons'
 import { splitHeadline, stripMarkdown } from '../renderer/src/components/headline'
 import { couponLabel } from '../renderer/src/components/ToolCoupon'
 import RichDisplay from '../renderer/src/components/rich/RichDisplay'
@@ -89,7 +89,7 @@ function ArticleView({ turn, kicker }: { turn: SharedTurn; kicker: string }): Re
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeEmojiIcons]}
-              components={{ span: renderEmojiSpan }}
+              components={{ span: renderEmojiSpan, a: renderExtLink }}
             >
               {seg}
             </ReactMarkdown>
