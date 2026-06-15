@@ -28,10 +28,12 @@ export interface MetaFetcher {
 const FETCH_TIMEOUT_MS = 20_000
 const CONTENT_WAIT_MS = 12_000 // max in-page wait for SPA content to render
 const MIN_CONTENT_CHARS = 400 // consider the page "rendered" past this much text
-const MAX_EXTRACT_CHARS = 8_000 // cap the excerpt handed to the distiller
+// Per-page cap. Build pages put gear/runes/rotation well below the fold, so 8k
+// was truncating the gear section before runes; 20k captures a full build page.
+const MAX_EXTRACT_CHARS = 20_000 // cap per page (also the chunked, searchable text)
 const MAX_CRAWL_PAGES = 30 // total pages to visit per source across all crawl levels
 const CRAWL_BUDGET_MS = 120_000 // per-source wall-clock cap on the whole crawl
-const MAX_CRAWL_TOTAL_CHARS = 16_000 // cap the combined landing+build-pages excerpt
+const MAX_CRAWL_TOTAL_CHARS = 48_000 // cap the combined excerpt handed to the distiller
 
 // Meta sites embed ad/tracker/image subresources that don't affect innerText
 // and spam the console (ERR_CONNECTION_REFUSED behind ad-blockers). Run the

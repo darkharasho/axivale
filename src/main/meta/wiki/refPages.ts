@@ -10,9 +10,24 @@ export interface WikiRefPage {
   title: string
 }
 
-const PROFESSIONS = [
+export const PROFESSIONS = [
   'elementalist', 'warrior', 'guardian', 'revenant', 'engineer',
   'ranger', 'thief', 'mesmer', 'necromancer'
+]
+
+// Individual elite-specialization pages (HoT / PoF / EoD, 3 per profession). The
+// base profession pages + the "Elite specialization" concept page don't describe a
+// given spec's mechanics, so these add the spec-level grounding builds rely on.
+const ELITE_SPECS = [
+  'Tempest', 'Weaver', 'Catalyst', // elementalist
+  'Berserker', 'Spellbreaker', 'Bladesworn', // warrior
+  'Dragonhunter', 'Firebrand', 'Willbender', // guardian
+  'Herald', 'Renegade', 'Vindicator', // revenant
+  'Scrapper', 'Holosmith', 'Mechanist', // engineer
+  'Druid', 'Soulbeast', 'Untamed', // ranger
+  'Daredevil', 'Deadeye', 'Specter', // thief
+  'Chronomancer', 'Mirage', 'Virtuoso', // mesmer
+  'Reaper', 'Scourge', 'Harbinger' // necromancer
 ]
 
 export const WIKI_REF_PAGES: WikiRefPage[] = [
@@ -38,6 +53,7 @@ export const WIKI_REF_PAGES: WikiRefPage[] = [
 
   { category: 'specializations', title: 'Specialization' },
   { category: 'specializations', title: 'Elite specialization' },
+  ...ELITE_SPECS.map((s) => ({ category: 'elite-specs', title: s })),
 
   { category: 'stats', title: 'Attribute' },
   { category: 'stats', title: 'Power' },
@@ -62,19 +78,34 @@ export const WIKI_REF_PAGES: WikiRefPage[] = [
   { category: 'boons-conditions', title: 'Boon' },
   { category: 'boons-conditions', title: 'Condition' },
   { category: 'boons-conditions', title: 'Effect' },
-  { category: 'boons-conditions', title: 'Might' },
-  { category: 'boons-conditions', title: 'Fury' },
-  { category: 'boons-conditions', title: 'Quickness' },
+  // All 12 boons
+  { category: 'boons-conditions', title: 'Aegis' },
   { category: 'boons-conditions', title: 'Alacrity' },
-  { category: 'boons-conditions', title: 'Stability' },
+  { category: 'boons-conditions', title: 'Fury' },
+  { category: 'boons-conditions', title: 'Might' },
   { category: 'boons-conditions', title: 'Protection' },
+  { category: 'boons-conditions', title: 'Quickness' },
+  { category: 'boons-conditions', title: 'Regeneration' },
+  { category: 'boons-conditions', title: 'Resistance' },
   { category: 'boons-conditions', title: 'Resolution' },
-  { category: 'boons-conditions', title: 'Vulnerability' },
+  { category: 'boons-conditions', title: 'Stability' },
+  { category: 'boons-conditions', title: 'Swiftness' },
+  { category: 'boons-conditions', title: 'Vigor' },
+  // All conditions
   { category: 'boons-conditions', title: 'Bleeding' },
+  { category: 'boons-conditions', title: 'Blinded' },
   { category: 'boons-conditions', title: 'Burning' },
-  { category: 'boons-conditions', title: 'Poison' },
-  { category: 'boons-conditions', title: 'Torment' },
+  { category: 'boons-conditions', title: 'Chilled' },
   { category: 'boons-conditions', title: 'Confusion' },
+  { category: 'boons-conditions', title: 'Crippled' },
+  { category: 'boons-conditions', title: 'Fear' },
+  { category: 'boons-conditions', title: 'Immobile' },
+  { category: 'boons-conditions', title: 'Poison' },
+  { category: 'boons-conditions', title: 'Slow' },
+  { category: 'boons-conditions', title: 'Taunt' },
+  { category: 'boons-conditions', title: 'Torment' },
+  { category: 'boons-conditions', title: 'Vulnerability' },
+  { category: 'boons-conditions', title: 'Weakness' },
 
   { category: 'mechanics', title: 'Combo' },
   { category: 'mechanics', title: 'Defiance bar' },

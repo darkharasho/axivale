@@ -20,4 +20,10 @@ describe('WIKI_REF_PAGES', () => {
     expect(WIKI_REF_PAGES.filter((p) => p.category === 'skills')).toHaveLength(9)
     expect(WIKI_REF_PAGES.filter((p) => p.category === 'traits')).toHaveLength(9)
   })
+  it('includes the 27 individual elite-specialization pages', () => {
+    const specs = WIKI_REF_PAGES.filter((p) => p.category === 'elite-specs')
+    expect(specs).toHaveLength(27) // 3 per profession × 9
+    expect(specs.map((p) => p.title)).toContain('Firebrand')
+    expect(specs.map((p) => p.title)).toContain('Harbinger')
+  })
 })

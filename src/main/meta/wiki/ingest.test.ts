@@ -78,6 +78,27 @@ describe('WikiRefIngester', () => {
     expect(events.filter((e) => e.kind === 'advance')).toHaveLength(2)
   })
 
+  it('crawls category members, compresses them, and respects the budget + skip', async () => {
+    const idx = new FakeMetaIndex()
+    const skillText =
+      '{{Skill infobox\n| description = Hurl a fireball.\n| recharge = 5\n| profession = elementalist\n| slot = weapon\n}}\n== Notes ==\n* hits hard'
+    const w = wiki({ Fireball: skillText, 'Lava Font': skillText, 'Meteor Shower': skillText })
+    const categoryMembers = vi.fn(async (cat: string) =>
+      cat.includes('skills') ? ['List of elementalist skills', 'Fireball', 'Lava Font', 'Meteor Shower'] : []
+    )
+    await new WikiRefIngester({
+      wiki: w,
+      index: idx,
+      pages: [], // no registry pages — isolate the crawl
+      categoryMembers,
+      crawlTargets: [{ category: 'Elementalist skills', label: 'skills' }],
+      crawlBudget: 2 // only 2 NEW pages this run
+    }).ingest()
+    // "List of …" excluded; budget caps to 2 of the 3 real skills
+    expect(idx.replaced).toHaveLength(2)
+    expect(idx.replaced.some((u) => u.includes('Fireball'))).toBe(true)
+  })
+
   it('advances for every page even when the whole batch fetch throws', async () => {
     const idx = new FakeMetaIndex()
     const failing: WikiClientLike = { getWikitextBatch: async () => { throw new Error('network') } }
