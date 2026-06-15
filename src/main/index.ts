@@ -192,12 +192,16 @@ app.whenReady().then(async () => {
     const win = mainWindow
     if (win && !win.isDestroyed()) win.webContents.send('learn:progress', e)
   }
+  // Aborted on quit so the (full-coverage) wiki crawl stops cleanly mid-run and
+  // resumes from where it left off on the next launch (already-indexed pages skip).
+  const wikiAbort = new AbortController()
   const wikiIngester = new WikiRefIngester({
     wiki: new WikiClient(),
     index: wikiIndex,
     emit: sendLearnProgress,
     // Per-page crawl of skill/trait/upgrade categories, compressed (rule-based).
-    categoryMembers: (category) => fetchCategoryMembers(category, (url) => fetch(url))
+    categoryMembers: (category) => fetchCategoryMembers(category, (url) => fetch(url)),
+    signal: wikiAbort.signal
   })
   let wikiTimer: ReturnType<typeof setInterval> | null = null
   const metaFetcher = new BrowserWindowFetcher()
@@ -281,6 +285,7 @@ app.whenReady().then(async () => {
     if (metaTimer) clearInterval(metaTimer)
     if (wikiTimer) clearInterval(wikiTimer)
     if (metaStartTimer) clearTimeout(metaStartTimer)
+    wikiAbort.abort() // stop the wiki crawl mid-run; it resumes next launch
     metaFetcher.destroy()
     void axiforgeLauncher.releaseIfSpawned().finally(() => app.quit())
   })

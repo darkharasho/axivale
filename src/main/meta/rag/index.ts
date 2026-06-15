@@ -36,6 +36,8 @@ export interface MetaIndexStats {
 export interface MetaIndex {
   /** The contentHash currently indexed for a url, or null if unindexed. */
   indexedHash(url: string): Promise<string | null>
+  /** All urls with at least one indexed chunk — one query for cheap resume/skip. */
+  indexedUrls?(): Promise<Set<string>>
   /** Embed the chunk texts, delete existing rows for the url, then insert. */
   replacePage(url: string, chunks: Chunk[]): Promise<void>
   /** Hybrid search; embeds the query internally. */
@@ -92,6 +94,17 @@ export class LanceMetaIndex implements MetaIndex {
     const tbl = await this.getTable()
     const rows = await tbl.query().where(`url = ${quote(url)}`).limit(1).toArray()
     return rows[0]?.contentHash ?? null
+  }
+
+  async indexedUrls(): Promise<Set<string>> {
+    try {
+      const tbl = await this.getTable()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rows = (await tbl.query().select(['url']).limit(1_000_000).toArray()) as any[]
+      return new Set(rows.map((r) => r.url as string))
+    } catch {
+      return new Set()
+    }
   }
 
   async replacePage(url: string, chunks: Chunk[]): Promise<void> {

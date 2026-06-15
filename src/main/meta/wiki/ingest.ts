@@ -25,10 +25,12 @@ export interface WikiRefIngesterDeps {
   emit?: (e: LearnProgress) => void
   /** Enumerate a wiki category's page titles. When set, the per-page crawl runs. */
   categoryMembers?: (category: string) => Promise<string[]>
-  /** Max NEW per-page crawl pages to ingest per run (incremental fill). */
+  /** Optional cap on NEW per-page crawl pages per run. Unset = full coverage. */
   crawlBudget?: number
   /** Wiki categories to crawl page-by-page; defaults to skills/traits + upgrades. */
   crawlTargets?: CrawlTarget[]
+  /** Abort the ingest cleanly mid-run (e.g. app quitting); resumes next launch. */
+  signal?: AbortSignal
 }
 
 /** A wiki category to enumerate, tagged with the corpus category to store under. */
@@ -36,8 +38,6 @@ export interface CrawlTarget {
   category: string // e.g. "Elementalist skills" or "Runes" (no "Category:" prefix)
   label: string // corpus category, e.g. 'skills' | 'traits' | 'upgrades'
 }
-
-const DEFAULT_CRAWL_BUDGET = 1000
 
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -81,6 +81,7 @@ export class WikiRefIngester {
     emit({ phase: 'wiki', kind: 'start', total: work.length, label: 'Reading the GW2 wiki…' })
     try {
       for (let i = 0; i < work.length; i += 50) {
+        if (this.deps.signal?.aborted) break // graceful stop; resumes next launch
         const batch = work.slice(i, i + 50)
         let texts: Map<string, string | null>
         try {
@@ -123,6 +124,7 @@ export class WikiRefIngester {
     const candidates: WorkItem[] = []
     const seen = new Set<string>()
     for (const target of targets) {
+      if (this.deps.signal?.aborted) break
       let titles: string[]
       try {
         titles = await members(`Category:${target.category}`)
@@ -137,12 +139,18 @@ export class WikiRefIngester {
         candidates.push({ title: t, category: target.label, url, compress: true })
       }
     }
-    const budget = this.deps.crawlBudget ?? DEFAULT_CRAWL_BUDGET
+    // Skip already-indexed pages (one query, not one per page) so each run only
+    // fetches what's left — that's the resume. No budget = full coverage; a
+    // graceful stop on quit just leaves the rest for next launch.
+    const indexed = this.deps.index.indexedUrls
+      ? await this.deps.index.indexedUrls()
+      : null
+    const budget = this.deps.crawlBudget ?? Infinity
     const fresh: WorkItem[] = []
     for (const c of candidates) {
       if (fresh.length >= budget) break
-      // Already indexed (any hash) → skip refetch so the budget fills NEW pages.
-      if ((await this.deps.index.indexedHash(c.url)) != null) continue
+      const already = indexed ? indexed.has(c.url) : (await this.deps.index.indexedHash(c.url)) != null
+      if (already) continue
       fresh.push(c)
     }
     return fresh
