@@ -56,16 +56,17 @@ export class LanceMetaIndex implements MetaIndex {
 
   constructor(
     private readonly dir: string,
-    private readonly embedder: Embedder
+    private readonly embedder: Embedder,
+    private readonly table: string = TABLE
   ) {}
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async table(): Promise<any> {
+  private async getTable(): Promise<any> {
     if (this.tbl) return this.tbl
     this.db = await lancedb.connect(this.dir)
     const names = await this.db.tableNames()
-    if (names.includes(TABLE)) {
-      this.tbl = await this.db.openTable(TABLE)
+    if (names.includes(this.table)) {
+      this.tbl = await this.db.openTable(this.table)
     } else {
       // Create with one seed row's shape (LanceDB infers schema from data); a
       // zero-vector placeholder row is immediately deleted to leave it empty.
@@ -80,7 +81,7 @@ export class LanceMetaIndex implements MetaIndex {
         indexedAt: '',
         vector: new Array(EMBED_DIM).fill(0)
       }
-      this.tbl = await this.db.createTable(TABLE, [seed])
+      this.tbl = await this.db.createTable(this.table, [seed])
       await this.tbl.createIndex('text', { config: lancedb.Index.fts() })
       await this.tbl.delete("url = '__seed__'")
     }
@@ -88,13 +89,13 @@ export class LanceMetaIndex implements MetaIndex {
   }
 
   async indexedHash(url: string): Promise<string | null> {
-    const tbl = await this.table()
+    const tbl = await this.getTable()
     const rows = await tbl.query().where(`url = ${quote(url)}`).limit(1).toArray()
     return rows[0]?.contentHash ?? null
   }
 
   async replacePage(url: string, chunks: Chunk[]): Promise<void> {
-    const tbl = await this.table()
+    const tbl = await this.getTable()
     await tbl.delete(`url = ${quote(url)}`)
     if (chunks.length === 0) return
     const vectors = await this.embedder.embed(chunks.map((c) => c.text))
@@ -117,7 +118,7 @@ export class LanceMetaIndex implements MetaIndex {
   }
 
   async search(queryText: string, opts: { mode?: string; k?: number }): Promise<MetaSearchHit[]> {
-    const tbl = await this.table()
+    const tbl = await this.getTable()
     const k = opts.k ?? 6
     const [vector] = await this.embedder.embed([queryText])
     let q = tbl
@@ -139,7 +140,7 @@ export class LanceMetaIndex implements MetaIndex {
 
   async stats(): Promise<MetaIndexStats> {
     try {
-      const tbl = await this.table()
+      const tbl = await this.getTable()
       const total = await tbl.countRows()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const rows = (await tbl.query().select(['mode', 'source', 'indexedAt']).limit(100_000).toArray()) as any[]
@@ -159,7 +160,7 @@ export class LanceMetaIndex implements MetaIndex {
 
   async sample(opts: { mode?: string; limit: number }): Promise<MetaChunkRow[]> {
     try {
-      const tbl = await this.table()
+      const tbl = await this.getTable()
       let q = tbl.query().select(['id', 'mode', 'source', 'url', 'title', 'text', 'indexedAt'])
       if (opts.mode) q = q.where(`mode = ${quote(opts.mode)}`)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
