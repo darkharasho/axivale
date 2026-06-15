@@ -39,7 +39,7 @@ describe('compressWikiPage', () => {
     expect(out).toContain('Call down a meteor shower onto the target area.')
     expect(out).toContain('recharge 30s')
     expect(out).toContain('cast 3.75s')
-    expect(out).toContain('Has PvE/WvW/PvP balance splits.')
+    expect(out).toContain('Facts: Damage ×1.6') // parsed skill facts
     expect(out).toContain('24 meteors') // a slice of the notes body
   })
 
@@ -51,6 +51,31 @@ describe('compressWikiPage', () => {
     expect(out).toContain('+35 Ferocity')
     expect(out).toContain('damage while above 90% Health')
     expect(out).not.toMatch(/\{\{|\}\}/)
+  })
+
+  it('renders per-mode WvW/PvP splits for recharge and damage facts', () => {
+    const skill = [
+      '{{Skill infobox',
+      '| description = Test skill.',
+      '| recharge = 25',
+      '| recharge pvp = 40',
+      '| profession = guardian',
+      '| slot = utility',
+      '| split = pve, wvw, pvp',
+      '| facts =',
+      '{{skill fact|damage|coefficient=1.6|game mode = pve}}',
+      '{{skill fact|damage|coefficient=0.88|game mode = wvw}}',
+      '{{skill fact|damage|coefficient=1.1|game mode = pvp}}',
+      '{{skill fact|number of targets|5}}',
+      '}}',
+      '== Notes ==',
+      '* A useful note long enough to clear the body length gate.'
+    ].join('\n')
+    const out = compressWikiPage(skill, 'Test Skill')
+    expect(out).toContain('recharge 25s (PvP 40s)')
+    expect(out).toContain('Damage ×1.6 (WvW ×0.88, PvP ×1.1)')
+    // shared (non-split) facts show no split suffix
+    expect(out).toMatch(/Number Of Targets 5(?! \()/i)
   })
 
   it('captures a sigil effect from the variables param (links stripped)', () => {
