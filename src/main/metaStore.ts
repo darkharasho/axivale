@@ -39,8 +39,7 @@ const DEFAULT_SEED: SeedShape[] = [
     mode: 'PvE',
     sources: [
       { label: 'Snowcrows (Raids)', url: 'https://snowcrows.com/builds/raids' },
-      { label: 'Snowcrows (Fractals)', url: 'https://snowcrows.com/builds/raids/fractals' },
-      { label: 'Snowcrows (Strikes)', url: 'https://snowcrows.com/builds/raids/strikes' },
+      { label: 'Snowcrows (Open World)', url: 'https://snowcrows.com/builds/open-world' },
       { label: 'MetaBattle (Raids)', url: 'https://metabattle.com/wiki/Raid_Builds' }
     ]
   },
