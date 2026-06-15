@@ -5,21 +5,36 @@
 
 ## Goal
 
-Give the AI grounded GW2 *game-mechanics knowledge* by ingesting a curated set of
-official-wiki **concept/reference pages** (classes, stats, armor, weapons, upgrades,
-boons/conditions, combos, core mechanics) into a searchable corpus, exposed via a
-`gw2_wiki_search` tool. Prompt guidance routes the AI: concepts → `gw2_wiki_search`,
-specific skill/trait numbers + WvW splits → `gw2_wiki_facts` (live), builds →
-`meta_search`.
+Give the AI grounded GW2 *game knowledge* by ingesting a curated set of official-wiki
+pages — both **concept/reference pages** (stats, armor, weapons, upgrades,
+boons/conditions, combos, core mechanics, professions) **and the wiki's aggregate
+"List of …" pages** (every skill and every trait, grouped by profession) — into a
+searchable corpus, exposed via a `gw2_wiki_search` tool. Prompt guidance routes the
+AI: concepts/skills/traits coverage → `gw2_wiki_search`, a *specific* skill/trait's
+exact numbers + WvW splits → `gw2_wiki_facts` (live), builds → `meta_search`.
+
+## Recall rationale (why list pages, not every entity page)
+
+GW2 has ~5,500 skill and ~1,500 trait pages, nested deep in subcategories. Embedding
+each as its own micro-chunk would *hurt* recall (thousands of thin, near-duplicate
+vectors with little per-chunk context) and balloon the ingest. Instead we ingest the
+wiki's **`List of <profession> skills` / `List of <profession> traits`** pages —
+single rich docs (e.g. Elementalist skills ≈ 21k chars) that group a profession's
+skills/traits together with descriptions. That gives strictly better semantic
+neighborhoods for queries like "which elementalist skills grant Fury," covers every
+skill/trait, and keeps the corpus to ~70–90 pages → ~250–350 chunks. A *specific*
+skill's exact numbers still come from `gw2_wiki_facts`.
 
 ## Scope
 
-- **In:** a hand-maintained registry of ~100–150 concept page titles; a background
-  ingester (fetch wikitext → clean → chunk → embed → store) into a dedicated LanceDB
-  table; a `gw2_wiki_search` tool; prompt routing.
-- **Out:** full category membership (every skill/trait/item page) — those stay
-  on-demand via `gw2_wiki_facts` + the GW2 API. No new wiki dev-inspector. No
-  recentchanges incremental sync (overkill for ~100 pages; content-hash gate suffices).
+- **In:** a hand-maintained registry of ~70–90 page titles — concept pages **+** the
+  per-profession `List of … skills`/`List of … traits` pages **+** the `Rune`/`Sigil`/
+  `Relic` list pages; a background ingester (fetch wikitext → clean → chunk → embed →
+  store) into a dedicated LanceDB table; a `gw2_wiki_search` tool; prompt routing.
+- **Out:** recursive category enumeration / every individual skill/trait/item page
+  (the list pages cover them; specifics stay on-demand via `gw2_wiki_facts` + the GW2
+  API). No new wiki dev-inspector. No recentchanges incremental sync (a content-hash
+  gate over ~80 pages suffices; the corpus is small).
 
 ## Architecture
 
@@ -29,12 +44,26 @@ genuinely new pieces are the page registry, the ingester, and the search tool.
 ### Page registry — `src/main/meta/wiki/refPages.ts`
 ```ts
 export interface WikiRefPage { category: string; title: string }
-export const WIKI_REF_PAGES: WikiRefPage[]   // ~100–150 entries
+export const WIKI_REF_PAGES: WikiRefPage[]   // ~70–90 entries
 ```
-Categories (`category` values): `classes`, `specializations`, `stats`, `armor`,
-`weapons`, `upgrades`, `boons-conditions`, `mechanics`. `title` is the exact wiki page
-title (e.g. `Concentration`, `Armor`, `Combo`, `Might`, `Greatsword`). Page URL is
-derived as `https://wiki.guildwars2.com/wiki/<title with spaces→underscores>`.
+`title` is the exact wiki page title; page URL is derived as
+`https://wiki.guildwars2.com/wiki/<title with spaces→underscores>`. Entries by
+`category`:
+- `skills` — the 9 aggregate `List of <profession> skills` pages (elementalist,
+  warrior, guardian, revenant, engineer, ranger, thief, mesmer, necromancer).
+- `traits` — the 9 `List of <profession> traits` pages.
+- `upgrades` — `Rune`, `Sigil`, `Relic` (concept pages that inline the full lists),
+  plus `Infusion`, `Upgrade component`.
+- `classes` — `Profession` + the 9 profession pages.
+- `specializations` — `Specialization`, `Elite specialization`.
+- `stats` — `Attribute` + each attribute page + the stat-prefix page(s).
+- `armor` — `Armor`, the weight-class pages, `Insignia`.
+- `weapons` — `Weapon` + the weapon-type pages.
+- `boons-conditions` — `Boon`, `Condition`, `Effect` + the key boons/conditions.
+- `mechanics` — `Combo`, breakbar/`Defiance bar`, `Downed state`, `Game mechanics`.
+
+Exact titles are confirmed at implementation time via the wiki API (a missing title is
+skipped, not fatal); e.g. the relic page name is verified (`Relic` vs `Relic (equipment)`).
 
 ### Index reuse — `src/main/meta/rag/index.ts`
 Generalize `LanceMetaIndex` with a **table-name constructor param** (default
