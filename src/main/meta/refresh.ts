@@ -64,12 +64,16 @@ export class MetaRefresher {
         for (const src of mode.sources) {
           if (!configForUrl(src.url)) continue
           emit({ type: 'source-start', modeId: mode.id, url: src.url })
+          console.log(`[meta] fetch start (${mode.id}):`, src.url)
           const r = await fetcher.fetch(src.url)
           store.recordFetch(mode.id, src.url, r.ok ? { ok: true } : { ok: false, error: r.error })
           if (r.ok) {
             cache.put(src.url, r.text)
             raws.push(r.text)
+            console.log(`[meta] fetch ok (${mode.id}): ${src.url} — ${r.pages.length} page(s)`)
             await this.ingest(mode.mode, src.url, r.pages)
+          } else {
+            console.warn(`[meta] fetch FAILED (${mode.id}): ${src.url} — ${r.error}`)
           }
           emit({ type: 'source-done', modeId: mode.id, url: src.url })
         }

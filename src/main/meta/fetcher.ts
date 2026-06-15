@@ -176,6 +176,8 @@ export class BrowserWindowFetcher implements MetaFetcher {
       const visited = new Set<string>()
       const queue: Array<{ url: string; level: number }> = [{ url, level: 0 }]
       const crawlStart = Date.now()
+      let challenged = 0
+      let loadErrors = 0
 
       while (queue.length > 0) {
         if (pages.length >= MAX_CRAWL_PAGES || Date.now() - crawlStart > CRAWL_BUDGET_MS) break
@@ -188,9 +190,13 @@ export class BrowserWindowFetcher implements MetaFetcher {
         try {
           extracted = await this.loadChecked(pageUrl, selector)
         } catch {
+          loadErrors++
           continue // skip a bad page; keep walking
         }
-        if (extracted === null) continue // challenged — skip, keep walking
+        if (extracted === null) {
+          challenged++
+          continue // challenged — skip, keep walking
+        }
         if (extracted.text) {
           pages.push({ url: pageUrl, title: extracted.title, text: extracted.text.slice(0, MAX_EXTRACT_CHARS) })
         }
@@ -207,7 +213,16 @@ export class BrowserWindowFetcher implements MetaFetcher {
         await sleep(CRAWL_PAGE_DELAY_MS)
       }
 
-      if (pages.length === 0) return { ok: false, error: 'empty' }
+      if (pages.length === 0) {
+        // Be specific so the refresh log says WHY a source yielded nothing.
+        const reason =
+          challenged > 0
+            ? `blocked by challenge on ${challenged}/${visited.size} page(s) (selector "${selector}")`
+            : loadErrors >= visited.size
+              ? `all ${visited.size} page load(s) failed`
+              : `no content matched selector "${selector}" across ${visited.size} page(s)`
+        return { ok: false, error: reason }
+      }
       const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n').slice(0, MAX_CRAWL_TOTAL_CHARS)
       return { ok: true, text, pages }
     } catch (e) {

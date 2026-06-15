@@ -65,6 +65,20 @@ describe('AxibridgeService', () => {
     expect(result.players[0].runsJoined).toBe(1)
     expect(result.skippedRuns).toEqual([{ id: 'r2', reason: expect.stringContaining('meta.id') }])
   })
+  it('attendance with a date range reaggregates from the runs in that window', async () => {
+    const svc = makeService()
+    // No range → whole-history rollup (both runs, computed locally here).
+    const full = await svc.attendance({})
+    expect(full.attendance[0].account).toBe('P.1')
+    expect(full.attendance[0].runs).toBe(2)
+    // Range covering only r2 → a single run's worth of attendance, with run metadata.
+    const ranged = await svc.attendance({ from: '2026-06-05' })
+    expect(ranged.rollupSource).toBe('computed-locally')
+    expect(ranged.attendance[0].account).toBe('P.1')
+    expect(ranged.attendance[0].runs).toBe(1)
+    expect(ranged.attendance[0].profession).toBe('Scourge')
+    expect('runsConsidered' in ranged && ranged.runsConsidered).toBe(1)
+  })
   it('one broken repo does not break the others', async () => {
     const svc = makeService({
       fetchIndex: async (repo: { repo: string }) => {

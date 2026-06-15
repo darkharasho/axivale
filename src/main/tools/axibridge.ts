@@ -191,7 +191,7 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
     ),
     tool(
       'axibridge_attendance',
-      'Attendance per account from the cross-run rollup: runs joined, combat time, squad time, primary profession, last seen.',
+      'Attendance per account: runs joined, combat time, squad time, primary profession, last seen. With no dates it returns the whole-history rollup (large); pass from/to to narrow to a date range (computed from the runs in that window).',
       {
         from: z.string().optional().describe('Earliest date, YYYY-MM-DD'),
         to: z.string().optional().describe('Latest date, YYYY-MM-DD')
@@ -207,11 +207,19 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
           lastSeen: r.lastSeenTs ? new Date(r.lastSeenTs).toISOString().slice(0, 10) : '—'
         }))
         return {
-          value: { attendance: rows, rollupSource: result.rollupSource },
+          value: {
+            attendance: rows,
+            rollupSource: result.rollupSource,
+            ...('range' in result ? { range: result.range } : {}),
+            ...('runsConsidered' in result ? { runsConsidered: result.runsConsidered } : {}),
+            ...('skippedRuns' in result && result.skippedRuns?.length
+              ? { skippedRuns: result.skippedRuns }
+              : {})
+          },
           display: {
             kind: 'table',
             data: {
-              title: 'Attendance',
+              title: from || to ? `Attendance · ${from ?? '…'} – ${to ?? '…'}` : 'Attendance',
               columns: [
                 { key: 'account', label: 'Account' },
                 { key: 'profession', label: 'Main profession' },

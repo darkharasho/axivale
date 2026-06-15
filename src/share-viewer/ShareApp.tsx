@@ -60,7 +60,7 @@ function docUrl(id: string): string {
 
 function ArticleView({ turn, kicker }: { turn: SharedTurn; kicker: string }): ReactElement {
   const { headline, rest } = splitHeadline(turn.agentText)
-  const figures = turn.tools.filter((t) => t.display)
+  const figures = turn.tools.filter((t) => t.display && t.display.kind !== 'table')
   const segments = rest.split(/\{\{\s*figure\s*\}\}/i)
   const renderFigure = (t: (typeof figures)[number], key: number): ReactElement => (
     <figure className="post-figure" key={key}>
