@@ -99,6 +99,43 @@ describe('WikiRefIngester', () => {
     expect(idx.replaced.some((u) => u.includes('Fireball'))).toBe(true)
   })
 
+  it('crawls full coverage when no budget is set, then resumes (skips indexed)', async () => {
+    const idx = new FakeMetaIndex()
+    const skill =
+      '{{Skill infobox\n| description = Hurl a fireball.\n| recharge = 5\n| profession = elementalist\n| slot = weapon\n}}\n== Notes ==\n* hits hard'
+    const w = wiki({ Fireball: skill, 'Lava Font': skill, 'Meteor Shower': skill })
+    const categoryMembers = vi.fn(async () => ['Fireball', 'Lava Font', 'Meteor Shower'])
+    const deps = {
+      wiki: w,
+      index: idx,
+      pages: [],
+      categoryMembers,
+      crawlTargets: [{ category: 'Elementalist skills', label: 'skills' }]
+    }
+    await new WikiRefIngester(deps).ingest()
+    expect(idx.replaced).toHaveLength(3) // all three, no cap
+    await new WikiRefIngester(deps).ingest() // resume: everything already indexed
+    expect(idx.replaced).toHaveLength(3) // no re-index
+  })
+
+  it('stops cleanly when the signal is aborted', async () => {
+    const idx = new FakeMetaIndex()
+    const skill =
+      '{{Skill infobox\n| description = Hurl a fireball.\n| recharge = 5\n| profession = elementalist\n| slot = weapon\n}}\n== Notes ==\n* hits hard'
+    const w = wiki({ Fireball: skill })
+    const controller = new AbortController()
+    controller.abort()
+    await new WikiRefIngester({
+      wiki: w,
+      index: idx,
+      pages: [],
+      categoryMembers: async () => ['Fireball'],
+      crawlTargets: [{ category: 'Elementalist skills', label: 'skills' }],
+      signal: controller.signal
+    }).ingest()
+    expect(idx.replaced).toHaveLength(0) // aborted before any work
+  })
+
   it('advances for every page even when the whole batch fetch throws', async () => {
     const idx = new FakeMetaIndex()
     const failing: WikiClientLike = { getWikitextBatch: async () => { throw new Error('network') } }

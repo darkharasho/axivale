@@ -11,6 +11,9 @@ export class FakeMetaIndex implements MetaIndex {
   async indexedHash(url: string): Promise<string | null> {
     return this.hashes.get(url) ?? null
   }
+  async indexedUrls(): Promise<Set<string>> {
+    return new Set(this.hashes.keys())
+  }
   async replacePage(url: string, chunks: Chunk[]): Promise<void> {
     this.replaced.push(url)
     if (chunks[0]) this.hashes.set(url, chunks[0].contentHash)
