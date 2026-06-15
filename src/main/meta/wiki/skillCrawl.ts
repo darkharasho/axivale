@@ -7,7 +7,7 @@
 // dense record (descriptor + description + recharge/cast + split flag + a slice of
 // notes) so the corpus gains real per-skill content without thousands of bloated
 // chunks. Exact numbers still come live from gw2_wiki_facts.
-import { stripWikiMarkup } from '@axiapps/gw2-data'
+import { stripWikiMarkup, parseFactsByMode } from '@axiapps/gw2-data'
 import { cleanWikiText } from './cleanText'
 
 export interface CategoryFetch {
@@ -47,10 +47,11 @@ export async function fetchCategoryMembers(
   return titles
 }
 
-// Pull a top-level infobox param value (e.g. "| recharge = 30"). Stops at the next
-// "\n|" param or the template's "\n}}" close, so multi-line values are captured.
+// Pull a top-level infobox param value (e.g. "| recharge = 30"). The "|" must be at
+// a line start so nested template params (e.g. |weapon=utility inside a {{skill
+// fact}}) don't match. Stops at the next "\n|" param or the "\n}}" close.
 function infoboxField(wikitext: string, name: string): string | null {
-  const re = new RegExp(`\\|\\s*${name}\\s*=\\s*([\\s\\S]*?)(?=\\n\\s*\\||\\n\\}\\})`, 'i')
+  const re = new RegExp(`(?:^|\\n)\\s*\\|\\s*${name}\\s*=\\s*([\\s\\S]*?)(?=\\n\\s*\\||\\n\\}\\})`, 'i')
   const m = re.exec(wikitext)
   return m ? m[1].trim() : null
 }
@@ -72,6 +73,117 @@ function bodyStart(wikitext: string): number {
     }
   }
   return wikitext.length
+}
+
+// --- Mode-split facts (PvE/WvW/PvP) via @axiapps/gw2-data parseFactsByMode ---
+// Each fact carries one value-ish field; we compare it across modes to surface the
+// balance splits the official API lacks (the whole reason the wiki matters here).
+interface ModeFact {
+  type?: string
+  text?: string
+  status?: string
+  value?: number
+  duration?: number
+  percent?: number
+  distance?: number
+  dmg_multiplier?: number
+  hit_count?: number
+  apply_count?: number
+  coefficient?: number
+}
+interface ModeNums {
+  pve?: number | null
+  wvw?: number | null
+  pvp?: number | null
+}
+interface ParsedFacts {
+  pve?: ModeFact[]
+  wvw?: ModeFact[]
+  pvp?: ModeFact[]
+  hasSplit?: boolean
+  recharge?: ModeNums
+  activation?: ModeNums
+}
+
+const VALUE_KEYS: Array<keyof ModeFact> = [
+  'dmg_multiplier',
+  'coefficient',
+  'duration',
+  'percent',
+  'distance',
+  'apply_count',
+  'hit_count',
+  'value'
+]
+
+const factKey = (f: ModeFact): string =>
+  f.status ? `${f.type}:${f.status}` : `${f.type}:${(f.text ?? '').toLowerCase()}`
+
+function factValue(f: ModeFact): { key: keyof ModeFact; val: number } | null {
+  for (const k of VALUE_KEYS) {
+    const v = f[k]
+    if (typeof v === 'number') return { key: k, val: v }
+  }
+  return null
+}
+
+function renderVal(key: keyof ModeFact, val: number): string {
+  if (key === 'dmg_multiplier' || key === 'coefficient' || key === 'apply_count' || key === 'hit_count')
+    return `×${val}`
+  if (key === 'duration') return `${val}s`
+  if (key === 'percent') return `${val}%`
+  return `${val}`
+}
+
+// "recharge 30s (WvW 35s)" — only shows a mode when it differs from PvE.
+function renderModeNums(label: string, m: ModeNums | undefined, fallback: string | null): string {
+  const pve = m?.pve ?? (fallback != null && fallback !== '' ? Number(fallback) : null)
+  if (pve == null || Number.isNaN(pve)) return ''
+  const splits: string[] = []
+  if (m?.wvw != null && m.wvw !== pve) splits.push(`WvW ${m.wvw}s`)
+  if (m?.pvp != null && m.pvp !== pve) splits.push(`PvP ${m.pvp}s`)
+  return `${label} ${pve}s${splits.length ? ` (${splits.join(', ')})` : ''}`
+}
+
+// "Damage ×1.6 (WvW ×0.88, PvP ×1.1); Fury 4s" — leads with split facts, capped.
+// A split fact appears once per mode array under the same key, so pair the Nth
+// PvE fact of a key with the Nth WvW/PvP fact of that key (not just by key — a
+// skill can have several "Damage" facts, and key-only matching mis-pairs them).
+function formatFacts(parsed: ParsedFacts): string {
+  const pve = parsed.pve ?? []
+  if (pve.length === 0) return ''
+  const groupByKey = (arr: ModeFact[]): Map<string, ModeFact[]> => {
+    const m = new Map<string, ModeFact[]>()
+    for (const f of arr) {
+      const k = factKey(f)
+      const list = m.get(k) ?? []
+      list.push(f)
+      m.set(k, list)
+    }
+    return m
+  }
+  const wvw = groupByKey(parsed.wvw ?? [])
+  const pvp = groupByKey(parsed.pvp ?? [])
+  const seen = new Map<string, number>()
+  const out: string[] = []
+  for (const f of pve) {
+    const v = factValue(f)
+    if (!v) continue
+    const k = factKey(f)
+    const idx = seen.get(k) ?? 0
+    seen.set(k, idx + 1)
+    const w = wvw.get(k)?.[idx]
+    const p = pvp.get(k)?.[idx]
+    const wv = w ? factValue(w) : null
+    const pv = p ? factValue(p) : null
+    const splits: string[] = []
+    if (wv && wv.val !== v.val) splits.push(`WvW ${renderVal(wv.key, wv.val)}`)
+    if (pv && pv.val !== v.val) splits.push(`PvP ${renderVal(pv.key, pv.val)}`)
+    const labelText = f.text || f.type || 'Fact'
+    out.push(`${labelText} ${renderVal(v.key, v.val)}${splits.length ? ` (${splits.join(', ')})` : ''}`)
+    if (out.length >= 10) break
+  }
+  return out.join('; ')
 }
 
 // Icon templates ({{Power}}, {{Condition Damage}}) carry meaning but stripWikiMarkup
@@ -100,7 +212,12 @@ export function compressWikiPage(wikitext: string, title: string): string {
   const type = f('type')
   const recharge = f('recharge')
   const activation = f('activation')
-  const hasSplit = /\|\s*split\s*=/.test(wikitext)
+  let parsed: ParsedFacts | null = null
+  try {
+    parsed = parseFactsByMode(wikitext) as ParsedFacts
+  } catch {
+    parsed = null
+  }
 
   const descriptor = [
     attunement,
@@ -122,14 +239,17 @@ export function compressWikiPage(wikitext: string, title: string): string {
 
   const parts: string[] = [`${title}${descriptor ? ` — ${descriptor}` : ''}.`]
   if (desc) parts.push(desc)
-  const nums: string[] = []
-  if (recharge) nums.push(`recharge ${recharge}s`)
-  if (activation) nums.push(`cast ${activation}s`)
+  const nums = [
+    renderModeNums('recharge', parsed?.recharge, recharge),
+    renderModeNums('cast', parsed?.activation, activation)
+  ].filter(Boolean)
   if (nums.length) parts.push(`${nums.join(', ')}.`)
-  if (hasSplit) parts.push('Has PvE/WvW/PvP balance splits.')
+  const facts = parsed ? formatFacts(parsed) : ''
+  if (facts) parts.push(`Facts: ${facts}.`)
+  else if (parsed?.hasSplit) parts.push('Has PvE/WvW/PvP balance splits.')
   if (body.length > 40) parts.push(body)
 
-  return parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, 1000)
+  return parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, 1200)
 }
 
 // Runes / sigils / relics: the bonuses live in bonus1..bonusN infobox params, and
