@@ -35,6 +35,13 @@ const MAX_CRAWL_PAGES = 30 // total pages to visit per source across all crawl l
 const CRAWL_BUDGET_MS = 120_000 // per-source wall-clock cap on the whole crawl
 const MAX_CRAWL_TOTAL_CHARS = 48_000 // cap the combined excerpt handed to the distiller
 
+/** First in-game build-template chat code ([&...]) found in page HTML, or null.
+ *  Decodes &amp; first since serialized HTML escapes the ampersand. */
+export function extractChatCode(html: string): string | null {
+  const m = /\[&[A-Za-z0-9+/=]{8,}\]/.exec(html.replace(/&amp;/g, '&'))
+  return m ? m[0] : null
+}
+
 // Meta sites embed ad/tracker/image subresources that don't affect innerText
 // and spam the console (ERR_CONNECTION_REFUSED behind ad-blockers). Run the
 // scrape window in an isolated in-memory session and drop those resource types.
@@ -163,6 +170,28 @@ export class BrowserWindowFetcher implements MetaFetcher {
     const run = this.chain.then(() => this.fetchOne(url))
     this.chain = run.catch(() => undefined)
     return run
+  }
+
+  /** Load one build page (Cloudflare-aware) and pull its in-game chat code, if any.
+   *  Serialized through the same window as crawls. Returns null if challenged or
+   *  no code is present. */
+  fetchChatCode(url: string): Promise<string | null> {
+    const run = this.chain.then(() => this.fetchChatCodeOne(url))
+    this.chain = run.catch(() => undefined)
+    return run
+  }
+
+  private async fetchChatCodeOne(url: string): Promise<string | null> {
+    try {
+      const checked = await this.loadChecked(url, 'body')
+      if (checked === null) return null // still behind a Cloudflare challenge
+      const html = (await this.window().webContents.executeJavaScript(
+        'document.documentElement.outerHTML'
+      )) as string
+      return extractChatCode(html)
+    } catch {
+      return null
+    }
   }
 
   private async fetchOne(url: string): Promise<FetchResult> {

@@ -129,6 +129,7 @@ Rules:
   If the source page is titled "DPS Warrior" on gw2mists, call it that and link that page; do not rename it "DPS Berserker" or attribute it to a different site.
 - When meta_search surfaces a build that includes an in-game chat code ([&...], common on MetaBattle), you may call gw2_build_card with that code to render the exact build card.
   Place it inline with a {{figure}} marker to illustrate a specific recommended build; do not dump a card for every build.
+- When you have identified a specific build's page (e.g. a MetaBattle Build: URL) but meta_search did not return its chat code, call gw2_build_from_url with that page URL to fetch and render the full card — render it rather than just telling the user where to look.
 - The GW2 API returns only PvE values — it has NO WvW/PvP balance splits.
   For the real WvW/PvP mechanics of a skill or trait (damage, recharge, boon/condi duration), call gw2_wiki_facts with the name.
   Use it whenever reasoning about WvW/roaming builds or any mechanics tradeoff; skill/trait names come from meta_search results.

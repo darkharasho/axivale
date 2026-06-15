@@ -354,7 +354,8 @@ app.whenReady().then(async () => {
       },
       metaIndex: () => metaIndex,
       wikiIndex: () => wikiIndex,
-      wikiFacts
+      wikiFacts,
+      fetchBuildCode: (url: string) => metaFetcher.fetchChatCode(url)
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),

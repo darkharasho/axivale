@@ -49,7 +49,8 @@ function makeDeps(corpus: Msg[]): { deps: ToolDeps; calls: Array<Record<string, 
     loadSkill: () => null,
     metaIndex: () => ({}) as never,
     wikiIndex: () => ({}) as never,
-    wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) }
+    wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
+    fetchBuildCode: async () => null
   } satisfies ToolDeps
   return { deps, calls }
 }

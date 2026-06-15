@@ -1,6 +1,6 @@
 // src/main/meta/fetcher.test.ts
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchWiki, pickCrawlLinks, normalizeUrl, isChallengePage } from './fetcher'
+import { fetchWiki, pickCrawlLinks, normalizeUrl, isChallengePage, extractChatCode } from './fetcher'
 
 const cfg = { host: 'metabattle.com', kind: 'wiki' as const, wikiApi: 'https://metabattle.com/api.php' }
 
@@ -95,6 +95,20 @@ describe('isChallengePage', () => {
   })
   it('does not flag real build content', () => {
     expect(isChallengePage('Power Virtuoso - Hardstuck', 'Build Fundamentals: stack vulnerability with Bladesongs. Sigil of Force...')).toBe(false)
+  })
+})
+
+describe('extractChatCode', () => {
+  it('pulls the first [&...] build-template code from page HTML', () => {
+    const html = '<div>some text</div><code>[&DQYaLg==]</code><span>[&DQZZZZ==]</span>'
+    expect(extractChatCode(html)).toBe('[&DQYaLg==]')
+  })
+  it('handles HTML-escaped ampersands (&amp;) in serialized DOM/attributes', () => {
+    const html = '<button data-clipboard-text="[&amp;DQYaLgABC123==]">Copy</button>'
+    expect(extractChatCode(html)).toBe('[&DQYaLgABC123==]')
+  })
+  it('returns null when no chat code is present', () => {
+    expect(extractChatCode('<p>just a description, no code here</p>')).toBeNull()
   })
 })
 

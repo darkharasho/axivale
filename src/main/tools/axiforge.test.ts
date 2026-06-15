@@ -49,7 +49,8 @@ function makeDeps(): ToolDeps {
     loadSkill: () => null,
     metaIndex: () => ({}) as never,
     wikiIndex: () => ({}) as never,
-    wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) }
+    wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
+    fetchBuildCode: vi.fn().mockResolvedValue('[&DQYAAA==]')
   }
 }
 
@@ -429,6 +430,39 @@ describe('axiforge tools', () => {
 
     it('is not destructive', () => {
       expect(DESTRUCTIVE_TOOLS).not.toContain('gw2_build_card')
+    })
+  })
+
+  describe('gw2_build_from_url', () => {
+    it('fetches the page code and renders a build card', async () => {
+      const deps = makeDeps()
+      ;(deps.fetchBuildCode as ReturnType<typeof vi.fn>).mockResolvedValue('[&DQYAAA==]')
+      const result = await find(deps, 'gw2_build_from_url').handler(
+        { url: 'https://metabattle.com/wiki/Build:Catalyst_-_Fresh_Air_Cata_Roamer', game_mode: 'wvw' },
+        {}
+      )
+      expect(deps.fetchBuildCode).toHaveBeenCalledWith(
+        'https://metabattle.com/wiki/Build:Catalyst_-_Fresh_Air_Cata_Roamer'
+      )
+      expect(deps.axiforge.parseChatLink).toHaveBeenCalledWith({ link: '[&DQYAAA==]', gameMode: 'wvw' })
+      expect((result.display as { kind?: string } | undefined)?.kind).toBe('build-card')
+      expect(result.isError).toBeUndefined()
+    })
+
+    it('returns a clean note (no card) when the page exposes no code', async () => {
+      const deps = makeDeps()
+      ;(deps.fetchBuildCode as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      const result = await find(deps, 'gw2_build_from_url').handler(
+        { url: 'https://metabattle.com/wiki/Build:Whatever' },
+        {}
+      )
+      expect(deps.axiforge.parseChatLink).not.toHaveBeenCalled()
+      expect(result.display).toBeUndefined()
+      expect((result.content[0] as { text: string }).text).toContain('No in-game build template code')
+    })
+
+    it('is not destructive', () => {
+      expect(DESTRUCTIVE_TOOLS).not.toContain('gw2_build_from_url')
     })
   })
 
