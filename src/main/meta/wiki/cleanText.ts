@@ -60,6 +60,11 @@ export function cleanWikiText(input: string): string {
   s = s.replace(/\b(?:Category|File|Image|Media|Template):\S+/g, ' ')
   // Magic words
   s = s.replace(/__[A-Z]+__/g, ' ')
+  // Semantic-MediaWiki property annotations ("Has game icon:: Duration.png")
+  s = s.replace(/\b[A-Za-z][A-Za-z ]*::\s*[^\s\]|]*/g, ' ')
+  // Bare image filenames + leftover sizes from [[File:…|340px]] links
+  s = s.replace(/\b[\w-]+\.(?:png|jpg|jpeg|gif|svg)\b/gi, ' ')
+  s = s.replace(/\b\d+px\b/g, ' ')
 
   // --- Wikitable teardown ---
   s = s.replace(TABLE_ATTRS, ' ') // drop cell/row attributes first
