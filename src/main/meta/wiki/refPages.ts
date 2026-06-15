@@ -10,7 +10,7 @@ export interface WikiRefPage {
   title: string
 }
 
-const PROFESSIONS = [
+export const PROFESSIONS = [
   'elementalist', 'warrior', 'guardian', 'revenant', 'engineer',
   'ranger', 'thief', 'mesmer', 'necromancer'
 ]

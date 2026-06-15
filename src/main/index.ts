@@ -49,6 +49,7 @@ import { fetchEliteSpecMap } from './meta/specMap'
 import { WikiFactsClient } from './meta/wikiFacts'
 import { WikiClient } from '@axiapps/gw2-data/wiki'
 import { WikiRefIngester } from './meta/wiki/ingest'
+import { fetchCategoryMembers } from './meta/wiki/skillCrawl'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -194,7 +195,9 @@ app.whenReady().then(async () => {
   const wikiIngester = new WikiRefIngester({
     wiki: new WikiClient(),
     index: wikiIndex,
-    emit: sendLearnProgress
+    emit: sendLearnProgress,
+    // Per-page crawl of skill/trait/upgrade categories, compressed (rule-based).
+    categoryMembers: (category) => fetchCategoryMembers(category, (url) => fetch(url))
   })
   let wikiTimer: ReturnType<typeof setInterval> | null = null
   const metaFetcher = new BrowserWindowFetcher()
