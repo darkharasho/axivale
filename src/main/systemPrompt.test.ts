@@ -41,4 +41,13 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/before.*oldest/i)
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/reachedCap|scan cap/i)
   })
+
+  it('frames WvW comps around subgroup boon coverage, not a fixed 5-slot list', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/subgroup/i)
+    expect(p).toMatch(/boon strip|boon corrupt/i)
+    expect(p).toMatch(/meta_search/)
+    expect(p).not.toContain('a standard party covers five roles')
+    expect(p).toMatch(/WvW does NOT run quickness.*like PvE/i)
+  })
 })
