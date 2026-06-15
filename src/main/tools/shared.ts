@@ -34,6 +34,12 @@ export interface ToolDeps {
   wikiFacts: WikiFacts
   /** Load a build page (Cloudflare-aware) and return its full HTML, or null. */
   fetchBuildPage: (url: string) => Promise<string | null>
+  /**
+   * Plain HTTP GET of a build page (no JS), or null. Used for gear scraping: the
+   * Cloudflare-aware browser fetch returns the post-JS DOM, where GW2-Armory has
+   * already replaced the data-armory-embed placeholders — so its gear is gone.
+   */
+  fetchBuildPageRaw: (url: string) => Promise<string | null>
 }
 
 export interface ToolResult {

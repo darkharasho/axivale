@@ -13,6 +13,25 @@ type CardDisplay = Extract<DisplayPayload, { kind: 'build-card' | 'comp-card' }>
 
 type ForgeBuild = Record<string, unknown>
 
+/** Friendly label for a build's source host: metabattle.com -> "MetaBattle". */
+const SOURCE_LABELS: Record<string, string> = {
+  'metabattle.com': 'MetaBattle',
+  'snowcrows.com': 'Snowcrows',
+  'guildjen.com': 'GuildJen',
+  'hardstuck.gg': 'Hardstuck',
+  'gw2mists.com': 'GW2Mists',
+  'lucky-noobs.com': 'Lucky Noobs',
+  'gw2skills.net': 'GW2Skills'
+}
+function sourceLabel(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '')
+    return SOURCE_LABELS[host] ?? host.split('.')[0].replace(/^./, (c) => c.toUpperCase())
+  } catch {
+    return 'Source'
+  }
+}
+
 /** The most-equipped rune id on a build (mirrors forge-render's pick). */
 function dominantRuneId(build: ForgeBuild): number | null {
   const runes = (build.equipment as { runes?: Record<string, unknown> } | undefined)?.runes
@@ -72,10 +91,23 @@ export default function ForgeCard({ display }: { display: CardDisplay }): ReactE
         ? { [(display.data.build.id as string) ?? '']: display.data.build }
         : display.data.builds
     if (display.kind === 'build-card') {
-      host.innerHTML = renderMiniBuildCard(display.data.build, catalog, {
+      const build = display.data.build
+      const sourceUrl = typeof build.sourceUrl === 'string' ? build.sourceUrl : null
+      host.innerHTML = renderMiniBuildCard(build, catalog, {
         showActions: false,
-        chatLink: (display.data.build.chatCode as string) ?? null
+        chatLink: (build.chatCode as string) ?? null,
+        // Link the card to its source page (MetaBattle/Snowcrows/...): the build
+        // title becomes the link, with a labeled source badge in the header.
+        linkUrl: sourceUrl,
+        linkBadge: sourceUrl ? { label: sourceLabel(sourceUrl), tooltip: `Source: ${sourceUrl}` } : null
       })
+      // The source badge is a plain label in forge-render; make it open the source
+      // page too (window.open https is routed to the OS browser by the main process).
+      const badge = sourceUrl && host.querySelector<HTMLElement>('.mini-card__link-badge')
+      if (badge) {
+        badge.style.cursor = 'pointer'
+        badge.addEventListener('click', () => window.open(sourceUrl, '_blank', 'noopener'))
+      }
     } else {
       host.innerHTML = renderCompCard(display.data.comp, display.data.builds, catalog)
     }

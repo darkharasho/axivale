@@ -220,3 +220,23 @@ describe('Article inline figures', () => {
     expect(container.querySelector('.richchart')).toBeNull()
   })
 })
+
+describe('Article headline (lede)', () => {
+  it('renders a markdown link in the headline as an anchor, not literal syntax', () => {
+    const { container } = render(
+      <Article
+        turn={doneTurn({
+          agentText:
+            "Here's the build from [MetaBattle](https://metabattle.com/wiki/Build:X) for raids.\n\nBody paragraph."
+        })}
+        conversationId={null}
+      />
+    )
+    const link = container.querySelector('.lede a')
+    expect(link).toBeTruthy()
+    expect(link?.getAttribute('href')).toBe('https://metabattle.com/wiki/Build:X')
+    expect(link?.textContent).toBe('MetaBattle')
+    // The raw markdown link syntax must not leak into the rendered headline.
+    expect(container.querySelector('.lede')?.textContent).not.toContain('](')
+  })
+})

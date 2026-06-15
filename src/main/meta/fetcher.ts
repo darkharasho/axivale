@@ -193,6 +193,23 @@ export class BrowserWindowFetcher implements MetaFetcher {
     }
   }
 
+  /**
+   * Plain HTTP GET of a build page (no browser, no JS), or null. The browser fetch
+   * above returns the post-JS DOM, where GW2-Armory has already replaced the
+   * data-armory-embed placeholders — so gear scraping must read this raw server HTML.
+   * Returns null on a network error or a Cloudflare challenge interstitial.
+   */
+  async fetchBuildPageRaw(url: string): Promise<string | null> {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': SCRAPE_UA } })
+      if (!res.ok) return null
+      const html = await res.text()
+      return isChallengePage('', html) ? null : html
+    } catch {
+      return null
+    }
+  }
+
   private async fetchOne(url: string): Promise<FetchResult> {
     const cfg = configForUrl(url)
     if (!cfg) return { ok: false, error: 'no extractor' }

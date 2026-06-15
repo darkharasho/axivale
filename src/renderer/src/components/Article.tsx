@@ -5,7 +5,7 @@ import { Camera, Check, X, Share2 } from 'lucide-react'
 import type { Turn } from '../state'
 import { rehypeEmojiIcons } from './rehypeEmojiIcons'
 import { renderEmojiSpan, renderExtLink } from './emojiIcons'
-import { splitHeadline, stripMarkdown } from './headline'
+import { splitHeadline } from './headline'
 import { couponLabel } from './ToolCoupon'
 import RichDisplay from './rich/RichDisplay'
 import WireThinking from './WireThinking'
@@ -155,7 +155,20 @@ export default function Article({
                 )}
               </>
             )}
-            <div className="lede">{stripMarkdown(headline)}</div>
+            <div className="lede">
+              {/* The lede is display type: render inline markdown so links (and emoji)
+                  resolve like the body, but unwrap block/emphasis so it stays a clean
+                  single line — no bold/heading styling, no literal [text](url) syntax. */}
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeEmojiIcons]}
+                disallowedElements={['em', 'strong', 'code', 'del', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']}
+                unwrapDisallowed
+                components={{ p: ({ children }) => <>{children}</>, span: renderEmojiSpan, a: renderExtLink }}
+              >
+                {headline}
+              </ReactMarkdown>
+            </div>
             <div className="byline">
               By <b>AxiVale</b> · filed {turn.filedAt} · {turn.tools.length} action
               {turn.tools.length === 1 ? '' : 's'} taken

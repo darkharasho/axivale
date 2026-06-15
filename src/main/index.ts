@@ -364,7 +364,8 @@ app.whenReady().then(async () => {
       metaIndex: () => metaIndex,
       wikiIndex: () => wikiIndex,
       wikiFacts,
-      fetchBuildPage: (url: string) => metaFetcher.fetchBuildPage(url)
+      fetchBuildPage: (url: string) => metaFetcher.fetchBuildPage(url),
+      fetchBuildPageRaw: (url: string) => metaFetcher.fetchBuildPageRaw(url)
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),

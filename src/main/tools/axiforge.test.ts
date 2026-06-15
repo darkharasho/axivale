@@ -50,7 +50,8 @@ function makeDeps(): ToolDeps {
     metaIndex: () => ({}) as never,
     wikiIndex: () => ({}) as never,
     wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
-    fetchBuildPage: vi.fn().mockResolvedValue(null)
+    fetchBuildPage: vi.fn().mockResolvedValue(null),
+    fetchBuildPageRaw: vi.fn().mockResolvedValue(null)
   }
 }
 
@@ -408,16 +409,27 @@ describe('axiforge tools', () => {
       expect(deps.fetchBuildPage).not.toHaveBeenCalled()
     })
 
-    it('fetches the source page to scrape gear when source_url is given', async () => {
+    it('scrapes gear from a raw fetch of the source page when source_url is given', async () => {
       const deps = makeDeps()
       // Embed-free HTML → scrapeBuildGear returns null without any GW2 API calls;
-      // the extraction itself is covered in buildGear.test.ts.
-      deps.fetchBuildPage = vi.fn().mockResolvedValue('<html><body>no embeds</body></html>')
+      // the extraction itself is covered in buildGear.test.ts. Gear is scraped from
+      // the RAW fetch (the browser DOM strips armory embeds).
+      deps.fetchBuildPageRaw = vi.fn().mockResolvedValue('<html><body>no embeds</body></html>')
       await find(deps, 'gw2_build_card').handler(
         { chat_code: '[&DQEAAA==]', source_url: 'https://metabattle.com/wiki/Build:X' },
         {}
       )
-      expect(deps.fetchBuildPage).toHaveBeenCalledWith('https://metabattle.com/wiki/Build:X')
+      expect(deps.fetchBuildPageRaw).toHaveBeenCalledWith('https://metabattle.com/wiki/Build:X')
+    })
+
+    it('attaches source_url as build.sourceUrl when given', async () => {
+      const deps = makeDeps()
+      const result = await find(deps, 'gw2_build_card').handler(
+        { chat_code: '[&DQEAAA==]', source_url: 'https://snowcrows.com/builds/x' },
+        {}
+      )
+      const build = (result.display as { data?: { build?: Record<string, unknown> } } | undefined)?.data?.build
+      expect(build?.sourceUrl).toBe('https://snowcrows.com/builds/x')
     })
 
     it('omits gameMode from the client call when game_mode not provided', async () => {
@@ -467,6 +479,34 @@ describe('axiforge tools', () => {
       expect(deps.axiforge.parseChatLink).toHaveBeenCalledWith({ link: '[&DQYAAA==]', gameMode: 'wvw' })
       expect((result.display as { kind?: string } | undefined)?.kind).toBe('build-card')
       expect(result.isError).toBeUndefined()
+    })
+
+    it('scrapes gear from a raw (non-JS) fetch, since the browser DOM strips armory embeds', async () => {
+      const deps = makeDeps()
+      // Browser fetch carries the chat code but its armory embeds are gone (consumed
+      // by the page's GW2-Armory script). The raw fetch is where gear must be scraped.
+      ;(deps.fetchBuildPage as ReturnType<typeof vi.fn>).mockResolvedValue('<html><code>[&DQYAAA==]</code></html>')
+      deps.fetchBuildPageRaw = vi.fn().mockResolvedValue('<html><body>raw, no embeds here</body></html>')
+      const result = await find(deps, 'gw2_build_from_url').handler(
+        { url: 'https://metabattle.com/wiki/Build:Firebrand' },
+        {}
+      )
+      expect(deps.fetchBuildPageRaw).toHaveBeenCalledWith('https://metabattle.com/wiki/Build:Firebrand')
+      // Raw HTML had no embeds → no gear attached (proves we scraped raw, not browser).
+      const build = (result.display as { data?: { build?: Record<string, unknown> } } | undefined)?.data?.build
+      expect(build?.scrapedGear).toBeUndefined()
+      expect((result.display as { kind?: string } | undefined)?.kind).toBe('build-card')
+    })
+
+    it('attaches the page URL as build.sourceUrl so the card can link to the source', async () => {
+      const deps = makeDeps()
+      ;(deps.fetchBuildPage as ReturnType<typeof vi.fn>).mockResolvedValue('<html><code>[&DQYAAA==]</code></html>')
+      const result = await find(deps, 'gw2_build_from_url').handler(
+        { url: 'https://metabattle.com/wiki/Build:Firebrand' },
+        {}
+      )
+      const build = (result.display as { data?: { build?: Record<string, unknown> } } | undefined)?.data?.build
+      expect(build?.sourceUrl).toBe('https://metabattle.com/wiki/Build:Firebrand')
     })
 
     it('returns a clean note (no card) when the page has no chat code', async () => {

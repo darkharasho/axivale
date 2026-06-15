@@ -169,7 +169,10 @@ td.nm2{color:var(--ink)}
 .post-figure figcaption{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-top:8px;text-align:right}
 /* AxiForge cards keep their own design system inside the coupon */
 .forgecard{font-family:system-ui,sans-serif;text-align:left;hyphens:none}
-.forgecard .mini-card{cursor:default}
+/* forge-render ships `.mini-card{cursor:grab}` for AxiForge's drag-to-reorder; our
+   cards aren't draggable. Two classes tie its specificity and its CSS loads later,
+   so qualify with both wrapper classes to win the cascade regardless of load order. */
+.forge-render.forgecard .mini-card{cursor:default}
 /* thinking — story coming in over the wire */
 .wire{padding:2px 0 6px}
 .wline{display:flex;align-items:center;gap:12px;margin-bottom:14px}

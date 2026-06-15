@@ -13,6 +13,30 @@ export const AXIFORGE_DESTRUCTIVE_TOOLS = [
   'axiforge_comp_publish'
 ]
 
+/**
+ * A chat code carries no gear, so scrape the build page's GW2-Armory embeds for the
+ * weapons/sigils/runes/stats (and weapon skills) the card shows, and attach them to
+ * `build`. Scrapes from a RAW (non-JS) fetch because the Cloudflare-aware browser
+ * fetch returns the post-JS DOM, where the page's armory script has already replaced
+ * the embeds — losing the gear. Falls back to `browserHtml` when the raw fetch is
+ * blocked. Returns the gear (also for the model-facing value), or null.
+ */
+async function attachScrapedGear(
+  deps: ToolDeps,
+  url: string,
+  build: Record<string, unknown>,
+  browserHtml: string | null
+): Promise<Awaited<ReturnType<typeof scrapeBuildGear>>> {
+  const html = (await deps.fetchBuildPageRaw(url).catch(() => null)) ?? browserHtml
+  if (!html) return null
+  const gear = await scrapeBuildGear(html, String(build.profession ?? ''))
+  if (gear) {
+    build.scrapedGear = gear
+    if (gear.weaponSkills.length) build.weaponSkills = gear.weaponSkills
+  }
+  return gear
+}
+
 // get/save tools attach rich `build-card` / `comp-card` display payloads via
 // safeRich(): the model sees compact (image-stripped) JSON; the renderer gets
 // the full record — including images — for card visuals.
@@ -258,19 +282,10 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
           deps.axiforge.parseChatLink(game_mode ? { link: chat_code, gameMode: game_mode } : { link: chat_code })
         )) as Record<string, unknown>
         build.chatCode = chat_code
-        // A chat code carries no gear — if we know the source page, scrape its
-        // armory embeds so this card matches gw2_build_from_url's full format.
-        let gear: Awaited<ReturnType<typeof scrapeBuildGear>> = null
-        if (source_url) {
-          const html = await deps.fetchBuildPage(source_url)
-          if (html) {
-            gear = await scrapeBuildGear(html, String(build.profession ?? ''))
-            if (gear) {
-              build.scrapedGear = gear
-              if (gear.weaponSkills.length) build.weaponSkills = gear.weaponSkills
-            }
-          }
-        }
+        // A chat code carries no gear — if we know the source page, scrape it so this
+        // card matches gw2_build_from_url's full format, and link the card to it.
+        if (source_url) build.sourceUrl = source_url
+        const gear = source_url ? await attachScrapedGear(deps, source_url, build, null) : null
         return {
           value: { chatCode: chat_code, gear: gear ?? null, ...stripImages(build) },
           display: { kind: 'build-card', data: { build } }
@@ -301,13 +316,8 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
           deps.axiforge.parseChatLink(game_mode ? { link: code, gameMode: game_mode } : { link: code })
         )) as Record<string, unknown>
         build.chatCode = code
-        // A chat code carries no gear — scrape the page's armory embeds for the
-        // weapons/sigils/runes/stats (and weapon skills) the card needs.
-        const gear = await scrapeBuildGear(html, String(build.profession ?? ''))
-        if (gear) {
-          build.scrapedGear = gear
-          if (gear.weaponSkills.length) build.weaponSkills = gear.weaponSkills
-        }
+        build.sourceUrl = url // so the card can link back to the source page
+        const gear = await attachScrapedGear(deps, url, build, html)
         return {
           value: { chatCode: code, gear: gear ?? null, ...stripImages(build) },
           display: { kind: 'build-card', data: { build } }

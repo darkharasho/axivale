@@ -13,6 +13,62 @@ export interface GearWeapon {
   icon: string | null
   sigils: Array<{ name: string; icon: string | null }>
 }
+
+/** GW2 weapon types, used to tell a weapon slot from an armor/trinket one by its label. */
+const WEAPON_TYPES = new Set([
+  'Axe', 'Dagger', 'Mace', 'Pistol', 'Scepter', 'Sword', 'Focus', 'Shield', 'Torch', 'Warhorn',
+  'Greatsword', 'Hammer', 'Longbow', 'Shortbow', 'Rifle', 'Staff',
+  'Spear', 'Speargun', 'Harpoon', 'Trident'
+])
+/** Two-handed weapons carry two sigils; everything else carries one. */
+const TWO_HANDED = new Set(['Greatsword', 'Hammer', 'Longbow', 'Shortbow', 'Rifle', 'Staff', 'Speargun', 'Trident'])
+
+export type MetabattleSlotKind = 'weapon' | 'sigil' | 'rune' | 'infusion' | 'relic' | 'gear'
+export interface MetabattleSlot {
+  id: number
+  kind: MetabattleSlotKind
+  type: string // weapon type, or the slot/upgrade label (Head, Sigil, Rune, ...)
+  stat: string | null // stat prefix from the label (e.g. "Minstrel"), when present
+  statId: number | null // inline data-armory-<id>-stat, when present
+  count: number // upgrade count from the label (Rune x6 -> 6); 1 otherwise
+}
+
+/**
+ * Parse a MetaBattle build page's Equipment section into ordered slots. Unlike
+ * Snowcrows, MetaBattle renders each piece (and each rune/sigil) as its own
+ * equipment-slot armory embed with a <small> label, and does NOT inline upgrades.
+ * Returns [] for pages that don't use this layout (e.g. Snowcrows). Order matters:
+ * sigils follow their weapon set, which assembleMetabattleGear relies on.
+ */
+export function parseMetabattleSlots(html: string): MetabattleSlot[] {
+  const slots: MetabattleSlot[] = []
+  const slotRe =
+    /<div class="equipment-slot[^"]*">\s*<div\b([^>]*\bdata-armory-embed="items"[^>]*)><\/div>\s*<small>(.*?)<\/small>/gi
+  let m: RegExpExecArray | null
+  while ((m = slotRe.exec(html)) !== null) {
+    const attrs = m[1]
+    const id = parseInt(/\bdata-armory-ids="(\d+)"/i.exec(attrs)?.[1] ?? '', 10)
+    if (!Number.isFinite(id)) continue
+    const statRaw = new RegExp(`\\bdata-armory-${id}-stat="(\\d+)"`, 'i').exec(attrs)?.[1]
+    const statId = statRaw ? parseInt(statRaw, 10) : null
+    // Label is "Type<br />Extra": Extra is a stat prefix (Minstrel) or a count (x6).
+    const [typeRaw, extraRaw = ''] = m[2].split(/<br\s*\/?>/i)
+    const type = typeRaw.replace(/<[^>]+>/g, '').trim()
+    const extra = extraRaw.replace(/<[^>]+>/g, '').trim()
+    const countMatch = /^x(\d+)$/i.exec(extra)
+    const count = countMatch ? parseInt(countMatch[1], 10) : 1
+    let kind: MetabattleSlotKind
+    if (WEAPON_TYPES.has(type)) kind = 'weapon'
+    else if (type === 'Sigil') kind = 'sigil'
+    else if (type === 'Rune') kind = 'rune'
+    else if (type === 'Infusion') kind = 'infusion'
+    else if (type === 'Relic') kind = 'relic'
+    else kind = 'gear'
+    const stat = kind === 'gear' || kind === 'weapon' ? extra || null : null
+    slots.push({ id, kind, type, stat, statId, count })
+  }
+  return slots
+}
 export interface BuildGear {
   weapons: GearWeapon[]
   rune: { name: string; icon: string | null; count: number } | null
@@ -96,11 +152,104 @@ async function resolveStats(ids: number[], fetchImpl: FetchLike): Promise<Map<nu
 
 /** Parse a build page's armory embeds into structured equipment, or null.
  *  Pass the profession to also resolve the first weapon set's skills. */
+/**
+ * Assemble gear from MetaBattle's ordered, slot-labeled embeds. Sigils follow their
+ * weapon SET in document order, so we group consecutive weapons and hand the trailing
+ * sigils out by capacity (a 2H weapon takes two; each 1H weapon takes one).
+ */
+async function assembleMetabattleGear(
+  slots: MetabattleSlot[],
+  profession: string,
+  fetchImpl: FetchLike
+): Promise<BuildGear | null> {
+  const itemMap = await resolveItems(
+    slots.map((s) => s.id),
+    fetchImpl
+  )
+  const statMap = await resolveStats(
+    slots.map((s) => s.statId).filter((n): n is number => n != null),
+    fetchImpl
+  )
+  const nameIcon = (id: number): { name: string; icon: string | null } | null => {
+    const def = itemMap.get(id)
+    return def ? { name: def.name, icon: def.icon } : null
+  }
+
+  const weapons: GearWeapon[] = []
+  const allSigils: Array<{ name: string; icon: string | null }> = []
+  const infusions: Array<{ name: string; icon: string | null }> = []
+  const runeCounts = new Map<string, { icon: string | null; count: number }>()
+
+  // Dominant stat prefix across every piece that carries one (armor, trinkets, weapons).
+  const statCounts = new Map<string, number>()
+  for (const s of slots) {
+    const stat = s.statId != null ? statMap.get(s.statId) : undefined
+    if (stat) statCounts.set(stat, (statCounts.get(stat) ?? 0) + 1)
+  }
+
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[i]
+    if (s.kind === 'weapon') {
+      // Collect this consecutive run of weapons, then the sigils that follow the set.
+      const group: MetabattleSlot[] = []
+      while (i < slots.length && slots[i].kind === 'weapon') {
+        group.push(slots[i])
+        i++
+      }
+      const setSigils: typeof allSigils = []
+      while (i < slots.length && slots[i].kind === 'sigil') {
+        const ni = nameIcon(slots[i].id)
+        if (ni) setSigils.push(ni)
+        i++
+      }
+      i-- // step back so the for-loop's i++ lands on the next unconsumed slot
+      allSigils.push(...setSigils)
+      let cursor = 0
+      for (const w of group) {
+        const cap = TWO_HANDED.has(w.type) ? 2 : 1
+        const def = itemMap.get(w.id)
+        weapons.push({
+          type: w.type,
+          name: def?.name ?? w.type,
+          icon: def?.icon ?? null,
+          sigils: setSigils.slice(cursor, cursor + cap)
+        })
+        cursor += cap
+      }
+    } else if (s.kind === 'rune') {
+      const def = itemMap.get(s.id)
+      if (def) runeCounts.set(def.name, { icon: def.icon, count: s.count })
+    } else if (s.kind === 'infusion') {
+      const ni = nameIcon(s.id)
+      if (ni) infusions.push(ni)
+    }
+    // 'gear' (armor/trinket) contributes only its stat (handled above); 'relic' and
+    // stray 'sigil' slots are not rendered by the card, so they're skipped here.
+  }
+
+  const dominant = <T>(m: Map<T, number>): T | null =>
+    [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+  const runeName = dominant(new Map([...runeCounts].map(([n, v]) => [n, v.count])))
+  const rune = runeName
+    ? { name: runeName, icon: runeCounts.get(runeName)!.icon, count: runeCounts.get(runeName)!.count }
+    : null
+
+  if (weapons.length === 0 && !rune && statCounts.size === 0) return null
+  const firstSet = weapons.slice(0, 2).map((w) => w.type)
+  const weaponSkills = await resolveWeaponSkills(profession, firstSet, fetchImpl)
+  return { weapons, rune, sigils: allSigils, stats: dominant(statCounts), infusions, weaponSkills }
+}
+
 export async function scrapeBuildGear(
   html: string,
   profession = '',
   fetchImpl: FetchLike = defaultFetch
 ): Promise<BuildGear | null> {
+  // MetaBattle lists each piece (and each rune/sigil) as its own labeled slot and
+  // does NOT inline upgrades, so it needs an order-aware assembler.
+  const mbSlots = parseMetabattleSlots(html)
+  if (mbSlots.length) return assembleMetabattleGear(mbSlots, profession, fetchImpl)
+
   const { items } = parseArmory(html)
   if (items.length === 0) return null
   const allIds = [...items.map((i) => i.id), ...items.flatMap((i) => i.upgradeIds)]
