@@ -89,7 +89,7 @@ describe('fetchSnowcrowsStatic', () => {
       text: async () => (url.includes('/power-weaver') ? buildHtml : landingHtml)
     })) as FetchLike
     const resolve = async () => ({ items: {}, itemstats: {}, skills: { 5503: 'Fire Attunement' }, specs: { 31: 'Fire' }, traits: { 296: 'Empowering Flame' } })
-    const r = await fetchSnowcrowsStatic('https://snowcrows.com/builds/raids', { fetchImpl: f, resolve, crawlDepth: 2 })
+    const r = await fetchSnowcrowsStatic('https://snowcrows.com/builds/raids', { fetchImpl: f, resolve, crawlDepth: 2, delayMs: 0 })
     expect(r.ok).toBe(true)
     if (r.ok) {
       expect(r.pages.map((p) => p.url)).toContain('https://snowcrows.com/builds/raids/ele/power-weaver')
@@ -99,7 +99,7 @@ describe('fetchSnowcrowsStatic', () => {
 
   it('returns {ok:false} when nothing parses', async () => {
     const f = (async () => ({ ok: true, json: async () => [], text: async () => '<p>nothing</p>' })) as FetchLike
-    const r = await fetchSnowcrowsStatic('https://snowcrows.com/builds/raids', { fetchImpl: f, resolve: async () => ({ items: {}, itemstats: {}, skills: {}, specs: {}, traits: {} }) })
+    const r = await fetchSnowcrowsStatic('https://snowcrows.com/builds/raids', { fetchImpl: f, resolve: async () => ({ items: {}, itemstats: {}, skills: {}, specs: {}, traits: {} }), delayMs: 0 })
     expect(r.ok).toBe(false)
   })
 })
@@ -149,5 +149,22 @@ describe('pickBuildLinks', () => {
       10
     )
     expect(links).toEqual(['https://snowcrows.com/builds/raids/ele/weaver'])
+  })
+
+  it('confines to the seed prefix and returns leaf (deeper) links first', () => {
+    const links = pickBuildLinks(
+      [
+        'https://snowcrows.com/builds/wvw/ele', // profession index (depth 4)
+        'https://snowcrows.com/builds/wvw/ele/power-tempest', // leaf build (depth 5)
+        'https://snowcrows.com/builds/raids/ele/weaver' // sibling section — drop
+      ],
+      'https://snowcrows.com/builds/wvw',
+      10,
+      '/builds/wvw'
+    )
+    expect(links).toEqual([
+      'https://snowcrows.com/builds/wvw/ele/power-tempest', // deeper first
+      'https://snowcrows.com/builds/wvw/ele'
+    ])
   })
 })

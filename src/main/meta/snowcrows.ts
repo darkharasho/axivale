@@ -82,7 +82,12 @@ export function extractHrefs(html: string, baseUrl: string): string[] {
   return out
 }
 
-export function pickBuildLinks(hrefs: string[], landingUrl: string, max: number): string[] {
+export function pickBuildLinks(
+  hrefs: string[],
+  landingUrl: string,
+  max: number,
+  prefix?: string
+): string[] {
   const landing = normKey(landingUrl)
   let origin = ''
   try {
@@ -101,13 +106,18 @@ export function pickBuildLinks(hrefs: string[], landingUrl: string, max: number)
     }
     if (origin && u.origin !== origin) continue
     if (!u.pathname.includes('/builds/')) continue
+    // Stay under the seed path (e.g. /builds/wvw) so the crawl doesn't wander into
+    // sibling game-mode landings and burn the budget before reaching leaf builds.
+    if (prefix && !u.pathname.replace(/\/$/, '').startsWith(prefix)) continue
     const key = (u.origin + u.pathname).replace(/\/$/, '')
     if (seen.has(key)) continue
     seen.add(key)
     out.push(key)
     if (out.length >= max) break
   }
-  return out
+  // Leaf build pages (deeper paths) first, so the page budget fills with actual
+  // builds rather than profession/category index pages.
+  return out.sort((a, b) => b.split('/').length - a.split('/').length)
 }
 
 export type FetchLike = (
@@ -201,15 +211,20 @@ export function assembleBuildDoc(title: string, parsed: ParsedArmory, names: Arm
   return lines.join('\n')
 }
 
-const MAX_PAGES = 30
-const BUDGET_MS = 120_000
+const MAX_PAGES = 60 // leaf build pages to ingest per source
+const BUDGET_MS = 180_000
+const PAGE_DELAY_MS = 300 // politeness between fetches; avoids rate-limiting
 const MAX_TOTAL_CHARS = 16_000 // bound the joined excerpt handed to the distiller (parity with the browser path)
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms))
 
 export interface SnowcrowsDeps {
   fetchImpl?: FetchLike
   resolve?: (parsed: ParsedArmory) => Promise<ArmoryNames>
   crawlDepth?: number
   now?: () => number
+  /** Politeness delay between fetches; tests pass 0. */
+  delayMs?: number
 }
 
 export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}): Promise<FetchResult> {
@@ -217,6 +232,14 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
   const resolve = deps.resolve ?? ((p: ParsedArmory) => resolveArmoryNames(p, fetchImpl))
   const depth = deps.crawlDepth ?? 2
   const now = deps.now ?? Date.now
+  // Confine the crawl to the seed's section (e.g. /builds/wvw) so it walks
+  // section → profession → build instead of every game mode's landing page.
+  let seedPrefix = ''
+  try {
+    seedPrefix = new URL(url).pathname.replace(/\/$/, '')
+  } catch {
+    /* leave empty — no prefix filter */
+  }
 
   const getHtml = async (u: string): Promise<string | null> => {
     try {
@@ -242,6 +265,7 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
     visited.add(key)
 
     const html = await getHtml(pageUrl)
+    await sleep(deps.delayMs ?? PAGE_DELAY_MS)
     if (!html) {
       fetchFails++
       continue
@@ -257,7 +281,7 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
       noArmory++
     }
     if (level < depth) {
-      for (const link of pickBuildLinks(extractHrefs(html, pageUrl), pageUrl, MAX_PAGES)) {
+      for (const link of pickBuildLinks(extractHrefs(html, pageUrl), pageUrl, MAX_PAGES, seedPrefix)) {
         const k = normKey(link)
         if (k !== null && !visited.has(k)) queue.push({ url: link, level: level + 1 })
       }
