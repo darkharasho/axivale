@@ -39,6 +39,8 @@ export interface RendererMetaMode {
   updatedAt: string
 }
 
+// Detailed per-mode/per-source events for the Meta settings panel (busy + which
+// source is fetching). The learning banner uses the coarser RendererLearnProgress.
 export type RendererMetaProgress =
   | { type: 'refresh-start'; total: number }
   | { type: 'mode-start'; modeId: string }
@@ -46,6 +48,14 @@ export type RendererMetaProgress =
   | { type: 'source-done'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
   | { type: 'idle' }
+
+// Coarse "learning" progress for the banner — the meta refresh AND the wiki
+// reference ingest both report here. Each background job is a labelled phase;
+// 'start' carries its total + label and every 'advance' moves that phase's bar.
+export type RendererLearnProgress =
+  | { phase: 'meta' | 'wiki'; kind: 'start'; total: number; label: string }
+  | { phase: 'meta' | 'wiki'; kind: 'advance' }
+  | { phase: 'meta' | 'wiki'; kind: 'done' }
 
 export interface RendererMetaChunkRow {
   id: string
@@ -203,6 +213,7 @@ export interface OfficerApi {
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
   onAxibridgeProgress(cb: (message: string) => void): () => void
   onMetaProgress(cb: (e: RendererMetaProgress) => void): () => void
+  onLearnProgress(cb: (e: RendererLearnProgress) => void): () => void
 }
 
 export type UpdateStatus =

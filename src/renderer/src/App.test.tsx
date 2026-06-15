@@ -94,6 +94,7 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     onConfirmRequest: vi.fn().mockImplementation(noop),
     onAxibridgeProgress: vi.fn().mockImplementation(noop),
     onMetaProgress: vi.fn().mockImplementation(noop),
+    onLearnProgress: vi.fn().mockImplementation(noop),
     respondConfirm: vi.fn(),
     windowControl: vi.fn(),
     listKeys: vi.fn().mockResolvedValue([]),

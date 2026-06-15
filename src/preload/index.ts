@@ -102,5 +102,10 @@ contextBridge.exposeInMainWorld('officer', {
     const handler = (_e: unknown, payload: unknown): void => cb(payload)
     ipcRenderer.on('meta:progress', handler)
     return () => ipcRenderer.removeListener('meta:progress', handler)
+  },
+  onLearnProgress: (cb: (e: unknown) => void) => {
+    const handler = (_e: unknown, payload: unknown): void => cb(payload)
+    ipcRenderer.on('learn:progress', handler)
+    return () => ipcRenderer.removeListener('learn:progress', handler)
   }
 })
