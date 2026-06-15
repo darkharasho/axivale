@@ -743,6 +743,29 @@ app.whenReady().then(async () => {
       return []
     }
   })
+  // Same trio against the wiki reference corpus (wiki_chunks); 'mode' here is the
+  // wiki page category (skills, traits, stats, …).
+  ipcMain.handle('wiki:index-stats', async () => {
+    try {
+      return await wikiIndex.stats()
+    } catch {
+      return { total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }
+    }
+  })
+  ipcMain.handle('wiki:index-sample', async (_e, opts: { mode?: string; limit: number }) => {
+    try {
+      return await wikiIndex.sample(opts)
+    } catch {
+      return []
+    }
+  })
+  ipcMain.handle('wiki:index-search', async (_e, query: string, mode?: string) => {
+    try {
+      return await wikiIndex.search(query, { mode, k: 8 })
+    } catch {
+      return []
+    }
+  })
 
   function drainConfirms(): void {
     for (const resolve of pendingConfirms.values()) resolve(false)
