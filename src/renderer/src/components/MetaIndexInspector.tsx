@@ -5,9 +5,11 @@ import type {
   RendererMetaSearchHit
 } from '../../../preload/index.d'
 
-const MODES = ['', 'PvE', 'WvW', 'WvW Roaming']
+const META_MODES = ['', 'PvE', 'WvW', 'WvW Roaming']
+type Corpus = 'meta' | 'wiki'
 
 export default function MetaIndexInspector(): ReactElement {
+  const [corpus, setCorpus] = useState<Corpus>('meta')
   const [stats, setStats] = useState<RendererMetaIndexStats | null>(null)
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState('')
@@ -17,9 +19,30 @@ export default function MetaIndexInspector(): ReactElement {
   const [modeOpen, setModeOpen] = useState(false)
   const modeRef = useRef<HTMLSpanElement>(null)
 
+  // Per-corpus API trio: meta_chunks vs the wiki reference corpus (wiki_chunks).
+  const api =
+    corpus === 'wiki'
+      ? {
+          stats: window.officer.wikiIndexStats,
+          sample: window.officer.wikiIndexSample,
+          search: window.officer.wikiIndexSearch
+        }
+      : {
+          stats: window.officer.metaIndexStats,
+          sample: window.officer.metaIndexSample,
+          search: window.officer.metaIndexSearch
+        }
+
+  // Meta filters by game mode; wiki filters by page category (derived from stats).
+  const modeOptions =
+    corpus === 'meta' ? META_MODES : ['', ...Object.keys(stats?.byMode ?? {}).sort()]
+  const allLabel = corpus === 'meta' ? 'All modes' : 'All categories'
+
   useEffect(() => {
-    void window.officer.metaIndexStats().then(setStats)
-  }, [])
+    void api.stats().then(setStats)
+    // re-load when the corpus changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [corpus])
 
   // Custom dark dropdown — close on outside click (native <select> popup is light).
   useEffect(() => {
@@ -35,12 +58,21 @@ export default function MetaIndexInspector(): ReactElement {
     if (!query.trim()) return
     setBusy(true)
     setRows(null)
-    setHits(await window.officer.metaIndexSearch(query, mode || undefined))
+    setHits(await api.search(query, mode || undefined))
     setBusy(false)
   }
   async function loadSample(): Promise<void> {
     setHits(null)
-    setRows(await window.officer.metaIndexSample({ mode: mode || undefined, limit: 25 }))
+    setRows(await api.sample({ mode: mode || undefined, limit: 25 }))
+  }
+
+  function switchCorpus(next: Corpus): void {
+    if (next === corpus) return
+    setCorpus(next)
+    setMode('')
+    setHits(null)
+    setRows(null)
+    setStats(null)
   }
 
   return (
@@ -48,6 +80,22 @@ export default function MetaIndexInspector(): ReactElement {
       <h2>
         Index inspector <span className="mi-dev">dev</span>
       </h2>
+      <div className="mi-corpus">
+        <button
+          type="button"
+          className={`mi-tab${corpus === 'meta' ? ' sel' : ''}`}
+          onClick={() => switchCorpus('meta')}
+        >
+          Meta
+        </button>
+        <button
+          type="button"
+          className={`mi-tab${corpus === 'wiki' ? ' sel' : ''}`}
+          onClick={() => switchCorpus('wiki')}
+        >
+          Wiki
+        </button>
+      </div>
       {stats && (
         <div className="mi-stats">
           <span>
@@ -79,11 +127,11 @@ export default function MetaIndexInspector(): ReactElement {
             className={`mi-pick${modeOpen ? ' open' : ''}`}
             onClick={() => setModeOpen((o) => !o)}
           >
-            {mode || 'All modes'} <span className="mi-caret">▾</span>
+            {mode || allLabel} <span className="mi-caret">▾</span>
           </button>
           {modeOpen && (
             <div className="mi-menu">
-              {MODES.map((m) => (
+              {modeOptions.map((m) => (
                 <button
                   type="button"
                   key={m}
@@ -93,7 +141,7 @@ export default function MetaIndexInspector(): ReactElement {
                     setModeOpen(false)
                   }}
                 >
-                  {m || 'All modes'}
+                  {m || allLabel}
                 </button>
               ))}
             </div>
@@ -126,7 +174,9 @@ export default function MetaIndexInspector(): ReactElement {
       {rows && (
         <div className="mi-results">
           {rows.length === 0 ? (
-            <div className="mi-empty">index empty — run a crawl</div>
+            <div className="mi-empty">
+              {corpus === 'meta' ? 'index empty — run a crawl' : 'index empty — wiki ingest pending'}
+            </div>
           ) : (
             rows.map((r) => (
               <div className="mi-hit" key={r.id}>
