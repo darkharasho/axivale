@@ -19,7 +19,7 @@ export function buildCompCheckTools(): Array<SdkMcpToolDefinition<any>> {
       'Validate a proposed WvW squad composition for boon coverage and role gaps. ' +
         'Pass the roster as subgroups (each up to 5 builds, each tagged with its WvW role from meta_search). ' +
         'Returns structured findings: per-subgroup coverage errors (e.g. Pure DPS with no stability source), ' +
-        'doubled roles, oversized subgroups, and squad-wide gaps (no boon strip, no cleanse). ' +
+        'doubled stability source, oversized/empty subgroups, and squad-wide gaps (no boon strip, no cleanse/sustain). ' +
         'Errors are hard problems; warnings are advisories. Sources give no fixed squad-wide ratios, so ' +
         'squad-wide checks are presence-based. Fix the errors, then re-check.',
       {

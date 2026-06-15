@@ -6,7 +6,16 @@
 // returns structured findings. Pure — no I/O. The model proposes a roster, calls
 // this, and fixes the findings.
 
-import { WVW_ROLES, type WvwRole } from './compRoles'
+import { WVW_ROLES, boonsForRole, type WvwRole } from './compRoles'
+
+const roleDef = (role: string): (typeof WVW_ROLES)[number] | undefined =>
+  WVW_ROLES.find((r) => r.role === role)
+const providesStability = (role: string): boolean => boonsForRole(role as WvwRole).includes('Stability')
+const isStripper = (role: string): boolean => roleDef(role)?.strips === true
+const providesCleanse = (role: string): boolean => {
+  const duties = roleDef(role)?.duties ?? []
+  return duties.includes('Condition Removal') || duties.includes('Healing')
+}
 
 export interface RosterEntry {
   build: string
@@ -37,7 +46,8 @@ export function checkComp(roster: Roster): CompReport {
   if (roster.subgroups.length === 0) {
     return { findings: [{ severity: 'error', subgroup: null, message: 'Roster is empty — no subgroups defined.' }], boonCap: 5 }
   }
-  const squadRoleCounts: Record<string, number> = {}
+  let sawStrip = false
+  let sawCleanse = false
 
   roster.subgroups.forEach((sg, i) => {
     // Tally squad-wide first: these players exist regardless of subgroup validity.
@@ -52,7 +62,8 @@ export function checkComp(roster: Roster): CompReport {
         continue
       }
       counts[e.role] = (counts[e.role] ?? 0) + 1
-      squadRoleCounts[e.role] = (squadRoleCounts[e.role] ?? 0) + 1
+      if (isStripper(e.role)) sawStrip = true
+      if (providesCleanse(e.role)) sawCleanse = true
     }
 
     if (sg.length === 0) {
@@ -70,33 +81,34 @@ export function checkComp(roster: Roster): CompReport {
 
     // Tertiary Support is intentionally unconstrained (flex utility) — no dedicated check.
     const hasPureDps = (counts['Pure DPS'] ?? 0) > 0
-    const hasStability = (counts['Primary Support'] ?? 0) > 0
+    const hasStability = sg.some((e) => providesStability(e.role))
     if (hasPureDps && !hasStability) {
       findings.push({
         severity: 'error',
         subgroup: i,
-        message: `Subgroup ${i + 1} has Pure DPS but no Primary Support — no stability source for the subgroup.`
+        message: `Subgroup ${i + 1} has Pure DPS but no stability source (no build provides Stability).`
       })
     }
-    if ((counts['Primary Support'] ?? 0) >= 2) {
+    const stabilityProviders = sg.filter((e) => providesStability(e.role)).length
+    if (stabilityProviders >= 2) {
       findings.push({
         severity: 'warning',
         subgroup: i,
-        message: `Subgroup ${i + 1} doubles Primary Support — stability/boons cap at 5 targets, so the second is largely wasted here.`
+        message: `Subgroup ${i + 1} doubles its stability source — boons cap at 5 targets, so the second is largely wasted here.`
       })
     }
   })
 
   // Squad-wide: strip and cleanse must exist somewhere. Sources give no fixed
   // ratio, so these are warnings (presence checks), not hard counts.
-  if ((squadRoleCounts['Boon Strip DPS'] ?? 0) === 0) {
+  if (!sawStrip) {
     findings.push({
       severity: 'warning',
       subgroup: null,
       message: 'No Boon Strip DPS anywhere — the squad cannot clear enemy stability to land CC and spikes.'
     })
   }
-  if ((squadRoleCounts['Secondary Support'] ?? 0) === 0) {
+  if (!sawCleanse) {
     findings.push({
       severity: 'warning',
       subgroup: null,
