@@ -658,7 +658,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 .mi-inspector { margin-top: 14px; border-top: 1px dashed var(--rule2); padding-top: 10px; }
 .mi-dev { font-size: 10px; text-transform: uppercase; color: var(--accent-b); border: 1px solid var(--accent-b); border-radius: 2px; padding: 0 4px; }
-.mi-corpus { display: flex; gap: 0; margin: 8px 0; }
+.mi-corpus { display: flex; gap: 0; margin: 0 0 0 6px; }
 .mi-tab { background: rgba(0,0,0,.2); border: 1px solid var(--line); color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 5px 14px; cursor: pointer; }
 .mi-tab + .mi-tab { border-left: none; }
 .mi-tab:hover { color: var(--ink); }
@@ -677,10 +677,16 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .mi-opt:last-child { border-bottom: none; }
 .mi-opt:hover { background: rgba(200,66,58,.12); color: var(--ink); }
 .mi-opt.sel { color: var(--ink); }
-.mi-results { margin-top: 8px; max-height: 320px; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.mi-results { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
 .mi-hit { border: 1px solid var(--rule2); border-radius: 3px; padding: 6px 8px; }
-.mi-hit-head { font-size: 12px; display: flex; gap: 6px; align-items: baseline; }
+.mi-hit-head { width: 100%; text-align: left; background: none; border: none; cursor: pointer; color: inherit; font-family: inherit; font-size: 12px; display: flex; gap: 6px; align-items: baseline; padding: 0; }
+.mi-hit-head:hover { color: var(--accent-b); }
 .mi-score { color: var(--accent-b); font-variant-numeric: tabular-nums; }
 .mi-src { opacity: 0.6; font-size: 11px; }
 .mi-snip { font-size: 11px; opacity: 0.8; margin-top: 3px; white-space: pre-wrap; }
+.mi-full { font-size: 11.5px; opacity: 0.92; margin-top: 5px; white-space: pre-wrap; line-height: 1.5; border-top: 1px dotted var(--rule2); padding-top: 5px; }
 .mi-empty { font-size: 12px; opacity: 0.6; }
+/* Inspector modal (reuses .action-overlay) — wider/taller than the action modal */
+.mi-modal { position: relative; display: flex; flex-direction: column; width: min(1180px, 95vw); max-height: 90vh; background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 18px 50px rgba(0,0,0,.55); }
+.mi-modal .action-modal__head { gap: 8px; }
+.mi-modal__body { overflow: auto; padding: 14px 18px; }

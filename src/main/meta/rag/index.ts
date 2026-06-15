@@ -14,6 +14,8 @@ export interface MetaSearchHit {
   url: string
   title: string
   snippet: string
+  /** Full chunk text (inspector "expand"); snippet is the truncated preview. */
+  text?: string
   score: number
 }
 
@@ -24,6 +26,8 @@ export interface MetaChunkRow {
   url: string
   title: string
   snippet: string
+  /** Full chunk text (inspector "expand"); snippet is the truncated preview. */
+  text?: string
   indexedAt: string
 }
 export interface MetaIndexStats {
@@ -147,6 +151,7 @@ export class LanceMetaIndex implements MetaIndex {
       url: r.url,
       title: r.title,
       snippet: String(r.text).slice(0, 600),
+      text: String(r.text),
       score: r._relevance_score ?? 0
     }))
   }
@@ -185,6 +190,7 @@ export class LanceMetaIndex implements MetaIndex {
         url: r.url,
         title: r.title,
         snippet: String(r.text ?? '').slice(0, 300),
+        text: String(r.text ?? ''),
         indexedAt: r.indexedAt ?? ''
       }))
     } catch {
