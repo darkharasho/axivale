@@ -206,7 +206,14 @@ app.whenReady().then(async () => {
       fetchCategoryMembers(category, (url) =>
         fetch(url, { headers: { 'User-Agent': 'AxiVale/0.4 (https://github.com/darkharasho)' } })
       ),
-    signal: wikiAbort.signal
+    signal: wikiAbort.signal,
+    // Don't re-crawl the wiki on every launch — only once a week (a clean,
+    // completed run records the timestamp; an aborted one re-runs next launch).
+    lastRunAt: () => {
+      const v = store.getSetting('wikiIngestedAt')
+      return v ? Number(v) : null
+    },
+    markRun: (ts) => store.setSetting('wikiIngestedAt', String(ts))
   })
   let wikiTimer: ReturnType<typeof setInterval> | null = null
   const metaFetcher = new BrowserWindowFetcher()

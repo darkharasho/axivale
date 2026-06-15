@@ -136,6 +136,58 @@ describe('WikiRefIngester', () => {
     expect(idx.replaced).toHaveLength(0) // aborted before any work
   })
 
+  it('skips entirely (no fetch) when a completed run is still fresh', async () => {
+    const idx = new FakeMetaIndex()
+    const w = wiki({ Power: 'Power is an attribute. '.repeat(20) })
+    const markRun = vi.fn()
+    await new WikiRefIngester({
+      wiki: w,
+      index: idx,
+      pages: [{ category: 'stats', title: 'Power' }],
+      lastRunAt: () => 1_000_000, // "ran" recently
+      markRun,
+      staleMs: 7 * 86_400_000,
+      now: () => 1_000_000 + 60_000 // 1 minute later → still fresh
+    }).ingest()
+    expect(w.calls).toHaveLength(0) // never hit the network
+    expect(idx.replaced).toHaveLength(0)
+    expect(markRun).not.toHaveBeenCalled()
+  })
+
+  it('runs when stale and records the completed run', async () => {
+    const idx = new FakeMetaIndex()
+    const w = wiki({ Power: 'Power is an attribute that boosts damage. '.repeat(20) })
+    const markRun = vi.fn()
+    await new WikiRefIngester({
+      wiki: w,
+      index: idx,
+      pages: [{ category: 'stats', title: 'Power' }],
+      lastRunAt: () => 1_000_000,
+      markRun,
+      staleMs: 7 * 86_400_000,
+      now: () => 1_000_000 + 8 * 86_400_000 // 8 days later → stale
+    }).ingest()
+    expect(w.calls.length).toBeGreaterThan(0)
+    expect(markRun).toHaveBeenCalledWith(1_000_000 + 8 * 86_400_000)
+  })
+
+  it('does not record the run when aborted mid-ingest (so it resumes next launch)', async () => {
+    const idx = new FakeMetaIndex()
+    const w = wiki({ Power: 'Power is an attribute. '.repeat(20) })
+    const markRun = vi.fn()
+    const controller = new AbortController()
+    controller.abort()
+    await new WikiRefIngester({
+      wiki: w,
+      index: idx,
+      pages: [{ category: 'stats', title: 'Power' }],
+      lastRunAt: () => null,
+      markRun,
+      signal: controller.signal
+    }).ingest()
+    expect(markRun).not.toHaveBeenCalled()
+  })
+
   it('advances for every page even when the whole batch fetch throws', async () => {
     const idx = new FakeMetaIndex()
     const failing: WikiClientLike = { getWikitextBatch: async () => { throw new Error('network') } }
