@@ -175,9 +175,11 @@ export class AxiAppLauncher {
   }
 
   private spawnDev(cwd: string): void {
-    // `npm run dev` in the sibling checkout. On Windows npm is npm.cmd, which
-    // needs a shell. The sibling's dev script owns its env, so pass ours intact.
-    const child = this.io.spawn('npm', ['run', 'dev'], {
+    // `npm run dev:headless` in the sibling checkout — a lean APP_PROFILE=dev
+    // electron --headless (no build:site / vite / electronmon), so an on-demand
+    // launch comes up in ~1s instead of the full windowed dev chain. On Windows
+    // npm is npm.cmd, which needs a shell. The sibling script owns its env.
+    const child = this.io.spawn('npm', ['run', 'dev:headless'], {
       detached: true,
       stdio: 'ignore',
       cwd,

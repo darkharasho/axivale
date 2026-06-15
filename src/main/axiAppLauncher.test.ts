@@ -181,7 +181,7 @@ describe('AxiAppLauncher.ensureRunning', () => {
     expect(quitIfHeadless).not.toHaveBeenCalled()
   })
 
-  it('in dev mode runs `npm run dev` in the sibling repo instead of resolving a binary', async () => {
+  it('in dev mode runs `npm run dev:headless` in the sibling repo instead of resolving a binary', async () => {
     // No AppImage anywhere — prod resolution would fail; dev launch must not depend on it.
     const io = fakeIo()
     const launcher = new AxiAppLauncher(
@@ -195,7 +195,7 @@ describe('AxiAppLauncher.ensureRunning', () => {
     expect(io.spawn).toHaveBeenCalledTimes(1)
     const [cmd, args, opts] = (io.spawn as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(cmd).toBe('npm')
-    expect(args).toEqual(['run', 'dev'])
+    expect(args).toEqual(['run', 'dev:headless'])
     expect(opts).toMatchObject({ detached: true, cwd: '/repos/axiforge' })
   })
 })
