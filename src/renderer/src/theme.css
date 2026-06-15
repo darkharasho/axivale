@@ -663,8 +663,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .mi-tab + .mi-tab { border-left: none; }
 .mi-tab:hover { color: var(--ink); }
 .mi-tab.sel { background: var(--accent-b); color: #fff; border-color: var(--accent-b); }
-.mi-stats { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; margin: 6px 0; color: var(--ink); }
+.mi-stats { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; margin: 6px 0; color: var(--ink); }
 .mi-stats .mi-sub { opacity: 0.6; flex-basis: 100%; }
+.mi-pill { background: rgba(0,0,0,.2); border: 1px solid var(--line); border-radius: 999px; color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 2px 10px; cursor: pointer; }
+.mi-pill b { color: var(--ink); }
+.mi-pill:hover { border-color: var(--accent-b); color: var(--ink); }
+.mi-pill.sel { background: var(--accent-b); border-color: var(--accent-b); color: #fff; }
+.mi-pill.sel b { color: #fff; }
 .mi-row { display: flex; gap: 6px; align-items: center; }
 .mi-row .sinput { flex: 1; }
 /* custom dark mode-dropdown (native <select> popup is unstyled/light) */
