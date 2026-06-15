@@ -177,14 +177,41 @@ export class AxibridgeService {
   }
 
   async attendance(args: DateRange) {
-    const rows: RollupData['playerRows'] = []
-    let rollupSource: 'published' | 'computed-locally' = 'published'
-    for (const repo of this.requireRepos()) {
-      const { rollup, source } = await this.rollupFor(repo)
-      if (source === 'computed-locally') rollupSource = source
-      rows.push(...rollup.playerRows)
+    // No range → the cross-run rollup (cheap, whole-history, published when present).
+    if (!args.from && !args.to) {
+      const rows: RollupData['playerRows'] = []
+      let rollupSource: 'published' | 'computed-locally' = 'published'
+      for (const repo of this.requireRepos()) {
+        const { rollup, source } = await this.rollupFor(repo)
+        if (source === 'computed-locally') rollupSource = source
+        rows.push(...rollup.playerRows)
+      }
+      return { attendance: rows, rollupSource, range: args }
     }
-    return { attendance: rows, rollupSource, range: args }
+    // Date range → reaggregate from the per-run summaries that fall in range. The
+    // rollup is whole-history only, so date filtering must come from the summaries.
+    const { runs, errors } = await this.runsList(args)
+    const { summaries, skippedRuns } = await this.summariesFor(runs)
+    const rows = aggregatePlayers(summaries).map((p) => {
+      const profession =
+        Object.entries(p.professionTimeMs).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—'
+      return {
+        account: p.account,
+        profession,
+        runs: p.runsJoined,
+        combatTimeMs: p.combatTimeMs,
+        squadTimeMs: p.squadTimeMs,
+        lastSeenTs: p.lastSeen ? Date.parse(p.lastSeen) || 0 : 0
+      }
+    })
+    return {
+      attendance: rows,
+      rollupSource: 'computed-locally' as const,
+      range: args,
+      runsConsidered: summaries.length,
+      skippedRuns,
+      errors
+    }
   }
 
   async commanderStats(args: DateRange) {

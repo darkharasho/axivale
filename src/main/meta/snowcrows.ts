@@ -231,6 +231,8 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
   const visited = new Set<string>()
   const queue: Array<{ url: string; level: number }> = [{ url, level: 0 }]
   const start = now()
+  let fetchFails = 0
+  let noArmory = 0
 
   while (queue.length > 0) {
     if (pages.length >= MAX_PAGES || now() - start > BUDGET_MS) break
@@ -240,7 +242,10 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
     visited.add(key)
 
     const html = await getHtml(pageUrl)
-    if (!html) continue
+    if (!html) {
+      fetchFails++
+      continue
+    }
 
     const parsed = parseArmory(html)
     if (parsed.items.length || parsed.skills.length || parsed.specs.length) {
@@ -248,6 +253,8 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
       const names = await resolve(parsed)
       const text = assembleBuildDoc(title, parsed, names)
       if (text) pages.push({ url: pageUrl, title, text })
+    } else {
+      noArmory++
     }
     if (level < depth) {
       for (const link of pickBuildLinks(extractHrefs(html, pageUrl), pageUrl, MAX_PAGES)) {
@@ -257,7 +264,15 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
     }
   }
 
-  if (pages.length === 0) return { ok: false, error: 'empty' }
+  if (pages.length === 0) {
+    // Distinguish a network/blocked fetch from pages that loaded but carried no
+    // armory embeds, so the refresh log points at the actual failure.
+    const reason =
+      fetchFails >= visited.size
+        ? `all ${visited.size} page fetch(es) failed (blocked or network)`
+        : `no armory embeds found across ${visited.size} page(s) (${noArmory} had none)`
+    return { ok: false, error: reason }
+  }
   const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n').slice(0, MAX_TOTAL_CHARS)
   return { ok: true, text, pages }
 }
