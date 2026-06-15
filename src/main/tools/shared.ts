@@ -32,8 +32,8 @@ export interface ToolDeps {
   wikiIndex: () => MetaIndex
   /** On-demand GW2 wiki skill/trait facts with PvE/WvW/PvP splits. */
   wikiFacts: WikiFacts
-  /** Load a build page (Cloudflare-aware) and return its in-game chat code, or null. */
-  fetchBuildCode: (url: string) => Promise<string | null>
+  /** Load a build page (Cloudflare-aware) and return its full HTML, or null. */
+  fetchBuildPage: (url: string) => Promise<string | null>
 }
 
 export interface ToolResult {

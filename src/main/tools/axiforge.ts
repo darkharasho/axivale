@@ -2,6 +2,8 @@ import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, safeRich, type ToolDeps } from './shared'
 import { AxiforgeError, AxiforgeNotRunningError } from '../axiforgeClient'
+import { extractChatCode } from '../meta/fetcher'
+import { scrapeBuildGear } from '../meta/buildGear'
 
 /** Tools here that join the top-level DESTRUCTIVE_TOOLS list (deletes + public publishes). */
 export const AXIFORGE_DESTRUCTIVE_TOOLS = [
@@ -265,19 +267,31 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
         game_mode: z.enum(['pve', 'wvw', 'pvp']).optional().describe('Fallback game mode for stat context (optional)')
       },
       safeRich(async ({ url, game_mode }) => {
-        const code = await deps.fetchBuildCode(url)
+        const html = await deps.fetchBuildPage(url)
+        if (!html) {
+          return {
+            value: { note: `Could not load that build page (it may be challenge-blocked). Open it directly: ${url}` }
+          }
+        }
+        const code = extractChatCode(html)
         if (!code) {
           return {
-            value: {
-              note: `No in-game build template code was found on that page. Open it directly for the full details: ${url}`
-            }
+            value: { note: `No in-game build template code was found on that page. Open it directly: ${url}` }
           }
         }
         const build = (await write(() =>
           deps.axiforge.parseChatLink(game_mode ? { link: code, gameMode: game_mode } : { link: code })
         )) as Record<string, unknown>
+        build.chatCode = code
+        // A chat code carries no gear — scrape the page's armory embeds for the
+        // weapons/sigils/runes/stats (and weapon skills) the card needs.
+        const gear = await scrapeBuildGear(html, String(build.profession ?? ''))
+        if (gear) {
+          build.scrapedGear = gear
+          if (gear.weaponSkills.length) build.weaponSkills = gear.weaponSkills
+        }
         return {
-          value: { chatCode: code, ...stripImages(build) },
+          value: { chatCode: code, gear: gear ?? null, ...stripImages(build) },
           display: { kind: 'build-card', data: { build } }
         }
       })

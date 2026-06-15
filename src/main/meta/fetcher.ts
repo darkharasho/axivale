@@ -172,23 +172,22 @@ export class BrowserWindowFetcher implements MetaFetcher {
     return run
   }
 
-  /** Load one build page (Cloudflare-aware) and pull its in-game chat code, if any.
-   *  Serialized through the same window as crawls. Returns null if challenged or
-   *  no code is present. */
-  fetchChatCode(url: string): Promise<string | null> {
-    const run = this.chain.then(() => this.fetchChatCodeOne(url))
+  /** Load one build page (Cloudflare-aware) and return its full HTML, or null if
+   *  still challenged. Serialized through the same window as crawls. Callers pull
+   *  the chat code (extractChatCode) and/or scrape gear (armory embeds) from it. */
+  fetchBuildPage(url: string): Promise<string | null> {
+    const run = this.chain.then(() => this.fetchBuildPageOne(url))
     this.chain = run.catch(() => undefined)
     return run
   }
 
-  private async fetchChatCodeOne(url: string): Promise<string | null> {
+  private async fetchBuildPageOne(url: string): Promise<string | null> {
     try {
       const checked = await this.loadChecked(url, 'body')
       if (checked === null) return null // still behind a Cloudflare challenge
-      const html = (await this.window().webContents.executeJavaScript(
+      return (await this.window().webContents.executeJavaScript(
         'document.documentElement.outerHTML'
       )) as string
-      return extractChatCode(html)
     } catch {
       return null
     }

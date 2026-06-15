@@ -50,7 +50,7 @@ function makeDeps(): ToolDeps {
     metaIndex: () => ({}) as never,
     wikiIndex: () => ({}) as never,
     wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
-    fetchBuildCode: vi.fn().mockResolvedValue('[&DQYAAA==]')
+    fetchBuildPage: vi.fn().mockResolvedValue(null)
   }
 }
 
@@ -434,14 +434,15 @@ describe('axiforge tools', () => {
   })
 
   describe('gw2_build_from_url', () => {
-    it('fetches the page code and renders a build card', async () => {
+    it('extracts the chat code from the page HTML and renders a build card', async () => {
       const deps = makeDeps()
-      ;(deps.fetchBuildCode as ReturnType<typeof vi.fn>).mockResolvedValue('[&DQYAAA==]')
+      // HTML with a chat code but no armory embeds (so gear scrape is a no-op here).
+      ;(deps.fetchBuildPage as ReturnType<typeof vi.fn>).mockResolvedValue('<html><code>[&DQYAAA==]</code></html>')
       const result = await find(deps, 'gw2_build_from_url').handler(
         { url: 'https://metabattle.com/wiki/Build:Catalyst_-_Fresh_Air_Cata_Roamer', game_mode: 'wvw' },
         {}
       )
-      expect(deps.fetchBuildCode).toHaveBeenCalledWith(
+      expect(deps.fetchBuildPage).toHaveBeenCalledWith(
         'https://metabattle.com/wiki/Build:Catalyst_-_Fresh_Air_Cata_Roamer'
       )
       expect(deps.axiforge.parseChatLink).toHaveBeenCalledWith({ link: '[&DQYAAA==]', gameMode: 'wvw' })
@@ -449,9 +450,9 @@ describe('axiforge tools', () => {
       expect(result.isError).toBeUndefined()
     })
 
-    it('returns a clean note (no card) when the page exposes no code', async () => {
+    it('returns a clean note (no card) when the page has no chat code', async () => {
       const deps = makeDeps()
-      ;(deps.fetchBuildCode as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      ;(deps.fetchBuildPage as ReturnType<typeof vi.fn>).mockResolvedValue('<html><p>no code here</p></html>')
       const result = await find(deps, 'gw2_build_from_url').handler(
         { url: 'https://metabattle.com/wiki/Build:Whatever' },
         {}
@@ -459,6 +460,13 @@ describe('axiforge tools', () => {
       expect(deps.axiforge.parseChatLink).not.toHaveBeenCalled()
       expect(result.display).toBeUndefined()
       expect((result.content[0] as { text: string }).text).toContain('No in-game build template code')
+    })
+
+    it('returns a clean note when the page could not be loaded', async () => {
+      const deps = makeDeps()
+      ;(deps.fetchBuildPage as ReturnType<typeof vi.fn>).mockResolvedValue(null)
+      const result = await find(deps, 'gw2_build_from_url').handler({ url: 'https://metabattle.com/wiki/Build:X' }, {})
+      expect((result.content[0] as { text: string }).text).toContain('Could not load')
     })
 
     it('is not destructive', () => {
