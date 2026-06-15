@@ -92,6 +92,12 @@ interface CatalogCacheFile {
   savedAt: string
 }
 
+// Decoding a chat code / gw2skills URL into a full build runs catalog resolution
+// (skills/traits/gear) on AxiForge's side and is far slower than a plain CRUD
+// call — especially on a cold app — so these get a much longer ceiling than the
+// 3s default that would otherwise time them out into a "card failed" error.
+const DECODE_TIMEOUT_MS = 25_000
+
 export class AxiforgeClient {
   private readonly requestTimeoutMs: number
 
@@ -119,10 +125,16 @@ export class AxiforgeClient {
     }
   }
 
-  private async fetchOnce(disc: AxiforgeDiscovery, method: string, path: string, body?: unknown): Promise<Response> {
+  private async fetchOnce(
+    disc: AxiforgeDiscovery,
+    method: string,
+    path: string,
+    body?: unknown,
+    timeoutMs?: number
+  ): Promise<Response> {
     return fetch(`http://127.0.0.1:${disc.port}${path}`, {
       method,
-      signal: AbortSignal.timeout(this.requestTimeoutMs),
+      signal: AbortSignal.timeout(timeoutMs ?? this.requestTimeoutMs),
       headers: {
         Authorization: `Bearer ${disc.token}`,
         ...(body !== undefined ? { 'content-type': 'application/json' } : {})
@@ -131,11 +143,11 @@ export class AxiforgeClient {
     })
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  private async request<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T> {
     const disc = await this.readDiscovery()
     let resp: Response
     try {
-      resp = await this.fetchOnce(disc, method, path, body)
+      resp = await this.fetchOnce(disc, method, path, body, timeoutMs)
     } catch {
       // TimeoutError / AbortError = request timed out; connection refused with
       // a discovery file present = the app crashed without cleanup (stale
@@ -153,7 +165,7 @@ export class AxiforgeClient {
       }
       let retryResp: Response
       try {
-        retryResp = await this.fetchOnce(freshDisc, method, path, body)
+        retryResp = await this.fetchOnce(freshDisc, method, path, body, timeoutMs)
       } catch {
         throw new AxiforgeNotRunningError('AxiForge restarted with a new token — retry failed')
       }
@@ -286,11 +298,11 @@ export class AxiforgeClient {
   }
 
   importChatLink(link: string, opts: ForgeImportOptions = {}): Promise<ForgeBuild> {
-    return this.request('POST', '/import/chat-link', { link, ...opts })
+    return this.request('POST', '/import/chat-link', { link, ...opts }, DECODE_TIMEOUT_MS)
   }
 
   importGw2skills(url: string, opts: ForgeImportOptions = {}): Promise<ForgeBuild> {
-    return this.request('POST', '/import/gw2skills', { url, ...opts })
+    return this.request('POST', '/import/gw2skills', { url, ...opts }, DECODE_TIMEOUT_MS)
   }
 
   /**
@@ -302,7 +314,7 @@ export class AxiforgeClient {
   parseGw2Skills(opts: { url: string; gameMode?: string }): Promise<ForgeBuild> {
     const body: { url: string; gameMode?: string } =
       opts.gameMode !== undefined ? { url: opts.url, gameMode: opts.gameMode } : { url: opts.url }
-    return this.request('POST', '/import/gw2skills/parse', body)
+    return this.request('POST', '/import/gw2skills/parse', body, DECODE_TIMEOUT_MS)
   }
 
   /**
@@ -313,7 +325,7 @@ export class AxiforgeClient {
   parseChatLink(opts: { link: string; gameMode?: string }): Promise<ForgeBuild> {
     const body: { link: string; gameMode?: string } =
       opts.gameMode !== undefined ? { link: opts.link, gameMode: opts.gameMode } : { link: opts.link }
-    return this.request('POST', '/import/chat-link/parse', body)
+    return this.request('POST', '/import/chat-link/parse', body, DECODE_TIMEOUT_MS)
   }
 
   // --- catalog (persistent cache so cards/grounding work offline) ----------------
