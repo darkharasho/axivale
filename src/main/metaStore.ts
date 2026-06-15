@@ -40,7 +40,9 @@ const DEFAULT_SEED: SeedShape[] = [
     sources: [
       { label: 'Snowcrows (Raids)', url: 'https://snowcrows.com/builds/raids' },
       { label: 'Snowcrows (Open World)', url: 'https://snowcrows.com/builds/open-world' },
-      { label: 'MetaBattle (Raids)', url: 'https://metabattle.com/wiki/Raid_Builds' }
+      { label: 'MetaBattle (Raids)', url: 'https://metabattle.com/wiki/Raid_Builds' },
+      { label: 'MetaBattle (Fractal)', url: 'https://metabattle.com/wiki/Fractal' },
+      { label: 'MetaBattle (Open World)', url: 'https://metabattle.com/wiki/Open_World' }
     ]
   },
   {

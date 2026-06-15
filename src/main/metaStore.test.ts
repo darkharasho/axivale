@@ -137,6 +137,8 @@ describe('MetaStore reconcile', () => {
     expect(urls).toContain('https://snowcrows.com/builds/raids')
     expect(urls).toContain('https://snowcrows.com/builds/open-world')
     expect(urls).toContain('https://metabattle.com/wiki/Raid_Builds')
+    expect(urls).toContain('https://metabattle.com/wiki/Fractal')
+    expect(urls).toContain('https://metabattle.com/wiki/Open_World')
     expect(urls.some((u) => /hardstuck/.test(u))).toBe(false)
   })
 
