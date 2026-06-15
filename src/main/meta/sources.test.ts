@@ -1,6 +1,6 @@
 // src/main/meta/sources.test.ts
 import { describe, it, expect } from 'vitest'
-import { SOURCE_CONFIGS, configForUrl } from './sources'
+import { SOURCE_CONFIGS, configForUrl, resolveContent } from './sources'
 
 describe('source registry', () => {
   it('every config is well-formed for its kind', () => {
@@ -44,6 +44,14 @@ describe('source registry', () => {
     expect(configForUrl('https://snowcrows.com/builds')?.crawlDepth).toBe(2)
     expect(configForUrl('https://hardstuck.gg/gw2/builds/')?.crawlDepth).toBe(2)
     expect(configForUrl('https://metabattle.com/wiki/Category:PvE_builds')?.crawlDepth).toBeUndefined()
+  })
+
+  it('tags WvW guide/wiki pages as rules and build pages as builds', () => {
+    expect(resolveContent('https://wiki.guildwars2.com/wiki/Boon')).toBe('rules')
+    expect(resolveContent('https://snowcrows.com/guides/wvw/wvw-basics-understanding-roles')).toBe('rules')
+    expect(resolveContent('https://guildorder.com/games/gw2/guides/wvw-squad-leadership')).toBe('rules')
+    expect(resolveContent('https://snowcrows.com/builds/wvw')).toBe('builds')
+    expect(resolveContent('https://metabattle.com/wiki/WvW')).toBe('builds')
   })
 
   it('uses tight per-build content selectors (slice 1)', () => {
