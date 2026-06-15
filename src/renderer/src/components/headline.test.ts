@@ -35,6 +35,24 @@ describe('splitHeadline', () => {
       rest: ''
     })
   })
+
+  it('never puts a leading {{figure}} marker in the headline', () => {
+    const { headline, rest } = splitHeadline('{{figure}}\n\nHere is the build. More below.')
+    expect(headline).toBe('Here is the build.')
+    expect(rest).toBe('{{figure}}\n\nMore below.')
+  })
+
+  it('relocates a {{figure}} that lands inside the headline to the body', () => {
+    const { headline, rest } = splitHeadline('The build {{figure}} is meta.\n\nDetails.')
+    expect(headline).toBe('The build is meta.')
+    expect(rest).toBe('{{figure}}\n\nDetails.')
+  })
+
+  it('preserves order across multiple leading figures', () => {
+    const { headline, rest } = splitHeadline('{{figure}}\n{{figure}}\nTwo charts. Body.')
+    expect(headline).toBe('Two charts.')
+    expect(rest).toBe('{{figure}}\n\n{{figure}}\n\nBody.')
+  })
 })
 
 describe('stripMarkdown', () => {
