@@ -46,6 +46,8 @@ import { LanceMetaIndex } from './meta/rag/index'
 import { runClaudeOnce } from './meta/model'
 import { fetchEliteSpecMap } from './meta/specMap'
 import { WikiFactsClient } from './meta/wikiFacts'
+import { WikiClient } from '@axiapps/gw2-data/wiki'
+import { WikiRefIngester } from './meta/wiki/ingest'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -183,6 +185,9 @@ app.whenReady().then(async () => {
   const metaEmbedder = new TransformersEmbedder(join(app.getPath('userData'), 'meta-models'))
   const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
   const wikiFacts = new WikiFactsClient()
+  const wikiIndex = new LanceMetaIndex(join(app.getPath('userData'), 'wiki-lance'), metaEmbedder, 'wiki_chunks')
+  const wikiIngester = new WikiRefIngester({ wiki: new WikiClient(), index: wikiIndex })
+  let wikiTimer: ReturnType<typeof setInterval> | null = null
   const metaFetcher = new BrowserWindowFetcher()
   const metaRefresher = new MetaRefresher({
     store: meta,
@@ -255,6 +260,7 @@ app.whenReady().then(async () => {
     releasingForge = true
     e.preventDefault()
     if (metaTimer) clearInterval(metaTimer)
+    if (wikiTimer) clearInterval(wikiTimer)
     if (metaStartTimer) clearTimeout(metaStartTimer)
     metaFetcher.destroy()
     void axiforgeLauncher.releaseIfSpawned().finally(() => app.quit())
@@ -318,6 +324,7 @@ app.whenReady().then(async () => {
         return s && s.enabled ? s.instructions : null
       },
       metaIndex: () => metaIndex,
+      wikiIndex: () => wikiIndex,
       wikiFacts
     }),
     skills: () => skills.list().filter((s) => s.enabled),
@@ -763,6 +770,8 @@ app.whenReady().then(async () => {
   createWindow(store)
   metaStartTimer = setTimeout(() => void metaRefresher.refreshStale(), 5_000)
   metaTimer = setInterval(() => void metaRefresher.refreshStale(), 6 * 60 * 60 * 1000)
+  setTimeout(() => void wikiIngester.ingest(), 8_000)
+  wikiTimer = setInterval(() => void wikiIngester.ingest(), 7 * 24 * 60 * 60 * 1000)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(store)
   })

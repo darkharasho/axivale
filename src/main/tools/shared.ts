@@ -28,6 +28,8 @@ export interface ToolDeps {
   loadSkill: (name: string) => string | null
   /** Hybrid meta corpus search (lazy; resolved per-call). */
   metaIndex: () => MetaIndex
+  /** GW2-wiki reference corpus search (lazy). */
+  wikiIndex: () => MetaIndex
   /** On-demand GW2 wiki skill/trait facts with PvE/WvW/PvP splits. */
   wikiFacts: WikiFacts
 }
