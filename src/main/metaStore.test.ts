@@ -130,13 +130,15 @@ describe('MetaStore provenance', () => {
 })
 
 describe('MetaStore reconcile', () => {
-  it('seeds PvE with snowcrows + metabattle + hardstuck', () => {
+  it('seeds PvE with snowcrows raids/fractals/strikes + metabattle (no hardstuck)', () => {
     const s = new MetaStore(tmpPath())
     const pve = s.list().find((m) => m.mode === 'PvE')!
     const urls = pve.sources.map((x) => x.url)
     expect(urls).toContain('https://snowcrows.com/builds/raids')
+    expect(urls).toContain('https://snowcrows.com/builds/raids/fractals')
+    expect(urls).toContain('https://snowcrows.com/builds/raids/strikes')
     expect(urls).toContain('https://metabattle.com/wiki/Raid_Builds')
-    expect(urls).toContain('https://hardstuck.gg/gw2/builds?t[]=group-pve&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support')
+    expect(urls.some((u) => /hardstuck/.test(u))).toBe(false)
   })
 
   it('adds missing canonical sources to an existing mode without touching notes/provenance', () => {
@@ -163,7 +165,7 @@ describe('MetaStore reconcile', () => {
     expect(pve.notes).toBe('kept')
     expect(pve.sources.find((x) => x.url === 'https://snowcrows.com/builds/raids')!.status).toBe('ok')
     expect(pve.sources.map((x) => x.url)).toContain('https://metabattle.com/wiki/Raid_Builds')
-    expect(pve.sources.map((x) => x.url)).toContain('https://hardstuck.gg/gw2/builds?t[]=group-pve&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support')
+    expect(pve.sources.map((x) => x.url)).toContain('https://snowcrows.com/builds/raids/fractals')
   })
 
   it('reconcile drops sources no longer in the seed', () => {

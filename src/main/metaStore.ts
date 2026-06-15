@@ -39,8 +39,9 @@ const DEFAULT_SEED: SeedShape[] = [
     mode: 'PvE',
     sources: [
       { label: 'Snowcrows (Raids)', url: 'https://snowcrows.com/builds/raids' },
-      { label: 'MetaBattle (Raids)', url: 'https://metabattle.com/wiki/Raid_Builds' },
-      { label: 'Hardstuck (Group PvE)', url: 'https://hardstuck.gg/gw2/builds?t[]=group-pve&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support' }
+      { label: 'Snowcrows (Fractals)', url: 'https://snowcrows.com/builds/raids/fractals' },
+      { label: 'Snowcrows (Strikes)', url: 'https://snowcrows.com/builds/raids/strikes' },
+      { label: 'MetaBattle (Raids)', url: 'https://metabattle.com/wiki/Raid_Builds' }
     ]
   },
   {
@@ -48,8 +49,7 @@ const DEFAULT_SEED: SeedShape[] = [
     sources: [
       { label: 'MetaBattle (WvW)', url: 'https://metabattle.com/wiki/WvW' },
       { label: 'Snowcrows (WvW)', url: 'https://snowcrows.com/builds/wvw' },
-      { label: 'gw2mists (Zerg)', url: 'https://gw2mists.com/en/builds?mode=zerg' },
-      { label: 'Hardstuck (WvW)', url: 'https://hardstuck.gg/gw2/builds?t[]=wvw&r[]=damage&r[]=defensive-support&r[]=niche&r[]=offensive-support&r[]=support' }
+      { label: 'gw2mists (Zerg)', url: 'https://gw2mists.com/en/builds?mode=zerg' }
     ]
   },
   {
