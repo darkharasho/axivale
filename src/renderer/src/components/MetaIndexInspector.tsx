@@ -80,6 +80,14 @@ export default function MetaIndexInspector(): ReactElement {
     setExpanded(new Set())
     setRows(await api.sample({ mode: mode || undefined, limit: 25 }))
   }
+  // Click a stat pill → filter to that mode/category and load ALL of its chunks.
+  async function loadAll(m: string): Promise<void> {
+    setMode(m)
+    setQuery('')
+    setHits(null)
+    setExpanded(new Set())
+    setRows(await api.sample({ mode: m, limit: 10_000 }))
+  }
 
   function switchCorpus(next: Corpus): void {
     if (next === corpus) return
@@ -161,9 +169,15 @@ export default function MetaIndexInspector(): ReactElement {
                 <b>{stats.total}</b> chunks
               </span>
               {Object.entries(stats.byMode).map(([m, c]) => (
-                <span key={m}>
-                  {m}: {c}
-                </span>
+                <button
+                  key={m}
+                  type="button"
+                  className={`mi-pill${mode === m ? ' sel' : ''}`}
+                  onClick={() => void loadAll(m)}
+                  title={`Show all ${c} ${m} chunks`}
+                >
+                  {m} <b>{c}</b>
+                </button>
               ))}
               <span className="mi-sub">
                 {Object.entries(stats.bySource).map(([s, c]) => `${s} ${c}`).join(' · ') || 'no sources'}

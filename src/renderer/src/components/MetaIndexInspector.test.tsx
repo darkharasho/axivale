@@ -28,7 +28,7 @@ describe('MetaIndexInspector', () => {
   it('renders index stats once opened', async () => {
     openInspector()
     expect(await screen.findByText(/42/)).toBeTruthy()
-    expect(screen.getByText(/PvE: 30/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /PvE 30/ })).toBeTruthy() // mode pill
   })
 
   it('runs a test search and renders ranked hits', async () => {
@@ -60,6 +60,17 @@ describe('MetaIndexInspector', () => {
     expect(await screen.findByText(/FULL chunk body with splits/)).toBeTruthy()
   })
 
+  it('clicking a mode pill loads all chunks for that mode', async () => {
+    const sample = vi.fn().mockResolvedValue([
+      { id: 'p:0', mode: 'PvE', source: 'snowcrows.com', url: 'a', title: 'Power Tempest', snippet: 'x', text: 'x', indexedAt: '' }
+    ])
+    ;(window as unknown as { officer: unknown }).officer = officer({ metaIndexSample: sample })
+    openInspector()
+    fireEvent.click(await screen.findByRole('button', { name: /PvE 30/ }))
+    await waitFor(() => expect(sample).toHaveBeenCalledWith({ mode: 'PvE', limit: 10000 }))
+    expect(await screen.findByText('Power Tempest')).toBeTruthy()
+  })
+
   it('switches to the wiki corpus and shows its stats + search', async () => {
     const o = officer()
     ;(window as unknown as { officer: unknown }).officer = o
@@ -67,7 +78,7 @@ describe('MetaIndexInspector', () => {
     expect(await screen.findByText(/42/)).toBeTruthy() // meta stats first
     fireEvent.click(screen.getByRole('button', { name: /^wiki$/i }))
     await waitFor(() => expect(o.wikiIndexStats).toHaveBeenCalled())
-    expect(await screen.findByText(/skills: 9/)).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /skills 9/ })).toBeTruthy()
     expect(screen.getByText('73')).toBeTruthy() // total chunk count (in <b>)
     // a search now targets the wiki corpus
     fireEvent.change(screen.getByPlaceholderText(/test search/i), { target: { value: 'boon duration' } })
