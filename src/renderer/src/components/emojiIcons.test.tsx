@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { render } from '@testing-library/react'
-import { EmojiIcon } from './emojiIcons'
+import { EmojiIcon, renderExtLink } from './emojiIcons'
 
 // jsdom normalizes inline backgroundColor hex values to rgb() form.
 // We compare against those normalized values.
@@ -62,5 +62,14 @@ describe('EmojiIcon – non-color emoji do not get a colored background', () => 
     const { container } = render(<EmojiIcon emoji="✅" />)
     expect(container.querySelector('svg')).toBeTruthy()
     expect(container.querySelector('span')).toBeNull()
+  })
+
+  it('renderExtLink opens links in a new tab with safe rel', () => {
+    const { container } = render(renderExtLink({ href: 'https://snowcrows.com/builds/wvw', children: 'Snowcrows' }))
+    const a = container.querySelector('a')!
+    expect(a.getAttribute('href')).toBe('https://snowcrows.com/builds/wvw')
+    expect(a.getAttribute('target')).toBe('_blank')
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(a.textContent).toBe('Snowcrows')
   })
 })

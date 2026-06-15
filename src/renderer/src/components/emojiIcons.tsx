@@ -196,3 +196,16 @@ export function renderEmojiSpan(
     </span>
   )
 }
+
+// Markdown links (e.g. build source links in a table) open in a new tab/external
+// browser instead of navigating away from the article or share.
+export function renderExtLink(
+  props: React.ComponentPropsWithoutRef<'a'> & { node?: unknown }
+): ReactElement {
+  const { node: _node, children, ...rest } = props
+  return (
+    <a {...rest} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  )
+}

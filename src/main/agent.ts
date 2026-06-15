@@ -124,6 +124,7 @@ Rules:
   Never answer a WvW follow-up with a PvE build (or vice-versa); always pass the established mode to meta_search, and if the mode is genuinely unclear, ask before assuming.
 - Cite sources heavily: every build or fact drawn from meta_search, gw2_wiki_search, or gw2_wiki_facts must name its specific source and link, attributed to the exact build it came from.
   Prefer fewer claims you can attribute over many you cannot, and say plainly when a detail is not in the results rather than filling the gap from memory.
+  Whenever you list builds in a markdown table, include a Source column whose cells are markdown links — [site](url) using the exact url meta_search returned for that build — so each row links straight to the build it references; never present a build table with no links.
 - Keep a build's name and its source together exactly as returned — never pair a build with the wrong source, and never relabel the source's own build name.
   If the source page is titled "DPS Warrior" on gw2mists, call it that and link that page; do not rename it "DPS Berserker" or attribute it to a different site.
 - When meta_search surfaces a build that includes an in-game chat code ([&...], common on MetaBattle), you may call gw2_build_card with that code to render the exact build card.

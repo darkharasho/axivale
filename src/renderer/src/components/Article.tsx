@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm'
 import { Camera, Check, X, Share2 } from 'lucide-react'
 import type { Turn } from '../state'
 import { rehypeEmojiIcons } from './rehypeEmojiIcons'
-import { renderEmojiSpan } from './emojiIcons'
+import { renderEmojiSpan, renderExtLink } from './emojiIcons'
 import { splitHeadline, stripMarkdown } from './headline'
 import { couponLabel } from './ToolCoupon'
 import RichDisplay from './rich/RichDisplay'
@@ -183,7 +183,7 @@ export default function Article({
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeEmojiIcons]}
-                          components={{ span: renderEmojiSpan }}
+                          components={{ span: renderEmojiSpan, a: renderExtLink }}
                         >
                           {seg}
                         </ReactMarkdown>
