@@ -53,6 +53,23 @@ describe('compressWikiPage', () => {
     expect(out).not.toMatch(/\{\{|\}\}/)
   })
 
+  it('captures a sigil effect from the variables param (links stripped)', () => {
+    const sigil =
+      '{{Upgrade component infobox\n| description = Double-click to apply to a weapon.\n| variables = +5% [[Damage]]\n| type = sigil\n}}\n== Acquisition =='
+    const out = compressWikiPage(sigil, 'Superior Sigil of Force')
+    expect(out).toContain('Effect: +5% Damage.')
+    expect(out).not.toContain('[[')
+  })
+
+  it('drops the version-history changelog from a skill body', () => {
+    const skill =
+      '{{Skill infobox\n| description = Heal.\n| recharge = 24\n| profession = guardian\n| slot = heal\n}}\n== Notes ==\n* This mantra charges in combat and the final charge heals for more.\n== Version history ==\n* Reduced cooldown from 30 to 24 seconds in PvP only.'
+    const out = compressWikiPage(skill, 'Mantra of Solace')
+    expect(out).toContain('final charge heals for more')
+    expect(out).not.toContain('Reduced cooldown')
+    expect(out).not.toContain('Version history')
+  })
+
   it('returns empty for empty input', () => {
     expect(compressWikiPage('', 'X')).toBe('')
   })

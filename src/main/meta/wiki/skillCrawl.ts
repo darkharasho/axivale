@@ -77,7 +77,12 @@ function bodyStart(wikitext: string): number {
 // Icon templates ({{Power}}, {{Condition Damage}}) carry meaning but stripWikiMarkup
 // deletes them; keep the inner label for stat lines like rune bonuses.
 function cleanInline(s: string): string {
-  return cleanWikiText(s.replace(/\{\{([^}|]+)[^}]*\}\}/g, '$1'))
+  return cleanWikiText(
+    s
+      .replace(/\{\{([^}|]+)[^}]*\}\}/g, '$1') // {{Power}} → Power
+      .replace(/\[\[[^\]|]*\|([^\]]+)\]\]/g, '$1') // [[x|label]] → label
+      .replace(/\[\[([^\]|]+)\]\]/g, '$1') // [[Damage]] → Damage
+  )
 }
 
 /** Compress one skill/trait/upgrade page's wikitext into a dense, embeddable record. */
@@ -108,8 +113,11 @@ export function compressWikiPage(wikitext: string, title: string): string {
     .join(' ')
 
   let body = cleanWikiText(stripWikiMarkup(wikitext.slice(bodyStart(wikitext))))
-  // Drop boilerplate section labels the templates leave behind.
-  body = body.replace(/\b(?:Related traits|Related skills|See also|Trivia|Version history)\b/gi, ' ')
+  // Cut the low-value tail sections (changelog/trivia/gallery) entirely. No \b —
+  // collapsed headings can fuse to the prior word ("traitsVersion history").
+  body = body.split(/Version history|Trivia|See also|Gallery/i)[0]
+  // …then drop the leftover related-* labels.
+  body = body.replace(/Related traits|Related skills/gi, ' ')
   body = body.replace(/\s+/g, ' ').trim().slice(0, 500)
 
   const parts: string[] = [`${title}${descriptor ? ` — ${descriptor}` : ''}.`]
@@ -133,6 +141,8 @@ function compressUpgrade(
 ): string {
   const type = f('type')
   const desc = cleanWikiText(stripWikiMarkup(f('description') ?? ''))
+  // Sigils/relics put their effect in "variables"; runes use bonus1..6.
+  const variables = f('variables')
   const bonuses: string[] = []
   for (let n = 1; n <= 6; n++) {
     const b = f(`bonus${n}`)
@@ -140,6 +150,7 @@ function compressUpgrade(
   }
   const parts: string[] = [`${title}${type ? ` — ${type}` : ''}.`]
   if (desc) parts.push(desc)
+  if (variables) parts.push(`Effect: ${cleanInline(variables)}.`)
   if (bonuses.length) parts.push(`Bonuses: ${bonuses.join('; ')}.`)
   return parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, 1000)
 }
