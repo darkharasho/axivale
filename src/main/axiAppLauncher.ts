@@ -207,6 +207,7 @@ export class AxiAppLauncher {
       cmd = 'systemd-run'
       args = ['--user', '--scope', '--', exe, '--headless']
     }
+    console.log('[axiforge-launch] spawning headless:', cmd, args.join(' '))
     const child = this.io.spawn(cmd, args, {
       detached: true,
       stdio: 'ignore',

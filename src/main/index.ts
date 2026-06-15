@@ -282,7 +282,9 @@ app.whenReady().then(async () => {
     axiforge,
     axiforgeDataDir,
     defaultIo,
-    { timeoutMs: 15_000, pollMs: 500 },
+    // A cold headless AppImage + Electron boot (esp. on Linux) can take well over
+    // 15s before its local API is up; 45s avoids a premature "didn't come up" error.
+    { timeoutMs: 45_000, pollMs: 500 },
     forgeDevLaunch
   )
 
