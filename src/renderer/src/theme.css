@@ -515,7 +515,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* ---- Action expand button + modal ---- */
 .ncard .expand{margin-left:8px;background:none;border:none;color:var(--faint);cursor:pointer;font-size:12px;line-height:1;padding:0 2px;flex:none}
 .ncard .expand:hover{color:var(--accent-b)}
-.action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1100}
+.action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
 .action-modal{position:relative;display:flex;flex-direction:column;max-height:86vh;width:min(900px,92vw);background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .action-modal__head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--rule);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
 .action-modal__head .nm{color:var(--ink)}
