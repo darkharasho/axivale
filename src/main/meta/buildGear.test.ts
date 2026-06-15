@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import { scrapeBuildGear } from './buildGear'
 
 // Fake GW2 API: route by URL to canned item/stat/profession/skill responses.
-function fakeFetch(): (url: string) => Promise<{ ok: boolean; json(): Promise<unknown> }> {
+function fakeFetch(): (
+  url: string
+) => Promise<{ ok: boolean; json(): Promise<unknown>; text(): Promise<string> }> {
   const items = [
     { id: 100, name: 'Scepter', icon: 'i-scepter', type: 'Weapon', details: { type: 'Scepter' } },
     { id: 200, name: 'Superior Sigil of Force', icon: 'i-sigil', type: 'UpgradeComponent', details: { type: 'Sigil' } },
@@ -15,7 +17,7 @@ function fakeFetch(): (url: string) => Promise<{ ok: boolean; json(): Promise<un
     else if (url.includes('/v2/itemstats?')) body = [{ id: 1, name: 'Berserker' }]
     else if (url.includes('/v2/professions/')) body = { weapons: { Scepter: { skills: [{ id: 9, slot: 'Weapon_1' }] } } }
     else if (url.includes('/v2/skills?')) body = [{ id: 9, name: 'Orb of Wrath', icon: 'i-skill' }]
-    return { ok: true, json: async () => body }
+    return { ok: true, json: async () => body, text: async () => JSON.stringify(body) }
   }
 }
 

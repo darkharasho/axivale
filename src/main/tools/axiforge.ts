@@ -241,20 +241,38 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'gw2_build_card',
-      'Render the exact build card for a meta build from its in-game build template chat code ([&...]). Pass a chat code you found in meta_search results (MetaBattle build pages embed them). Decodes it WITHOUT saving and shows a build card; place it inline with a {{figure}} marker to illustrate a specific recommended build. Read-only.',
+      'Render the exact build card for a meta build from its in-game build template chat code ([&...]). Pass a chat code you found in meta_search results (MetaBattle build pages embed them). ALSO pass source_url with that build’s page URL whenever you have it — the chat code carries no gear, so the source page is scraped to fill in weapons/sigils/runes/stats (and weapon skills) and render the full card. Decodes WITHOUT saving; place it inline with a {{figure}} marker to illustrate a specific recommended build. Read-only.',
       {
         chat_code: z.string().describe('In-game build template chat code, e.g. [&DQ...]'),
+        source_url: z
+          .string()
+          .optional()
+          .describe('The build’s page URL (from meta_search) to scrape gear from — pass it whenever available'),
         game_mode: z
           .enum(['pve', 'wvw', 'pvp'])
           .optional()
           .describe('Fallback game mode for stat context (optional)')
       },
-      safeRich(async ({ chat_code, game_mode }) => {
+      safeRich(async ({ chat_code, source_url, game_mode }) => {
         const build = (await write(() =>
           deps.axiforge.parseChatLink(game_mode ? { link: chat_code, gameMode: game_mode } : { link: chat_code })
         )) as Record<string, unknown>
+        build.chatCode = chat_code
+        // A chat code carries no gear — if we know the source page, scrape its
+        // armory embeds so this card matches gw2_build_from_url's full format.
+        let gear: Awaited<ReturnType<typeof scrapeBuildGear>> = null
+        if (source_url) {
+          const html = await deps.fetchBuildPage(source_url)
+          if (html) {
+            gear = await scrapeBuildGear(html, String(build.profession ?? ''))
+            if (gear) {
+              build.scrapedGear = gear
+              if (gear.weaponSkills.length) build.weaponSkills = gear.weaponSkills
+            }
+          }
+        }
         return {
-          value: stripImages(build),
+          value: { chatCode: chat_code, gear: gear ?? null, ...stripImages(build) },
           display: { kind: 'build-card', data: { build } }
         }
       })

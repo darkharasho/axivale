@@ -394,11 +394,30 @@ describe('axiforge tools', () => {
             profession: 'Guardian',
             gameMode: 'wvw',
             equipment: {},
-            images: { icon: 'data:image/png;base64,abc123' }
+            images: { icon: 'data:image/png;base64,abc123' },
+            chatCode: '[&DQEAAA==]'
           }
         }
       })
       expect(result.isError).toBeUndefined()
+    })
+
+    it('does not fetch a page when no source_url is given', async () => {
+      const deps = makeDeps()
+      await find(deps, 'gw2_build_card').handler({ chat_code: '[&DQEAAA==]' }, {})
+      expect(deps.fetchBuildPage).not.toHaveBeenCalled()
+    })
+
+    it('fetches the source page to scrape gear when source_url is given', async () => {
+      const deps = makeDeps()
+      // Embed-free HTML → scrapeBuildGear returns null without any GW2 API calls;
+      // the extraction itself is covered in buildGear.test.ts.
+      deps.fetchBuildPage = vi.fn().mockResolvedValue('<html><body>no embeds</body></html>')
+      await find(deps, 'gw2_build_card').handler(
+        { chat_code: '[&DQEAAA==]', source_url: 'https://metabattle.com/wiki/Build:X' },
+        {}
+      )
+      expect(deps.fetchBuildPage).toHaveBeenCalledWith('https://metabattle.com/wiki/Build:X')
     })
 
     it('omits gameMode from the client call when game_mode not provided', async () => {
