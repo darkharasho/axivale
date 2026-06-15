@@ -31,7 +31,16 @@ export interface WikiRefIngesterDeps {
   crawlTargets?: CrawlTarget[]
   /** Abort the ingest cleanly mid-run (e.g. app quitting); resumes next launch. */
   signal?: AbortSignal
+  /** Epoch ms of the last fully-completed ingest, or null if never. */
+  lastRunAt?: () => number | null
+  /** Record a fully-completed ingest's timestamp (epoch ms). */
+  markRun?: (ts: number) => void
+  /** Re-ingest only after this much time has passed since the last completed run. */
+  staleMs?: number
+  now?: () => number
 }
+
+const SEVEN_DAYS_MS = 7 * 86_400_000
 
 /** A wiki category to enumerate, tagged with the corpus category to store under. */
 export interface CrawlTarget {
@@ -64,9 +73,16 @@ export function wikiPageUrl(title: string): string {
 export class WikiRefIngester {
   constructor(private readonly deps: WikiRefIngesterDeps) {}
 
-  async ingest(): Promise<void> {
+  async ingest(opts: { force?: boolean } = {}): Promise<void> {
     const { wiki, index } = this.deps
     const emit = this.deps.emit ?? ((): void => {})
+    const now = this.deps.now ?? Date.now
+    const staleMs = this.deps.staleMs ?? SEVEN_DAYS_MS
+
+    // Skip entirely (no network, no banner) if a full ingest completed recently.
+    // A run aborted mid-crawl never records a timestamp, so it resumes next launch.
+    const last = this.deps.lastRunAt?.() ?? null
+    if (!opts.force && last != null && now() - last < staleMs) return
 
     const registry: WorkItem[] = (this.deps.pages ?? WIKI_REF_PAGES).map((p) => ({
       title: p.title,
@@ -79,9 +95,13 @@ export class WikiRefIngester {
     if (work.length === 0) return
 
     emit({ phase: 'wiki', kind: 'start', total: work.length, label: 'Reading the GW2 wiki…' })
+    let aborted = false
     try {
       for (let i = 0; i < work.length; i += 50) {
-        if (this.deps.signal?.aborted) break // graceful stop; resumes next launch
+        if (this.deps.signal?.aborted) {
+          aborted = true
+          break // graceful stop; resumes next launch
+        }
         const batch = work.slice(i, i + 50)
         let texts: Map<string, string | null>
         try {
@@ -114,6 +134,8 @@ export class WikiRefIngester {
     } finally {
       emit({ phase: 'wiki', kind: 'done' })
     }
+    // Only stamp a clean, complete run — an aborted one must re-run next launch.
+    if (!aborted && !this.deps.signal?.aborted) this.deps.markRun?.(now())
   }
 
   // Enumerate each crawl target's category members, drop the aggregate/category

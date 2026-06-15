@@ -30,6 +30,7 @@ export type SettingKey =
   | 'axibridgeRepos'
   | 'axibridgeCacheCapBytes'
   | 'windowBounds'
+  | 'wikiIngestedAt'
 
 /** Services that hold a ring of labeled keys with one active. */
 export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'
