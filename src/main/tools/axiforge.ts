@@ -258,6 +258,31 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
       })
     ),
     tool(
+      'gw2_build_from_url',
+      'Render the full build card for a SPECIFIC community build page when meta_search did not return its chat code. Pass the exact build page URL (e.g. a MetaBattle Build: page). Loads the page (handles Cloudflare), pulls its in-game build template code, and decodes it WITHOUT saving. Place inline with a {{figure}} marker. If the page exposes no code, it says so — do not invent one. Read-only.',
+      {
+        url: z.string().describe('Full build page URL, e.g. https://metabattle.com/wiki/Build:Catalyst_-_Fresh_Air_Cata_Roamer'),
+        game_mode: z.enum(['pve', 'wvw', 'pvp']).optional().describe('Fallback game mode for stat context (optional)')
+      },
+      safeRich(async ({ url, game_mode }) => {
+        const code = await deps.fetchBuildCode(url)
+        if (!code) {
+          return {
+            value: {
+              note: `No in-game build template code was found on that page. Open it directly for the full details: ${url}`
+            }
+          }
+        }
+        const build = (await write(() =>
+          deps.axiforge.parseChatLink(game_mode ? { link: code, gameMode: game_mode } : { link: code })
+        )) as Record<string, unknown>
+        return {
+          value: { chatCode: code, ...stripImages(build) },
+          display: { kind: 'build-card', data: { build } }
+        }
+      })
+    ),
+    tool(
       'axiforge_build_chat_link',
       'Generate the in-game build template chat code for an AxiForge build. The user can paste this code in Guild Wars 2 to load the build, or into gw2skills.net to view it. Read-only. Returns { chatLink }.',
       { build_id: z.string().describe('Build id from axiforge_builds_list') },
