@@ -72,9 +72,23 @@ export default function ForgeCard({ display }: { display: CardDisplay }): ReactE
         ? { [(display.data.build.id as string) ?? '']: display.data.build }
         : display.data.builds
     if (display.kind === 'build-card') {
-      host.innerHTML = renderMiniBuildCard(display.data.build, catalog, { showActions: false })
+      host.innerHTML = renderMiniBuildCard(display.data.build, catalog, {
+        showActions: false,
+        chatLink: (display.data.build.chatCode as string) ?? null
+      })
     } else {
       host.innerHTML = renderCompCard(display.data.comp, display.data.builds, catalog)
+    }
+    // Copy the chat code to the clipboard when the card's Copy button is clicked.
+    for (const btn of host.querySelectorAll<HTMLButtonElement>('.mini-card__chatcopy[data-chat-link]')) {
+      btn.addEventListener('click', () => {
+        void navigator.clipboard.writeText(btn.dataset.chatLink ?? '')
+        const prev = btn.textContent
+        btn.textContent = 'Copied'
+        setTimeout(() => {
+          btn.textContent = prev
+        }, 1200)
+      })
     }
     // Hover cards: rune/relic rows get name+bonus tooltips from the catalog,
     // bound within this card's container only.
