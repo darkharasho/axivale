@@ -12,13 +12,14 @@ describe('WIKI_REF_PAGES', () => {
       expect(p.title.length).toBeGreaterThan(0)
     }
   })
-  it('covers skills + traits for all 9 professions and the key categories', () => {
+  it('covers the key concept categories (skills/traits come from the crawl, not here)', () => {
     const cats = new Set(WIKI_REF_PAGES.map((p) => p.category))
-    for (const c of ['skills', 'traits', 'upgrades', 'classes', 'stats', 'armor', 'weapons', 'boons-conditions', 'mechanics']) {
+    for (const c of ['upgrades', 'classes', 'stats', 'armor', 'weapons', 'boons-conditions', 'mechanics']) {
       expect(cats.has(c)).toBe(true)
     }
-    expect(WIKI_REF_PAGES.filter((p) => p.category === 'skills')).toHaveLength(9)
-    expect(WIKI_REF_PAGES.filter((p) => p.category === 'traits')).toHaveLength(9)
+    // The "List of …" skill/trait pages strip to noise; they're intentionally excluded.
+    expect(cats.has('skills')).toBe(false)
+    expect(cats.has('traits')).toBe(false)
   })
   it('includes the 27 individual elite-specialization pages', () => {
     const specs = WIKI_REF_PAGES.filter((p) => p.category === 'elite-specs')

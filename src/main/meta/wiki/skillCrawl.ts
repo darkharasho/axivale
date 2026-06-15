@@ -37,7 +37,13 @@ export async function fetchCategoryMembers(
       (cont ? `&cmcontinue=${encodeURIComponent(cont)}` : '')
     const res = await fetchImpl(url)
     if (!res.ok) break
-    const body = (await res.json()) as CmResponse
+    // The wiki API returns HTML (not JSON) to UA-less/blocked requests; tolerate it.
+    let body: CmResponse
+    try {
+      body = (await res.json()) as CmResponse
+    } catch {
+      break
+    }
     for (const m of body.query?.categorymembers ?? []) {
       if (m.title) titles.push(m.title)
     }

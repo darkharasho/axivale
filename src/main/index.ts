@@ -200,7 +200,12 @@ app.whenReady().then(async () => {
     index: wikiIndex,
     emit: sendLearnProgress,
     // Per-page crawl of skill/trait/upgrade categories, compressed (rule-based).
-    categoryMembers: (category) => fetchCategoryMembers(category, (url) => fetch(url)),
+    // A User-Agent is required — the GW2 wiki API returns an HTML error page to
+    // UA-less requests, which would silently break the whole per-page crawl.
+    categoryMembers: (category) =>
+      fetchCategoryMembers(category, (url) =>
+        fetch(url, { headers: { 'User-Agent': 'AxiVale/0.4 (https://github.com/darkharasho)' } })
+      ),
     signal: wikiAbort.signal
   })
   let wikiTimer: ReturnType<typeof setInterval> | null = null
