@@ -54,6 +54,17 @@ describe('source registry', () => {
     expect(resolveContent('https://metabattle.com/wiki/WvW')).toBe('builds')
   })
 
+  it('crawls the snowcrows WvW news landing into the latest tier list', () => {
+    const cfg = configForUrl('https://snowcrows.com/news/wvw')
+    expect(cfg?.kind).toBe('browser')
+    expect(cfg?.linkSelector).toBeTruthy()
+    expect(cfg?.crawlDepth ?? 0).toBeGreaterThanOrEqual(1)
+  })
+
+  it('keeps snowcrows build pages static', () => {
+    expect(configForUrl('https://snowcrows.com/builds/wvw')?.kind).toBe('static')
+  })
+
   it('uses tight per-build content selectors (slice 1)', () => {
     const hs = configForUrl('https://hardstuck.gg/gw2/builds/mesmer/power-virtuoso')
     expect(hs?.selector).toBe('section.gw2-build-page')

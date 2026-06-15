@@ -45,10 +45,24 @@ export function resolveContent(url: string): 'builds' | 'rules' {
 
 export function configForUrl(url: string): SourceConfig | null {
   let host: string
+  let path: string
   try {
-    host = new URL(url).host.replace(/^www\./, '')
+    const u = new URL(url)
+    host = u.host.replace(/^www\./, '')
+    path = u.pathname
   } catch {
     return null
+  }
+  // snowcrows news landings crawl into the newest article (tier lists rotate dates)
+  if (host === 'snowcrows.com' && path.startsWith('/news/')) {
+    return {
+      host: 'snowcrows.com',
+      kind: 'browser',
+      selector: 'main',
+      linkSelector: 'a[href*="/news/wvw/"]',
+      crawlDepth: 1,
+      content: 'builds'
+    }
   }
   return SOURCE_CONFIGS.find((c) => host === c.host || host.endsWith(`.${c.host}`)) ?? null
 }
