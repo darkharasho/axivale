@@ -41,6 +41,7 @@ import { MetaStore } from './metaStore'
 import { MetaCache } from './meta/cache'
 import { BrowserWindowFetcher } from './meta/fetcher'
 import { MetaRefresher } from './meta/refresh'
+import type { LearnProgress } from './meta/progress'
 import { TransformersEmbedder } from './meta/rag/embedder'
 import { LanceMetaIndex } from './meta/rag/index'
 import { runClaudeOnce } from './meta/model'
@@ -186,7 +187,15 @@ app.whenReady().then(async () => {
   const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
   const wikiFacts = new WikiFactsClient()
   const wikiIndex = new LanceMetaIndex(join(app.getPath('userData'), 'wiki-lance'), metaEmbedder, 'wiki_chunks')
-  const wikiIngester = new WikiRefIngester({ wiki: new WikiClient(), index: wikiIndex })
+  const sendLearnProgress = (e: LearnProgress): void => {
+    const win = mainWindow
+    if (win && !win.isDestroyed()) win.webContents.send('learn:progress', e)
+  }
+  const wikiIngester = new WikiRefIngester({
+    wiki: new WikiClient(),
+    index: wikiIndex,
+    emit: sendLearnProgress
+  })
   let wikiTimer: ReturnType<typeof setInterval> | null = null
   const metaFetcher = new BrowserWindowFetcher()
   const metaRefresher = new MetaRefresher({
@@ -204,8 +213,15 @@ app.whenReady().then(async () => {
     now: Date.now,
     eliteSpecs: () => fetchEliteSpecMap(),
     emit: (e) => {
+      // Detailed events drive the Meta settings panel (per-mode busy + source).
       const win = mainWindow
       if (win && !win.isDestroyed()) win.webContents.send('meta:progress', e)
+      // The same run also feeds the coarse learning banner as phase 'meta'
+      // (the wiki ingest feeds it as phase 'wiki').
+      if (e.type === 'refresh-start')
+        sendLearnProgress({ phase: 'meta', kind: 'start', total: e.total, label: 'Learning the current meta…' })
+      else if (e.type === 'source-done') sendLearnProgress({ phase: 'meta', kind: 'advance' })
+      else if (e.type === 'idle') sendLearnProgress({ phase: 'meta', kind: 'done' })
     }
   })
   let metaTimer: ReturnType<typeof setInterval> | null = null

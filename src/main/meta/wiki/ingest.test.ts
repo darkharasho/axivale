@@ -58,4 +58,37 @@ describe('WikiRefIngester', () => {
     await new WikiRefIngester({ wiki: w, index: throwing, pages: [{ category: 'x', title: 'A' }, { category: 'x', title: 'B' }] }).ingest()
     expect(throwing.replacePage).toHaveBeenCalledTimes(2) // didn't abort after the throw
   })
+
+  it('emits a wiki progress phase: start, one advance per page, then done', async () => {
+    const idx = new FakeMetaIndex()
+    const w = wiki({
+      Power: 'Power is an attribute. '.repeat(20),
+      Gone: null
+    })
+    const events: import('../progress').LearnProgress[] = []
+    await new WikiRefIngester({
+      wiki: w,
+      index: idx,
+      pages: [{ category: 'stats', title: 'Power' }, { category: 'mechanics', title: 'Gone' }],
+      emit: (e) => events.push(e)
+    }).ingest()
+    expect(events[0]).toEqual({ phase: 'wiki', kind: 'start', total: 2, label: 'Reading the GW2 wiki…' })
+    expect(events[events.length - 1]).toEqual({ phase: 'wiki', kind: 'done' })
+    // one advance per page, including the missing one
+    expect(events.filter((e) => e.kind === 'advance')).toHaveLength(2)
+  })
+
+  it('advances for every page even when the whole batch fetch throws', async () => {
+    const idx = new FakeMetaIndex()
+    const failing: WikiClientLike = { getWikitextBatch: async () => { throw new Error('network') } }
+    const events: import('../progress').LearnProgress[] = []
+    await new WikiRefIngester({
+      wiki: failing,
+      index: idx,
+      pages: [{ category: 'x', title: 'A' }, { category: 'x', title: 'B' }, { category: 'x', title: 'C' }],
+      emit: (e) => events.push(e)
+    }).ingest()
+    expect(events.filter((e) => e.kind === 'advance')).toHaveLength(3)
+    expect(events[events.length - 1]).toEqual({ phase: 'wiki', kind: 'done' })
+  })
 })
