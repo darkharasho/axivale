@@ -30,10 +30,11 @@ const ELITE_SPECS = [
   'Reaper', 'Scourge', 'Harbinger' // necromancer
 ]
 
+// NOTE: skills + traits are NOT registry pages. The wiki's "List of <profession>
+// skills/traits" pages are link/template tables that strip to useless "· ' · '"
+// noise. Per-skill and per-trait coverage comes from the category crawl
+// (DEFAULT_CRAWL_TARGETS in ingest.ts) — one compressed page per skill/trait.
 export const WIKI_REF_PAGES: WikiRefPage[] = [
-  ...PROFESSIONS.map((p) => ({ category: 'skills', title: `List of ${p} skills` })),
-  ...PROFESSIONS.map((p) => ({ category: 'traits', title: `List of ${p} traits` })),
-
   { category: 'upgrades', title: 'Rune' },
   { category: 'upgrades', title: 'Sigil' },
   { category: 'upgrades', title: 'Relic' },
