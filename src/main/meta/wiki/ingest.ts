@@ -4,6 +4,7 @@
 // wikitext, strip markup, content-hash gate, chunk (reused), and upsert. Error-isolated
 // per page; a missing page is skipped. Runs in the background.
 import { stripWikiMarkup } from '@axiapps/gw2-data'
+import { cleanWikiText } from './cleanText'
 import { chunkPage, sha1 } from '../rag/chunk'
 import type { MetaIndex } from '../rag/index'
 import type { LearnProgress } from '../progress'
@@ -49,7 +50,7 @@ export class WikiRefIngester {
           try {
             const raw = texts.get(p.title)
             if (!raw) continue
-            const text = stripWikiMarkup(raw)
+            const text = cleanWikiText(stripWikiMarkup(raw))
             if (!text || text.trim().length < 50) continue
             const url = wikiPageUrl(p.title)
             if ((await index.indexedHash(url)) === sha1(text)) continue
