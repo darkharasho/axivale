@@ -18,9 +18,15 @@ beforeEach(() => {
   ;(window as unknown as { officer: unknown }).officer = officer()
 })
 
+// The inspector is launched from a button into a modal; open it before asserting.
+function openInspector(): void {
+  render(<MetaIndexInspector />)
+  fireEvent.click(screen.getByRole('button', { name: /open index inspector/i }))
+}
+
 describe('MetaIndexInspector', () => {
-  it('renders index stats on mount', async () => {
-    render(<MetaIndexInspector />)
+  it('renders index stats once opened', async () => {
+    openInspector()
     expect(await screen.findByText(/42/)).toBeTruthy()
     expect(screen.getByText(/PvE: 30/)).toBeTruthy()
   })
@@ -28,7 +34,7 @@ describe('MetaIndexInspector', () => {
   it('runs a test search and renders ranked hits', async () => {
     const search = vi.fn().mockResolvedValue([{ source: 'metabattle.com', url: 'b', title: 'Scourge', snippet: 'curse', score: 0.8 }])
     ;(window as unknown as { officer: unknown }).officer = officer({ metaIndexSearch: search })
-    render(<MetaIndexInspector />)
+    openInspector()
     fireEvent.change(screen.getByPlaceholderText(/test search/i), { target: { value: 'scourge' } })
     fireEvent.click(screen.getByRole('button', { name: /^search$/i }))
     await waitFor(() => expect(search).toHaveBeenCalledWith('scourge', undefined))
@@ -36,15 +42,28 @@ describe('MetaIndexInspector', () => {
   })
 
   it('loads a sample of chunks', async () => {
-    render(<MetaIndexInspector />)
+    openInspector()
     fireEvent.click(screen.getByRole('button', { name: /load sample/i }))
     expect(await screen.findByText('Power Tempest')).toBeTruthy()
+  })
+
+  it('expands a result to reveal the full chunk text', async () => {
+    const sample = vi.fn().mockResolvedValue([
+      { id: 'a:0', mode: 'PvE', source: 'snowcrows.com', url: 'a', title: 'Power Tempest', snippet: 'short preview', text: 'short preview … and the FULL chunk body with splits', indexedAt: '' }
+    ])
+    ;(window as unknown as { officer: unknown }).officer = officer({ metaIndexSample: sample })
+    openInspector()
+    fireEvent.click(screen.getByRole('button', { name: /load sample/i }))
+    expect(await screen.findByText('short preview')).toBeTruthy()
+    expect(screen.queryByText(/FULL chunk body/)).toBeNull() // collapsed by default
+    fireEvent.click(screen.getByRole('button', { name: /Power Tempest/ }))
+    expect(await screen.findByText(/FULL chunk body with splits/)).toBeTruthy()
   })
 
   it('switches to the wiki corpus and shows its stats + search', async () => {
     const o = officer()
     ;(window as unknown as { officer: unknown }).officer = o
-    render(<MetaIndexInspector />)
+    openInspector()
     expect(await screen.findByText(/42/)).toBeTruthy() // meta stats first
     fireEvent.click(screen.getByRole('button', { name: /^wiki$/i }))
     await waitFor(() => expect(o.wikiIndexStats).toHaveBeenCalled())

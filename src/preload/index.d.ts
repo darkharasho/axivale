@@ -64,6 +64,7 @@ export interface RendererMetaChunkRow {
   url: string
   title: string
   snippet: string
+  text?: string
   indexedAt: string
 }
 export interface RendererMetaIndexStats {
@@ -77,6 +78,7 @@ export interface RendererMetaSearchHit {
   url: string
   title: string
   snippet: string
+  text?: string
   score: number
 }
 
