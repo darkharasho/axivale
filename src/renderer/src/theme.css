@@ -278,7 +278,6 @@ td.nm2{color:var(--ink)}
 .sgroup{margin-bottom:26px;padding-bottom:22px;border-bottom:1px dashed var(--rule)}
 .sgroup:last-child{border-bottom:none}
 .sgroup h2{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:10px}
-.ssub{font-family:'Playfair Display',serif;font-size:14px;font-weight:700;margin:0 0 6px}
 .slabel{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
 .sinput{width:100%;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-size:14px;color:var(--ink);background:transparent;font-family:'IBM Plex Mono',monospace;outline:none;margin-bottom:12px}
 .sinput::placeholder{color:var(--faint)}
