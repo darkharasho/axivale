@@ -279,6 +279,19 @@ app.whenReady().then(async () => {
   }
   const buildGw2 = (): Gw2Client => new Gw2Client(store.getActiveKey('gw2') ?? '')
 
+  // Auto-connect AxiTools on startup: resolve (and persist) guildId from the
+  // active key so the roster reconcile and the guild-role picker work right after
+  // a restart, without a manual reconnect.
+  void (async () => {
+    try {
+      if (!parseAxivaleKey(store.getActiveKey('axivale') ?? '')) return
+      const guilds = await buildAxitools().listGuilds()
+      if (guilds.length > 0) store.setSetting('guildId', String(guilds[0].id))
+    } catch {
+      /* offline at boot — the renderer retries via axitools:status */
+    }
+  })()
+
   // One client + launcher for the app's lifetime: the launcher serializes
   // concurrent ensureRunning() calls, and the client's catalog cache persists
   // across AxiForge restarts.

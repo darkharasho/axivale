@@ -305,6 +305,11 @@ export default function Settings({
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
       setVersion(await window.officer.appVersion())
       await refreshKeyLists()
+      // Re-establish the AxiTools connection on open so the guild/role picker
+      // reflects the active server after a restart instead of "not connected".
+      if ((await window.officer.listKeys('axivale')).some((k) => k.active)) {
+        void connectActiveAxi()
+      }
       void refreshShares()
       void checkForge()
       const repos = await window.officer.axibridgeReposList()
