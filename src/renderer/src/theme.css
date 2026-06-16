@@ -740,6 +740,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 
 /* ---- Meta panel ---- */
+/* Meta is dense (per-mode stat tables/source grids) so it earns more width than
+   the 620px Settings panes. */
+.meta-panel .spane{max-width:960px}
+/* Tables already render as a boxed stat card; inside a .spcard they'd nest two
+   outlines, so drop the table's own border and let the card be the only box. */
+.meta-panel .spcard-b .prose table{border:none;margin-top:0}
+.meta-panel .spcard-b .prose > table:last-child{margin-bottom:0}
 .meta-summary-wrap {
   margin: 6px 0 10px;
 }
