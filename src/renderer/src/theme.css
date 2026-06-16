@@ -487,6 +487,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sfield-input{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none}
 .sfield-input:focus{border-color:var(--accent-b)}
 .sfield-input::placeholder{color:var(--faint)}
+.sfield-area{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none;line-height:1.5;min-height:84px;resize:vertical}
+.sfield-area:focus{border-color:var(--accent-b)}
 
 /* segmented toggle */
 .sseg{display:inline-flex;border:1px solid var(--rule2);margin-bottom:22px}
@@ -803,12 +805,12 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   opacity: 0.75;
 }
 .meta-chip.ok {
-  color: #2c7a3f;
-  border-color: #2c7a3f;
+  color: var(--green);
+  border-color: var(--green);
 }
 .meta-chip.error {
-  color: #a33;
-  border-color: #a33;
+  color: var(--accent-b);
+  border-color: var(--accent-b);
 }
 .meta-chip.never {
   opacity: 0.4;
@@ -840,6 +842,19 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   border-color: var(--accent-b);
   opacity: 1;
 }
+/* meta source chip with status LED (used in the redesigned Sources card) */
+.meta-srcs{display:flex;flex-wrap:wrap;gap:8px}
+.meta-srcchip{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-dim);border:1px solid var(--rule);padding:3px 9px;text-decoration:none}
+.meta-srcchip:hover{border-color:var(--rule2);color:var(--ink)}
+.meta-srcchip .led{width:5px;height:5px;border-radius:50%;background:var(--green);flex:none}
+.meta-srcchip.error{color:var(--accent-b);border-color:var(--accent-b)}
+.meta-srcchip.error .led{background:var(--accent-b)}
+.meta-srcchip.never{opacity:.5}
+.meta-srcchip.never .led{background:var(--faint)}
+.meta-srcchip.fetching{color:var(--accent-b);border-color:var(--accent-b)}
+.meta-srcchip.fetching .led{background:var(--accent-b)}
+/* nav refreshing spinner (reuses meta-spin keyframes) */
+.snav-item .meta-spin{margin-left:auto}
 
 /* ---- Comp playbook: WvW-only launcher (below sources) + popup ---- */
 .meta-pb-launch {
