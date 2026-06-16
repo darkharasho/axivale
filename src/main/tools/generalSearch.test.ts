@@ -13,12 +13,12 @@ describe('general_search', () => {
     const tools = buildGeneralSearchTools(() => idx([{ source: 'discretize.eu', url: 'u', title: 't', snippet: 's' }]))
     const t = tools.find((x) => x.name === 'general_search')!
     const res = await t.handler({ query: 'fractal cm' }, {})
-    expect(res.content[0].text).toContain('discretize.eu')
+    expect((res.content[0] as { text: string }).text).toContain('discretize.eu')
   })
   it('reports empty corpus instead of throwing', async () => {
     const tools = buildGeneralSearchTools(() => idx([]))
     const t = tools.find((x) => x.name === 'general_search')!
     const res = await t.handler({ query: 'x' }, {})
-    expect(res.content[0].text).toContain('no')
+    expect((res.content[0] as { text: string }).text).toContain('no')
   })
 })

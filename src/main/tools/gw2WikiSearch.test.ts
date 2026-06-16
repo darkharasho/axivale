@@ -17,7 +17,7 @@ describe('gw2_wiki_search fallback', () => {
     const tools = buildGw2WikiSearchTools(() => idx([]), live)
     const t = tools.find((x) => x.name === 'gw2_wiki_search')!
     const res = await t.handler({ query: 'how to craft twilight' }, {})
-    expect(res.content[0].text).toContain('Twilight')
+    expect((res.content[0] as { text: string }).text).toContain('Twilight')
   })
   it('uses index hits when present (no fallback)', async () => {
     let called = false
