@@ -8,7 +8,8 @@ import Comps from './components/panels/Comps'
 import Roster from './components/panels/Roster'
 import Bureau from './components/panels/Bureau'
 import Skills from './components/panels/Skills'
-import Meta from './components/panels/Meta'
+import Meta from './components/meta/Meta'
+import MetaNav, { META_OVERVIEW } from './components/meta/MetaNav'
 import { RightRail } from './components/Rails'
 import Editions, { type EditionItem } from './components/Editions'
 import Article from './components/Article'
@@ -18,7 +19,7 @@ import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
 import SettingsNav, { type SettingsSection, type SettingsNavStatus } from './components/settings/SettingsNav'
 import UpdateBanner from './components/UpdateBanner'
-import type { RendererConversation, RendererSkill } from '../../preload/index.d'
+import type { RendererConversation, RendererSkill, RendererMetaMode, RendererMetaProgress } from '../../preload/index.d'
 
 const SECTION_TITLES: Record<Section, string> = {
   dispatches: 'Dispatches',
@@ -75,6 +76,26 @@ export default function App(): ReactElement {
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
   const [section, setSection] = useState<Section>('dispatches')
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('intelligence')
+  const [metaModes, setMetaModes] = useState<RendererMetaMode[]>([])
+  const [metaBusy, setMetaBusy] = useState<Record<string, boolean>>({})
+  const [metaFetching, setMetaFetching] = useState<Record<string, string | null>>({})
+  const [activeMetaMode, setActiveMetaMode] = useState<string>(META_OVERVIEW)
+
+  function refreshMeta(): void {
+    void window.officer.metaList().then(setMetaModes)
+  }
+  useEffect(() => {
+    refreshMeta()
+    return window.officer.onMetaProgress((e: RendererMetaProgress) => {
+      if (e.type === 'mode-start') setMetaBusy((b) => ({ ...b, [e.modeId]: true }))
+      else if (e.type === 'source-start') setMetaFetching((f) => ({ ...f, [e.modeId]: e.url }))
+      else if (e.type === 'mode-done') {
+        setMetaBusy((b) => ({ ...b, [e.modeId]: false }))
+        setMetaFetching((f) => ({ ...f, [e.modeId]: null }))
+        refreshMeta()
+      }
+    })
+  }, [])
   const [running, setRunning] = useState(false)
   const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
@@ -381,6 +402,8 @@ export default function App(): ReactElement {
       <div className="sheet">
         {section === 'settings' ? (
           <SettingsNav active={settingsSection} onSelect={setSettingsSection} status={settingsNavStatus} />
+        ) : section === 'meta' ? (
+          <MetaNav modes={metaModes} busy={metaBusy} active={activeMetaMode} onSelect={setActiveMetaMode} />
         ) : (
         <Editions
           items={editionItems}
@@ -428,7 +451,15 @@ export default function App(): ReactElement {
           {section === 'roster' && <Roster />}
           {section === 'bureau' && <Bureau />}
           {section === 'skills' && <Skills />}
-          {section === 'meta' && <Meta />}
+          {section === 'meta' && (
+            <Meta
+              modes={metaModes}
+              active={activeMetaMode}
+              busy={metaBusy}
+              fetching={metaFetching}
+              onRefresh={refreshMeta}
+            />
+          )}
           {section === 'dispatches' && (
             <div className="chat" ref={chatRef}>
               {turns.length === 0 ? (
@@ -457,7 +488,7 @@ export default function App(): ReactElement {
             </div>
           )}
         </div>
-        {section !== 'settings' && (
+        {section !== 'settings' && section !== 'meta' && (
           <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
         )}
       </div>
