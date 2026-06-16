@@ -76,7 +76,7 @@ export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaP
         </Card>
         <Card title="Sources">
           {(['meta', 'wiki', 'general'] as const).map((g) => {
-            const srcs = m.sources.filter((s) => s.group === g)
+            const srcs = m.sources.filter((s) => (s.group ?? 'meta') === g)
             if (srcs.length === 0) return null
             return (
               <div key={g} className="meta-srcgroup">

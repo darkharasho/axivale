@@ -14,8 +14,8 @@ function mode(over: Partial<RendererMetaMode> = {}): RendererMetaMode {
     refreshedAt: '2026-06-10T00:00:00.000Z',
     updatedAt: '',
     sources: [
-      { label: 'MetaBattle', url: 'https://metabattle.com', status: 'ok', fetchedAt: '2026-06-10T00:00:00.000Z', error: null },
-      { label: 'Hardstuck', url: 'https://hardstuck.gg', status: 'error', fetchedAt: null, error: 'timeout' }
+      { label: 'MetaBattle', url: 'https://metabattle.com', status: 'ok', fetchedAt: '2026-06-10T00:00:00.000Z', error: null, group: 'meta' },
+      { label: 'Hardstuck', url: 'https://hardstuck.gg', status: 'error', fetchedAt: null, error: 'timeout', group: 'meta' }
     ],
     playbook: { derived: null, derivedAt: null, principles: '', overrides: '', blessed: false },
     ...over
