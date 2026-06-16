@@ -38,17 +38,17 @@ export function Card({
   children: ReactNode
 }): ReactElement {
   return (
-    <div className="scard">
-      <div className="scard-h">
-        <span className="scard-t">{title}</span>
+    <div className="spcard">
+      <div className="spcard-h">
+        <span className="spcard-t">{title}</span>
         {status && (
-          <span className={`scard-s ${status.tone ?? 'dim'}`}>
+          <span className={`spcard-s ${status.tone ?? 'dim'}`}>
             <span className="led" />
             {status.msg}
           </span>
         )}
       </div>
-      <div className="scard-b">{children}</div>
+      <div className="spcard-b">{children}</div>
     </div>
   )
 }

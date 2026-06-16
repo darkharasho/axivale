@@ -470,15 +470,15 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .spane-h{font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-bottom:4px}
 .spane-sub{font-size:13.5px;color:var(--ink-dim);margin-bottom:22px;line-height:1.5}
 
-/* grouping card */
-.scard{border:1px solid var(--line);background:rgba(0,0,0,.14);margin-bottom:18px}
-.scard-h{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.18)}
-.scard-t{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
-.scard-s{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ink-dim);display:flex;align-items:center;gap:6px}
-.scard-s.ok{color:var(--green)}
-.scard-s.err{color:var(--accent-b)}
-.scard-s .led{width:6px;height:6px;border-radius:50%;background:currentColor}
-.scard-b{padding:16px}
+/* grouping card (settings-pane card; named distinctly to avoid the comps .scard) */
+.spcard{border:1px solid var(--line);background:rgba(0,0,0,.14);margin-bottom:18px}
+.spcard-h{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.18)}
+.spcard-t{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
+.spcard-s{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ink-dim);display:flex;align-items:center;gap:6px}
+.spcard-s.ok{color:var(--green)}
+.spcard-s.err{color:var(--accent-b)}
+.spcard-s .led{width:6px;height:6px;border-radius:50%;background:currentColor}
+.spcard-b{padding:16px}
 
 /* field */
 .sfield{margin-bottom:14px}

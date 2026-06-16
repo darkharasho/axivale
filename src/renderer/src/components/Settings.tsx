@@ -400,12 +400,6 @@ export default function Settings({
     onChanged()
   }
 
-  async function pickModel(value: string): Promise<void> {
-    setModel(value)
-    await window.officer.setSetting('model', value)
-    onChanged()
-  }
-
   async function pickProvider(value: ProviderName): Promise<void> {
     const prev = provider
     setProvider(value)
