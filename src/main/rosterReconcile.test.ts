@@ -69,6 +69,29 @@ describe('reconcileRoster', () => {
     expect(r.find((m) => m.memberId === 'm1')!.hasMemberRole).toBe(false)
   })
 
+  it('still lists linked members when the Discord overview is unavailable', () => {
+    // Regression: roster must not blank out just because discordOverview returned
+    // no members — linked members are the floor.
+    const r = reconcileRoster({
+      ...base,
+      discordMembers: [],
+      annotations: []
+    })
+    expect(r.find((m) => m.memberId === 'm1')!.status).toBe('verified')
+    expect(r.find((m) => m.memberId === 'm2')!.status).toBe('left-guild')
+    // falls back to linked member_name when no Discord overlay is present
+    const withName = reconcileRoster({
+      discordMembers: [],
+      linked: [{ member_id: 'mX', member_name: 'solo', accounts: [{ account_name: 'Solo.1' }] }],
+      inGameAccounts: [],
+      annotations: [],
+      memberRoleId: 'member',
+      haveInGame: false
+    })
+    expect(withName[0].discordName).toBe('solo')
+    expect(withName[0].label).toBe('solo')
+  })
+
   it('uses linked status (not left-guild) when the in-game roster is unavailable', () => {
     const r = reconcileRoster({ ...base, inGameAccounts: [], haveInGame: false })
     expect(r.find((m) => m.memberId === 'm1')!.status).toBe('linked')

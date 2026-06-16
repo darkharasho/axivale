@@ -90,21 +90,20 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
   const { discordMembers, linked, inGameAccounts, annotations, memberRoleId, haveInGame } = input
   const roleConfigured = Boolean(memberRoleId)
   const inGameSet = new Set(inGameAccounts.map(lc))
-  const linkedByMember = new Map(linked.map((l) => [l.member_id, l]))
+  const discordById = new Map(discordMembers.map((d) => [d.id, d]))
+  const linkedByMember = new Set(linked.map((l) => l.member_id))
   const annByMember = new Map(annotations.map((a) => [a.memberId, a]))
   const matchedInGame = new Set<string>() // lc account names tied to a Discord member
 
   const out: ReconciledMember[] = []
 
-  for (const dm of discordMembers) {
-    const hasMemberRole = roleConfigured ? (dm.roles ?? []).includes(memberRoleId as string) : false
-    const link = linkedByMember.get(dm.id)
-    // Roster = role-holders + anyone linked (so missing-role members still surface).
-    // With no role configured we fall back to the linked roster.
-    if (roleConfigured && !hasMemberRole && !link) continue
-    if (!roleConfigured && !link) continue
-
-    const accounts: ReconciledAccount[] = (link?.accounts ?? [])
+  // 1. Seed from every linked member — this is the floor (the old roster). Discord
+  //    role/name info is overlaid when the overview is available; missing overview
+  //    never drops a linked member.
+  for (const link of linked) {
+    const dm = discordById.get(link.member_id)
+    const hasMemberRole = roleConfigured ? (dm?.roles ?? []).includes(memberRoleId as string) : false
+    const accounts: ReconciledAccount[] = (link.accounts ?? [])
       .map((a) => a.account_name)
       .filter((n): n is string => Boolean(n))
       .map((name) => {
@@ -112,19 +111,16 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
         if (inGuild) matchedInGame.add(lc(name))
         return {
           account_name: name,
-          characters:
-            link?.accounts?.find((a) => a.account_name === name)?.characters ?? [],
+          characters: link.accounts?.find((a) => a.account_name === name)?.characters ?? [],
           inGuild
         }
       })
     const guildLabels = [
-      ...new Set(
-        (link?.accounts ?? []).flatMap((a) => Object.values(a.guild_labels ?? {}))
-      )
+      ...new Set((link.accounts ?? []).flatMap((a) => Object.values(a.guild_labels ?? {})))
     ]
     const linkedFlag = accounts.length > 0
     const inGuild = accounts.some((a) => a.inGuild)
-    const ann = annByMember.get(dm.id) ?? emptyAnn(dm.id)
+    const ann = annByMember.get(link.member_id) ?? emptyAnn(link.member_id)
 
     let status: RosterStatus
     if (!linkedFlag) status = 'no-key'
@@ -132,11 +128,12 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
     else if (inGuild) status = 'verified'
     else status = 'left-guild'
 
-    const label = ann.nickname || dm.display_name || dm.name || accounts[0]?.account_name || dm.id
+    const discordName = dm?.name ?? link.member_name
+    const label = ann.nickname || dm?.display_name || discordName || accounts[0]?.account_name || link.member_id
     out.push({
-      memberId: dm.id,
-      discordName: dm.name,
-      displayName: dm.display_name,
+      memberId: link.member_id,
+      discordName,
+      displayName: dm?.display_name,
       hasMemberRole,
       accounts,
       guildLabels,
@@ -151,7 +148,33 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
     })
   }
 
-  // In-game accounts with no Discord match — present in the guild, untied to a member.
+  // 2. Discord members who carry the configured guild-member role but never linked a
+  //    key — the "ask them to link" group (only when a role is configured).
+  if (roleConfigured) {
+    for (const dm of discordMembers) {
+      if (linkedByMember.has(dm.id)) continue
+      if (!(dm.roles ?? []).includes(memberRoleId as string)) continue
+      const ann = annByMember.get(dm.id) ?? emptyAnn(dm.id)
+      out.push({
+        memberId: dm.id,
+        discordName: dm.name,
+        displayName: dm.display_name,
+        hasMemberRole: true,
+        accounts: [],
+        guildLabels: [],
+        linked: false,
+        inGuild: false,
+        status: 'no-key',
+        nickname: ann.nickname,
+        aliases: ann.aliases,
+        notes: ann.notes,
+        tags: ann.tags,
+        label: ann.nickname || dm.display_name || dm.name || dm.id
+      })
+    }
+  }
+
+  // 3. In-game accounts with no Discord match — present in the guild, untied to a member.
   if (haveInGame) {
     for (const name of inGameAccounts) {
       if (matchedInGame.has(lc(name))) continue

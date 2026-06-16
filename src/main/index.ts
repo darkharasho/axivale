@@ -809,10 +809,19 @@ app.whenReady().then(async () => {
     const guildId = store.getSetting('guildId')
     if (!guildId) throw new Error('No server connected — add an AxiVale key in Settings.')
     const client = buildAxitools()
-    const [overview, linked] = await Promise.all([
-      client.discordOverview(guildId, true) as Promise<{ members?: DiscordMemberRaw[] }>,
-      client.membersLinked(guildId) as Promise<LinkedMemberRaw[]>
-    ])
+    const linked = (await client.membersLinked(guildId)) as LinkedMemberRaw[]
+
+    // Discord overview (roles/display names) is an overlay — best-effort so a
+    // failure or empty member list never blanks the linked roster.
+    let discordMembers: DiscordMemberRaw[] = []
+    try {
+      const overview = (await client.discordOverview(guildId, true)) as {
+        members?: DiscordMemberRaw[]
+      }
+      discordMembers = overview.members ?? []
+    } catch {
+      discordMembers = []
+    }
 
     // In-game GW2 guild roster is best-effort: it needs a gw2 key + guild id and
     // can fail independently. A miss just means we can't confirm in-guild status.
@@ -829,12 +838,24 @@ app.whenReady().then(async () => {
       }
     }
 
+    // Guild-member role is stored per server (each has its own roles).
+    let memberRoleId: string | null = null
+    try {
+      const map = JSON.parse(store.getSetting('discordMemberRoleByGuild') || '{}') as Record<
+        string,
+        string
+      >
+      memberRoleId = map[guildId] || null
+    } catch {
+      memberRoleId = null
+    }
+
     return reconcileRoster({
-      discordMembers: overview.members ?? [],
+      discordMembers,
       linked: Array.isArray(linked) ? linked : [],
       inGameAccounts,
       annotations: rosterAnnotations.list(),
-      memberRoleId: store.getSetting('discordMemberRoleId') || null,
+      memberRoleId,
       haveInGame
     })
   })

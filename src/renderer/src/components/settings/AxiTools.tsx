@@ -70,7 +70,7 @@ export default function AxiTools(p: AxiToolsProps): ReactElement {
         )}
       </Card>
       <Card title="Guild roster">
-        <GuildMemberRoleField />
+        <GuildMemberRoleField key={p.axiGuild?.id ?? 'none'} guildId={p.axiGuild?.id ?? null} />
       </Card>
     </Pane>
   )

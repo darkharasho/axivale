@@ -102,9 +102,14 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
     )
   }
   if (!current) {
+    const msg = !loaded
+      ? 'Reconciling the roster…'
+      : ctl.members.length === 0
+        ? 'No members yet. Connect a server in Settings, have members link their GW2 keys with the bot, and optionally set a guild-member role under Settings → AxiTools.'
+        : 'Select a member.'
     return (
       <div className="sk2-detail sk2-blank">
-        <div className="panel-empty">{loaded ? 'Select a member.' : 'Reconciling the roster…'}</div>
+        <div className="panel-empty">{msg}</div>
       </div>
     )
   }
