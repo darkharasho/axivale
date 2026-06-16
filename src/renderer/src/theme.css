@@ -740,10 +740,6 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 
 /* ---- Meta panel ---- */
-.meta-mode h2{margin-bottom:6px}
-.meta-sources{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}
-.meta-src{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-b);text-decoration:none;border:1px solid var(--rule);padding:3px 8px}
-.meta-src:hover{color:var(--ink);border-color:var(--rule2)}
 .meta-summary-wrap {
   margin: 6px 0 10px;
 }
@@ -789,32 +785,6 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   color: var(--ink);
   opacity: 0.55;
 }
-.meta-srcrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-right: 12px;
-}
-.meta-chip {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 1px 5px;
-  border: 1px solid var(--rule2);
-  border-radius: 2px;
-  opacity: 0.75;
-}
-.meta-chip.ok {
-  color: var(--green);
-  border-color: var(--green);
-}
-.meta-chip.error {
-  color: var(--accent-b);
-  border-color: var(--accent-b);
-}
-.meta-chip.never {
-  opacity: 0.4;
-}
 .meta-refreshing {
   font-size: 11px;
   font-weight: 400;
@@ -836,11 +806,6 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   to {
     transform: rotate(360deg);
   }
-}
-.meta-chip.fetching {
-  color: var(--accent-b);
-  border-color: var(--accent-b);
-  opacity: 1;
 }
 /* meta source chip with status LED (used in the redesigned Sources card) */
 .meta-srcs{display:flex;flex-wrap:wrap;gap:8px}
