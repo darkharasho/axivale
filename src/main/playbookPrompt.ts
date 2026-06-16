@@ -30,7 +30,10 @@ export function buildPlaybookReference(modes: MetaMode[]): string {
       if (p.principles.trim()) lines.push(p.principles.trim())
       if (p.overrides.trim()) lines.push(`Guild overrides: ${p.overrides.trim()}`)
       lines.push(
-        `When building or critiquing a ${m.mode} comp: start from this baseline, apply the principles, and prefer these builds over a generic DPS tier list. Explain tradeoffs and invite iteration; never present it as the single optimal comp.`
+        `This is REFERENCE, not law. It is a descriptive snapshot of what the guild has actually fielded recently — NOT a prescriptive or optimal comp, and not a target to conform to. ` +
+          `When asked to build a NEW ${m.mode} comp, treat it as one input alongside the principles and the user's stated goals: propose and explore, don't just reproduce it. ` +
+          `When the user shows you THEIR comp, do not frame its differences from this snapshot as "gaps" or "fixes to apply" — a deliberate deviation can be correct. Surface tradeoffs and let the user decide. ` +
+          `Prefer these proven builds over a generic DPS tier list, but never present this or any comp as the single optimal answer.`
       )
       return lines.join('\n')
     })

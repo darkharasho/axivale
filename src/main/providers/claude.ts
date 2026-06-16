@@ -188,6 +188,10 @@ export class ClaudeAdapter implements ProviderAdapter {
         prompt: input.prompt,
         options: {
           mcpServers: { officer: server },
+          // Officer MCP tools only. An empty built-in set stops the model from
+          // ever attempting harness tools like AskUserQuestion (which has no UI
+          // here and would stall the turn) or Bash/Read/Write.
+          tools: [],
           allowedTools,
           systemPrompt: input.systemPrompt,
           includePartialMessages: true,

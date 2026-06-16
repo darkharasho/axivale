@@ -48,6 +48,16 @@ describe('buildPlaybookReference', () => {
     expect(out).toMatch(/49% support/)
   })
 
+  it('frames the playbook as descriptive reference, not a law to enforce', () => {
+    const out = buildPlaybookReference([mode({ blessed: true, principles: 'p' })])
+    // It is a snapshot of what was actually run, not a prescriptive optimum.
+    expect(out).toMatch(/reference, not law/i)
+    expect(out).toMatch(/descriptive snapshot/i)
+    // And the model must not frame a user's own comp as having "gaps" to "fix".
+    expect(out).toMatch(/do not frame/i)
+    expect(out).toMatch(/gaps/i)
+  })
+
   it('flags low confidence', () => {
     const out = buildPlaybookReference([
       mode({

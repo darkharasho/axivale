@@ -5,7 +5,9 @@ import remarkGfm from 'remark-gfm'
 import type { RendererMetaMode, RendererMetaProgress } from '../../../../preload/index.d'
 import MetaIndexInspector from '../MetaIndexInspector'
 
-function PlaybookSection({ mode, onChange }: { mode: RendererMetaMode; onChange: () => void }): ReactElement {
+/** The comp playbook itself, rendered inside a popup. Squad-comp concept, so it is
+ *  only ever launched for the squad WvW mode (see PlaybookLauncher). */
+function PlaybookModal({ mode, onChange, onClose }: { mode: RendererMetaMode; onChange: () => void; onClose: () => void }): ReactElement {
   const pb = mode.playbook
   const [principles, setPrinciples] = useState(pb.principles)
   const [overrides, setOverrides] = useState(pb.overrides)
@@ -26,6 +28,15 @@ function PlaybookSection({ mode, onChange }: { mode: RendererMetaMode; onChange:
     }
   }, [pb.principles, pb.overrides])
 
+  // Close on Escape, like the app's other modals.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   const save = (patch: { principles?: string; overrides?: string; blessed?: boolean }): void => {
     void window.officer.metaUpdatePlaybook(mode.id, patch).then(onChange)
   }
@@ -41,43 +52,71 @@ function PlaybookSection({ mode, onChange }: { mode: RendererMetaMode; onChange:
 
   const d = pb.derived
   return (
-    <div className="meta-playbook">
-      <div className="srow">
-        <strong>Comp playbook</strong>
-        <label className="meta-bless">
-          <input type="checkbox" checked={pb.blessed} onChange={(e) => save({ blessed: e.target.checked })} /> blessed (used by AI)
-        </label>
-        <button className="sbtn" disabled={deriving} onClick={derive}>
-          {deriving ? 'Deriving…' : 'Refresh from AxiBridge'}
-        </button>
-      </div>
-      {msg && <p className="shelp">{msg}</p>}
-      {d ? (
-        <div className="meta-derived">
-          <p className="shelp">
-            {d.sampleSize} reports · {d.window.fromISO}–{d.window.toISO} · {d.sourceRepos.join(', ')}
-            {d.lowConfidence ? ' · low confidence' : ''} · squad ~{d.avgSquadSize}, {d.supportPct}% support
-          </p>
-          <p className="shelp">
-            Subgroup: {d.subgroup.core.join(' + ')}
-            {d.subgroup.flex.length ? ` + flex (${d.subgroup.flex.join(' / ')})` : ''}
-          </p>
-          <div className="meta-sources">
-            {d.professions.slice(0, 12).map((p, i) => (
-              <span className="meta-srcrow" key={`${p.name}-${i}`}>
-                {p.name}: {p.avgPerSquad}/squad ({p.presencePct}%, {p.runAs})
-              </span>
-            ))}
-          </div>
+    <div className="action-overlay meta-pb-overlay" onClick={onClose}>
+      <div className="action-modal meta-pb-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="action-modal__head">
+          <span className="nm">Comp Playbook — {mode.mode}</span>
+          <button className="action-modal__x" onClick={onClose} aria-label="Close">✕</button>
         </div>
-      ) : (
-        <p className="shelp">No derived baseline yet — click "Refresh from AxiBridge".</p>
-      )}
-      {/* saves on blur; an unmount before blur drops the in-flight edit — acceptable for notes fields */}
-      <label className="shelp" htmlFor={`pb-principles-${mode.id}`}>Principles</label>
-      <textarea id={`pb-principles-${mode.id}`} className="meta-edit" rows={6} value={principles} onChange={(e) => setPrinciples(e.target.value)} onBlur={() => save({ principles })} />
-      <label className="shelp" htmlFor={`pb-overrides-${mode.id}`}>Guild overrides</label>
-      <textarea id={`pb-overrides-${mode.id}`} className="meta-edit" rows={3} value={overrides} onChange={(e) => setOverrides(e.target.value)} onBlur={() => save({ overrides })} />
+        <div className="action-modal__body meta-playbook">
+          <div className="srow meta-pb-controls">
+            <label className="meta-bless">
+              <input type="checkbox" checked={pb.blessed} onChange={(e) => save({ blessed: e.target.checked })} />
+              blessed (used by AI)
+            </label>
+            <button className="sbtn meta-pb-derive" disabled={deriving} onClick={derive}>
+              {deriving ? 'Deriving…' : 'Refresh from AxiBridge'}
+            </button>
+          </div>
+          {msg && <p className="shelp meta-pb-msg">{msg}</p>}
+          {d ? (
+            <div className="meta-derived">
+              <p className="meta-derived-meta">
+                <strong>{d.sampleSize} reports</strong> · {d.window.fromISO}–{d.window.toISO} · {d.sourceRepos.join(', ')}
+                {d.lowConfidence ? ' · low confidence' : ''} · squad ~{d.avgSquadSize}, {d.supportPct}% support
+              </p>
+              <p className="meta-derived-sub">
+                Subgroup: <strong>{d.subgroup.core.join(' + ')}</strong>
+                {d.subgroup.flex.length ? ` + flex (${d.subgroup.flex.join(' / ')})` : ''}
+              </p>
+              <div className="meta-derived-profs">
+                {d.professions.slice(0, 12).map((p, i) => (
+                  <span className="meta-prof" key={`${p.name}-${i}`}>
+                    {p.name}: {p.avgPerSquad}/squad ({p.presencePct}%, {p.runAs})
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="shelp meta-derived-empty">No derived baseline yet — click "Refresh from AxiBridge".</p>
+          )}
+          {/* saves on blur; an unmount before blur drops the in-flight edit — acceptable for notes fields */}
+          <label className="meta-edit-label" htmlFor={`pb-principles-${mode.id}`}>Principles</label>
+          <textarea id={`pb-principles-${mode.id}`} className="meta-edit" rows={6} value={principles} onChange={(e) => setPrinciples(e.target.value)} onBlur={() => save({ principles })} />
+          <label className="meta-edit-label" htmlFor={`pb-overrides-${mode.id}`}>Guild overrides</label>
+          <textarea id={`pb-overrides-${mode.id}`} className="meta-edit" rows={3} value={overrides} onChange={(e) => setOverrides(e.target.value)} onBlur={() => save({ overrides })} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** WvW-only launcher: a button (with a derived-state hint) below the sources that
+ *  opens the comp playbook in a popup. */
+function PlaybookLauncher({ mode, onChange }: { mode: RendererMetaMode; onChange: () => void }): ReactElement {
+  const [open, setOpen] = useState(false)
+  const d = mode.playbook.derived
+  const hint = d ? `${d.sampleSize} reports · ${d.sourceRepos.join(', ')}` : 'not yet derived'
+  return (
+    <div className="meta-pb-launch">
+      <button className="sbtn out meta-pb-btn" onClick={() => setOpen(true)}>
+        Comp playbook
+      </button>
+      <span className={`meta-pb-hint${mode.playbook.blessed ? ' blessed' : ''}`}>
+        {mode.playbook.blessed ? 'blessed · ' : ''}
+        {hint}
+      </span>
+      {open && <PlaybookModal mode={mode} onChange={onChange} onClose={() => setOpen(false)} />}
     </div>
   )
 }
@@ -175,7 +214,6 @@ export default function Meta(): ReactElement {
               )}
             </h2>
             <ModeSummary notes={m.notes} />
-            <PlaybookSection mode={m} onChange={refresh} />
             <div className="meta-sources">
               {m.sources.map((s) => {
                 const isFetching = fetching[m.id] === s.url
@@ -194,6 +232,8 @@ export default function Meta(): ReactElement {
                 )
               })}
             </div>
+            {/* Squad-comp playbook is WvW-only; Roaming/PvE never show it. */}
+            {m.mode === 'WvW' && <PlaybookLauncher mode={m} onChange={refresh} />}
           </div>
         ))
       )}
