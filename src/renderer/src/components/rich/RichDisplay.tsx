@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { DisplayPayload } from '../../state'
 import RichChart from './RichChart'
 import RichTable from './RichTable'
+import RichCode from './RichCode'
 import ForgeCard from './ForgeCard'
 
 /** Returns the rich block for a display payload, or null when this build of
@@ -12,6 +13,8 @@ export default function RichDisplay({ display }: { display: DisplayPayload }): R
       return <RichChart spec={display.data} />
     case 'table':
       return <RichTable spec={display.data} />
+    case 'code':
+      return <RichCode spec={display.data} />
     case 'build-card':
     case 'comp-card':
       return <ForgeCard display={display} />

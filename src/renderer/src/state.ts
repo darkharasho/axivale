@@ -40,6 +40,7 @@ export type DisplayPayload =
         rows: Array<Record<string, string | number>>
       }
     }
+  | { kind: 'code'; data: { title?: string; text: string } }
 
 export interface ToolCall {
   id: string
