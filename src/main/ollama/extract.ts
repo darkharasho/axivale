@@ -1,0 +1,21 @@
+import { spawn } from 'child_process'
+
+export function tarArgs(archive: 'tgz' | 'zip', src: string, destDir: string): string[] {
+  const flag = archive === 'tgz' ? '-xzf' : '-xf'
+  return [flag, src, '-C', destDir]
+}
+
+export function extractArchive(archive: 'tgz' | 'zip', src: string, destDir: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('tar', tarArgs(archive, src, destDir), { stdio: ['ignore', 'ignore', 'pipe'] })
+    let stderr = ''
+    proc.stderr?.on('data', (d: Buffer) => {
+      stderr += d.toString()
+    })
+    proc.on('error', reject)
+    proc.on('close', (code: number) => {
+      if (code === 0) resolve()
+      else reject(new Error(`tar exited with code ${code}: ${stderr.trim()}`))
+    })
+  })
+}
