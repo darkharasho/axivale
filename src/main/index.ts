@@ -816,8 +816,11 @@ app.whenReady().then(async () => {
   ipcMain.handle('roster:annotations:list', () => rosterAnnotations.list())
   ipcMain.handle(
     'roster:annotations:upsert',
-    (_e, memberId: string, patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[] }>) =>
-      rosterAnnotations.upsert(memberId, patch)
+    (
+      _e,
+      memberId: string,
+      patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[]; mainAccount: string }>
+    ) => rosterAnnotations.upsert(memberId, patch)
   )
   ipcMain.handle('roster:annotations:delete', (_e, memberId: string) =>
     rosterAnnotations.remove(memberId)

@@ -43,6 +43,14 @@ describe('RosterStore', () => {
     expect(a?.tags).toEqual(['core'])
   })
 
+  it('stores a main account and keeps a main-only annotation', () => {
+    const s = new RosterStore(path)
+    s.upsert('m1', { mainAccount: 'harasho.alt.9999' })
+    expect(s.get('m1')?.mainAccount).toBe('harasho.alt.9999')
+    // a main-only annotation is not considered empty
+    expect(s.list()).toHaveLength(1)
+  })
+
   it('removes the record when every field is cleared', () => {
     const s = new RosterStore(path)
     s.upsert('m1', { nickname: 'Bob' })

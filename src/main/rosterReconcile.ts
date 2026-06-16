@@ -44,6 +44,7 @@ export interface AnnotationRaw {
   aliases: string[]
   notes: string
   tags: string[]
+  mainAccount?: string
 }
 
 export interface ReconciledAccount {
@@ -54,6 +55,8 @@ export interface ReconciledAccount {
   joined?: string | null
   /** True when this account was tied to the member by a user manual link. */
   manual: boolean
+  /** True for the identity's "main" account (shown first / in the rail). */
+  main: boolean
 }
 
 /** Reconciliation state, used for the rail LED + filter chips. */
@@ -106,7 +109,7 @@ export interface ReconcileInput {
 const lc = (s: string): string => s.trim().toLowerCase()
 
 function emptyAnn(key: string): AnnotationRaw {
-  return { memberId: key, nickname: '', aliases: [], notes: '', tags: [] }
+  return { memberId: key, nickname: '', aliases: [], notes: '', tags: [], mainAccount: '' }
 }
 
 interface Acc {
@@ -161,25 +164,33 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
   // 1. One folded row per matched Discord member.
   for (const [memberId, accts] of memberAccts) {
     const list = [...accts.values()]
-    const accounts: ReconciledAccount[] = list
-      .map((a) => {
-        const ig = inGameByName.get(lc(a.name))
-        return {
-          account_name: ig?.name ?? a.name, // prefer the canonical in-game casing
-          characters: a.characters,
-          inGuild: Boolean(ig),
-          rank: ig?.rank,
-          joined: ig?.joined ?? null,
-          manual: a.manual
-        }
-      })
-      .sort((a, b) => Number(b.inGuild) - Number(a.inGuild))
+    const ann = annByKey.get(memberId) ?? emptyAnn(memberId)
+    const accounts: ReconciledAccount[] = list.map((a) => {
+      const ig = inGameByName.get(lc(a.name))
+      return {
+        account_name: ig?.name ?? a.name, // prefer the canonical in-game casing
+        characters: a.characters,
+        inGuild: Boolean(ig),
+        rank: ig?.rank,
+        joined: ig?.joined ?? null,
+        manual: a.manual,
+        main: false
+      }
+    })
+    // Pick the main: the user's chosen account if it's still theirs, else the first
+    // in-game account, else the first. Mains sort to the front (and to the rail).
+    const mainLc = ann.mainAccount ? lc(ann.mainAccount) : ''
+    const mainAcc =
+      accounts.find((a) => lc(a.account_name) === mainLc) ??
+      accounts.find((a) => a.inGuild) ??
+      accounts[0]
+    if (mainAcc) mainAcc.main = true
+    accounts.sort((a, b) => Number(b.main) - Number(a.main) || Number(b.inGuild) - Number(a.inGuild))
     const inGuild = accounts.some((a) => a.inGuild)
     // When we know the in-game roster, a linked-but-absent member is only kept if
     // they carry the guild-member role (else they're just some linked Discord user).
     if (haveInGame && !inGuild && roleConfigured && !hasMemberRole(memberId)) continue
     const discord = discordById.get(memberId)
-    const ann = annByKey.get(memberId) ?? emptyAnn(memberId)
     out.push({
       memberId,
       annotationKey: memberId,
@@ -241,7 +252,7 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
         memberId: null,
         annotationKey: annKey,
         hasMemberRole: false,
-        accounts: [{ account_name: gm.name, characters: [], inGuild: true, rank: gm.rank, joined: gm.joined ?? null, manual: false }],
+        accounts: [{ account_name: gm.name, characters: [], inGuild: true, rank: gm.rank, joined: gm.joined ?? null, manual: false, main: true }],
         accountName: gm.name,
         rank: gm.rank,
         joined: gm.joined ?? null,

@@ -14,7 +14,7 @@ function member(p: Partial<RendererReconciledMember>): RendererReconciledMember 
     discordName: 'harasho',
     displayName: 'Bob',
     hasMemberRole: true,
-    accounts: [{ account_name: 'harasho.4281', characters: ['Axi'], inGuild: true, manual: false }],
+    accounts: [{ account_name: 'harasho.4281', characters: ['Axi'], inGuild: true, manual: false, main: true }],
     accountName: 'harasho.4281',
     rank: 'Officer',
     joined: '2024-11-01',
@@ -38,7 +38,7 @@ const unlinked = member({
   discordName: undefined,
   displayName: undefined,
   hasMemberRole: false,
-  accounts: [{ account_name: 'Ghost.0000', characters: [], inGuild: true, manual: false }],
+  accounts: [{ account_name: 'Ghost.0000', characters: [], inGuild: true, manual: false, main: true }],
   accountName: 'Ghost.0000',
   rank: 'Member',
   linkSource: null,
@@ -125,8 +125,8 @@ describe('Roster panel (GW2-first + manual links)', () => {
     const mixed = member({
       label: 'Haro',
       accounts: [
-        { account_name: 'harasho.4281', characters: [], inGuild: true, manual: false },
-        { account_name: 'gloom.2415', characters: [], inGuild: true, manual: true }
+        { account_name: 'harasho.4281', characters: [], inGuild: true, manual: false, main: true },
+        { account_name: 'gloom.2415', characters: [], inGuild: true, manual: true, main: false }
       ],
       linkSource: 'manual'
     })
@@ -144,8 +144,8 @@ describe('Roster panel (GW2-first + manual links)', () => {
     const del = vi.fn().mockResolvedValue(undefined)
     const folded = member({
       accounts: [
-        { account_name: 'harasho.4281', characters: [], inGuild: true, manual: false },
-        { account_name: 'gloom.2415', characters: [], inGuild: true, manual: true }
+        { account_name: 'harasho.4281', characters: [], inGuild: true, manual: false, main: true },
+        { account_name: 'gloom.2415', characters: [], inGuild: true, manual: true, main: false }
       ],
       linkSource: 'manual'
     })
@@ -159,6 +159,27 @@ describe('Roster panel (GW2-first + manual links)', () => {
     expect(unlinkBtns).toHaveLength(1) // only the manual account (gloom.2415)
     fireEvent.click(unlinkBtns[0])
     await waitFor(() => expect(del).toHaveBeenCalledWith('gloom.2415'))
+  })
+
+  it('sets a non-main account as the main', async () => {
+    const upsert = vi.fn().mockResolvedValue(null)
+    const folded = member({
+      accounts: [
+        { account_name: 'harasho.4281', characters: [], inGuild: true, manual: false, main: true },
+        { account_name: 'gloom.2415', characters: [], inGuild: true, manual: true, main: false }
+      ]
+    })
+    ;(window as unknown as { officer: unknown }).officer = officer({
+      rosterReconcile: vi.fn().mockResolvedValue([folded]),
+      rosterAnnotationUpsert: upsert
+    })
+    render(<Harness />)
+    await screen.findByPlaceholderText(/preferred short name/i)
+    // only the non-main account (gloom.2415) offers "Set main"
+    const setMainBtns = screen.getAllByRole('button', { name: /set main/i })
+    expect(setMainBtns).toHaveLength(1)
+    fireEvent.click(setMainBtns[0])
+    await waitFor(() => expect(upsert).toHaveBeenCalledWith('m1', { mainAccount: 'gloom.2415' }))
   })
 
   it('saves an annotation for a linked member', async () => {

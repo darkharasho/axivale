@@ -21,12 +21,14 @@ export interface RosterAnnotation {
   notes: string
   /** Optional quick labels (e.g. "commander", "core", "trial"). */
   tags: string[]
+  /** GW2 account chosen as this identity's "main" ('' = auto-pick). */
+  mainAccount: string
   createdAt: string
   updatedAt: string
 }
 
 export type RosterAnnotationPatch = Partial<
-  Pick<RosterAnnotation, 'nickname' | 'aliases' | 'notes' | 'tags'>
+  Pick<RosterAnnotation, 'nickname' | 'aliases' | 'notes' | 'tags' | 'mainAccount'>
 >
 
 interface FileShape {
@@ -37,7 +39,13 @@ const DEBOUNCE_MS = 300
 
 /** An annotation carries no user-entered content — safe to drop instead of persist. */
 function isEmpty(a: RosterAnnotation): boolean {
-  return !a.nickname.trim() && a.aliases.length === 0 && !a.notes.trim() && a.tags.length === 0
+  return (
+    !a.nickname.trim() &&
+    a.aliases.length === 0 &&
+    !a.notes.trim() &&
+    a.tags.length === 0 &&
+    !a.mainAccount.trim()
+  )
 }
 
 function cleanList(xs: unknown): string[] {
@@ -77,6 +85,7 @@ export class RosterStore {
             aliases: cleanList(a.aliases),
             notes: typeof a.notes === 'string' ? a.notes : '',
             tags: cleanList(a.tags),
+            mainAccount: typeof a.mainAccount === 'string' ? a.mainAccount : '',
             createdAt: a.createdAt ?? new Date().toISOString(),
             updatedAt: a.updatedAt ?? new Date().toISOString()
           }))
@@ -117,13 +126,23 @@ export class RosterStore {
     const now = new Date().toISOString()
     let rec = this.state.annotations.find((x) => x.memberId === memberId)
     if (!rec) {
-      rec = { memberId, nickname: '', aliases: [], notes: '', tags: [], createdAt: now, updatedAt: now }
+      rec = {
+        memberId,
+        nickname: '',
+        aliases: [],
+        notes: '',
+        tags: [],
+        mainAccount: '',
+        createdAt: now,
+        updatedAt: now
+      }
       this.state.annotations.push(rec)
     }
     if (patch.nickname !== undefined) rec.nickname = patch.nickname.trim()
     if (patch.aliases !== undefined) rec.aliases = cleanList(patch.aliases)
     if (patch.notes !== undefined) rec.notes = patch.notes
     if (patch.tags !== undefined) rec.tags = cleanList(patch.tags)
+    if (patch.mainAccount !== undefined) rec.mainAccount = patch.mainAccount.trim()
     rec.updatedAt = now
 
     if (isEmpty(rec)) {

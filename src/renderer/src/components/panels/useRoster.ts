@@ -106,6 +106,8 @@ export interface RosterController {
   discordMembers: DiscordMemberLite[]
   link: (accountName: string, memberId: string) => Promise<void>
   unlink: (accountName: string) => Promise<void>
+  /** Mark a GW2 account as this identity's main (shown in the rail). */
+  setMain: (accountName: string) => Promise<void>
 }
 
 export function useRoster(active: boolean): RosterController {
@@ -222,6 +224,12 @@ export function useRoster(active: boolean): RosterController {
     await refresh()
   }
 
+  async function setMain(accountName: string): Promise<void> {
+    if (!current) return
+    await window.officer.rosterAnnotationUpsert(current.annotationKey, { mainAccount: accountName })
+    await refresh()
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return members.filter((m) => matchesFilter(m, filter) && (!q || haystack(m).includes(q)))
@@ -261,6 +269,7 @@ export function useRoster(active: boolean): RosterController {
     save,
     discordMembers,
     link,
-    unlink
+    unlink,
+    setMain
   }
 }

@@ -171,15 +171,26 @@ function LinkCard({ ctl, m }: { ctl: RosterController; m: RendererReconciledMemb
  *  this identity by a manual link. */
 function AccountCard({
   acc,
-  onUnlink
+  onUnlink,
+  onSetMain
 }: {
   acc: RendererReconciledMember['accounts'][number]
   onUnlink: () => void
+  onSetMain?: () => void
 }): ReactElement {
   return (
-    <div className="spcard">
+    <div className={`spcard${acc.main ? ' rst-acct-main' : ''}`}>
       <div className="spcard-h">
         <span className="spcard-t rst-acct">{acc.account_name}</span>
+        {acc.main ? (
+          <span className="rst-main-badge">Main</span>
+        ) : (
+          onSetMain && (
+            <button className="rst-setmain" onClick={onSetMain}>
+              Set main
+            </button>
+          )
+        )}
         {acc.manual && (
           <button className="rst-unlink" onClick={onUnlink}>
             Unlink
@@ -288,7 +299,16 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
         </div>
       )}
       {current.accounts.map((acc) => (
-        <AccountCard key={acc.account_name} acc={acc} onUnlink={() => void ctl.unlink(acc.account_name)} />
+        <AccountCard
+          key={acc.account_name}
+          acc={acc}
+          onUnlink={() => void ctl.unlink(acc.account_name)}
+          onSetMain={
+            current.accounts.length > 1 && !acc.main
+              ? () => void ctl.setMain(acc.account_name)
+              : undefined
+          }
+        />
       ))}
 
       <LinkCard ctl={ctl} m={current} />

@@ -91,6 +91,39 @@ describe('reconcileRoster (GW2-first)', () => {
     expect(r.some((m) => m.status === 'unlinked')).toBe(false)
   })
 
+  it('honors the chosen main account (sorted first, drives the row name)', () => {
+    const r = reconcileRoster({
+      ...base,
+      linked: [
+        { member_id: 'm1', accounts: [{ account_name: 'harasho.4281' }, { account_name: 'harasho.alt.9999' }] }
+      ],
+      inGameRoster: [
+        { name: 'harasho.4281', rank: 'Officer', joined: '2024-11-01' },
+        { name: 'harasho.alt.9999', rank: 'Alt', joined: '2025-02-02' }
+      ],
+      annotations: [
+        { memberId: 'm1', nickname: '', aliases: [], notes: '', tags: [], mainAccount: 'harasho.alt.9999' }
+      ]
+    })
+    const row = r.find((m) => m.memberId === 'm1')!
+    expect(row.accounts[0].account_name).toBe('harasho.alt.9999')
+    expect(row.accounts[0].main).toBe(true)
+    expect(row.accountName).toBe('harasho.alt.9999')
+    // no annotation -> defaults to the first in-game account as main
+    const r2 = reconcileRoster({
+      ...base,
+      linked: [
+        { member_id: 'm1', accounts: [{ account_name: 'harasho.4281' }, { account_name: 'harasho.alt.9999' }] }
+      ],
+      inGameRoster: [
+        { name: 'harasho.4281', rank: 'Officer', joined: '2024-11-01' },
+        { name: 'harasho.alt.9999', rank: 'Alt', joined: '2025-02-02' }
+      ],
+      annotations: []
+    })
+    expect(r2.find((m) => m.memberId === 'm1')!.accounts.find((a) => a.main)).toBeTruthy()
+  })
+
   it('anchors an unlinked account annotation on the account and resolves the label', () => {
     const r = reconcileRoster({
       ...base,

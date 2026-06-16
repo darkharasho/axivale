@@ -57,7 +57,7 @@ contextBridge.exposeInMainWorld('officer', {
   rosterAnnotationsList: () => ipcRenderer.invoke('roster:annotations:list'),
   rosterAnnotationUpsert: (
     memberId: string,
-    patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[] }>
+    patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[]; mainAccount: string }>
   ) => ipcRenderer.invoke('roster:annotations:upsert', memberId, patch),
   rosterAnnotationDelete: (memberId: string) =>
     ipcRenderer.invoke('roster:annotations:delete', memberId),

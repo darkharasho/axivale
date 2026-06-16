@@ -117,6 +117,7 @@ export interface RendererRosterAnnotation {
   aliases: string[]
   notes: string
   tags: string[]
+  mainAccount: string
   createdAt: string
   updatedAt: string
 }
@@ -130,6 +131,7 @@ export interface RendererReconciledAccount {
   rank?: string
   joined?: string | null
   manual: boolean
+  main: boolean
 }
 
 export interface RendererReconciledMember {
@@ -263,7 +265,7 @@ export interface OfficerApi {
   rosterAnnotationsList(): Promise<RendererRosterAnnotation[]>
   rosterAnnotationUpsert(
     memberId: string,
-    patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[] }>
+    patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[]; mainAccount: string }>
   ): Promise<RendererRosterAnnotation | null>
   rosterAnnotationDelete(memberId: string): Promise<void>
   rosterReconcile(): Promise<RendererReconciledMember[]>

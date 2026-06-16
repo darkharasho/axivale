@@ -662,8 +662,15 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* per-account cards */
 .rst-section-label{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin:2px 0 8px}
 .rst-acct{text-transform:none;letter-spacing:.02em;color:var(--ink);font-size:11px}
-.rst-unlink{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b);background:none;border:1px solid rgba(224,90,80,.4);padding:3px 9px;cursor:pointer}
+.rst-unlink{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b);background:none;border:1px solid rgba(224,90,80,.4);padding:3px 9px;cursor:pointer}
 .rst-unlink:hover{border-color:var(--accent-b)}
+.rst-main-badge{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);border:1px solid rgba(111,174,111,.5);padding:3px 9px}
+.rst-setmain{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);background:none;border:1px solid var(--rule2);padding:3px 9px;cursor:pointer}
+.rst-setmain:hover{color:var(--ink);border-color:var(--green)}
+/* main account card gets a subtle accent edge */
+.rst-acct-main{border-left:2px solid var(--green)}
+/* when both Set-main and Unlink show, only the first gets the auto margin */
+.rst-main-badge+.rst-unlink,.rst-setmain+.rst-unlink{margin-left:8px}
 /* ---- InputBar skill picker (custom dark dropdown) ---- */
 .skill-pick-wrap{position:relative;display:inline-block;-webkit-app-region:no-drag}
 .skill-pick{background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;cursor:pointer}
