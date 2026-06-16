@@ -63,6 +63,7 @@ describe('tools module split', () => {
       'axitools_rss',
       'axitools_streams',
       'comp_check',
+      'comp_sketch',
       'discord_action',
       'discord_messages',
       'discord_overview',

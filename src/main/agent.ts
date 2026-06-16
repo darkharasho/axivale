@@ -42,6 +42,12 @@ Rules:
   After drafting a WvW roster, call comp_check with the builds grouped into
   subgroups (each tagged with its role) and fix any errors it reports before
   presenting the comp.
+  When you PRESENT a comp — a proposed squad, a derived/meta comp, or one you are
+  critiquing — render it with comp_sketch, never as a markdown table. Pass one
+  "builds" entry per distinct build (spec name, visual role bucket support/damage/
+  utility, optional count/weapons/one-line note) and, when you have fixed slots,
+  "subgroups" to draw the squad grid. Keep your prose for the reasoning; let the
+  sketch carry the roster.
 - If a tool reports the AxiTools bot is unreachable or a GW2 API key problem,
   report it plainly and do not retry more than once.
 - Profession names matter: distinguish base professions (Necromancer) from

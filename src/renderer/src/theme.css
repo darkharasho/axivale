@@ -530,6 +530,148 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .action-modal__raw{padding:0 18px 16px}
 .action-raw{margin-top:8px;max-height:280px;overflow:auto;background:var(--bg);border:1px solid var(--rule);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
 
+/* ---- Comp sketch (rich comp display: grid + per-build list) ---- */
+.comp-sketch {
+  max-width: 560px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  --rc: var(--rule2);
+}
+.cs-role--support {
+  --rc: var(--green);
+}
+.cs-role--damage {
+  --rc: var(--accent-b);
+}
+.cs-role--utility {
+  --rc: #c79a3a;
+}
+.cs-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 3px double var(--rule);
+}
+.cs-title {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 17px;
+  color: var(--ink);
+}
+.cs-sub {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-left: auto;
+}
+.cs-icon {
+  object-fit: contain;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.cs-icon--missing {
+  display: inline-block;
+  border: 1px dashed var(--rule2);
+  border-radius: 50%;
+  opacity: 0.5;
+}
+.cs-grid {
+  display: flex;
+  gap: 7px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 16px 14px;
+}
+.cs-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cs-col-h {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--faint);
+  text-align: center;
+  margin-bottom: 2px;
+}
+.cs-tile {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg2);
+  border: 1px solid var(--rule);
+  border-bottom: 3px solid var(--rc);
+}
+.cs-builds {
+  border-top: 1px dashed var(--rule);
+}
+.cs-build {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-bottom: 1px dotted var(--line);
+  border-left: 3px solid var(--rc);
+}
+.cs-build:last-child {
+  border-bottom: none;
+}
+.cs-icon--lg {
+  width: 30px;
+  height: 30px;
+  margin-top: 1px;
+}
+.cs-build-main {
+  flex: 1;
+  min-width: 0;
+}
+.cs-build-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cs-build-name {
+  font-family: 'Source Serif 4', serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.cs-role-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rc);
+  border: 1px solid var(--rc);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.cs-build-x {
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--accent-b);
+}
+.cs-build-weap {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-dim);
+  margin-top: 3px;
+}
+.cs-build-note {
+  font-family: 'Source Serif 4', serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: 2px;
+}
+
 /* ---- Meta panel ---- */
 .meta-mode h2{margin-bottom:6px}
 .meta-sources{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px}

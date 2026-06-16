@@ -40,6 +40,15 @@ export type DisplayPayload =
         rows: Array<Record<string, string | number>>
       }
     }
+  | {
+      kind: 'comp-sketch'
+      data: {
+        title?: string
+        subtitle?: string
+        subgroups?: Array<Array<{ spec: string; role: string }>>
+        builds: Array<{ spec: string; role: string; count?: number; weapons?: string; note?: string }>
+      }
+    }
 
 export type AgentEvent =
   | { kind: 'text-delta'; text: string }

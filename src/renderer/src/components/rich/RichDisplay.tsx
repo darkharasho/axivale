@@ -3,6 +3,7 @@ import type { DisplayPayload } from '../../state'
 import RichChart from './RichChart'
 import RichTable from './RichTable'
 import RichCode from './RichCode'
+import CompSketch from './CompSketch'
 import ForgeCard from './ForgeCard'
 
 /** Returns the rich block for a display payload, or null when this build of
@@ -15,6 +16,8 @@ export default function RichDisplay({ display }: { display: DisplayPayload }): R
       return <RichTable spec={display.data} />
     case 'code':
       return <RichCode spec={display.data} />
+    case 'comp-sketch':
+      return <CompSketch spec={display.data} />
     case 'build-card':
     case 'comp-card':
       return <ForgeCard display={display} />

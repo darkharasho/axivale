@@ -41,6 +41,18 @@ export type DisplayPayload =
       }
     }
   | { kind: 'code'; data: { title?: string; text: string } }
+  | {
+      kind: 'comp-sketch'
+      data: {
+        title?: string
+        subtitle?: string
+        // Each subgroup is a party of slots; drives the icon grid. Optional —
+        // an aggregate comp may have only per-build counts and no fixed slots.
+        subgroups?: Array<Array<{ spec: string; role: string }>>
+        // The per-build detail list under the grid.
+        builds: Array<{ spec: string; role: string; count?: number; weapons?: string; note?: string }>
+      }
+    }
 
 export interface ToolCall {
   id: string
