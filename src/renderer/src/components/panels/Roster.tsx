@@ -109,7 +109,7 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
         : 'Select a member.'
     return (
       <div className="sk2-detail sk2-blank">
-        <div className="panel-empty">{msg}</div>
+        {error ? <div className="sstatus err">Roster error: {error}</div> : <div className="panel-empty">{msg}</div>}
       </div>
     )
   }

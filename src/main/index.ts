@@ -809,7 +809,16 @@ app.whenReady().then(async () => {
     const guildId = store.getSetting('guildId')
     if (!guildId) throw new Error('No server connected — add an AxiVale key in Settings.')
     const client = buildAxitools()
-    const linked = (await client.membersLinked(guildId)) as LinkedMemberRaw[]
+
+    // membersLinked is the roster floor. Tolerate either a bare array or a wrapped
+    // shape ({ members: [...] } / { linked: [...] }) so a server shape change can't
+    // silently blank the roster.
+    const rawLinked = await client.membersLinked(guildId)
+    const linked: LinkedMemberRaw[] = Array.isArray(rawLinked)
+      ? (rawLinked as LinkedMemberRaw[])
+      : (((rawLinked as { members?: unknown; linked?: unknown })?.members ??
+          (rawLinked as { linked?: unknown })?.linked ??
+          []) as LinkedMemberRaw[])
 
     // Discord overview (roles/display names) is an overlay — best-effort so a
     // failure or empty member list never blanks the linked roster.
@@ -819,7 +828,8 @@ app.whenReady().then(async () => {
         members?: DiscordMemberRaw[]
       }
       discordMembers = overview.members ?? []
-    } catch {
+    } catch (e) {
+      console.error('[roster] discordOverview failed:', e)
       discordMembers = []
     }
 
@@ -827,16 +837,20 @@ app.whenReady().then(async () => {
     // can fail independently. A miss just means we can't confirm in-guild status.
     let inGameAccounts: string[] = []
     let haveInGame = false
-    const gw2GuildId = store.getSetting('gw2GuildId')
-    if (gw2GuildId && store.getActiveKey('gw2')) {
-      try {
+    try {
+      const gw2GuildId = store.getSetting('gw2GuildId')
+      if (gw2GuildId && store.getActiveKey('gw2')) {
         const roster = await buildGw2().guildMembers(gw2GuildId)
         inGameAccounts = roster.map((m) => m.name).filter(Boolean)
         haveInGame = true
-      } catch {
-        haveInGame = false
       }
+    } catch (e) {
+      console.error('[roster] gw2 guildMembers failed:', e)
+      haveInGame = false
     }
+    console.log(
+      `[roster] reconcile: linked=${Array.isArray(linked) ? linked.length : 'n/a'} discord=${discordMembers.length} inGame=${inGameAccounts.length}`
+    )
 
     // Guild-member role is stored per server (each has its own roles).
     let memberRoleId: string | null = null
