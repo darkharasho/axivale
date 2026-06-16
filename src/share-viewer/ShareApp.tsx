@@ -10,8 +10,11 @@ import { Fragment, useEffect, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { rehypeEmojiIcons } from '../renderer/src/components/rehypeEmojiIcons'
-import { renderEmojiSpan, renderExtLink } from '../renderer/src/components/emojiIcons'
+import { rehypeClassIcons } from '../renderer/src/components/rehypeClassIcons'
+import { renderExtLink } from '../renderer/src/components/emojiIcons'
+import { renderRichSpan } from '../renderer/src/components/richSpan'
 import { splitHeadline, stripMarkdown } from '../renderer/src/components/headline'
+import { stripRawJson } from '../renderer/src/components/sanitizeProse'
 import { couponLabel } from '../renderer/src/components/ToolCoupon'
 import RichDisplay from '../renderer/src/components/rich/RichDisplay'
 import type { ShareDoc, SharedTurn } from './shareTypes'
@@ -59,8 +62,12 @@ function docUrl(id: string): string {
 }
 
 function ArticleView({ turn, kicker }: { turn: SharedTurn; kicker: string }): ReactElement {
-  const { headline, rest } = splitHeadline(turn.agentText)
-  const figures = turn.tools.filter((t) => t.display && t.display.kind !== 'table')
+  const { headline, rest: rawRest } = splitHeadline(turn.agentText)
+  const rest = stripRawJson(rawRest)
+  // Unlike the main app (where excluded tables fall back to the Actions panel),
+  // the standalone viewer has no such panel — so tables must render here or they
+  // vanish entirely. Include every display kind RichDisplay can draw.
+  const figures = turn.tools.filter((t) => t.display)
   const segments = rest.split(/\{\{\s*figure\s*\}\}/i)
   const renderFigure = (t: (typeof figures)[number], key: number): ReactElement => (
     <figure className="post-figure" key={key}>
@@ -88,8 +95,8 @@ function ArticleView({ turn, kicker }: { turn: SharedTurn; kicker: string }): Re
           <Fragment key={i}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeEmojiIcons]}
-              components={{ span: renderEmojiSpan, a: renderExtLink }}
+              rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons]}
+              components={{ span: renderRichSpan, a: renderExtLink }}
             >
               {seg}
             </ReactMarkdown>
