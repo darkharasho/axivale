@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- AxiVale app icon: serif "A." — A in the Axi ink (#e4e3dc), dot in the Vale
+       accent (#e05a50), on the newspaper's dark paper tile. Scaled 16x from the
+       share-viewer favicon so the two marks stay identical. -->
+  <rect width="1024" height="1024" rx="208" fill="#16171a"/>
+  <text x="480" y="768" text-anchor="middle"
+        font-family="'Playfair Display', Georgia, 'Times New Roman', serif"
+        font-weight="900" font-size="736" letter-spacing="-16">
+    <tspan fill="#e4e3dc">A</tspan><tspan fill="#e05a50">.</tspan>
+  </text>
+</svg>
