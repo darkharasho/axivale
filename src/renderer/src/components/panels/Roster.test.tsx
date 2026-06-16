@@ -14,7 +14,7 @@ function member(p: Partial<RendererReconciledMember>): RendererReconciledMember 
     discordName: 'harasho',
     displayName: 'Bob',
     hasMemberRole: true,
-    accounts: [{ account_name: 'harasho.4281', characters: ['Axi'], inGuild: true }],
+    accounts: [{ account_name: 'harasho.4281', characters: ['Axi'], inGuild: true, manual: false }],
     accountName: 'harasho.4281',
     rank: 'Officer',
     joined: '2024-11-01',
@@ -38,7 +38,7 @@ const unlinked = member({
   discordName: undefined,
   displayName: undefined,
   hasMemberRole: false,
-  accounts: [{ account_name: 'Ghost.0000', characters: [], inGuild: true }],
+  accounts: [{ account_name: 'Ghost.0000', characters: [], inGuild: true, manual: false }],
   accountName: 'Ghost.0000',
   rank: 'Member',
   linkSource: null,
@@ -119,6 +119,27 @@ describe('Roster panel (GW2-first + manual links)', () => {
     await waitFor(() =>
       expect(upsert).toHaveBeenCalledWith('acct:Ghost.0000', { nickname: 'Spook', aliases: [], notes: '', tags: [] })
     )
+  })
+
+  it('shows a per-account unlink only for manual accounts and unlinks that account', async () => {
+    const del = vi.fn().mockResolvedValue(undefined)
+    const folded = member({
+      accounts: [
+        { account_name: 'harasho.4281', characters: [], inGuild: true, manual: false },
+        { account_name: 'gloom.2415', characters: [], inGuild: true, manual: true }
+      ],
+      linkSource: 'manual'
+    })
+    ;(window as unknown as { officer: unknown }).officer = officer({
+      rosterReconcile: vi.fn().mockResolvedValue([folded]),
+      rosterLinkDelete: del
+    })
+    render(<Harness />)
+    await screen.findByPlaceholderText(/preferred short name/i)
+    const unlinkBtns = screen.getAllByRole('button', { name: /^unlink$/i })
+    expect(unlinkBtns).toHaveLength(1) // only the manual account (gloom.2415)
+    fireEvent.click(unlinkBtns[0])
+    await waitFor(() => expect(del).toHaveBeenCalledWith('gloom.2415'))
   })
 
   it('saves an annotation for a linked member', async () => {

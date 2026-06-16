@@ -44,11 +44,11 @@ function avatarUrl(d: {
   return undefined
 }
 
-/** Stable selection key — prefer the GW2 account (GW2-first rows keep their key
- *  across linking), else the Discord member id. */
+/** Stable selection key — the Discord member id for a linked identity (stable as
+ *  its accounts change), else the GW2 account for an unlinked row. */
 export function rosterKey(m: RendererReconciledMember): string {
-  if (m.accountName) return `acct:${m.accountName}`
-  return m.memberId ?? '?'
+  if (m.memberId) return m.memberId
+  return m.accountName ? `acct:${m.accountName}` : '?'
 }
 
 function annotated(m: RendererReconciledMember): boolean {
@@ -204,6 +204,9 @@ export function useRoster(active: boolean): RosterController {
 
   async function link(accountName: string, memberId: string): Promise<void> {
     await window.officer.rosterLinkSet(accountName, memberId)
+    // Focus the identity we linked into (its key is the member id) so the view
+    // follows the account out of its unlinked row.
+    setSelectedKey(memberId)
     await refresh()
   }
 

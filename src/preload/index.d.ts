@@ -129,6 +129,7 @@ export interface RendererReconciledAccount {
   inGuild: boolean
   rank?: string
   joined?: string | null
+  manual: boolean
 }
 
 export interface RendererReconciledMember {

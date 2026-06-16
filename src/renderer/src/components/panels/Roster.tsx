@@ -120,34 +120,57 @@ function LinkCard({ ctl, m }: { ctl: RosterController; m: RendererReconciledMemb
   return (
     <div className="spcard">
       <div className="spcard-h">
-        <span className="spcard-t">Discord link</span>
+        <span className="spcard-t">Link a Discord user</span>
       </div>
       <div className="spcard-b">
-        {m.memberId ? (
-          <div className="rst-link-row">
-            <span className="rst-link-state">
-              {m.linkSource === 'manual' ? 'Manually linked to ' : 'Auto-linked to '}
-              <b>{discordLabel(m)}</b>
-            </span>
-            {m.linkSource === 'manual' && (
-              <button className="sbtn ghost" onClick={() => void ctl.unlink(m.accountName as string)}>
-                Unlink
-              </button>
-            )}
+        <p className="rst-hint">
+          This GW2 account isn’t tied to a Discord user. Link one so notes and the AI can resolve them.
+        </p>
+        <SearchSelect
+          value=""
+          options={options}
+          onChange={(memberId) => void ctl.link(m.accountName as string, memberId)}
+          placeholder={options.length ? 'Pick a Discord user…' : 'No Discord members loaded'}
+          searchPlaceholder="Find a Discord user…"
+        />
+      </div>
+    </div>
+  )
+}
+
+/** One GW2 account as its own card, with a per-account unlink when it was tied to
+ *  this identity by a manual link. */
+function AccountCard({
+  acc,
+  onUnlink
+}: {
+  acc: RendererReconciledMember['accounts'][number]
+  onUnlink: () => void
+}): ReactElement {
+  return (
+    <div className="spcard">
+      <div className="spcard-h">
+        <span className="spcard-t rst-acct">{acc.account_name}</span>
+        {acc.manual && (
+          <button className="rst-unlink" onClick={onUnlink}>
+            Unlink
+          </button>
+        )}
+      </div>
+      <div className="spcard-b rst-kvs">
+        <div className="rst-kv">
+          <span className="k">In-game</span>
+          <span className="v">
+            {acc.inGuild
+              ? `${acc.rank ?? 'member'}${acc.joined ? `, joined ${acc.joined.slice(0, 10)}` : ''}`
+              : 'not in in-game guild'}
+          </span>
+        </div>
+        {acc.characters.length > 0 && (
+          <div className="rst-kv">
+            <span className="k">Characters</span>
+            <span className="v">{acc.characters.join(', ')}</span>
           </div>
-        ) : (
-          <>
-            <p className="rst-hint">
-              This GW2 account isn’t tied to a Discord user. Link one so notes and the AI can resolve them.
-            </p>
-            <SearchSelect
-              value=""
-              options={options}
-              onChange={(memberId) => void ctl.link(m.accountName as string, memberId)}
-              placeholder={options.length ? 'Pick a Discord user…' : 'No Discord members loaded'}
-              searchPlaceholder="Find a Discord user…"
-            />
-          </>
         )}
       </div>
     </div>
@@ -200,52 +223,40 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
       </div>
       {badges(current)}
 
-      <div className="spcard">
-        <div className="spcard-h">
-          <span className="spcard-t">Identity</span>
-          <span className={`spcard-s ${STATUS_META[current.status].led === 'g' ? 'ok' : 'err'}`}>
-            <span className="led" />
-            {current.linkSource === 'manual' ? 'manual link' : STATUS_META[current.status].sub}
-          </span>
-        </div>
-        <div className="spcard-b rst-kvs">
-          {current.discordName && (
-            <div className="rst-kv">
-              <span className="k">Discord</span>
-              <span className="v">{discordLabel(current)}</span>
-            </div>
-          )}
-          <div className="rst-kv">
-            <span className="k">{current.accounts.length > 1 ? 'GW2 accounts' : 'GW2 account'}</span>
-            <span className="v">
-              {current.accounts.length ? (
-                current.accounts.map((a) => (
-                  <div key={a.account_name}>
-                    {a.account_name}
-                    {a.inGuild
-                      ? ` · ${a.rank ?? 'member'}${a.joined ? `, joined ${a.joined.slice(0, 10)}` : ''}`
-                      : ' · not in in-game guild'}
-                  </div>
-                ))
-              ) : (
-                <>— not linked</>
-              )}
+      {(current.discordName || current.guildLabels.length > 0) && (
+        <div className="spcard">
+          <div className="spcard-h">
+            <span className="spcard-t">Identity</span>
+            <span className={`spcard-s ${STATUS_META[current.status].led === 'g' ? 'ok' : 'err'}`}>
+              <span className="led" />
+              {current.linkSource === 'manual' ? 'manual link' : STATUS_META[current.status].sub}
             </span>
           </div>
-          {current.accounts.some((a) => a.characters.length > 0) && (
-            <div className="rst-kv">
-              <span className="k">Characters</span>
-              <span className="v">{current.accounts.flatMap((a) => a.characters).join(', ')}</span>
-            </div>
-          )}
-          {current.guildLabels.length > 0 && (
-            <div className="rst-kv">
-              <span className="k">Guilds</span>
-              <span className="v">{current.guildLabels.join(', ')}</span>
-            </div>
-          )}
+          <div className="spcard-b rst-kvs">
+            {current.discordName && (
+              <div className="rst-kv">
+                <span className="k">Discord</span>
+                <span className="v">{discordLabel(current)}</span>
+              </div>
+            )}
+            {current.guildLabels.length > 0 && (
+              <div className="rst-kv">
+                <span className="k">Guilds</span>
+                <span className="v">{current.guildLabels.join(', ')}</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {current.accounts.length > 0 && (
+        <div className="rst-section-label">
+          {current.accounts.length > 1 ? `${current.accounts.length} accounts` : 'Account'}
+        </div>
+      )}
+      {current.accounts.map((acc) => (
+        <AccountCard key={acc.account_name} acc={acc} onUnlink={() => void ctl.unlink(acc.account_name)} />
+      ))}
 
       <LinkCard ctl={ctl} m={current} />
 

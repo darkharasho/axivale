@@ -52,6 +52,8 @@ export interface ReconciledAccount {
   inGuild: boolean
   rank?: string
   joined?: string | null
+  /** True when this account was tied to the member by a user manual link. */
+  manual: boolean
 }
 
 /** Reconciliation state, used for the rail LED + filter chips. */
@@ -167,7 +169,8 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
           characters: a.characters,
           inGuild: Boolean(ig),
           rank: ig?.rank,
-          joined: ig?.joined ?? null
+          joined: ig?.joined ?? null,
+          manual: a.manual
         }
       })
       .sort((a, b) => Number(b.inGuild) - Number(a.inGuild))
@@ -238,7 +241,7 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
         memberId: null,
         annotationKey: annKey,
         hasMemberRole: false,
-        accounts: [{ account_name: gm.name, characters: [], inGuild: true, rank: gm.rank, joined: gm.joined ?? null }],
+        accounts: [{ account_name: gm.name, characters: [], inGuild: true, rank: gm.rank, joined: gm.joined ?? null, manual: false }],
         accountName: gm.name,
         rank: gm.rank,
         joined: gm.joined ?? null,
