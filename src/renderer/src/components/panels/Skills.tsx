@@ -1,127 +1,109 @@
-import { useEffect, useState, type ReactElement } from 'react'
-import type { RendererSkill } from '../../../../preload/index.d'
+import type { ReactElement } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import type { SkillsController } from './useSkills'
 
-export default function Skills(): ReactElement {
-  const [skills, setSkills] = useState<RendererSkill[]>([])
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [name, setName] = useState('')
-  const [whenToUse, setWhenToUse] = useState('')
-  const [instructions, setInstructions] = useState('')
+function ago(iso: string | null): string {
+  if (!iso) return ''
+  const ms = Date.now() - Date.parse(iso)
+  if (Number.isNaN(ms)) return ''
+  const mins = Math.floor(ms / 60_000)
+  if (mins < 1) return 'saved just now'
+  if (mins < 60) return `saved ${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `saved ${hrs}h ago`
+  return `saved ${Math.floor(hrs / 24)}d ago`
+}
 
-  async function refresh(): Promise<void> {
-    setSkills(await window.officer.skillsList())
-  }
-  useEffect(() => {
-    void refresh()
-  }, [])
+/** Detail editor for the selected skill. The master list lives in SkillsNav
+ *  (left rail); both share one SkillsController. */
+export default function Skills({ ctl }: { ctl: SkillsController }): ReactElement {
+  const { creating, current, draft, setDraft, dirty, valid, tab, setTab, save, toggle, remove } = ctl
 
-  function resetForm(): void {
-    setEditingId(null)
-    setName('')
-    setWhenToUse('')
-    setInstructions('')
-  }
-
-  async function save(): Promise<void> {
-    if (!name.trim() || !whenToUse.trim() || !instructions.trim()) return
-    const fields = {
-      name: name.trim(),
-      whenToUse: whenToUse.trim(),
-      instructions: instructions.trim()
-    }
-    if (editingId) await window.officer.skillsUpdate(editingId, fields)
-    else await window.officer.skillsCreate(fields)
-    resetForm()
-    await refresh()
-  }
-
-  function startEdit(s: RendererSkill): void {
-    setEditingId(s.id)
-    setName(s.name)
-    setWhenToUse(s.whenToUse)
-    setInstructions(s.instructions)
-  }
-
-  async function toggle(s: RendererSkill): Promise<void> {
-    await window.officer.skillsUpdate(s.id, { enabled: !s.enabled })
-    await refresh()
-  }
-
-  async function remove(s: RendererSkill): Promise<void> {
-    if (!window.confirm(`Delete the "${s.name}" skill?`)) return
-    if (editingId === s.id) resetForm()
-    await window.officer.skillsDelete(s.id)
-    await refresh()
+  if (!creating && !current) {
+    return (
+      <div className="sk2-detail sk2-blank">
+        <div className="panel-empty">Select a skill, or create a new one.</div>
+      </div>
+    )
   }
 
   return (
-    <div className="settings skills-panel">
-      <div className="sgroup">
-        <h2>{editingId ? 'Edit skill' : 'New skill'}</h2>
-        <p className="shelp">
-          A skill is a reusable recipe. The agent follows it when a request matches “when to use” —
-          or when you pick it explicitly.
-        </p>
-        <input
-          className="sinput sk-in"
-          placeholder="Name (e.g. Raid Recap)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          className="sinput sk-in"
-          placeholder="When to use (e.g. summarizing how a raid night went)"
-          value={whenToUse}
-          onChange={(e) => setWhenToUse(e.target.value)}
-        />
-        <textarea
-          className="sinput sk-in sk-area"
-          placeholder="Instructions — what to pull, which tools, how to structure the reply"
-          value={instructions}
-          onChange={(e) => setInstructions(e.target.value)}
-        />
-        <div className="srow">
-          <button className="sbtn" onClick={() => void save()}>
-            {editingId ? 'Save changes' : 'Add skill'}
-          </button>
-          {editingId && (
-            <button className="sbtn" onClick={resetForm}>
-              Cancel
-            </button>
-          )}
+    <div className="sk2-detail">
+      <div className="sk2-head">
+        <div className="sk2-head-txt">
+          <input
+            className="sk2-name-in"
+            placeholder="Skill name"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          />
+          <input
+            className="sk2-when-in"
+            placeholder="When to use — e.g. summarizing how a raid night went"
+            value={draft.whenToUse}
+            onChange={(e) => setDraft({ ...draft, whenToUse: e.target.value })}
+          />
         </div>
+        {current && (
+          <button
+            className={`sk2-toggle${current.enabled ? '' : ' off'}`}
+            onClick={() => void toggle(current)}
+          >
+            <span className="led" />
+            {current.enabled ? 'Enabled' : 'Disabled'}
+          </button>
+        )}
       </div>
 
-      <div className="sgroup">
-        <h2>Your skills</h2>
-        {skills.length === 0 ? (
-          <div className="panel-empty">No skills yet.</div>
+      <div className="sk2-tabs">
+        <button className={`sk2-tab${tab === 'edit' ? ' on' : ''}`} onClick={() => setTab('edit')}>
+          Edit
+        </button>
+        <button
+          className={`sk2-tab${tab === 'preview' ? ' on' : ''}`}
+          onClick={() => setTab('preview')}
+        >
+          Preview
+        </button>
+        <span className="sk2-tab-note">markdown · instructions</span>
+      </div>
+
+      <div className="sk2-body">
+        {tab === 'edit' ? (
+          <textarea
+            className="sk2-editor"
+            placeholder="Instructions — what to pull, which tools, how to structure the reply. Markdown supported."
+            value={draft.instructions}
+            onChange={(e) => setDraft({ ...draft, instructions: e.target.value })}
+          />
         ) : (
-          <ul className="sk-list">
-            {skills.map((s) => (
-              <li
-                key={s.id}
-                className={`sk-row${s.enabled ? '' : ' off'}${editingId === s.id ? ' editing' : ''}`}
-              >
-                <div className="sk-meta">
-                  <span className="sk-name">{s.name}</span>
-                  <span className="sk-when">{s.whenToUse}</span>
-                </div>
-                <div className="sk-acts">
-                  <button className="sbtn" onClick={() => startEdit(s)}>
-                    Edit
-                  </button>
-                  <button className="sbtn" onClick={() => void toggle(s)}>
-                    {s.enabled ? 'Disable' : 'Enable'}
-                  </button>
-                  <button className="sbtn" onClick={() => void remove(s)}>
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="sk2-preview prose">
+            {draft.instructions.trim() ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{draft.instructions}</ReactMarkdown>
+            ) : (
+              <p className="sk2-preview-empty">Nothing to preview yet.</p>
+            )}
+          </div>
         )}
+      </div>
+
+      <div className="sk2-foot">
+        <button
+          className="sbtn"
+          disabled={!valid || (!dirty && !creating)}
+          onClick={() => void save()}
+        >
+          {creating ? 'Add skill' : 'Save changes'}
+        </button>
+        {current && (
+          <button className="sbtn ghost sk2-del" onClick={() => void remove(current)}>
+            Delete
+          </button>
+        )}
+        <span className="sk2-foot-note">
+          {dirty ? 'unsaved changes' : current ? ago(current.updatedAt) : ''}
+        </span>
       </div>
     </div>
   )

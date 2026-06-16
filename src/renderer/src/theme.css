@@ -560,16 +560,53 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .share-list-kind{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.6}
 .share-list-acts{display:flex;gap:8px;flex-shrink:0}
 
-/* ---- Skills panel ---- */
-.skills-panel .sk-in{display:block;width:100%;box-sizing:border-box;margin:6px 0}
-.skills-panel .sk-area{min-height:96px;resize:vertical;line-height:1.5}
-.sk-list{list-style:none;margin:8px 0 0;padding:0}
-.sk-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--rule)}
-.sk-row.off{opacity:.5}
-.sk-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
-.sk-name{font-family:'Playfair Display',serif;font-size:15px}
-.sk-when{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:520px}
-.sk-acts{display:flex;gap:8px;flex-shrink:0}
+/* ---- Skills panel (master in left rail + detail editor) ---- */
+/* master: searchable skill list, takes over the left rail like MetaNav/SettingsNav */
+.rail.left.sk2-rail{width:236px;display:flex;flex-direction:column;min-height:0;padding:18px 14px 18px 0}
+.sk2-rail-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sk2-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-b)}
+.sk2-new{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);background:rgba(0,0,0,.2);border:1px solid var(--line);padding:5px 10px;cursor:pointer}
+.sk2-new:hover{color:var(--ink);border-color:var(--rule2)}
+.sk2-search{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:7px 10px;margin-bottom:10px;outline:none}
+.sk2-search:focus{border-color:var(--accent-b)}
+.sk2-search::placeholder{color:var(--faint)}
+.sk2-items{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1}
+.sk2-item{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;cursor:pointer;border-left:2px solid transparent}
+.sk2-item:hover{background:rgba(228,227,220,.04)}
+.sk2-item.on{background:rgba(200,66,58,.08);border-left-color:var(--accent)}
+.sk2-item.off .sk2-item-nm{opacity:.55}
+.sk2-item .led{width:6px;height:6px;border-radius:50%;background:var(--green);margin-top:5px;flex:none}
+.sk2-item .led.off{background:var(--faint)}
+.sk2-item-txt{min-width:0}
+.sk2-item-nm{font-family:'Playfair Display',serif;font-size:15px;line-height:1.2}
+.sk2-item-wh{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.03em;color:var(--faint);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.sk2-empty{padding:14px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+/* detail: editor + preview — fills the widened column (no right rail on this tab) */
+.sk2-detail{flex:1;display:flex;flex-direction:column;min-width:0;padding:18px 0}
+.sk2-blank{justify-content:center;align-items:center}
+.sk2-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
+.sk2-head-txt{flex:1;min-width:0}
+.sk2-name-in{width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid var(--line);color:var(--ink);font-family:'Playfair Display',serif;font-weight:700;font-size:24px;padding:0 0 6px;outline:none}
+.sk2-name-in:focus{border-color:var(--accent-b)}
+.sk2-name-in::placeholder{color:var(--faint)}
+.sk2-when-in{width:100%;box-sizing:border-box;background:none;border:none;color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.03em;padding:9px 0 0;outline:none}
+.sk2-when-in::placeholder{color:var(--faint)}
+.sk2-toggle{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);background:rgba(0,0,0,.2);border:1px solid var(--line);padding:6px 11px;cursor:pointer;flex:none}
+.sk2-toggle.off{color:var(--faint)}
+.sk2-toggle .led{width:6px;height:6px;border-radius:50%;background:currentColor}
+.sk2-tabs{display:flex;align-items:center;border-bottom:1px solid var(--line)}
+.sk2-tab{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:none;border-bottom:2px solid transparent;padding:9px 4px;margin-right:22px;cursor:pointer}
+.sk2-tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.sk2-tab-note{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.sk2-body{flex:1;min-height:0;display:flex;border:1px solid var(--line);border-top:none;background:rgba(0,0,0,.16)}
+.sk2-editor{flex:1;width:100%;box-sizing:border-box;background:none;border:none;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.65;padding:16px 18px;outline:none;resize:none}
+.sk2-editor::placeholder{color:var(--faint)}
+.sk2-preview{flex:1;overflow-y:auto;padding:4px 20px}
+.sk2-preview-empty{color:var(--faint);font-style:italic}
+.sk2-foot{display:flex;align-items:center;gap:12px;padding-top:14px}
+.sk2-del{color:var(--accent-b);border-color:rgba(224,90,80,.4)}
+.sk2-del:hover{color:var(--accent-b);border-color:var(--accent-b)}
+.sk2-foot-note{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 /* ---- InputBar skill picker (custom dark dropdown) ---- */
 .skill-pick-wrap{position:relative;display:inline-block;-webkit-app-region:no-drag}
 .skill-pick{background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;cursor:pointer}
@@ -582,8 +619,6 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .skill-chip button{background:none;border:none;color:var(--accent-b);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
 /* skill badge on a user message */
 .msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:1px solid rgba(224,90,80,.45);padding:1px 6px;letter-spacing:.12em}
-/* skill being edited in the panel */
-.sk-row.editing{border-left:2px solid var(--accent);padding-left:8px;background:rgba(200,66,58,.05)}
 
 /* ---- Action expand button + modal ---- */
 .ncard .expand{margin-left:8px;background:none;border:none;color:var(--faint);cursor:pointer;font-size:12px;line-height:1;padding:0 2px;flex:none}

@@ -8,6 +8,8 @@ import Comps from './components/panels/Comps'
 import Roster from './components/panels/Roster'
 import Bureau from './components/panels/Bureau'
 import Skills from './components/panels/Skills'
+import SkillsNav from './components/panels/SkillsNav'
+import { useSkills } from './components/panels/useSkills'
 import Meta from './components/meta/Meta'
 import MetaNav, { META_OVERVIEW } from './components/meta/MetaNav'
 import { RightRail } from './components/Rails'
@@ -19,7 +21,7 @@ import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
 import SettingsNav, { type SettingsSection, type SettingsNavStatus } from './components/settings/SettingsNav'
 import UpdateBanner from './components/UpdateBanner'
-import type { RendererConversation, RendererSkill, RendererMetaMode, RendererMetaProgress } from '../../preload/index.d'
+import type { RendererConversation, RendererMetaMode, RendererMetaProgress } from '../../preload/index.d'
 
 const SECTION_TITLES: Record<Section, string> = {
   dispatches: 'Dispatches',
@@ -100,7 +102,10 @@ export default function App(): ReactElement {
   const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
   const [shareState, setShareState] = useState<ShareState>({ status: 'idle' })
-  const [skills, setSkills] = useState<RendererSkill[]>([])
+  // Skills state shared by the left-rail list (SkillsNav) and the detail editor
+  // (Skills); stays live across edits so the InputBar picker is always current.
+  const skillsCtl = useSkills()
+  const skills = skillsCtl.skills
   const [forcedSkillId, setForcedSkillId] = useState<string | null>(null)
 
   async function shareResponse(conversationId: string, turnId: number): Promise<void> {
@@ -161,11 +166,6 @@ export default function App(): ReactElement {
   useEffect(() => {
     void window.officer.appVersion().then(setAppVersion)
   }, [])
-  // Reload the skill list when the Skills panel is closed so the InputBar
-  // picker reflects the latest edits.
-  useEffect(() => {
-    if (section !== 'skills') void window.officer.skillsList().then(setSkills)
-  }, [section])
 
   async function refreshStatus(): Promise<void> {
     setClaudeTokenSaved(await window.officer.hasSecret('claudeOauthToken'))
@@ -404,6 +404,8 @@ export default function App(): ReactElement {
           <SettingsNav active={settingsSection} onSelect={setSettingsSection} status={settingsNavStatus} />
         ) : section === 'meta' ? (
           <MetaNav modes={metaModes} busy={metaBusy} active={activeMetaMode} onSelect={setActiveMetaMode} />
+        ) : section === 'skills' ? (
+          <SkillsNav ctl={skillsCtl} />
         ) : (
         <Editions
           items={editionItems}
@@ -450,7 +452,7 @@ export default function App(): ReactElement {
           {section === 'comps' && <Comps />}
           {section === 'roster' && <Roster />}
           {section === 'bureau' && <Bureau />}
-          {section === 'skills' && <Skills />}
+          {section === 'skills' && <Skills ctl={skillsCtl} />}
           {section === 'meta' && (
             <Meta
               modes={metaModes}
@@ -488,7 +490,7 @@ export default function App(): ReactElement {
             </div>
           )}
         </div>
-        {section !== 'settings' && section !== 'meta' && (
+        {section !== 'settings' && section !== 'meta' && section !== 'skills' && (
           <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
         )}
       </div>
