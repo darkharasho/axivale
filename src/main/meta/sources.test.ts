@@ -81,3 +81,15 @@ describe('source registry', () => {
     expect(configForUrl('https://metabattle.com/wiki/Build:X')?.selector).toBe('#mw-content-text')
   })
 })
+
+describe('configForUrl general sources', () => {
+  it('resolves Discretize', () => {
+    expect(configForUrl('https://next.discretize.eu/fractals/')).not.toBeNull()
+  })
+  it('resolves the Snowcrows guides index', () => {
+    expect(configForUrl('https://snowcrows.com/guides')).not.toBeNull()
+  })
+  it('resolves Hardstuck guides', () => {
+    expect(configForUrl('https://hardstuck.gg/gw2/guides/')).not.toBeNull()
+  })
+})
