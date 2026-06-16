@@ -7,6 +7,7 @@
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync } from 'fs'
 import { dirname } from 'path'
 import { randomUUID } from 'crypto'
+import type { DerivedComp } from './meta/compDerive'
 
 export interface MetaSource {
   label: string
@@ -15,16 +16,31 @@ export interface MetaSource {
   fetchedAt: string | null
   error: string | null
 }
+
+export interface Playbook {
+  derived: DerivedComp | null
+  derivedAt: string | null
+  principles: string
+  overrides: string
+  blessed: boolean
+}
+
 export interface MetaMode {
   id: string
   mode: string
   sources: MetaSource[]
   notes: string
+  playbook: Playbook
   refreshedAt: string | null
   updatedAt: string
 }
 
-type SeedShape = { mode: string; sources: Array<{ label: string; url: string }>; notes?: string }
+type SeedShape = {
+  mode: string
+  sources: Array<{ label: string; url: string }>
+  notes?: string
+  playbook?: { principles?: string; blessed?: boolean }
+}
 
 export type MetaModeSeed = SeedShape
 
@@ -33,6 +49,13 @@ interface FileShape {
 }
 
 const DEBOUNCE_MS = 300
+
+const WVW_PRINCIPLES = `### WvW comp principles (per Veridian [rdux], top comp-maker)
+- ~2 stability supports per subgroup is normal (not wasteful).
+- At least 1 cleanse support per subgroup is required.
+- Normal comp = reliable boon-rip + reliable burst, at ~2:1 boon-rip:burst DPS (up to 3:1 by damage rate).
+- Outlier-stacking: when a build is a broken outlier, stacking it can BE the comp (all-Untamed, Soulbeast stacks).
+- The meta is iteration-heavy — treat any comp as a baseline to refine, not gospel.`
 
 const DEFAULT_SEED: SeedShape[] = [
   {
@@ -59,7 +82,8 @@ const DEFAULT_SEED: SeedShape[] = [
       { label: 'Snowcrows (WvW)', url: 'https://snowcrows.com/builds/wvw' },
       { label: 'Snowcrows (WvW DPS tier list)', url: 'https://snowcrows.com/news/wvw' },
       { label: 'gw2mists (Zerg)', url: 'https://gw2mists.com/en/builds?mode=zerg' }
-    ]
+    ],
+    playbook: { principles: WVW_PRINCIPLES, blessed: true }
   },
   {
     mode: 'WvW Roaming',
@@ -69,6 +93,16 @@ const DEFAULT_SEED: SeedShape[] = [
     ]
   }
 ]
+
+function defaultPlaybook(seed?: { principles?: string; blessed?: boolean }): Playbook {
+  return {
+    derived: null,
+    derivedAt: null,
+    principles: seed?.principles ?? '',
+    overrides: '',
+    blessed: seed?.blessed ?? false
+  }
+}
 
 export class MetaStore {
   private state: FileShape
@@ -87,6 +121,8 @@ export class MetaStore {
   /** Sync each mode's sources to the seed (authoritative): drop sources no longer in
    *  the seed, add new ones, update labels, and preserve provenance for survivors. */
   private reconcile(): boolean {
+    // Note: reconcile syncs sources from the seed but never overwrites a mode's
+    // playbook (user curation wins); seeded principles only apply to brand-new modes.
     let changed = false
     for (const seed of DEFAULT_SEED) {
       const existing = this.state.modes.find((m) => m.mode === seed.mode)
@@ -121,6 +157,7 @@ export class MetaStore {
         error: null
       })),
       notes: seed.notes ?? '',
+      playbook: defaultPlaybook(seed.playbook),
       refreshedAt: null,
       updatedAt: new Date().toISOString()
     }
@@ -147,7 +184,8 @@ export class MetaStore {
         status: s.status ?? 'never',
         fetchedAt: s.fetchedAt ?? null,
         error: s.error ?? null
-      }))
+      })),
+      playbook: m.playbook ? { ...defaultPlaybook(), ...m.playbook } : defaultPlaybook()
     }
   }
 
@@ -220,6 +258,25 @@ export class MetaStore {
     if (!mode) return
     mode.notes = notes
     mode.refreshedAt = new Date().toISOString()
+    mode.updatedAt = new Date().toISOString()
+    this.scheduleWrite()
+  }
+
+  recordDerivedComp(modeId: string, derived: DerivedComp): void {
+    const mode = this.get(modeId)
+    if (!mode) return
+    mode.playbook.derived = structuredClone(derived)
+    mode.playbook.derivedAt = new Date().toISOString()
+    mode.updatedAt = new Date().toISOString()
+    this.scheduleWrite()
+  }
+
+  updatePlaybook(modeId: string, patch: Partial<Pick<Playbook, 'principles' | 'overrides' | 'blessed'>>): void {
+    const mode = this.get(modeId)
+    if (!mode) return
+    if (patch.principles !== undefined) mode.playbook.principles = patch.principles
+    if (patch.overrides !== undefined) mode.playbook.overrides = patch.overrides
+    if (patch.blessed !== undefined) mode.playbook.blessed = patch.blessed
     mode.updatedAt = new Date().toISOString()
     this.scheduleWrite()
   }

@@ -3,10 +3,79 @@ import { mkdtempSync, rmSync, existsSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { MetaStore } from './metaStore'
+import type { DerivedComp } from './meta/compDerive'
 
 function tmpPath(): string {
   return join(mkdtempSync(join(tmpdir(), 'metastore-')), 'meta.json')
 }
+
+// reuse the same helper name as the existing beforeEach sets up
+function tmpFile(): string {
+  return tmpPath()
+}
+
+const fakeDerived = (): DerivedComp => ({
+  window: { fromISO: '2026-05-15', toISO: '2026-06-15', days: 30 },
+  sampleSize: 5,
+  sourceRepos: ['a/b'],
+  lowConfidence: false,
+  avgSquadSize: 36,
+  supportPct: 49,
+  professions: [{ name: 'Reaper', avgPerSquad: 6, presencePct: 100, runAs: 'damage' }],
+  subgroup: { core: ['Firebrand'], flex: ['Specter'] }
+})
+
+it('seeds WvW playbook with principles and blessed=true', () => {
+  const store = new MetaStore(tmpFile())
+  const wvw = store.list().find((m) => m.mode === 'WvW')!
+  expect(wvw.playbook).toBeTruthy()
+  expect(wvw.playbook!.blessed).toBe(true)
+  expect(wvw.playbook!.principles).toMatch(/cleanse/i)
+  expect(wvw.playbook!.derived).toBeNull()
+})
+
+it('recordDerivedComp sets derived without touching principles/blessed', () => {
+  const store = new MetaStore(tmpFile())
+  const wvw = store.list().find((m) => m.mode === 'WvW')!
+  store.recordDerivedComp(wvw.id, fakeDerived())
+  const after = store.get(wvw.id)!
+  expect(after.playbook!.derived!.avgSquadSize).toBe(36)
+  expect(after.playbook!.derivedAt).toBeTruthy()
+  expect(after.playbook!.blessed).toBe(true) // unchanged
+  expect(after.playbook!.principles).toMatch(/cleanse/i) // unchanged
+})
+
+it('recordDistill never touches the playbook', () => {
+  const store = new MetaStore(tmpFile())
+  const wvw = store.list().find((m) => m.mode === 'WvW')!
+  store.recordDerivedComp(wvw.id, fakeDerived())
+  store.recordDistill(wvw.id, 'new build summary')
+  const after = store.get(wvw.id)!
+  expect(after.notes).toBe('new build summary')
+  expect(after.playbook!.derived!.avgSquadSize).toBe(36) // survived
+})
+
+it('updatePlaybook patches curation fields', () => {
+  const store = new MetaStore(tmpFile())
+  const wvw = store.list().find((m) => m.mode === 'WvW')!
+  store.updatePlaybook(wvw.id, { overrides: 'prefer reaper', blessed: false })
+  const after = store.get(wvw.id)!
+  expect(after.playbook!.overrides).toBe('prefer reaper')
+  expect(after.playbook!.blessed).toBe(false)
+})
+
+it('persists the playbook across reload', () => {
+  const path = tmpFile()
+  const s1 = new MetaStore(path)
+  const wvw = s1.list().find((m) => m.mode === 'WvW')!
+  s1.updatePlaybook(wvw.id, { overrides: 'reaper backline', blessed: false })
+  s1.flush()
+  const s2 = new MetaStore(path)
+  const reloaded = s2.list().find((m) => m.mode === 'WvW')!
+  expect(reloaded.playbook.overrides).toBe('reaper backline')
+  expect(reloaded.playbook.blessed).toBe(false)
+  expect(reloaded.playbook.principles).toMatch(/cleanse/i)
+})
 
 let dir: string
 let path: string
