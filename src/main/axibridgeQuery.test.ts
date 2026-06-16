@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { buildQueryDocument, type QueryableService } from './axibridgeQuery'
+import { buildQueryDocument, shapeQueryResult, type QueryableService } from './axibridgeQuery'
 
 function fakeService(overrides: Partial<QueryableService> = {}): QueryableService {
   return {
@@ -52,5 +52,60 @@ describe('buildQueryDocument', () => {
     const many = Array.from({ length: 81 }, (_, i) => ({ id: `r${i}` }))
     const svc = fakeService({ runsList: vi.fn(async () => ({ runs: many, errors: [] })) })
     await expect(buildQueryDocument(svc, { query: '.', from: '2026-01-01' })).rejects.toThrow(/narrow/i)
+  })
+})
+
+describe('shapeQueryResult', () => {
+  it('renders an array of uniform objects as a table and caps rows', () => {
+    const rows = Array.from({ length: 60 }, (_, i) => ({ account: `P.${i}`, hrs: i }))
+    const shaped = shapeQueryResult([rows], { title: 'Attendance', limit: 50 })
+    expect(shaped.display?.kind).toBe('table')
+    const data = (shaped.display as { data: { columns: { key: string }[]; rows: unknown[] } }).data
+    expect(data.columns.map((c) => c.key)).toEqual(['account', 'hrs'])
+    expect(data.rows).toHaveLength(50)
+    expect((shaped.value as { total: number; truncated: boolean }).total).toBe(60)
+    expect((shaped.value as { truncated: boolean }).truncated).toBe(true)
+  })
+
+  it('coerces non-primitive cell values to JSON strings for the table', () => {
+    const shaped = shapeQueryResult([[{ account: 'A', tags: ['x', 'y'] }]], { title: 't', limit: 50 })
+    const data = (shaped.display as { data: { rows: Array<Record<string, unknown>> } }).data
+    expect(data.rows[0].tags).toBe('["x","y"]')
+  })
+
+  it('renders a flat object as a field/value table', () => {
+    const shaped = shapeQueryResult([{ totalRuns: 12, totalHours: 40 }], { title: 'Totals', limit: 50 })
+    expect(shaped.display?.kind).toBe('table')
+    const data = (shaped.display as { data: { columns: { key: string }[]; rows: unknown[] } }).data
+    expect(data.columns.map((c) => c.key)).toEqual(['field', 'value'])
+    expect(data.rows).toHaveLength(2)
+  })
+
+  it('renders a scalar as a code block', () => {
+    const shaped = shapeQueryResult([42], { title: 'Count', limit: 50 })
+    expect(shaped.display?.kind).toBe('code')
+    expect((shaped.display as { data: { text: string } }).data.text).toBe('42')
+    expect(shaped.value).toBe(42)
+  })
+
+  it('renders a nested/irregular value as a code block', () => {
+    const shaped = shapeQueryResult([{ a: { b: [1, 2] } }], { title: 'x', limit: 50 })
+    expect(shaped.display?.kind).toBe('code')
+  })
+
+  it('truncates an over-long code block', () => {
+    const big = { s: 'x'.repeat(10_000) }
+    const shaped = shapeQueryResult([big], { title: 'x', limit: 50 })
+    const text = (shaped.display as { data: { text: string } }).data.text
+    expect(text.length).toBeLessThanOrEqual(4_100)
+    expect(text).toContain('truncated')
+  })
+
+  it('byte-caps a huge table by dropping rows below the row limit', () => {
+    const rows = Array.from({ length: 50 }, (_, i) => ({ account: `P.${i}`, blob: 'y'.repeat(2_000) }))
+    const shaped = shapeQueryResult([rows], { title: 'x', limit: 50 })
+    const value = shaped.value as { rows: unknown[]; truncated: boolean }
+    expect(JSON.stringify(value).length).toBeLessThanOrEqual(20_000)
+    expect(value.truncated).toBe(true)
   })
 })

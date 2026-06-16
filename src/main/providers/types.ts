@@ -13,6 +13,7 @@ export interface ChartSeriesSpec {
  * AxiBridge integration — change them only in lockstep with that plan.
  */
 export type DisplayPayload =
+  | { kind: 'code'; data: { title?: string; text: string } }
   | { kind: 'build-card'; data: { build: Record<string, unknown> } }
   | {
       kind: 'comp-card'
