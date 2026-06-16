@@ -1,20 +1,30 @@
 // src/main/tools/gw2WikiSearch.test.ts
 import { describe, it, expect } from 'vitest'
 import { buildGw2WikiSearchTools } from './gw2WikiSearch'
-import { FakeMetaIndex } from '../meta/rag/testFake'
+import type { MetaIndex } from '../meta/rag/index'
 
-describe('gw2_wiki_search tool', () => {
-  it('returns mapped hits and forwards the category filter', async () => {
-    const idx = new FakeMetaIndex([{ source: 'wiki.guildwars2.com', url: 'u', title: 'Concentration', snippet: 'boon duration', score: 1 }])
-    const t = buildGw2WikiSearchTools(() => idx)[0]
-    const res = await t.handler({ query: 'boon duration', category: 'stats' }, {})
-    expect(idx.queries[0]).toMatchObject({ query: 'boon duration', mode: 'stats' })
-    const text = (res.content[0] as { text: string }).text
-    expect(text).toContain('Concentration')
+const idx = (hits: unknown[]): MetaIndex => ({
+  indexedHash: async () => null,
+  replacePage: async () => {},
+  search: async () => hits as never,
+  stats: async () => ({ total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }),
+  sample: async () => []
+}) as MetaIndex
+
+describe('gw2_wiki_search fallback', () => {
+  it('falls back to live search when the index is empty', async () => {
+    const live = async () => [{ title: 'Twilight', url: 'https://wiki.guildwars2.com/wiki/Twilight', snippet: 'craft' }]
+    const tools = buildGw2WikiSearchTools(() => idx([]), live)
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    const res = await t.handler({ query: 'how to craft twilight' }, {})
+    expect(res.content[0].text).toContain('Twilight')
   })
-  it('returns a clean message when empty', async () => {
-    const t = buildGw2WikiSearchTools(() => new FakeMetaIndex())[0]
-    const res = await t.handler({ query: 'x' }, {})
-    expect((res.content[0] as { text: string }).text.toLowerCase()).toContain('no wiki reference')
+  it('uses index hits when present (no fallback)', async () => {
+    let called = false
+    const live = async () => { called = true; return [] }
+    const tools = buildGw2WikiSearchTools(() => idx([{ source: 'wiki', url: 'u', title: 'Boon', snippet: 's' }]), live)
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    await t.handler({ query: 'boon duration' }, {})
+    expect(called).toBe(false)
   })
 })
