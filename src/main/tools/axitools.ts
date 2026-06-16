@@ -1,6 +1,7 @@
 import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, requireDiscordGuild, type ToolDeps } from './shared'
+import { rankIdentities, type ResolveMemberLite } from '../identityResolve'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
@@ -226,29 +227,45 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'axitools_members',
-      'Linked-member roster derived from the GW2 API keys members registered with the bot IN THIS Discord server: each member’s GW2 account names (and optionally characters and guild memberships — omitted by default to keep the result small). Key material is never included. NOTE: members who registered their key in a different server the bot shares do not appear here — use axitools_key_holders to check key existence across all servers.',
+      'Linked-member roster derived from the GW2 API keys members registered with the bot IN THIS Discord server: each member’s GW2 account names (and optionally characters and guild memberships — omitted by default to keep the result small). Any user-maintained annotations (nickname/aliases/notes/tags) are folded in when present, so you can tie loose name references to accounts. Key material is never included. NOTE: members who registered their key in a different server the bot shares do not appear here — use axitools_key_holders to check key existence across all servers.',
       {
         include_characters: z.boolean().optional().describe('Include character name lists'),
         include_guilds: z.boolean().optional().describe('Include GW2 guild ids and labels')
       },
       safe(async ({ include_characters, include_guilds }) => {
         const raw = (await deps.axitools.membersLinked(requireDiscordGuild(deps))) as Array<{
+          member_id?: string
           accounts?: Array<Record<string, unknown>>
           [key: string]: unknown
         }>
-        if (include_characters && include_guilds) return raw
-        return raw.map((m) => ({
-          ...m,
-          accounts: (m.accounts ?? []).map((a) => {
-            const slim: Record<string, unknown> = { account_name: a.account_name }
-            if (include_characters) slim.characters = a.characters
-            if (include_guilds) {
-              slim.gw2_guild_ids = a.gw2_guild_ids
-              slim.guild_labels = a.guild_labels
-            }
-            return slim
+        // Fold in local annotations keyed by Discord member_id, when present.
+        const annByMember = new Map(deps.rosterAnnotations().map((a) => [a.memberId, a]))
+        const annotate = <T extends { member_id?: string }>(m: T): T => {
+          const a = m.member_id ? annByMember.get(m.member_id) : undefined
+          if (!a) return m
+          return {
+            ...m,
+            ...(a.nickname ? { nickname: a.nickname } : {}),
+            ...(a.aliases.length ? { aliases: a.aliases } : {}),
+            ...(a.notes ? { notes: a.notes } : {}),
+            ...(a.tags.length ? { tags: a.tags } : {})
+          }
+        }
+        if (include_characters && include_guilds) return raw.map(annotate)
+        return raw.map((m) =>
+          annotate({
+            ...m,
+            accounts: (m.accounts ?? []).map((a) => {
+              const slim: Record<string, unknown> = { account_name: a.account_name }
+              if (include_characters) slim.characters = a.characters
+              if (include_guilds) {
+                slim.gw2_guild_ids = a.gw2_guild_ids
+                slim.guild_labels = a.guild_labels
+              }
+              return slim
+            })
           })
-        }))
+        )
       })
     ),
     tool(
@@ -260,6 +277,21 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
       safe(async ({ account_names }) =>
         deps.axitools.keyHolders(requireDiscordGuild(deps), account_names)
       )
+    ),
+    tool(
+      'resolve_identity',
+      'Resolve a loose or partial name reference — a nickname, Discord display name, first name, or in-game shorthand like "Bob" or "@bobby" — to the guild member(s) it most likely refers to. Searches the user-maintained roster annotations (nicknames/aliases/notes/tags) joined with the linked roster (member name, GW2 account names, characters), and returns ranked candidates with their GW2 account name(s) and notes. Use this whenever the user names a person you cannot already match to an exact GW2 account.',
+      {
+        name: z.string().describe('The loose/partial name to resolve, e.g. "Bob", "@bobby", "Logan"'),
+        limit: z.number().optional().describe('Max candidates to return (default 8)')
+      },
+      safe(async ({ name, limit }) => {
+        const members = (await deps.axitools.membersLinked(
+          requireDiscordGuild(deps)
+        )) as ResolveMemberLite[]
+        const matches = rankIdentities(name, members, deps.rosterAnnotations(), limit ?? 8)
+        return { query: name, matches }
+      })
     )
   ]
 }

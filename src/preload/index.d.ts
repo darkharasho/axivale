@@ -111,6 +111,16 @@ export interface RendererSkill {
   updatedAt: string
 }
 
+export interface RendererRosterAnnotation {
+  memberId: string
+  nickname: string
+  aliases: string[]
+  notes: string
+  tags: string[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface OfficerApi {
   getSetting(key: string): Promise<string | null>
   setSetting(key: string, value: string): Promise<void>
@@ -207,6 +217,12 @@ export interface OfficerApi {
     patch: Partial<{ name: string; whenToUse: string; instructions: string; enabled: boolean }>
   ): Promise<RendererSkill | null>
   skillsDelete(id: string): Promise<void>
+  rosterAnnotationsList(): Promise<RendererRosterAnnotation[]>
+  rosterAnnotationUpsert(
+    memberId: string,
+    patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[] }>
+  ): Promise<RendererRosterAnnotation | null>
+  rosterAnnotationDelete(memberId: string): Promise<void>
   resetSession(conversationId: string): Promise<void>
   cancelTurn(conversationId: string): Promise<void>
   listConversations(): Promise<RendererConversation[]>

@@ -1,0 +1,117 @@
+// src/main/identityResolve.ts
+//
+// Pure ranking for the resolve_identity tool: given a loose name reference
+// ("Bob", "@bobby", a display name, an in-game shorthand), score it against the
+// linked roster joined with the user's roster annotations, and return the most
+// likely members. Kept pure (no IO) so it's unit-testable.
+
+export interface ResolveMemberLite {
+  member_id: string
+  member_name?: string
+  accounts?: Array<{ account_name?: string; characters?: string[] }>
+}
+
+export interface ResolveAnnotationLite {
+  memberId: string
+  nickname: string
+  aliases: string[]
+  notes: string
+  tags: string[]
+}
+
+export interface IdentityMatch {
+  member_id: string
+  member_name?: string
+  nickname?: string
+  aliases?: string[]
+  account_names: string[]
+  notes?: string
+  tags?: string[]
+  score: number
+  /** Human-readable reasons this member matched, e.g. ["alias:bobby", "nickname:Bob"]. */
+  matched_on: string[]
+}
+
+const norm = (s: string): string => s.trim().toLowerCase()
+/** GW2 accounts carry a discriminator ("Logan.1234"); the part before it is what
+ *  people actually type. */
+const localPart = (account: string): string => account.split('.')[0] ?? account
+
+interface Field {
+  kind: string
+  value: string
+  weight: number
+  /** Also match the query against the account's local part (pre-discriminator). */
+  account?: boolean
+}
+
+/** Score one candidate value against the query. Higher = closer. */
+function scoreValue(q: string, f: Field): number {
+  const v = norm(f.value)
+  if (!v) return 0
+  const candidates = f.account ? [v, norm(localPart(f.value))] : [v]
+  let best = 0
+  for (const c of candidates) {
+    if (!c) continue
+    if (c === q) best = Math.max(best, f.weight * 3)
+    else if (c.startsWith(q) || q.startsWith(c)) best = Math.max(best, f.weight * 2)
+    else if (q.length >= 2 && c.includes(q)) best = Math.max(best, f.weight)
+  }
+  return best
+}
+
+export function rankIdentities(
+  rawQuery: string,
+  members: ResolveMemberLite[],
+  annotations: ResolveAnnotationLite[],
+  limit = 8
+): IdentityMatch[] {
+  // Strip a leading Discord mention "@" so "@bob" matches "bob".
+  const q = norm(rawQuery.replace(/^@+/, ''))
+  if (!q) return []
+
+  const annByMember = new Map(annotations.map((a) => [a.memberId, a]))
+  const matches: IdentityMatch[] = []
+
+  for (const m of members) {
+    const ann = annByMember.get(m.member_id)
+    const accountNames = (m.accounts ?? [])
+      .map((a) => a.account_name)
+      .filter((x): x is string => Boolean(x))
+    const characters = (m.accounts ?? []).flatMap((a) => a.characters ?? [])
+
+    const fields: Field[] = []
+    if (ann?.nickname) fields.push({ kind: 'nickname', value: ann.nickname, weight: 6 })
+    for (const a of ann?.aliases ?? []) fields.push({ kind: 'alias', value: a, weight: 6 })
+    if (m.member_name) fields.push({ kind: 'member', value: m.member_name, weight: 4 })
+    for (const a of accountNames) fields.push({ kind: 'account', value: a, weight: 4, account: true })
+    for (const c of characters) fields.push({ kind: 'character', value: c, weight: 3 })
+    for (const t of ann?.tags ?? []) fields.push({ kind: 'tag', value: t, weight: 2 })
+    if (ann?.notes) fields.push({ kind: 'notes', value: ann.notes, weight: 1 })
+
+    let score = 0
+    const matched_on: string[] = []
+    for (const f of fields) {
+      const s = scoreValue(q, f)
+      if (s > 0) {
+        score += s
+        matched_on.push(`${f.kind}:${f.value}`)
+      }
+    }
+    if (score <= 0) continue
+
+    matches.push({
+      member_id: m.member_id,
+      member_name: m.member_name,
+      nickname: ann?.nickname || undefined,
+      aliases: ann?.aliases?.length ? ann.aliases : undefined,
+      account_names: accountNames,
+      notes: ann?.notes || undefined,
+      tags: ann?.tags?.length ? ann.tags : undefined,
+      score,
+      matched_on
+    })
+  }
+
+  return matches.sort((a, b) => b.score - a.score).slice(0, limit)
+}

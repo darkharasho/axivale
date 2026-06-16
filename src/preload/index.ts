@@ -54,6 +54,13 @@ contextBridge.exposeInMainWorld('officer', {
     patch: Partial<{ name: string; whenToUse: string; instructions: string; enabled: boolean }>
   ) => ipcRenderer.invoke('skills:update', id, patch),
   skillsDelete: (id: string) => ipcRenderer.invoke('skills:delete', id),
+  rosterAnnotationsList: () => ipcRenderer.invoke('roster:annotations:list'),
+  rosterAnnotationUpsert: (
+    memberId: string,
+    patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[] }>
+  ) => ipcRenderer.invoke('roster:annotations:upsert', memberId, patch),
+  rosterAnnotationDelete: (memberId: string) =>
+    ipcRenderer.invoke('roster:annotations:delete', memberId),
   resetSession: (conversationId: string) => ipcRenderer.invoke('agent:reset', conversationId),
   cancelTurn: (conversationId: string) => ipcRenderer.invoke('agent:cancel', conversationId),
   listConversations: () => ipcRenderer.invoke('conversations:list'),

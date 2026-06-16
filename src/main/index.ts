@@ -37,6 +37,7 @@ import { makeShareId } from './shareId'
 import { AgentService } from './agent'
 import { ConversationStore, type Conversation } from './conversationStore'
 import { SkillStore } from './skillStore'
+import { RosterStore } from './rosterStore'
 import { MetaStore } from './metaStore'
 import { MetaCache } from './meta/cache'
 import { BrowserWindowFetcher } from './meta/fetcher'
@@ -187,6 +188,7 @@ app.whenReady().then(async () => {
 
   const skills = new SkillStore(join(app.getPath('userData'), 'skills.json'))
   const meta = new MetaStore(join(app.getPath('userData'), 'meta.json'))
+  const rosterAnnotations = new RosterStore(join(app.getPath('userData'), 'rosterAnnotations.json'))
   const metaCache = new MetaCache(join(app.getPath('userData'), 'meta-cache'))
   const metaEmbedder = new TransformersEmbedder(join(app.getPath('userData'), 'meta-models'))
   const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
@@ -371,7 +373,8 @@ app.whenReady().then(async () => {
       wikiIndex: () => wikiIndex,
       wikiFacts,
       fetchBuildPage: (url: string) => metaFetcher.fetchBuildPage(url),
-      fetchBuildPageRaw: (url: string) => metaFetcher.fetchBuildPageRaw(url)
+      fetchBuildPageRaw: (url: string) => metaFetcher.fetchBuildPageRaw(url),
+      rosterAnnotations: () => rosterAnnotations.list()
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),
@@ -786,6 +789,16 @@ app.whenReady().then(async () => {
       skills.update(id, patch)
   )
   ipcMain.handle('skills:delete', (_e, id: string) => skills.remove(id))
+
+  ipcMain.handle('roster:annotations:list', () => rosterAnnotations.list())
+  ipcMain.handle(
+    'roster:annotations:upsert',
+    (_e, memberId: string, patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[] }>) =>
+      rosterAnnotations.upsert(memberId, patch)
+  )
+  ipcMain.handle('roster:annotations:delete', (_e, memberId: string) =>
+    rosterAnnotations.remove(memberId)
+  )
 
   ipcMain.handle('meta:list', () => meta.list())
   ipcMain.handle('meta:add-mode', (_e, seed: { mode: string; sources: { label: string; url: string }[]; notes?: string }) =>

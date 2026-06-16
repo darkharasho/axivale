@@ -5,6 +5,7 @@ import type { AxibridgeService } from '../axibridgeService'
 import type { DisplayPayload } from '../providers/types'
 import type { MetaIndex } from '../meta/rag/index'
 import type { WikiFacts } from '../meta/wikiFacts'
+import type { RosterAnnotation } from '../rosterStore'
 
 /** Structural launcher type so tests stub one method instead of the whole class. */
 export interface AxiforgeLauncherLike {
@@ -26,6 +27,9 @@ export interface ToolDeps {
   axibridge: () => AxibridgeService
   /** Resolve an enabled skill's instructions by exact name, or null if missing/disabled. */
   loadSkill: (name: string) => string | null
+  /** Local, user-maintained roster annotations (nickname/aliases/notes/tags), keyed
+   *  by Discord member_id — lets the agent resolve loose name references. */
+  rosterAnnotations: () => RosterAnnotation[]
   /** Hybrid meta corpus search (lazy; resolved per-call). */
   metaIndex: () => MetaIndex
   /** GW2-wiki reference corpus search (lazy). */

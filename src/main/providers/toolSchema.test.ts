@@ -40,6 +40,7 @@ describe('toToolSpecs', () => {
       axiforgeLauncher: { ensureRunning: async () => {} },
       axibridge: () => ({}) as never,
       loadSkill: () => null,
+      rosterAnnotations: () => [],
       metaIndex: () => ({}) as never,
       wikiIndex: () => ({}) as never,
       wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
