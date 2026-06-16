@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Pane, Card } from './ui'
+import { Pane, Card } from '../panelui'
 
 export interface AboutProps {
   version: string

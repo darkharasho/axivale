@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Pane, Card, Field, Segmented, Keyring, type KeyLabel } from './ui'
+import { Pane, Card, Field, Segmented, Keyring, type KeyLabel } from '../panelui'
 
 export type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
 

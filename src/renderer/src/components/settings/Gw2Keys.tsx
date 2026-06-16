@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Pane, Card, Field, Keyring, type KeyLabel } from './ui'
+import { Pane, Card, Field, Keyring, type KeyLabel } from '../panelui'
 
 export interface Gw2Info {
   accountName: string
