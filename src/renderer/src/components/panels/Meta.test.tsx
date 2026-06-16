@@ -23,7 +23,8 @@ function officer() {
             { label: 'MetaBattle', url: 'https://metabattle.com', status: 'ok', fetchedAt: '2026-06-10T00:00:00.000Z', error: null },
             { label: 'Hardstuck', url: 'https://hardstuck.gg', status: 'error', fetchedAt: null, error: 'timeout' },
             { label: 'gw2mists', url: 'https://gw2mists.com', status: 'never', fetchedAt: null, error: null }
-          ]
+          ],
+          playbook: { derived: null, derivedAt: null, principles: '', overrides: '', blessed: false }
         }
       ]),
     onMetaProgress: (cb: (e: unknown) => void) => {

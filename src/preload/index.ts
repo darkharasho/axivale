@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('officer', {
     patch: Partial<{ mode: string; sources: { label: string; url: string }[]; notes: string }>
   ) => ipcRenderer.invoke('meta:update-mode', id, patch),
   metaRemoveMode: (id: string) => ipcRenderer.invoke('meta:remove-mode', id),
+  metaUpdatePlaybook: (id: string, patch: { principles?: string; overrides?: string; blessed?: boolean }) =>
+    ipcRenderer.invoke('meta:update-playbook', id, patch),
+  metaDeriveComp: (id: string) => ipcRenderer.invoke('meta:derive-comp', id),
   metaForceRefresh: () => ipcRenderer.invoke('meta:force-refresh'),
   metaIndexStats: () => ipcRenderer.invoke('meta:index-stats'),
   metaIndexSample: (opts: { mode?: string; limit: number }) => ipcRenderer.invoke('meta:index-sample', opts),

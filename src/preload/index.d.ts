@@ -30,11 +30,30 @@ export interface RendererMetaSource {
   fetchedAt: string | null
   error: string | null
 }
+export interface RendererDerivedComp {
+  window: { fromISO: string; toISO: string; days: number }
+  sampleSize: number
+  sourceRepos: string[]
+  lowConfidence: boolean
+  avgSquadSize: number
+  supportPct: number
+  professions: Array<{ name: string; avgPerSquad: number; presencePct: number; runAs: 'support' | 'damage' | 'mixed' }>
+  subgroup: { core: string[]; flex: string[] }
+}
+export interface RendererPlaybook {
+  derived: RendererDerivedComp | null
+  derivedAt: string | null
+  principles: string
+  overrides: string
+  blessed: boolean
+}
+
 export interface RendererMetaMode {
   id: string
   mode: string
   sources: RendererMetaSource[]
   notes: string
+  playbook: RendererPlaybook
   refreshedAt: string | null
   updatedAt: string
 }
@@ -173,6 +192,8 @@ export interface OfficerApi {
   ): Promise<RendererMetaMode | null>
   metaRemoveMode(id: string): Promise<void>
   metaForceRefresh(): Promise<void>
+  metaUpdatePlaybook(id: string, patch: { principles?: string; overrides?: string; blessed?: boolean }): Promise<RendererMetaMode | null>
+  metaDeriveComp(id: string): Promise<{ ok: boolean; error?: string; mode?: RendererMetaMode }>
   metaIndexStats(): Promise<RendererMetaIndexStats>
   metaIndexSample(opts: { mode?: string; limit: number }): Promise<RendererMetaChunkRow[]>
   metaIndexSearch(query: string, mode?: string): Promise<RendererMetaSearchHit[]>

@@ -50,6 +50,7 @@ import { WikiFactsClient } from './meta/wikiFacts'
 import { WikiClient } from '@axiapps/gw2-data/wiki'
 import { WikiRefIngester } from './meta/wiki/ingest'
 import { fetchCategoryMembers } from './meta/wiki/skillCrawl'
+import { deriveCompFromRepos } from './meta/deriveComp'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
 import type { ProviderConfig, ProviderName } from './providers/types'
@@ -742,6 +743,24 @@ app.whenReady().then(async () => {
       meta.updateMode(id, patch)
   )
   ipcMain.handle('meta:remove-mode', (_e, id: string) => meta.removeMode(id))
+
+  ipcMain.handle('meta:update-playbook', (_e, id: string, patch: { principles?: string; overrides?: string; blessed?: boolean }) => {
+    meta.updatePlaybook(id, patch)
+    return meta.get(id)
+  })
+
+  ipcMain.handle('meta:derive-comp', async (_e, modeId: string) => {
+    const repos = listLinkedRepos(store.getSetting('axibridgeRepos'))
+    if (repos.length === 0) return { ok: false, error: 'No linked AxiBridge repos. Add one in Settings.' }
+    try {
+      const derived = await deriveCompFromRepos(axibridgeClient, repos, { now: Date.now(), days: 30 })
+      if (!derived) return { ok: false, error: 'No fight reports in the last 30 days.' }
+      meta.recordDerivedComp(modeId, derived)
+      return { ok: true, mode: meta.get(modeId) }
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Unexpected error during comp derivation.' }
+    }
+  })
   ipcMain.handle('meta:force-refresh', () => {
     meta.markAllStale()
     void metaRefresher.refreshStale()
