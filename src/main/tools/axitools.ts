@@ -307,16 +307,29 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
         limit: z.number().optional().describe('Max candidates to return (default 8)')
       },
       safe(async ({ name, limit }) => {
-        const raw = (await deps.axitools.membersLinked(
-          requireDiscordGuild(deps)
-        )) as ResolveMemberLite[]
+        const gid = requireDiscordGuild(deps)
+        const raw = (await deps.axitools.membersLinked(gid)) as ResolveMemberLite[]
         const anns = deps.rosterAnnotations()
+        // Discord display names (best-effort) let the resolver match by display
+        // name and its cleaned form, not just the username.
+        const displayById = new Map<string, string>()
+        try {
+          const ov = (await deps.axitools.discordOverview(gid, true)) as {
+            members?: Array<{ id: string; display_name?: string }>
+          }
+          for (const d of ov.members ?? []) if (d.display_name) displayById.set(d.id, d.display_name)
+        } catch {
+          /* no display names — fall back to username/account/annotations */
+        }
         // Annotations made on an unlinked GW2 account are keyed "acct:<name>" —
         // surface them as resolvable account-only identities.
         const acctMembers: ResolveMemberLite[] = anns
           .filter((a) => a.memberId.startsWith('acct:'))
           .map((a) => ({ member_id: a.memberId, accounts: [{ account_name: a.memberId.slice(5) }] }))
-        const members = [...mergeManualLinks(raw, deps.rosterLinks()), ...acctMembers]
+        const members = [...mergeManualLinks(raw, deps.rosterLinks()), ...acctMembers].map((m) => ({
+          ...m,
+          display_name: displayById.get(m.member_id) ?? m.display_name
+        }))
         const matches = rankIdentities(name, members, anns, limit ?? 8)
         return { query: name, matches }
       })

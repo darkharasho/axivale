@@ -42,6 +42,15 @@ describe('rankIdentities', () => {
     expect(out[0].member_id).toBe('m2')
   })
 
+  it('matches a Discord display name and its cleaned form', () => {
+    const m: ResolveMemberLite[] = [
+      { member_id: 'mx', member_name: '.harasho', display_name: 'full art haro', accounts: [{ account_name: 'harasho.4281' }] }
+    ]
+    expect(rankIdentities('full art haro', m, [])[0]?.member_id).toBe('mx')
+    // username ".harasho" resolves via its cleaned form "harasho"
+    expect(rankIdentities('harasho', m, [])[0]?.member_id).toBe('mx')
+  })
+
   it('matches a character name', () => {
     const out = rankIdentities('Vale', members, annotations)
     expect(out[0].member_id).toBe('m1')

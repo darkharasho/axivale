@@ -8,6 +8,7 @@
 export interface ResolveMemberLite {
   member_id: string
   member_name?: string
+  display_name?: string
   accounts?: Array<{ account_name?: string; characters?: string[] }>
 }
 
@@ -51,6 +52,7 @@ export function mergeManualLinks(
 export interface IdentityMatch {
   member_id: string
   member_name?: string
+  display_name?: string
   nickname?: string
   aliases?: string[]
   account_names: string[]
@@ -65,6 +67,16 @@ const norm = (s: string): string => s.trim().toLowerCase()
 /** GW2 accounts carry a discriminator ("Logan.1234"); the part before it is what
  *  people actually type. */
 const localPart = (account: string): string => account.split('.')[0] ?? account
+/** Strip digits and punctuation from a Discord-style name, drop 1-char tokens, and
+ *  lower-case — so ".harasho" -> "harasho", "Bob_99" -> "bob". '' if nothing useful. */
+export const cleanName = (s: string): string =>
+  s
+    .replace(/[^\p{L}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 2)
+    .join(' ')
+    .trim()
+    .toLowerCase()
 
 interface Field {
   kind: string
@@ -74,17 +86,27 @@ interface Field {
   account?: boolean
 }
 
-/** Score one candidate value against the query. Higher = closer. */
-function scoreValue(q: string, f: Field): number {
+/** Score one candidate value against the query (raw + cleaned). Higher = closer.
+ *  Candidates include the raw value, the account local part, and the cleaned name
+ *  (digits/punctuation stripped), each matched against the raw and cleaned query. */
+function scoreValue(q: string, qc: string, f: Field): number {
   const v = norm(f.value)
   if (!v) return 0
-  const candidates = f.account ? [v, norm(localPart(f.value))] : [v]
+  const candidates = new Set([v])
+  if (f.account) candidates.add(norm(localPart(f.value)))
+  else {
+    const c = cleanName(f.value)
+    if (c) candidates.add(c)
+  }
+  const queries = qc && qc !== q ? [q, qc] : [q]
   let best = 0
   for (const c of candidates) {
     if (!c) continue
-    if (c === q) best = Math.max(best, f.weight * 3)
-    else if (c.startsWith(q) || q.startsWith(c)) best = Math.max(best, f.weight * 2)
-    else if (q.length >= 2 && c.includes(q)) best = Math.max(best, f.weight)
+    for (const query of queries) {
+      if (c === query) best = Math.max(best, f.weight * 3)
+      else if (c.startsWith(query) || query.startsWith(c)) best = Math.max(best, f.weight * 2)
+      else if (query.length >= 2 && c.includes(query)) best = Math.max(best, f.weight)
+    }
   }
   return best
 }
@@ -98,6 +120,7 @@ export function rankIdentities(
   // Strip a leading Discord mention "@" so "@bob" matches "bob".
   const q = norm(rawQuery.replace(/^@+/, ''))
   if (!q) return []
+  const qc = cleanName(q)
 
   const annByMember = new Map(annotations.map((a) => [a.memberId, a]))
   const matches: IdentityMatch[] = []
@@ -112,6 +135,7 @@ export function rankIdentities(
     const fields: Field[] = []
     if (ann?.nickname) fields.push({ kind: 'nickname', value: ann.nickname, weight: 6 })
     for (const a of ann?.aliases ?? []) fields.push({ kind: 'alias', value: a, weight: 6 })
+    if (m.display_name) fields.push({ kind: 'display', value: m.display_name, weight: 4 })
     if (m.member_name) fields.push({ kind: 'member', value: m.member_name, weight: 4 })
     for (const a of accountNames) fields.push({ kind: 'account', value: a, weight: 4, account: true })
     for (const c of characters) fields.push({ kind: 'character', value: c, weight: 3 })
@@ -121,7 +145,7 @@ export function rankIdentities(
     let score = 0
     const matched_on: string[] = []
     for (const f of fields) {
-      const s = scoreValue(q, f)
+      const s = scoreValue(q, qc, f)
       if (s > 0) {
         score += s
         matched_on.push(`${f.kind}:${f.value}`)
@@ -132,6 +156,7 @@ export function rankIdentities(
     matches.push({
       member_id: m.member_id,
       member_name: m.member_name,
+      display_name: m.display_name,
       nickname: ann?.nickname || undefined,
       aliases: ann?.aliases?.length ? ann.aliases : undefined,
       account_names: accountNames,

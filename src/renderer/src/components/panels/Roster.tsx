@@ -90,13 +90,42 @@ function discordLabel(m: RendererReconciledMember): string {
   return d || u || m.memberId || ''
 }
 
+/** Strip digits/punctuation, drop 1-char tokens — ".harasho" -> "harasho". */
+function cleanName(s: string): string {
+  return s
+    .replace(/[^\p{L}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 2)
+    .join(' ')
+    .trim()
+}
+const accountLocal = (a: string): string => a.split('.')[0] ?? a
+
+/** The set of names the AI can resolve to this identity: annotations, the Discord
+ *  display name/username (plus a cleaned variant), and each GW2 account's name
+ *  without its .#### discriminator. */
 function resolvePreview(draft: RosterDraft, m: RendererReconciledMember): string {
-  const terms = [draft.nickname, ...draft.aliases, m.discordName, m.displayName]
-    .filter((x): x is string => Boolean(x && x.trim()))
-    .filter((v, i, a) => a.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i)
-  const acct = m.accountName ?? m.accounts[0]?.account_name
-  if (!terms.length || !acct) return ''
-  return `${terms.join(', ')} → ${acct}`
+  const terms: string[] = []
+  const seen = new Set<string>()
+  const add = (s?: string): void => {
+    const t = s?.trim()
+    if (!t) return
+    const k = t.toLowerCase()
+    if (!seen.has(k)) {
+      seen.add(k)
+      terms.push(t)
+    }
+  }
+  add(draft.nickname)
+  draft.aliases.forEach(add)
+  add(m.displayName)
+  add(m.discordName)
+  add(cleanName(m.displayName ?? ''))
+  add(cleanName(m.discordName ?? ''))
+  m.accounts.forEach((a) => add(accountLocal(a.account_name)))
+
+  if (!terms.length || m.accounts.length === 0) return ''
+  return `${terms.join(', ')} → ${m.accounts.map((a) => a.account_name).join(', ')}`
 }
 
 /** Discord-link card: pick a Discord user for an unlinked GW2 account, or unlink a
