@@ -1,4 +1,12 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import type { SettingsSection } from './settings/SettingsNav'
+import Intelligence from './settings/Intelligence'
+import Gw2Keys from './settings/Gw2Keys'
+import AxiTools from './settings/AxiTools'
+import AxiForge from './settings/AxiForge'
+import ReportRepos from './settings/ReportRepos'
+import Dispatches from './settings/Dispatches'
+import About from './settings/About'
 
 type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
 type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'
@@ -46,48 +54,16 @@ interface KeyLabel {
 }
 
 export interface SettingsProps {
+  section: SettingsSection
   onChanged: () => void
   onProviderChanged?: () => void
 }
 
-/** Saved-key switcher: click a label to activate, ✕ to remove. */
-function Keyring({
-  keys,
-  onActivate,
-  onRemove
-}: {
-  keys: KeyLabel[]
-  onActivate: (label: string) => void
-  onRemove: (label: string) => void
-}): ReactElement | null {
-  if (keys.length === 0) return null
-  return (
-    <div className="picker">
-      {keys.map((k) => (
-        <button
-          key={k.label}
-          className={`pi${k.active ? ' sel' : ''}`}
-          onClick={() => onActivate(k.label)}
-        >
-          {k.label}
-          {k.active && <span className="lead"> · active</span>}
-          <span
-            className="kx"
-            title={`Remove "${k.label}"`}
-            onClick={(e) => {
-              e.stopPropagation()
-              onRemove(k.label)
-            }}
-          >
-            ✕
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-export default function Settings({ onChanged, onProviderChanged }: SettingsProps): ReactElement {
+export default function Settings({
+  section,
+  onChanged,
+  onProviderChanged
+}: SettingsProps): ReactElement {
   // Claude
   const [claudeToken, setClaudeToken] = useState('')
   const [claudeSaved, setClaudeSaved] = useState(false)
@@ -424,12 +400,6 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
     onChanged()
   }
 
-  async function pickModel(value: string): Promise<void> {
-    setModel(value)
-    await window.officer.setSetting('model', value)
-    onChanged()
-  }
-
   async function pickProvider(value: ProviderName): Promise<void> {
     const prev = provider
     setProvider(value)
@@ -576,521 +546,117 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
 
   return (
     <div className="settings">
-      <div className="sgroup">
-        <h2>Intelligence</h2>
-        <label className="slabel">Provider</label>
-        <div className="picker">
-          {PROVIDERS.map((p) => (
-            <button
-              key={p.value}
-              className={`pi${provider === p.value ? ' sel' : ''}`}
-              onClick={() => pickProvider(p.value)}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
-        {provider === 'claude' && (
-          <>
-            <label className="slabel">OAuth token</label>
-            <input
-              className="sinput"
-              type="password"
-              value={claudeToken}
-              placeholder={claudeSaved ? '•••••••• (saved)' : 'paste setup token'}
-              onChange={(e) => setClaudeToken(e.target.value)}
-            />
-            <p className="shelp">
-              Run <code>claude setup-token</code> in a terminal and paste the result. Leave empty to
-              use this machine's existing Claude Code login.
-            </p>
-            <div className="srow">
-              <button className="sbtn" disabled={!claudeToken} onClick={saveClaude}>
-                File token
-              </button>
-            </div>
-            <div className="sstatus ok">
-              {claudeStatus || (claudeSaved ? 'token saved' : 'system login')}
-            </div>
-            <label className="slabel">Model</label>
-            <div className="picker">
-              {[
-                { value: '', label: 'Default' },
-                { value: 'haiku', label: 'Haiku' },
-                { value: 'sonnet', label: 'Sonnet' },
-                { value: 'opus', label: 'Opus' }
-              ].map((m) => (
-                <button
-                  key={m.value}
-                  className={`pi${model === m.value ? ' sel' : ''}`}
-                  onClick={() => pickProviderModel('claude', m.value)}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {(provider === 'gemini' || provider === 'openai') && (
-          <>
-            <label className="slabel">API keys</label>
-            <Keyring
-              keys={provider === 'gemini' ? geminiKeys : openaiKeys}
-              onActivate={(label) => activateLlmKey(provider, label)}
-              onRemove={(label) => removeLlmKey(provider, label)}
-            />
-            <input
-              className="sinput"
-              type="text"
-              value={llmLabel}
-              placeholder="label, e.g. personal"
-              onChange={(e) => setLlmLabel(e.target.value)}
-            />
-            <input
-              className="sinput"
-              type="password"
-              value={llmKey}
-              placeholder={provider === 'gemini' ? 'paste Gemini API key' : 'paste OpenAI API key'}
-              onChange={(e) => setLlmKey(e.target.value)}
-            />
-            <p className="shelp">
-              {provider === 'gemini' ? (
-                <>Create a free key at aistudio.google.com → Get API key.</>
-              ) : (
-                <>Create a key at platform.openai.com → API keys.</>
-              )}
-            </p>
-            <div className="srow">
-              <button className="sbtn" disabled={!llmKey} onClick={() => addLlmKey(provider)}>
-                Add key
-              </button>
-            </div>
-            <label className="slabel">Model</label>
-            <div className="picker">
-              {(provider === 'gemini' ? GEMINI_MODELS : OPENAI_MODELS).map((m) => (
-                <button
-                  key={m.value}
-                  className={`pi${(provider === 'gemini' ? geminiModel : openaiModel) === m.value ? ' sel' : ''}`}
-                  onClick={() => pickProviderModel(provider, m.value)}
-                >
-                  {m.label}
-                </button>
-              ))}
-              {(() => {
-                const activeModel = provider === 'gemini' ? geminiModel : openaiModel
-                const curated = provider === 'gemini' ? GEMINI_MODELS : OPENAI_MODELS
-                if (activeModel && !curated.some((m) => m.value === activeModel)) {
-                  return (
-                    <button key={activeModel} className="pi sel">
-                      {activeModel}
-                    </button>
-                  )
-                }
-                return null
-              })()}
-            </div>
-            <input
-              className="sinput"
-              type="text"
-              value={customModel}
-              placeholder="or type a custom model id and press Enter"
-              onChange={(e) => setCustomModel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && customModel.trim()) {
-                  void pickProviderModel(provider, customModel.trim())
-                  setCustomModel('')
-                }
-              }}
-            />
-          </>
-        )}
-
-        {provider === 'local' && (
-          <>
-            <label className="slabel">Server</label>
-            <input
-              className="sinput"
-              type="text"
-              value={localEndpoint}
-              placeholder="http://localhost:11434"
-              onChange={(e) => setLocalEndpoint(e.target.value)}
-            />
-            <div className="srow">
-              <button className="sbtn" onClick={saveLocalEndpoint}>
-                Save &amp; probe
-              </button>
-            </div>
-            {localStatus && (
-              <div className={`sstatus ${localStatus.ok ? 'ok' : 'err'}`}>{localStatus.msg}</div>
-            )}
-            {localModels.length > 0 &&
-              (() => {
-                // Show recommended models alongside the installed ones so the user
-                // can tell what's installed and pull a recommended model they lack.
-                const recommended = hw?.modelOptions ?? []
-                const rows = [...recommended, ...localModels.filter((m) => !recommended.includes(m))]
-                return (
-                  <>
-                    <label className="slabel">Model</label>
-                    <div className="picker">
-                      {rows.map((m) => {
-                        const installed = localModels.includes(m)
-                        const isPulling = pullingModel === m
-                        return (
-                          <button
-                            key={m}
-                            className={`pi model-row${localModel === m ? ' sel' : ''}`}
-                            disabled={ollamaBusy}
-                            title={installed ? 'Installed' : 'Not installed — click to download'}
-                            onClick={() =>
-                              installed ? pickProviderModel('local', m) : pullModelIntoPicker(m)
-                            }
-                          >
-                            <span className="model-name">{m}</span>
-                            <span className={`model-tag${installed ? ' on' : ''}`}>
-                              {isPulling
-                                ? `downloading… ${ollamaPct ?? 0}%`
-                                : installed
-                                  ? '✓ installed'
-                                  : '↓ download'}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {ollamaErr && <div className="sstatus err">{ollamaErr}</div>}
-                    <p className="shelp">
-                      <span className="model-tag on">✓ installed</span> models are ready to use.
-                      Click a <span className="model-tag">↓ download</span> model to fetch it. The
-                      model with the accent border is active.
-                    </p>
-                  </>
-                )
-              })()}
-            {localModels.length === 0 && (
-              <div className="ollama-setup">
-                {hw && (
-                  <p className="shelp">
-                    Detected {hw.totalRamGb} GB RAM — recommended <strong>{hw.recommendedModel}</strong>.
-                  </p>
-                )}
-                {hw && (
-                  <>
-                    <label className="slabel">Model</label>
-                    <div className="picker">
-                      {hw.modelOptions.map((m) => (
-                        <button
-                          key={m}
-                          className={`pi${chosenModel === m ? ' sel' : ''}`}
-                          disabled={ollamaBusy}
-                          onClick={() => setChosenModel(m)}
-                        >
-                          {m}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-                <div className="srow">
-                  <button className="sbtn" disabled={ollamaBusy} onClick={startOllamaSetup}>
-                    {ollamaBusy ? 'Setting up…' : 'Set up local AI (one click)'}
-                  </button>
-                </div>
-                {ollamaBusy && (
-                  <div className="ollama-progress">
-                    <div className="sstatus">{ollamaStage}</div>
-                    {ollamaPct !== null && <progress max={100} value={ollamaPct} />}
-                  </div>
-                )}
-                {ollamaErr && (
-                  <div className="sstatus err">
-                    {ollamaErr}{' '}
-                    <button className="sbtn out" onClick={startOllamaSetup}>
-                      Retry
-                    </button>
-                  </div>
-                )}
-                <p className="shelp">
-                  Installs a private, self-contained Ollama just for AxiVale — no admin rights,
-                  nothing else on your system is touched. Or install it yourself from ollama.com
-                  and run <code>ollama pull qwen3:8b</code>. Local models are slower and less
-                  reliable on multi-step tasks than the cloud providers.
-                </p>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="sgroup">
-        <h2>GW2 API keys</h2>
-        <Keyring keys={gw2Keys} onActivate={activateGw2} onRemove={removeGw2} />
-        <label className="slabel">Add a key</label>
-        <input
-          className="sinput"
-          type="text"
-          value={gw2Label}
-          placeholder="label, e.g. main account"
-          onChange={(e) => setGw2Label(e.target.value)}
+      {section === 'intelligence' && (
+        <Intelligence
+          provider={provider}
+          onPickProvider={pickProvider}
+          claudeToken={claudeToken}
+          claudeSaved={claudeSaved}
+          claudeStatus={claudeStatus}
+          model={model}
+          setClaudeToken={setClaudeToken}
+          onSaveClaude={saveClaude}
+          onPickModel={pickProviderModel}
+          geminiKeys={geminiKeys}
+          openaiKeys={openaiKeys}
+          geminiModel={geminiModel}
+          openaiModel={openaiModel}
+          llmLabel={llmLabel}
+          llmKey={llmKey}
+          customModel={customModel}
+          setLlmLabel={setLlmLabel}
+          setLlmKey={setLlmKey}
+          setCustomModel={setCustomModel}
+          onAddLlmKey={addLlmKey}
+          onActivateLlmKey={activateLlmKey}
+          onRemoveLlmKey={removeLlmKey}
+          geminiModels={GEMINI_MODELS}
+          openaiModels={OPENAI_MODELS}
+          localEndpoint={localEndpoint}
+          localModel={localModel}
+          localModels={localModels}
+          localStatus={localStatus}
+          hw={hw}
+          chosenModel={chosenModel}
+          ollamaBusy={ollamaBusy}
+          ollamaErr={ollamaErr}
+          ollamaStage={ollamaStage}
+          ollamaPct={ollamaPct}
+          pullingModel={pullingModel}
+          setLocalEndpoint={setLocalEndpoint}
+          setChosenModel={setChosenModel}
+          onSaveLocalEndpoint={saveLocalEndpoint}
+          onStartOllamaSetup={startOllamaSetup}
+          onPullModel={pullModelIntoPicker}
         />
-        <input
-          className="sinput"
-          type="password"
-          value={gw2Key}
-          placeholder="paste API key"
-          onChange={(e) => setGw2Key(e.target.value)}
+      )}
+      {section === 'gw2' && (
+        <Gw2Keys
+          gw2Keys={gw2Keys}
+          gw2Label={gw2Label}
+          gw2Key={gw2Key}
+          gw2Status={gw2Status}
+          gw2Info={gw2Info}
+          gw2GuildId={gw2GuildId}
+          setGw2Label={setGw2Label}
+          setGw2Key={setGw2Key}
+          onActivate={activateGw2}
+          onRemove={removeGw2}
+          onAdd={addGw2Key}
+          onPickGuild={pickGw2Guild}
         />
-        <div className="srow">
-          <button className="sbtn" disabled={!gw2Key} onClick={addGw2Key}>
-            Add &amp; verify
-          </button>
-        </div>
-        {gw2Status && (
-          <div className={`sstatus ${gw2Status.ok ? 'ok' : 'err'}`}>{gw2Status.msg}</div>
-        )}
-        {gw2Info && (
-          <>
-            <div className="perm">
-              Permissions: {gw2Info.permissions.join(', ') || '—'}
-              {gw2Info.missingPermissions.length > 0 && (
-                <div className="miss">Missing: {gw2Info.missingPermissions.join(', ')}</div>
-              )}
-            </div>
-            {gw2Info.guilds.length > 0 && (
-              <div className="picker">
-                {gw2Info.guilds.map((g) => (
-                  <button
-                    key={g.id}
-                    className={`pi${gw2GuildId === g.id ? ' sel' : ''}`}
-                    onClick={() => pickGw2Guild(g.id)}
-                  >
-                    {g.name}
-                    {g.tag ? ` [${g.tag}]` : ''}
-                    {g.leader && <span className="lead"> (leader)</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="sgroup">
-        <h2>AxiTools</h2>
-        <Keyring keys={axiKeys} onActivate={activateAxi} onRemove={removeAxi} />
-        <label className="slabel">Add a key</label>
-        <input
-          className="sinput"
-          type="text"
-          value={axiLabel}
-          placeholder="label, e.g. EWW server"
-          onChange={(e) => setAxiLabel(e.target.value)}
+      )}
+      {section === 'axitools' && (
+        <AxiTools
+          axiKeys={axiKeys}
+          axiLabel={axiLabel}
+          axiKey={axiKey}
+          axiStatus={axiStatus}
+          axiGuild={axiGuild}
+          setAxiLabel={setAxiLabel}
+          setAxiKey={setAxiKey}
+          onActivate={activateAxi}
+          onRemove={removeAxi}
+          onAdd={addAxiKey}
         />
-        <input
-          className="sinput"
-          type="password"
-          value={axiKey}
-          placeholder="paste key from Discord"
-          onChange={(e) => setAxiKey(e.target.value)}
+      )}
+      {section === 'axiforge' && (
+        <AxiForge
+          forgeStatus={forgeStatus}
+          forgeLaunching={forgeLaunching}
+          onLaunch={launchForge}
+          onRecheck={checkForge}
         />
-        <p className="shelp">
-          In each Discord server, run <code>/config apikey generate</code> (requires Manage
-          Server) and add the key here. The active key decides which server AxiVale acts on.
-        </p>
-        <div className="srow">
-          <button className="sbtn" disabled={!axiKey} onClick={addAxiKey}>
-            Add &amp; connect
-          </button>
-        </div>
-        {axiStatus && (
-          <div className={`sstatus ${axiStatus.ok ? 'ok' : 'err'}`}>{axiStatus.msg}</div>
-        )}
-        {axiGuild && (
-          <div className="perm">
-            Bound to <b>{axiGuild.name}</b> · {axiGuild.id}
-          </div>
-        )}
-      </div>
-
-      <div className="sgroup">
-        <h2>AxiForge</h2>
-        <div className="srow">
-          {forgeStatus === null && <div className="sstatus ok">checking…</div>}
-          {forgeStatus?.state === 'connected' && (
-            <div className="sstatus ok">connected · v{forgeStatus.version}</div>
-          )}
-          {forgeStatus?.state === 'file-only' && (
-            <div className="sstatus ok">
-              file-only · AxiForge is closed — builds are read from disk
-            </div>
-          )}
-          {forgeStatus?.state === 'offline' && (
-            <div className="sstatus err">not found — install AxiForge via AxiOM</div>
-          )}
-          {forgeStatus && forgeStatus.state !== 'connected' && forgeStatus.state !== 'offline' && (
-            <button className="sbtn" disabled={forgeLaunching} onClick={launchForge}>
-              {forgeLaunching ? 'Starting…' : 'Launch AxiForge'}
-            </button>
-          )}
-          <button className="sbtn out" onClick={checkForge}>
-            Recheck
-          </button>
-        </div>
-        <p className="shelp">
-          AxiVale edits AxiForge builds and comps through its local API. No setup needed — the
-          connection is discovered automatically when AxiForge runs on this machine.
-        </p>
-      </div>
-
-      <div className="sgroup">
-        <h2>AxiBridge report repos</h2>
-        {bridgeRepos.length > 0 && (
-          <div className="picker">
-            {bridgeRepos.map((r) => {
-              const health = bridgeHealth.find((h) => h.repo === `${r.owner}/${r.repo}`)
-              return (
-                <button key={`${r.owner}/${r.repo}`} className="pi">
-                  {r.owner}/{r.repo}
-                  {health && !health.error && (
-                    <span className="lead">
-                      {' '}
-                      · {health.runs} runs · {health.cachedReports} cached
-                    </span>
-                  )}
-                  {health?.error && <span className="lead"> · unreachable</span>}
-                  <span
-                    className="kx"
-                    title={`Unlink ${r.owner}/${r.repo}`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      void removeBridgeRepo(r.owner, r.repo)
-                    }}
-                  >
-                    ✕
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-        )}
-        <label className="slabel">Link a repo</label>
-        <input
-          className="sinput"
-          type="text"
-          value={bridgeInput}
-          placeholder="owner/repo or https://owner.github.io/repo"
-          onChange={(e) => setBridgeInput(e.target.value)}
+      )}
+      {section === 'repos' && (
+        <ReportRepos
+          bridgeRepos={bridgeRepos}
+          bridgeHealth={bridgeHealth}
+          bridgeInput={bridgeInput}
+          bridgeStatus={bridgeStatus}
+          bridgeFinding={bridgeFinding}
+          githubKeys={githubKeys}
+          ghSigningIn={ghSigningIn}
+          ghUserCode={ghUserCode}
+          ghCodeCopied={ghCodeCopied}
+          ghAuthStatus={ghAuthStatus}
+          setBridgeInput={setBridgeInput}
+          onAddRepo={addBridgeRepo}
+          onRemoveRepo={removeBridgeRepo}
+          onDiscover={discoverAndLinkRepos}
+          onCheckHealth={refreshBridgeHealth}
+          onActivateKey={(label) => activateLlmKey('github', label)}
+          onRemoveKey={(label) => removeLlmKey('github', label)}
+          onSignIn={signInGithub}
+          onCopyCode={copyGhCode}
         />
-        <div className="srow">
-          <button className="sbtn" disabled={!bridgeInput.trim()} onClick={addBridgeRepo}>
-            Link repo
-          </button>
-          <button
-            className="sbtn out"
-            disabled={bridgeFinding || githubKeys.length === 0}
-            onClick={discoverAndLinkRepos}
-            title={
-              githubKeys.length === 0 ? 'Sign in with GitHub below first' : 'Scan your GitHub account'
-            }
-          >
-            {bridgeFinding ? 'Searching…' : 'Find my report repos'}
-          </button>
-          <button className="sbtn out" onClick={refreshBridgeHealth}>
-            Check health
-          </button>
-        </div>
-        {bridgeStatus && (
-          <div className={`sstatus ${bridgeStatus.ok ? 'ok' : 'err'}`}>{bridgeStatus.msg}</div>
-        )}
-
-        {/* Account sub-section: clearly separated from the repo-link area above. */}
-        <div
-          className="subsection"
-          style={{
-            marginTop: '1.5rem',
-            paddingTop: '1.25rem',
-            paddingBottom: '2.5rem',
-            borderTop: '1px dashed var(--rule)'
-          }}
-        >
-          <h3 className="ssub">GitHub account</h3>
-          <p className="shelp">
-            Optional — for private repos / higher rate limits. Public report repos work without
-            signing in.
-          </p>
-          <Keyring
-            keys={githubKeys}
-            onActivate={(label) => activateLlmKey('github', label)}
-            onRemove={(label) => removeLlmKey('github', label)}
-          />
-          {ghUserCode && (
-            <div className="sstatus ok">
-              Enter code <b>{ghUserCode}</b>{' '}
-              <button className="sbtn out" type="button" onClick={copyGhCode}>
-                {ghCodeCopied ? 'copied ✓' : 'copy'}
-              </button>{' '}
-              at github.com/login/device (opened in your browser).
-            </div>
-          )}
-          <div className="srow" style={{ marginTop: '12px' }}>
-            <button className="sbtn" disabled={ghSigningIn} onClick={signInGithub}>
-              {ghSigningIn ? 'Signing in…' : 'Sign in with GitHub'}
-            </button>
-          </div>
-          {ghAuthStatus && (
-            <div className={`sstatus ${ghAuthStatus.ok ? 'ok' : 'err'}`}>{ghAuthStatus.msg}</div>
-          )}
-        </div>
-      </div>
-
-      <div className="sgroup">
-        <h2>Shared dispatches</h2>
-        <p className="shelp">
-          Public links you have published to your GitHub Pages share site. Deleting one removes it
-          from the web.
-        </p>
-        {shareEntries.length === 0 ? (
-          <div className="sstatus">You haven&apos;t shared anything yet.</div>
-        ) : (
-          <ul className="share-list">
-            {shareEntries.map((s) => (
-              <li key={s.id} className="share-list-row">
-                <div className="share-list-meta">
-                  <span className="share-list-title">{s.title || 'Untitled'}</span>
-                  <span className="share-list-kind">{s.kind}</span>
-                </div>
-                <div className="share-list-acts">
-                  <a className="sbtn out" href={s.url} target="_blank" rel="noreferrer">
-                    Open
-                  </a>
-                  <button className="sbtn out" onClick={() => void deleteShare(s.id)}>
-                    Delete
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="sgroup">
-        <h2>About</h2>
-        <div className="srow">
-          <div className="countline">
-            AxiVale <b>v{version || '—'}</b>
-          </div>
-          <button className="sbtn out" onClick={checkUpdates}>
-            Check for updates
-          </button>
-        </div>
-        {updateMsg && <div className="sstatus ok">{updateMsg}</div>}
-        <p className="shelp">
-          Updates install automatically from GitHub releases; a banner appears when a new edition
-          is ready.
-        </p>
-      </div>
+      )}
+      {section === 'dispatches' && (
+        <Dispatches shareEntries={shareEntries} onDelete={deleteShare} />
+      )}
+      {section === 'about' && (
+        <About version={version} updateMsg={updateMsg} onCheckUpdates={checkUpdates} />
+      )}
     </div>
   )
 }

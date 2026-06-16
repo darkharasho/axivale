@@ -16,6 +16,7 @@ import ShareDialog, { type ShareState } from './components/ShareDialog'
 import InputBar from './components/InputBar'
 import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
+import SettingsNav, { type SettingsSection, type SettingsNavStatus } from './components/settings/SettingsNav'
 import UpdateBanner from './components/UpdateBanner'
 import type { RendererConversation, RendererSkill } from '../../preload/index.d'
 
@@ -73,6 +74,7 @@ export default function App(): ReactElement {
   const [turnsByConv, setTurnsByConv] = useState<Record<string, Turn[]>>({})
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
   const [section, setSection] = useState<Section>('dispatches')
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>('intelligence')
   const [running, setRunning] = useState(false)
   const [bridgeProgress, setBridgeProgress] = useState<string | null>(null)
   const [confirmQueue, setConfirmQueue] = useState<ConfirmReq[]>([])
@@ -352,6 +354,14 @@ export default function App(): ReactElement {
   const memberCount: number | null = null
   const buildsCount: number | null = null
 
+  const settingsNavStatus: SettingsNavStatus = {
+    intelligence: true, // a provider is always selected
+    gw2: gw2AccountName ? true : undefined,
+    axitools: axiConnected ? true : undefined,
+    axiforge: undefined,
+    repos: undefined
+  }
+
   return (
     <>
       <UpdateBanner />
@@ -369,6 +379,9 @@ export default function App(): ReactElement {
       />
       <MetaLearningBanner />
       <div className="sheet">
+        {section === 'settings' ? (
+          <SettingsNav active={settingsSection} onSelect={setSettingsSection} status={settingsNavStatus} />
+        ) : (
         <Editions
           items={editionItems}
           activeId={activeId}
@@ -401,13 +414,14 @@ export default function App(): ReactElement {
             })
           }}
         />
+        )}
         <div className="chatcol">
           <div className="folio">
             <h1>{SECTION_TITLES[section]}</h1>
             <span className="d">{dateline}</span>
           </div>
           {section === 'settings' && (
-            <Settings onChanged={refreshStatus} onProviderChanged={() => void newConversation()} />
+            <Settings section={settingsSection} onChanged={refreshStatus} onProviderChanged={() => void newConversation()} />
           )}
           {section === 'builds' && <Builds />}
           {section === 'comps' && <Comps />}
@@ -443,7 +457,9 @@ export default function App(): ReactElement {
             </div>
           )}
         </div>
-        <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
+        {section !== 'settings' && (
+          <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
+        )}
       </div>
       {section === 'dispatches' && running && bridgeProgress && (
         <div className="bridge-progress">{bridgeProgress}</div>
