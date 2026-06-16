@@ -108,7 +108,6 @@ export function useRoster(active: boolean): RosterController {
         return next ? rosterKey(next) : null
       })
     } catch (e) {
-      console.error('[roster] reconcile failed:', e)
       if (isOffline(e)) setOffline(true)
       else setError(errText(e))
     } finally {

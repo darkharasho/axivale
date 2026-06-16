@@ -828,8 +828,7 @@ app.whenReady().then(async () => {
         members?: DiscordMemberRaw[]
       }
       discordMembers = overview.members ?? []
-    } catch (e) {
-      console.error('[roster] discordOverview failed:', e)
+    } catch {
       discordMembers = []
     }
 
@@ -844,13 +843,9 @@ app.whenReady().then(async () => {
         inGameAccounts = roster.map((m) => m.name).filter(Boolean)
         haveInGame = true
       }
-    } catch (e) {
-      console.error('[roster] gw2 guildMembers failed:', e)
+    } catch {
       haveInGame = false
     }
-    console.log(
-      `[roster] reconcile: linked=${Array.isArray(linked) ? linked.length : 'n/a'} discord=${discordMembers.length} inGame=${inGameAccounts.length}`
-    )
 
     // Guild-member role is stored per server (each has its own roles).
     let memberRoleId: string | null = null
