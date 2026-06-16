@@ -256,6 +256,9 @@ export interface OfficerApi {
   wikiIndexStats(): Promise<RendererMetaIndexStats>
   wikiIndexSample(opts: { mode?: string; limit: number }): Promise<RendererMetaChunkRow[]>
   wikiIndexSearch(query: string, mode?: string): Promise<RendererMetaSearchHit[]>
+  generalIndexStats(): Promise<RendererMetaIndexStats>
+  generalIndexSample(opts: { mode?: string; limit: number }): Promise<RendererMetaChunkRow[]>
+  generalIndexSearch(query: string): Promise<RendererMetaSearchHit[]>
   skillsList(): Promise<RendererSkill[]>
   skillsCreate(seed: { name: string; whenToUse: string; instructions: string }): Promise<RendererSkill>
   skillsUpdate(

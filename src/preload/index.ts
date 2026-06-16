@@ -46,6 +46,9 @@ contextBridge.exposeInMainWorld('officer', {
   wikiIndexStats: () => ipcRenderer.invoke('wiki:index-stats'),
   wikiIndexSample: (opts: { mode?: string; limit: number }) => ipcRenderer.invoke('wiki:index-sample', opts),
   wikiIndexSearch: (query: string, mode?: string) => ipcRenderer.invoke('wiki:index-search', query, mode),
+  generalIndexStats: () => ipcRenderer.invoke('general:index-stats'),
+  generalIndexSample: (opts: { mode?: string; limit: number }) => ipcRenderer.invoke('general:index-sample', opts),
+  generalIndexSearch: (query: string) => ipcRenderer.invoke('general:index-search', query),
   skillsList: () => ipcRenderer.invoke('skills:list'),
   skillsCreate: (seed: { name: string; whenToUse: string; instructions: string }) =>
     ipcRenderer.invoke('skills:create', seed),

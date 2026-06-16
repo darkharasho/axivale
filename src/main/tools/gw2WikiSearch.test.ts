@@ -27,4 +27,18 @@ describe('gw2_wiki_search fallback', () => {
     await t.handler({ query: 'boon duration' }, {})
     expect(called).toBe(false)
   })
+  it('forwards category arg to index search as mode', async () => {
+    let capturedOpts: unknown
+    const spyIdx: MetaIndex = {
+      indexedHash: async () => null,
+      replacePage: async () => {},
+      search: async (_q, opts) => { capturedOpts = opts; return [{ source: 'wiki', url: 'u', title: 'Stats', snippet: 's' }] as never },
+      stats: async () => ({ total: 1, byMode: {}, bySource: {}, lastIndexedAt: null }),
+      sample: async () => []
+    } as MetaIndex
+    const tools = buildGw2WikiSearchTools(() => spyIdx)
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    await t.handler({ query: 'x', category: 'stats' }, {})
+    expect((capturedOpts as { mode?: string }).mode).toBe('stats')
+  })
 })
