@@ -33,20 +33,31 @@ ever sees clean, readable, appropriately-sized results. No query syntax, no
 - The agent writes a `jq` expression against a **single virtual AxiBridge
   document**:
   ```
-  { repos, index (all runs across repos), rollup, reports{ <id>: ... } }
+  { repos, runs (index across repos), rollup{ playerRows, commanderRows }, summaries{ <id>: ... } }
   ```
 - The user never sees the jq expression or the document shape — these are
   internal to the tool/agent.
 - The 7 existing tools remain as fast paths for common questions;
   `axibridge_query` handles everything they can't shape.
 
-### Lazy resolution (cheap over a large dataset)
+### Scoped materialization (cheap over a large dataset)
 
-- The virtual document is a **proxy**. jq only pulls the pieces it actually
-  touches: touching `reports["abc"]` resolves that one report from
-  cache/GitHub on demand; never load every run.
-- `repos`, `index`, and `rollup` are cheap/already-cached and resolve eagerly.
-- Per-run `reports` resolve individually and respect the existing LRU cache.
+jq evaluates over a concrete in-memory value, so a transparent lazy proxy isn't
+possible — instead we materialize only what a query is scoped to:
+
+- The **always-cheap base** (`repos`, `runs` index, merged `rollup`) is built
+  cache-first on every query — one JSON each, already cached.
+- **Per-run detail (`summaries`) is materialized only when the agent scopes it**
+  — by passing `from`/`to` (the runs in that window) or an explicit `runs[]`
+  list. With no scope, `summaries` is empty `{}` and no per-run reports are
+  fetched. This preserves "never load every run" through explicit scope rather
+  than a magic proxy.
+- A guard caps the number of scoped runs per query (`MAX_SCOPED_RUNS`) so a wide
+  range can't trigger an unbounded fetch; over the cap, the tool asks the agent
+  to narrow.
+- The document is built entirely from the service's existing public methods
+  (`reposStatus`, `runsList`, `attendance`, `commanderStats`, `runSummary`), so
+  no new cache internals are introduced.
 
 ### jq engine
 
