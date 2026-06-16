@@ -99,8 +99,10 @@ const DEFAULT_SEED: SeedShape[] = [
       { label: 'Snowcrows (Guides)', url: 'https://snowcrows.com/guides', group: 'general' },
       { label: 'GuildJen (Guides)', url: 'https://guildjen.com/category/guides/', group: 'general' },
       { label: 'Hardstuck (Guides)', url: 'https://hardstuck.gg/gw2/guides/', group: 'general' },
-      { label: 'Discretize (Fractals)', url: 'https://next.discretize.eu/fractals/', group: 'general' },
-      { label: 'Discretize (Guides)', url: 'https://next.discretize.eu/guides/', group: 'general' }
+      // Discretize moved its content to archive.discretize.eu (the next.* subdomain
+      // no longer resolves); archive.discretize.eu matches the discretize.eu config.
+      { label: 'Discretize (Fractals)', url: 'https://archive.discretize.eu/fractals', group: 'general' },
+      { label: 'Discretize (Guides)', url: 'https://archive.discretize.eu/guides', group: 'general' }
     ]
   }
 ]

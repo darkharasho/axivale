@@ -55,6 +55,18 @@ export function configForUrl(url: string): SourceConfig | null {
   } catch {
     return null
   }
+  // Hardstuck's /gw2/guides index + guide pages are NOT build pages, so the default
+  // hardstuck config's `section.gw2-build-page` selector matches nothing there — give
+  // the guides path its own content selector + guide-link crawl (general corpus).
+  if (host === 'hardstuck.gg' && path.startsWith('/gw2/guides')) {
+    return {
+      host: 'hardstuck.gg',
+      kind: 'browser',
+      selector: '.cc-content, main',
+      linkSelector: 'a[href*="/gw2/guides/"]',
+      crawlDepth: 2
+    }
+  }
   // snowcrows news landings crawl into the newest article (tier lists rotate dates)
   if (host === 'snowcrows.com' && path.startsWith('/news/')) {
     return {

@@ -83,13 +83,19 @@ describe('source registry', () => {
 })
 
 describe('configForUrl general sources', () => {
-  it('resolves Discretize', () => {
-    expect(configForUrl('https://next.discretize.eu/fractals/')).not.toBeNull()
+  it('resolves Discretize at its live archive host', () => {
+    expect(configForUrl('https://archive.discretize.eu/guides')).not.toBeNull()
+    expect(configForUrl('https://archive.discretize.eu/fractals')).not.toBeNull()
   })
   it('resolves the Snowcrows guides index', () => {
     expect(configForUrl('https://snowcrows.com/guides')).not.toBeNull()
   })
-  it('resolves Hardstuck guides', () => {
-    expect(configForUrl('https://hardstuck.gg/gw2/guides/')).not.toBeNull()
+  it('gives Hardstuck guides their own content selector (not the build-page one)', () => {
+    const cfg = configForUrl('https://hardstuck.gg/gw2/guides/')
+    expect(cfg).not.toBeNull()
+    expect(cfg?.selector).not.toBe('section.gw2-build-page')
+    expect(cfg?.linkSelector).toContain('/gw2/guides/')
+    // build pages on the same host keep the tight build-page selector
+    expect(configForUrl('https://hardstuck.gg/gw2/builds/mesmer/power-virtuoso')?.selector).toBe('section.gw2-build-page')
   })
 })
