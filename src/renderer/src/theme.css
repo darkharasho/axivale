@@ -453,6 +453,70 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .deskset-body .cfgdays{margin-bottom:12px}
 .deskset-body .cfgdays .spill{cursor:pointer}
 
+/* ---- Settings redesign ---- */
+/* left-rail section nav (replaces editions on the Settings tab) */
+.snav{padding:18px 12px 18px 0;font-family:'IBM Plex Mono',monospace}
+.snav-h{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px dashed var(--rule2);padding-bottom:6px;margin-bottom:10px}
+.snav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);cursor:pointer;border-left:2px solid transparent}
+.snav-item .no{color:var(--faint);font-size:9px}
+.snav-item:hover{color:var(--ink);background:rgba(228,227,220,.04)}
+.snav-item.on{color:var(--ink);border-left-color:var(--accent);background:rgba(200,66,58,.08)}
+.snav-item.on .no{color:var(--accent-b)}
+.snav-item .dot{margin-left:auto;font-size:7px;color:var(--green)}
+.snav-item .dot.off{color:var(--faint)}
+
+/* pane header */
+.spane{padding:22px 0;max-width:620px}
+.spane-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--accent-b);margin-bottom:5px}
+.spane-h{font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-bottom:4px}
+.spane-sub{font-size:13.5px;color:var(--ink-dim);margin-bottom:22px;line-height:1.5}
+
+/* grouping card */
+.scard{border:1px solid var(--line);background:rgba(0,0,0,.14);margin-bottom:18px}
+.scard-h{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.18)}
+.scard-t{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
+.scard-s{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ink-dim);display:flex;align-items:center;gap:6px}
+.scard-s.ok{color:var(--green)}
+.scard-s.err{color:var(--accent-b)}
+.scard-s .led{width:6px;height:6px;border-radius:50%;background:currentColor}
+.scard-b{padding:16px}
+
+/* field */
+.sfield{margin-bottom:14px}
+.sfield:last-child{margin-bottom:0}
+.sfield .slabel{margin-bottom:6px}
+.sfield-input{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none}
+.sfield-input:focus{border-color:var(--accent-b)}
+.sfield-input::placeholder{color:var(--faint)}
+
+/* segmented toggle */
+.sseg{display:inline-flex;border:1px solid var(--rule2);margin-bottom:22px}
+.sseg button{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);background:transparent;border:none;border-right:1px solid var(--rule2);padding:8px 16px;cursor:pointer}
+.sseg button:last-child{border-right:none}
+.sseg button.on{color:#fff;background:var(--accent)}
+
+/* chip group */
+.schips{display:flex;flex-wrap:wrap;gap:7px}
+.schip{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);border:1px solid var(--rule2);background:rgba(0,0,0,.22);padding:6px 12px;cursor:pointer}
+.schip.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+.schip:disabled{opacity:.5;cursor:default}
+
+/* keyring rows */
+.skeys{display:flex;flex-direction:column;border:1px solid var(--line);margin-bottom:14px}
+.skey{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);border:none;border-bottom:1px solid var(--line);background:none;cursor:pointer}
+.skey:last-child{border-bottom:none}
+.skey.on{color:var(--ink);background:rgba(200,66,58,.06)}
+.skey .rad{width:7px;height:7px;border-radius:50%;border:1px solid var(--rule2);flex:none}
+.skey.on .rad{background:var(--accent);border-color:var(--accent)}
+.skey .badge{margin-left:auto;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b)}
+.skey .kx{color:var(--faint);cursor:pointer;padding-left:6px}
+.skey .kx:hover{color:var(--accent-b)}
+
+/* action row + ghost button */
+.sactions{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap}
+.sbtn.ghost{color:var(--ink-dim);background:transparent;border:1px solid var(--rule2);outline:none}
+.sbtn.ghost:hover{color:var(--ink);border-color:var(--ink-dim)}
+
 /* ---- Share controls ---- */
 /* Sits just left of the .clip-img-btn camera button (which is right:0, width:22px),
    so right:26px clears it with a small gap. Mirrors .clip-img-btn sizing/colors. */
