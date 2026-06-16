@@ -145,7 +145,7 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .tool .more{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;padding-top:6px}
 table{border-collapse:collapse;margin-top:8px;width:100%}
 th{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);text-align:left;padding:0 18px 5px 0;border-bottom:1px solid var(--rule);font-weight:500}
-td{padding:6px 18px 6px 0;font-size:13px;border-bottom:1px dotted var(--line);color:var(--ink-dim);vertical-align:top}
+td{padding:6px 18px 6px 0;font-size:13px;border-bottom:1px dotted var(--line);color:var(--ink-dim);vertical-align:top;overflow-wrap:anywhere;word-break:break-word;max-width:340px}
 td.nm2{color:var(--ink)}
 .endmark{color:var(--accent-b);font-size:13px}
 /* copy-as-image button — tucked in the top-right corner of the AI article */
@@ -161,6 +161,7 @@ td.nm2{color:var(--ink)}
 .richtable th{cursor:pointer;user-select:none}
 .richtable th:hover{color:var(--ink)}
 .richtable th .arr{color:var(--accent-b);margin-left:5px;font-size:8px}
+.richcode pre{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5;color:var(--ink-dim);background:var(--bg);border:1px solid var(--rule);padding:10px 12px;margin:0;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
 .richchart{overflow-x:auto}
 .richchart .recharts-legend-item-text{color:var(--ink-dim) !important}
 .richchart .recharts-text{fill:var(--faint)}
