@@ -161,6 +161,39 @@ Rules:
 - Keep replies concise; lead with the outcome. The UI renders your reply as a
   newspaper article, so a strong first sentence works as the headline.`
 
+/**
+ * Tools exposed to the local (Ollama) tier. Small local models (~8B) reliably
+ * call a tool when given a focused set, but with the full ~57-tool inventory
+ * they refuse and answer from memory instead. This high-value subset covers the
+ * common officer asks (raids/stats, builds/meta, comps, roster, Discord reads)
+ * while leaving the 40+ write/management tools to the cloud providers. Cloud
+ * (claude/openai/gemini) still receives every tool.
+ */
+export const LOCAL_TOOL_ALLOWLIST: readonly string[] = [
+  'meta_search',
+  'gw2_wiki_search',
+  'gw2_api',
+  'gw2_guild_log',
+  'gw2_guild_members',
+  'axibridge_runs_list',
+  'axibridge_run_summary',
+  'axibridge_player_stats',
+  'comp_check',
+  'comp_sketch',
+  'axitools_builds_list',
+  'discord_overview',
+  'discord_messages',
+  'load_skill'
+]
+
+/** Tools the given provider should see. Local models get the focused allowlist;
+ *  cloud providers get everything. */
+export function toolsForProvider<T extends { name: string }>(provider: ProviderName, all: T[]): T[] {
+  if (provider !== 'local') return all
+  const allowed = new Set(LOCAL_TOOL_ALLOWLIST)
+  return all.filter((t) => allowed.has(t.name))
+}
+
 export interface AgentDeps {
   toolDeps: () => ToolDeps
   /** Provider, model, and credentials — read fresh at the start of every turn. */
@@ -234,17 +267,31 @@ export class AgentService {
     this.aborts.set(conversationId, abort)
     const adapter = this.adapterFor(conversationId)
     try {
-      const tools = buildOfficerTools(this.deps.toolDeps())
+      const provider = this.deps.config().provider
+      const tools = toolsForProvider(provider, buildOfficerTools(this.deps.toolDeps()))
       const skills = this.deps.skills()
       const forced = opts?.forcedSkillId
         ? (skills.find((s) => s.id === opts.forcedSkillId) ?? null)
         : null
+      // Local (~8B) models choke on the full meta + playbook reference blocks
+      // (~9k tokens): the oversized prompt yields empty responses. Keep their
+      // system prompt lean; cloud providers get the full reference context.
+      const base = buildTurnSystemPrompt(AXIVALE_SYSTEM_PROMPT, skills, forced)
+      // The model has no clock; tell it the date so "tonight"/"yesterday" resolve.
+      const dateLine = `\n\nToday's date is ${new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}.`
+      const systemPrompt =
+        (provider === 'local'
+          ? base
+          : base + buildMetaReference(this.deps.meta()) + buildPlaybookReference(this.deps.meta())) +
+        dateLine
       const turn = adapter.runTurn({
         prompt: promptText,
-        systemPrompt:
-          buildTurnSystemPrompt(AXIVALE_SYSTEM_PROMPT, skills, forced) +
-          buildMetaReference(this.deps.meta()) +
-          buildPlaybookReference(this.deps.meta()),
+        systemPrompt,
         tools,
         confirm: this.deps.confirm,
         signal: abort.signal

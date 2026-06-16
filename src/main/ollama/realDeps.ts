@@ -111,7 +111,14 @@ function httpPullStream(model: string, onLine: (line: string) => void, endpoint:
 function spawnServe(binPath: string, endpoint: string): ServeHandle {
   const u = new URL(endpoint)
   const proc = spawn(binPath, ['serve'], {
-    env: { ...process.env, OLLAMA_HOST: `${u.hostname}:${u.port}` },
+    env: {
+      ...process.env,
+      OLLAMA_HOST: `${u.hostname}:${u.port}`,
+      // Raise the default context (4096) so AxiVale's large system-prompt +
+      // tool-schema payload isn't truncated. The native /api/chat path also
+      // sets num_ctx per-request; this is the floor for any other client.
+      OLLAMA_CONTEXT_LENGTH: '16384'
+    },
     stdio: ['ignore', 'ignore', 'pipe']
   })
   return proc as unknown as ServeHandle

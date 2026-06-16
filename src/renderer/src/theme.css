@@ -338,6 +338,10 @@ td.nm2{color:var(--ink)}
 .picker .pi{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);padding:6px 10px;border:1px dashed var(--rule);cursor:pointer;background:transparent;text-align:left}
 .picker .pi.sel{border-color:var(--accent);color:var(--ink)}
 .picker .pi .lead{color:var(--accent-b)}
+.picker .pi.model-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.picker .pi.model-row:disabled{opacity:.6;cursor:default}
+.model-tag{font-size:10px;color:var(--faint);white-space:nowrap}
+.model-tag.on{color:var(--accent-b)}
 .perm{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);margin-top:6px;line-height:1.6}
 .perm .miss{color:var(--accent-b)}
 /* panels */

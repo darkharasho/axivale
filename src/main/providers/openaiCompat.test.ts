@@ -13,6 +13,42 @@ function sseBody(events: unknown[]): Response {
   return new Response(payload, { status: 200, headers: { 'content-type': 'text/event-stream' } })
 }
 
+/** Ollama native /api/chat stream: newline-delimited JSON objects. */
+function ndjsonBody(objects: unknown[]): Response {
+  const payload = objects.map((o) => JSON.stringify(o)).join('\n') + '\n'
+  return new Response(payload, { status: 200, headers: { 'content-type': 'application/x-ndjson' } })
+}
+
+function showBody(capabilities: string[]): Response {
+  return new Response(JSON.stringify({ capabilities }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' }
+  })
+}
+
+/** Routes the adapter's local requests by path: /api/show (capabilities),
+ *  /api/chat (native rounds), and /v1/... (OpenAI-compat fallback). */
+function routedFetch(routes: { caps?: string[]; chat?: Response[]; v1?: Response[] }) {
+  let chatI = 0
+  let v1I = 0
+  const pick = (arr: Response[] | undefined, i: number): Response =>
+    arr && arr.length ? arr[Math.min(i, arr.length - 1)] : new Response('', { status: 200 })
+  return vi.fn(async (url: unknown, _init?: RequestInit) => {
+    const u = String(url)
+    if (u.includes('/api/show')) return showBody(routes.caps ?? [])
+    if (u.includes('/api/chat')) return pick(routes.chat, chatI++)
+    return pick(routes.v1, v1I++)
+  })
+}
+
+const localConfig: ProviderConfig = {
+  provider: 'local',
+  model: 'qwen3:8b',
+  oauthToken: null,
+  apiKey: null,
+  endpoint: 'http://localhost:11434'
+}
+
 function turnInput(overrides: Partial<TurnInput> = {}): TurnInput {
   return {
     prompt: 'hello',
@@ -205,22 +241,90 @@ describe('OpenAIChatAdapter', () => {
     void adapter2
   })
 
-  it('uses the local endpoint without auth when provider is local', async () => {
-    const fetchFn = vi.fn().mockResolvedValue(
-      sseBody([{ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }])
-    )
-    const localConfig: ProviderConfig = {
-      provider: 'local',
-      model: 'qwen3:8b',
-      oauthToken: null,
-      apiKey: null,
-      endpoint: 'http://localhost:11434'
-    }
+  it('uses Ollama native /api/chat with num_ctx for the local provider', async () => {
+    const fetchFn = routedFetch({
+      caps: ['completion', 'tools', 'thinking'],
+      chat: [ndjsonBody([{ message: { role: 'assistant', content: 'ok' }, done: true }])]
+    })
+    const adapter = new OpenAIChatAdapter(() => localConfig, fetchFn as unknown as typeof fetch)
+    const events = await collect(adapter, turnInput())
+    expect(events).toContainEqual({ kind: 'text-delta', text: 'ok' })
+    const chatCall = fetchFn.mock.calls.find((c) => String(c[0]).endsWith('/api/chat'))!
+    expect(chatCall[0]).toBe('http://localhost:11434/api/chat')
+    const body = JSON.parse((chatCall[1] as RequestInit).body as string)
+    expect(body.options.num_ctx).toBe(8192)
+    expect(body.tools[0].function.name).toBe('echo_tool')
+    // qwen-style model advertises thinking → we turn it off.
+    expect(body.think).toBe(false)
+  })
+
+  it('omits the think flag for models without the thinking capability', async () => {
+    const fetchFn = routedFetch({
+      caps: ['completion', 'tools'],
+      chat: [ndjsonBody([{ message: { role: 'assistant', content: 'ok' }, done: true }])]
+    })
     const adapter = new OpenAIChatAdapter(() => localConfig, fetchFn as unknown as typeof fetch)
     await collect(adapter, turnInput())
-    expect(fetchFn.mock.calls[0][0]).toBe('http://localhost:11434/v1/chat/completions')
-    const headers = (fetchFn.mock.calls[0][1] as RequestInit).headers as Record<string, string>
-    expect(headers.Authorization).toBeUndefined()
+    const chatCall = fetchFn.mock.calls.find((c) => String(c[0]).endsWith('/api/chat'))!
+    const body = JSON.parse((chatCall[1] as RequestInit).body as string)
+    expect('think' in body).toBe(false)
+  })
+
+  it('parses a native tool call (arguments as an object) and loops back', async () => {
+    const fetchFn = routedFetch({
+      caps: ['completion', 'tools', 'thinking'],
+      chat: [
+        ndjsonBody([
+          {
+            message: {
+              role: 'assistant',
+              content: '',
+              tool_calls: [{ function: { index: 0, name: 'echo_tool', arguments: { message: 'hi' } } }]
+            },
+            done: false
+          },
+          { message: { role: 'assistant', content: '' }, done: true }
+        ]),
+        ndjsonBody([{ message: { role: 'assistant', content: 'done!' }, done: true }])
+      ]
+    })
+    const adapter = new OpenAIChatAdapter(() => localConfig, fetchFn as unknown as typeof fetch)
+    const events = await collect(adapter, turnInput())
+    expect(events).toContainEqual({
+      kind: 'tool-start',
+      id: 'call_r0_0',
+      name: 'echo_tool',
+      input: { message: 'hi' }
+    })
+    expect(events).toContainEqual({ kind: 'tool-result', id: 'call_r0_0', isError: false, text: 'echo:hi' })
+    // Native follow-up request translates the assistant tool_calls + tool reply.
+    const chatCalls = fetchFn.mock.calls.filter((c) => String(c[0]).endsWith('/api/chat'))
+    const second = JSON.parse((chatCalls[1][1] as RequestInit).body as string)
+    const roles = second.messages.map((m: { role: string }) => m.role)
+    expect(roles).toEqual(['system', 'user', 'assistant', 'tool'])
+    const asst = second.messages[2]
+    expect(asst.tool_calls[0].function.arguments).toEqual({ message: 'hi' })
+    expect(second.messages[3].tool_call_id).toBeUndefined()
+  })
+
+  it('falls back to the OpenAI-compatible path when /api/chat 404s (non-Ollama local)', async () => {
+    const fetchFn = routedFetch({
+      caps: [],
+      chat: [new Response('not found', { status: 404 })],
+      v1: [
+        sseBody([{ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] }]),
+        sseBody([{ choices: [{ delta: { content: 'two' }, finish_reason: 'stop' }] }])
+      ]
+    })
+    const adapter = new OpenAIChatAdapter(() => localConfig, fetchFn as unknown as typeof fetch)
+    const events = await collect(adapter, turnInput())
+    expect(events).toContainEqual({ kind: 'text-delta', text: 'ok' })
+    expect(fetchFn.mock.calls.some((c) => String(c[0]).endsWith('/api/chat'))).toBe(true)
+    expect(fetchFn.mock.calls.some((c) => String(c[0]).endsWith('/v1/chat/completions'))).toBe(true)
+    // A second turn skips the native attempt entirely (fallback is sticky).
+    await collect(adapter, turnInput({ prompt: 'again' }))
+    const lastUrl = String(fetchFn.mock.calls[fetchFn.mock.calls.length - 1][0])
+    expect(lastUrl).toBe('http://localhost:11434/v1/chat/completions')
   })
 })
 

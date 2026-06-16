@@ -66,6 +66,11 @@ describe('executeTool', () => {
     expect(outcome.text).toContain('Invalid arguments')
   })
 
+  it('treats null for an optional arg as omitted (weak models send null)', async () => {
+    const outcome = await executeTool([echo], 'echo_tool', { message: 'hi', times: null })
+    expect(outcome).toEqual({ text: 'hi', isError: false })
+  })
+
   it('reports unknown tools as errors', async () => {
     const outcome = await executeTool([echo], 'nope', {})
     expect(outcome).toEqual({ text: 'Unknown tool: nope', isError: true })

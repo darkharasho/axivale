@@ -1,5 +1,5 @@
 import path from 'path'
-import { resolveAsset, OllamaAsset } from './assets'
+import { resolveAsset, OllamaAsset, ArchiveType } from './assets'
 import { parsePullLine, PullProgress } from './pullProgress'
 
 export interface OllamaStatus {
@@ -20,7 +20,7 @@ export interface OllamaDeps {
   rmSync: (p: string, opts: { recursive: boolean; force: boolean }) => void
   chmodSync: (p: string, mode: number) => void
   download: (url: string, dest: string, onPct: (pct: number) => void) => Promise<void>
-  extract: (archive: 'tgz' | 'zip', src: string, destDir: string) => Promise<void>
+  extract: (archive: ArchiveType, src: string, destDir: string) => Promise<void>
   spawnServe: (binPath: string, endpoint: string) => ServeHandle
   httpGet: (url: string) => Promise<{ models?: { name: string }[] }>
   httpPullStream: (model: string, onLine: (line: string) => void, endpoint: string) => Promise<void>

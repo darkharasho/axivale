@@ -21,6 +21,15 @@ describe('tarArgs', () => {
   it('uses -xf for zip', () => {
     expect(tarArgs('zip', '/a.zip', '/dest')).toEqual(['-xf', '/a.zip', '-C', '/dest'])
   })
+  it('uses --zstd -xf for zst', () => {
+    expect(tarArgs('zst', '/a.tar.zst', '/dest')).toEqual([
+      '--zstd',
+      '-xf',
+      '/a.tar.zst',
+      '-C',
+      '/dest'
+    ])
+  })
 })
 
 describe('extractArchive', () => {

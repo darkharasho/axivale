@@ -123,6 +123,7 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
     modelOptions: string[]
   } | null>(null)
   const [chosenModel, setChosenModel] = useState<string>('')
+  const [pullingModel, setPullingModel] = useState<string | null>(null)
 
   // App / updates
   const [version, setVersion] = useState('')
@@ -387,6 +388,25 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
       setOllamaErr(e instanceof Error ? e.message : 'Setup failed')
     } finally {
       setOllamaBusy(false)
+      setOllamaPct(null)
+    }
+  }
+
+  // Pull a model that isn't installed yet straight from the picker, then make
+  // it the active local model.
+  const pullModelIntoPicker = async (model: string): Promise<void> => {
+    setOllamaErr(null)
+    setOllamaBusy(true)
+    setPullingModel(model)
+    try {
+      await window.officer.ollamaPullModel(model)
+      await checkLocal()
+      await pickProviderModel('local', model)
+    } catch (e) {
+      setOllamaErr(e instanceof Error ? e.message : `Failed to download ${model}`)
+    } finally {
+      setOllamaBusy(false)
+      setPullingModel(null)
       setOllamaPct(null)
     }
   }
@@ -705,22 +725,50 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
             {localStatus && (
               <div className={`sstatus ${localStatus.ok ? 'ok' : 'err'}`}>{localStatus.msg}</div>
             )}
-            {localModels.length > 0 && (
-              <>
-                <label className="slabel">Model</label>
-                <div className="picker">
-                  {localModels.map((m) => (
-                    <button
-                      key={m}
-                      className={`pi${localModel === m ? ' sel' : ''}`}
-                      onClick={() => pickProviderModel('local', m)}
-                    >
-                      {m}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+            {localModels.length > 0 &&
+              (() => {
+                // Show recommended models alongside the installed ones so the user
+                // can tell what's installed and pull a recommended model they lack.
+                const recommended = hw?.modelOptions ?? []
+                const rows = [...recommended, ...localModels.filter((m) => !recommended.includes(m))]
+                return (
+                  <>
+                    <label className="slabel">Model</label>
+                    <div className="picker">
+                      {rows.map((m) => {
+                        const installed = localModels.includes(m)
+                        const isPulling = pullingModel === m
+                        return (
+                          <button
+                            key={m}
+                            className={`pi model-row${localModel === m ? ' sel' : ''}`}
+                            disabled={ollamaBusy}
+                            title={installed ? 'Installed' : 'Not installed — click to download'}
+                            onClick={() =>
+                              installed ? pickProviderModel('local', m) : pullModelIntoPicker(m)
+                            }
+                          >
+                            <span className="model-name">{m}</span>
+                            <span className={`model-tag${installed ? ' on' : ''}`}>
+                              {isPulling
+                                ? `downloading… ${ollamaPct ?? 0}%`
+                                : installed
+                                  ? '✓ installed'
+                                  : '↓ download'}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {ollamaErr && <div className="sstatus err">{ollamaErr}</div>}
+                    <p className="shelp">
+                      <span className="model-tag on">✓ installed</span> models are ready to use.
+                      Click a <span className="model-tag">↓ download</span> model to fetch it. The
+                      model with the accent border is active.
+                    </p>
+                  </>
+                )
+              })()}
             {localModels.length === 0 && (
               <div className="ollama-setup">
                 {hw && (

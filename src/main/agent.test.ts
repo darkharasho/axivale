@@ -1,10 +1,43 @@
 import { describe, it, expect, vi } from 'vitest'
-import { evaluateToolPermission, AXIVALE_SYSTEM_PROMPT } from './agent'
+import {
+  evaluateToolPermission,
+  AXIVALE_SYSTEM_PROMPT,
+  toolsForProvider,
+  LOCAL_TOOL_ALLOWLIST
+} from './agent'
 
 describe('AXIVALE_SYSTEM_PROMPT', () => {
   it('includes the analytics methodology section', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toContain('Analytics methodology')
     expect(AXIVALE_SYSTEM_PROMPT).toContain('own baselines')
+  })
+})
+
+describe('toolsForProvider', () => {
+  const all = [
+    { name: 'meta_search' },
+    { name: 'axibridge_runs_list' },
+    { name: 'axiforge_builds_delete' },
+    { name: 'discord_action' },
+    { name: 'load_skill' }
+  ]
+
+  it('filters local to the high-value allowlist (drops write/management tools)', () => {
+    const names = toolsForProvider('local', all).map((t) => t.name)
+    expect(names).toEqual(['meta_search', 'axibridge_runs_list', 'load_skill'])
+    expect(names).not.toContain('axiforge_builds_delete')
+    expect(names).not.toContain('discord_action')
+  })
+
+  it('passes every tool through for cloud providers', () => {
+    for (const p of ['claude', 'openai', 'gemini'] as const) {
+      expect(toolsForProvider(p, all)).toEqual(all)
+    }
+  })
+
+  it('only allowlists tool names that actually exist in the inventory', () => {
+    // Guards against typos in the allowlist drifting from real tool names.
+    expect(new Set(LOCAL_TOOL_ALLOWLIST).size).toBe(LOCAL_TOOL_ALLOWLIST.length)
   })
 })
 

@@ -750,6 +750,25 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('agent:send', async (event, conversationId: string, prompt: string, forcedSkillId?: string) => {
+    // Local tier: make sure an Ollama server is up before the turn hits it
+    // (start the managed one if the user's isn't running), so a stopped server
+    // surfaces as a clear message instead of a raw "fetch failed".
+    if (providerConfig().provider === 'local') {
+      try {
+        await ollama.ensureServerRunning()
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err)
+        if (!event.sender.isDestroyed()) {
+          event.sender.send('agent:event', {
+            kind: 'done',
+            sessionId: null,
+            error: `Local model server isn't running and couldn't be started (${detail}). Open Settings → AI provider → Local to set it up.`,
+            conversationId
+          })
+        }
+        return
+      }
+    }
     await agent.runTurn(conversationId, prompt, (agentEvent) => {
       if (!event.sender.isDestroyed()) {
         event.sender.send('agent:event', { ...agentEvent, conversationId })

@@ -34,6 +34,18 @@ export function toToolSpecs(tools: Tools): ToolSpec[] {
   })
 }
 
+/** Drop top-level keys whose value is null. Weak models emit `null` for
+ *  optional params instead of omitting them, which Zod's `.optional()` (accepts
+ *  undefined, not null) then rejects. Treating null as "not provided" lets the
+ *  call validate. */
+function dropNullArgs(input: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(input)) {
+    if (v !== null) out[k] = v
+  }
+  return out
+}
+
 /**
  * Validates input against the tool's Zod schema and runs its handler.
  * The Claude SDK does this validation internally; non-Claude adapters call
@@ -46,7 +58,7 @@ export async function executeTool(
 ): Promise<ToolOutcome> {
   const t = tools.find((candidate) => candidate.name === name)
   if (!t) return { text: `Unknown tool: ${name}`, isError: true }
-  const parsed = zodObjectOf(t).safeParse(input)
+  const parsed = zodObjectOf(t).safeParse(dropNullArgs(input))
   if (!parsed.success) {
     return { text: `Invalid arguments for ${name}: ${parsed.error.message}`, isError: true }
   }

@@ -44,7 +44,11 @@ describe('OllamaManager.install', () => {
     const m = new OllamaManager('/ud', deps)
     await m.install(() => {})
     expect(deps.download).toHaveBeenCalledTimes(1)
-    expect(deps.extract).toHaveBeenCalledWith('tgz', expect.stringContaining('.tgz'), expect.stringContaining('/ud/ollama'))
+    expect(deps.extract).toHaveBeenCalledWith(
+      'zst',
+      expect.stringContaining('.zst'),
+      expect.stringContaining('/ud/ollama')
+    )
     expect(deps.chmodSync).toHaveBeenCalled()
   })
 
