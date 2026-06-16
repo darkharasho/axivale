@@ -112,5 +112,14 @@ export const WIKI_REF_PAGES: WikiRefPage[] = [
   { category: 'mechanics', title: 'Defiance bar' },
   { category: 'mechanics', title: 'Crowd control' },
   { category: 'mechanics', title: 'Downed state' },
-  { category: 'mechanics', title: 'Game mechanics' }
+  { category: 'mechanics', title: 'Game mechanics' },
+
+  { category: 'legendaries', title: 'Legendary weapon' },
+  { category: 'legendaries', title: 'Legendary armor' },
+  { category: 'legendaries', title: 'Legendary trinket' },
+  { category: 'legendaries', title: 'Gift of Maguuma Mastery' },
+  { category: 'masteries', title: 'Mastery' },
+  { category: 'masteries', title: 'Mastery point' },
+  { category: 'achievements', title: 'Achievement' },
+  { category: 'achievements', title: 'Collections' }
 ]
