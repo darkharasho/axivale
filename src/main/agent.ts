@@ -2,6 +2,7 @@ import { buildOfficerTools, type ToolDeps } from './tools'
 import { buildTurnSystemPrompt } from './skillPrompt'
 import type { Skill } from './skillStore'
 import { buildMetaReference } from './metaPrompt'
+import { buildPlaybookReference } from './playbookPrompt'
 import type { MetaMode } from './metaStore'
 import { MCP_PREFIX, type AgentEvent, type ProviderConfig, type ProviderName } from './providers/types'
 import { evaluateToolPermission } from './providers/permission'
@@ -236,7 +237,8 @@ export class AgentService {
         prompt: promptText,
         systemPrompt:
           buildTurnSystemPrompt(AXIVALE_SYSTEM_PROMPT, skills, forced) +
-          buildMetaReference(this.deps.meta()),
+          buildMetaReference(this.deps.meta()) +
+          buildPlaybookReference(this.deps.meta()),
         tools,
         confirm: this.deps.confirm,
         signal: abort.signal
