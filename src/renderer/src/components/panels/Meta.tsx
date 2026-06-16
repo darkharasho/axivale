@@ -5,6 +5,83 @@ import remarkGfm from 'remark-gfm'
 import type { RendererMetaMode, RendererMetaProgress } from '../../../../preload/index.d'
 import MetaIndexInspector from '../MetaIndexInspector'
 
+function PlaybookSection({ mode, onChange }: { mode: RendererMetaMode; onChange: () => void }): ReactElement {
+  const pb = mode.playbook
+  const [principles, setPrinciples] = useState(pb.principles)
+  const [overrides, setOverrides] = useState(pb.overrides)
+  const [deriving, setDeriving] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+
+  const synced = useRef({ principles: pb.principles, overrides: pb.overrides })
+  useEffect(() => {
+    // Adopt only genuine external changes (e.g. a derive/refresh) — don't re-echo our
+    // own saves over in-progress edits in the other field.
+    if (pb.principles !== synced.current.principles) {
+      setPrinciples(pb.principles)
+      synced.current.principles = pb.principles
+    }
+    if (pb.overrides !== synced.current.overrides) {
+      setOverrides(pb.overrides)
+      synced.current.overrides = pb.overrides
+    }
+  }, [pb.principles, pb.overrides])
+
+  const save = (patch: { principles?: string; overrides?: string; blessed?: boolean }): void => {
+    void window.officer.metaUpdatePlaybook(mode.id, patch).then(onChange)
+  }
+  const derive = (): void => {
+    setDeriving(true)
+    setMsg(null)
+    void window.officer.metaDeriveComp(mode.id).then((r) => {
+      setDeriving(false)
+      setMsg(r.ok ? 'Derived from AxiBridge reports.' : r.error ?? 'Failed.')
+      onChange()
+    })
+  }
+
+  const d = pb.derived
+  return (
+    <div className="meta-playbook">
+      <div className="srow">
+        <strong>Comp playbook</strong>
+        <label className="meta-bless">
+          <input type="checkbox" checked={pb.blessed} onChange={(e) => save({ blessed: e.target.checked })} /> blessed (used by AI)
+        </label>
+        <button className="sbtn" disabled={deriving} onClick={derive}>
+          {deriving ? 'Deriving…' : 'Refresh from AxiBridge'}
+        </button>
+      </div>
+      {msg && <p className="shelp">{msg}</p>}
+      {d ? (
+        <div className="meta-derived">
+          <p className="shelp">
+            {d.sampleSize} reports · {d.window.fromISO}–{d.window.toISO} · {d.sourceRepos.join(', ')}
+            {d.lowConfidence ? ' · low confidence' : ''} · squad ~{d.avgSquadSize}, {d.supportPct}% support
+          </p>
+          <p className="shelp">
+            Subgroup: {d.subgroup.core.join(' + ')}
+            {d.subgroup.flex.length ? ` + flex (${d.subgroup.flex.join(' / ')})` : ''}
+          </p>
+          <div className="meta-sources">
+            {d.professions.slice(0, 12).map((p, i) => (
+              <span className="meta-srcrow" key={`${p.name}-${i}`}>
+                {p.name}: {p.avgPerSquad}/squad ({p.presencePct}%, {p.runAs})
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="shelp">No derived baseline yet — click "Refresh from AxiBridge".</p>
+      )}
+      {/* saves on blur; an unmount before blur drops the in-flight edit — acceptable for notes fields */}
+      <label className="shelp" htmlFor={`pb-principles-${mode.id}`}>Principles</label>
+      <textarea id={`pb-principles-${mode.id}`} className="meta-edit" rows={6} value={principles} onChange={(e) => setPrinciples(e.target.value)} onBlur={() => save({ principles })} />
+      <label className="shelp" htmlFor={`pb-overrides-${mode.id}`}>Guild overrides</label>
+      <textarea id={`pb-overrides-${mode.id}`} className="meta-edit" rows={3} value={overrides} onChange={(e) => setOverrides(e.target.value)} onBlur={() => save({ overrides })} />
+    </div>
+  )
+}
+
 function ago(iso: string | null): string {
   if (!iso) return 'never'
   const ms = Date.now() - Date.parse(iso)
@@ -98,6 +175,7 @@ export default function Meta(): ReactElement {
               )}
             </h2>
             <ModeSummary notes={m.notes} />
+            <PlaybookSection mode={m} onChange={refresh} />
             <div className="meta-sources">
               {m.sources.map((s) => {
                 const isFetching = fetching[m.id] === s.url
