@@ -8,6 +8,7 @@ import { MetaRefresher, type MetaProgress } from './refresh'
 import type { RawCache } from './cache'
 import type { MetaFetcher, FetchResult } from './fetcher'
 import { FakeMetaIndex } from './rag/testFake'
+import type { MetaIndex } from './rag/index'
 
 function store(): MetaStore {
   return new MetaStore(join(mkdtempSync(join(tmpdir(), 'refresh-')), 'meta.json'))
@@ -199,6 +200,38 @@ describe('MetaRefresher comp distillation', () => {
     const after = s.get(wvw.id)!
     expect(after.notes).toContain('Squad Composition')
     expect(after.notes).toContain('| Build | Role |')
+  })
+})
+
+describe('MetaRefresher corpus routing', () => {
+  it('routes guide pages to generalIndex and build pages to meta index', async () => {
+    function fakeIndex(): MetaIndex & { pages: string[] } {
+      const pages: string[] = []
+      return {
+        pages,
+        indexedHash: async () => null,
+        replacePage: async (url) => { pages.push(url) },
+        search: async () => [],
+        stats: async () => ({ total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }),
+        sample: async () => []
+      } as MetaIndex & { pages: string[] }
+    }
+
+    const metaIdx = fakeIndex()
+    const generalIdx = fakeIndex()
+    const r = new MetaRefresher({
+      // minimal deps; only ingest() is exercised here
+      store: {} as never, fetcher: {} as never, cache: {} as never,
+      model: (async () => null) as never, now: () => 0,
+      index: metaIdx, generalIndex: generalIdx
+    })
+    // @ts-expect-error exercise private ingest directly
+    await r.ingest('PvE', 'https://snowcrows.com/guides', [
+      { url: 'https://snowcrows.com/guides/fractals/cm', title: 'CM', text: 'a'.repeat(400) },
+      { url: 'https://snowcrows.com/builds/raids', title: 'Raids', text: 'b'.repeat(400) }
+    ])
+    expect(generalIdx.pages).toContain('https://snowcrows.com/guides/fractals/cm')
+    expect(metaIdx.pages).toContain('https://snowcrows.com/builds/raids')
   })
 })
 
