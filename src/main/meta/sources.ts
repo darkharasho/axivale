@@ -29,7 +29,9 @@ export const SOURCE_CONFIGS: SourceConfig[] = [
   { host: 'gw2mists.com', kind: 'browser', selector: '.gm-build-detail-page', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },
   { host: 'metabattle.com', kind: 'browser', selector: '#mw-content-text', linkSelector: '#mw-content-text a[href*="/wiki/"]' },
   // Discretize [dT] — fractal/CM, mechanics, and profession guides (general corpus).
-  { host: 'discretize.eu', kind: 'browser', selector: 'main, article', linkSelector: 'a[href*="/fractals/"], a[href*="/guides/"]', crawlDepth: 2 },
+  // Content lives at archive.discretize.eu (a Gatsby SSR app with hashed emotion-CSS
+  // class names), so target the stable Gatsby root wrapper rather than main/article.
+  { host: 'discretize.eu', kind: 'browser', selector: '#gatsby-focus-wrapper, main, article', linkSelector: 'a[href*="/fractals/"], a[href*="/guides/"]', crawlDepth: 2 },
   // --- WvW comp knowledge (Layer 3 mechanics + Layer 1 rules) ---
   { host: 'wiki.guildwars2.com', kind: 'wiki', wikiApi: 'https://wiki.guildwars2.com/api.php', content: 'rules' },
   { host: 'guildorder.com', kind: 'browser', selector: 'article, main', content: 'rules' }
