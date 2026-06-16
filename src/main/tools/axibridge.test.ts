@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildAxibridgeTools } from './axibridge'
+import type { JqEngine } from '../jqEngine'
 
 const fakeService = {
   reposStatus: vi.fn(async () => ({ repos: [{ repo: 'o/a', runs: 2, firstRun: '2026-06-01', lastRun: '2026-06-08', cachedReports: 1, lastIndexFetch: 1, error: null }] })),
@@ -22,6 +23,7 @@ describe('axibridge tools', () => {
       'axibridge_commander_stats',
       'axibridge_compare',
       'axibridge_player_stats',
+      'axibridge_query',
       'axibridge_render_chart',
       'axibridge_repos_status',
       'axibridge_run_summary',
@@ -61,5 +63,30 @@ describe('axibridge tools', () => {
     const res = (await byName('axibridge_run_summary').handler({ run_id: 'zzz' }, {})) as never as { isError?: boolean; content: Array<{ text: string }> }
     expect(res.isError).toBe(true)
     expect(res.content[0].text).toContain('zzz')
+  })
+})
+
+const fakeJq: JqEngine = {
+  run: async (_expr, input) => [(input as { rollup: { playerRows: unknown[] } }).rollup.playerRows]
+}
+const queryTools = buildAxibridgeTools(() => fakeService as never, fakeJq)
+const queryTool = queryTools.find((t) => t.name === 'axibridge_query')!
+
+describe('axibridge_query tool', () => {
+  it('runs a jq query and returns a table display for array-of-objects', async () => {
+    const res = (await queryTool.handler({ query: '.rollup.playerRows' }, {})) as never as {
+      content: Array<{ text: string }>
+      display?: { kind: string }
+    }
+    expect(res.display?.kind).toBe('table')
+    expect(JSON.parse(res.content[0].text)).toBeTruthy()
+  })
+
+  it('surfaces a bad query as an MCP error result, not an exception', async () => {
+    const boom: JqEngine = { run: async () => { throw new Error('jq: syntax error') } }
+    const t = buildAxibridgeTools(() => fakeService as never, boom).find((x) => x.name === 'axibridge_query')!
+    const res = (await t.handler({ query: '.[' }, {})) as never as { isError?: boolean; content: Array<{ text: string }> }
+    expect(res.isError).toBe(true)
+    expect(res.content[0].text).toContain('syntax error')
   })
 })

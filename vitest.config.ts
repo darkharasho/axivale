@@ -12,7 +12,11 @@ export default defineConfig({
     // native loader chokes on `.svg` ("Unknown file extension"). Inline it so
     // Vite transforms the `?raw` SVG imports (the old file: symlink, treated as
     // source, got this for free).
-    server: { deps: { inline: [/@axiapps\/forge-render/] } },
+    // jq-web is a CommonJS WASM module that itself resolves as a thenable. Under
+    // vitest's default externalization, the ESM namespace wrapper breaks the
+    // thenable interop ("Promise.prototype.then on incompatible receiver"). Inline
+    // it so Vite transforms it to a proper CJS interop default export.
+    server: { deps: { inline: [/@axiapps\/forge-render/, 'jq-web'] } },
     pool: 'forks',
     // User constraint: never exceed 2 workers (memory limits on this machine)
     poolOptions: { forks: { minForks: 1, maxForks: 2 } }
