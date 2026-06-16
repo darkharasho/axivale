@@ -77,6 +77,16 @@ function httpPullStream(model: string, onLine: (line: string) => void, endpoint:
         headers: { 'Content-Type': 'application/json' }
       },
       (res) => {
+        if (res.statusCode && res.statusCode >= 400) {
+          let errBody = ''
+          res.on('data', (chunk: Buffer) => {
+            errBody += chunk.toString()
+          })
+          res.on('end', () => {
+            reject(new Error(`Ollama pull failed: HTTP ${res.statusCode} ${errBody.trim()}`.trim()))
+          })
+          return
+        }
         let buf = ''
         res.on('data', (chunk: Buffer) => {
           buf += chunk.toString()
