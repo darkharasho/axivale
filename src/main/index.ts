@@ -53,6 +53,9 @@ import { fetchCategoryMembers } from './meta/wiki/skillCrawl'
 import { deriveCompFromRepos } from './meta/deriveComp'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
+import { OllamaManager } from './ollama/ollamaManager'
+import { createOllamaDeps } from './ollama/realDeps'
+import { detectHardware } from './ollama/hardware'
 import type { ProviderConfig, ProviderName } from './providers/types'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -189,6 +192,7 @@ app.whenReady().then(async () => {
   const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
   const wikiFacts = new WikiFactsClient()
   const wikiIndex = new LanceMetaIndex(join(app.getPath('userData'), 'wiki-lance'), metaEmbedder, 'wiki_chunks')
+  const ollama = new OllamaManager(app.getPath('userData'), createOllamaDeps())
   const sendLearnProgress = (e: LearnProgress): void => {
     const win = mainWindow
     if (win && !win.isDestroyed()) win.webContents.send('learn:progress', e)
@@ -302,6 +306,7 @@ app.whenReady().then(async () => {
     if (metaStartTimer) clearTimeout(metaStartTimer)
     wikiAbort.abort() // stop the wiki crawl mid-run; it resumes next launch
     metaFetcher.destroy()
+    ollama.stopServer()
     void axiforgeLauncher.releaseIfSpawned().finally(() => app.quit())
   })
 
@@ -636,6 +641,36 @@ app.whenReady().then(async () => {
           'No local model server found. Install Ollama from ollama.com, then run: ollama pull qwen3:8b'
       }
     }
+  })
+
+  ipcMain.handle('ollama:detect-hardware', () => detectHardware())
+
+  ipcMain.handle('ollama:get-status', () => ollama.getStatus())
+
+  ipcMain.handle('ollama:install', async (event) => {
+    const send = (channel: string, payload: unknown): void => {
+      BrowserWindow.fromWebContents(event.sender)?.webContents.send(channel, payload)
+    }
+    await ollama.install((p) => send('ollama:progress', { kind: 'install', ...p }))
+    await ollama.ensureServerRunning()
+    return ollama.getStatus()
+  })
+
+  ipcMain.handle('ollama:pull-model', async (event, model: string) => {
+    const send = (channel: string, payload: unknown): void => {
+      BrowserWindow.fromWebContents(event.sender)?.webContents.send(channel, payload)
+    }
+    await ollama.ensureServerRunning()
+    await ollama.pullModel(model, (p) => send('ollama:progress', { kind: 'pull', ...p }))
+    store.setSetting('provider', 'local')
+    store.setSetting('localModel', model)
+    store.setSetting('localEndpoint', ollama.getEndpoint())
+    return ollama.getStatus()
+  })
+
+  ipcMain.handle('ollama:uninstall', () => {
+    ollama.uninstall()
+    return ollama.getStatus()
   })
 
   // Credential readiness for the selected provider — drives the first-run nudge.

@@ -112,6 +112,18 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
   const [localModels, setLocalModels] = useState<string[]>([])
   const [localStatus, setLocalStatus] = useState<{ msg: string; ok: boolean } | null>(null)
 
+  // Ollama one-click setup wizard
+  const [ollamaBusy, setOllamaBusy] = useState(false)
+  const [ollamaStage, setOllamaStage] = useState<string>('')
+  const [ollamaPct, setOllamaPct] = useState<number | null>(null)
+  const [ollamaErr, setOllamaErr] = useState<string | null>(null)
+  const [hw, setHw] = useState<{
+    totalRamGb: number
+    recommendedModel: string
+    modelOptions: string[]
+  } | null>(null)
+  const [chosenModel, setChosenModel] = useState<string>('')
+
   // App / updates
   const [version, setVersion] = useState('')
   const [updateMsg, setUpdateMsg] = useState('')
@@ -344,6 +356,40 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
       }),
     []
   )
+
+  useEffect(() => {
+    const off = window.officer.onOllamaProgress((p) => {
+      setOllamaStage(p.stage || p.status || '')
+      setOllamaPct(typeof p.percent === 'number' ? p.percent : null)
+    })
+    return off
+  }, [])
+
+  useEffect(() => {
+    window.officer.ollamaDetectHardware().then((info) => {
+      setHw(info)
+      setChosenModel((cur) => cur || info.recommendedModel)
+    })
+  }, [])
+
+  const startOllamaSetup = async (): Promise<void> => {
+    setOllamaErr(null)
+    setOllamaBusy(true)
+    try {
+      const info = hw ?? (await window.officer.ollamaDetectHardware())
+      setHw(info)
+      const model = chosenModel || info.recommendedModel
+      await window.officer.ollamaInstall()
+      await window.officer.ollamaPullModel(model)
+      // Refresh the local provider's installed-model list so the picker shows up.
+      await checkLocal()
+    } catch (e) {
+      setOllamaErr(e instanceof Error ? e.message : 'Setup failed')
+    } finally {
+      setOllamaBusy(false)
+      setOllamaPct(null)
+    }
+  }
 
   async function checkUpdates(): Promise<void> {
     setUpdateMsg('checking…')
@@ -675,11 +721,57 @@ export default function Settings({ onChanged, onProviderChanged }: SettingsProps
                 </div>
               </>
             )}
-            <p className="shelp">
-              Runs entirely on this machine — free, private, no API key. Install Ollama from
-              ollama.com, then run <code>ollama pull qwen3:8b</code>. Local models are slower and
-              less reliable on multi-step tasks than the cloud providers.
-            </p>
+            {localModels.length === 0 && (
+              <div className="ollama-setup">
+                {hw && (
+                  <p className="shelp">
+                    Detected {hw.totalRamGb} GB RAM — recommended <strong>{hw.recommendedModel}</strong>.
+                  </p>
+                )}
+                {hw && (
+                  <>
+                    <label className="slabel">Model</label>
+                    <div className="picker">
+                      {hw.modelOptions.map((m) => (
+                        <button
+                          key={m}
+                          className={`pi${chosenModel === m ? ' sel' : ''}`}
+                          disabled={ollamaBusy}
+                          onClick={() => setChosenModel(m)}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                <div className="srow">
+                  <button className="sbtn" disabled={ollamaBusy} onClick={startOllamaSetup}>
+                    {ollamaBusy ? 'Setting up…' : 'Set up local AI (one click)'}
+                  </button>
+                </div>
+                {ollamaBusy && (
+                  <div className="ollama-progress">
+                    <div className="sstatus">{ollamaStage}</div>
+                    {ollamaPct !== null && <progress max={100} value={ollamaPct} />}
+                  </div>
+                )}
+                {ollamaErr && (
+                  <div className="sstatus err">
+                    {ollamaErr}{' '}
+                    <button className="sbtn out" onClick={startOllamaSetup}>
+                      Retry
+                    </button>
+                  </div>
+                )}
+                <p className="shelp">
+                  Installs a private, self-contained Ollama just for AxiVale — no admin rights,
+                  nothing else on your system is touched. Or install it yourself from ollama.com
+                  and run <code>ollama pull qwen3:8b</code>. Local models are slower and less
+                  reliable on multi-step tasks than the cloud providers.
+                </p>
+              </div>
+            )}
           </>
         )}
       </div>

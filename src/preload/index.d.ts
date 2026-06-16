@@ -240,6 +240,14 @@ export interface OfficerApi {
   onAxibridgeProgress(cb: (message: string) => void): () => void
   onMetaProgress(cb: (e: RendererMetaProgress) => void): () => void
   onLearnProgress(cb: (e: RendererLearnProgress) => void): () => void
+  ollamaDetectHardware(): Promise<{ totalRamGb: number; recommendedModel: string; modelOptions: string[] }>
+  ollamaGetStatus(): Promise<{ installed: boolean; serverRunning: boolean; version: string | null; model: string | null }>
+  ollamaInstall(): Promise<{ installed: boolean; serverRunning: boolean; version: string | null; model: string | null }>
+  ollamaPullModel(model: string): Promise<{ installed: boolean; serverRunning: boolean; version: string | null; model: string | null }>
+  ollamaUninstall(): Promise<{ installed: boolean; serverRunning: boolean; version: string | null; model: string | null }>
+  onOllamaProgress(
+    cb: (p: { kind: string; stage?: string; status?: string; percent?: number }) => void
+  ): () => void
 }
 
 export type UpdateStatus =
