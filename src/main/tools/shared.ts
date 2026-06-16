@@ -38,6 +38,8 @@ export interface ToolDeps {
   metaIndex: () => MetaIndex
   /** GW2-wiki reference corpus search (lazy). */
   wikiIndex: () => MetaIndex
+  /** General-guides corpus search (lazy; resolved per-call). */
+  generalIndex: () => MetaIndex
   /** On-demand GW2 wiki skill/trait facts with PvE/WvW/PvP splits. */
   wikiFacts: WikiFacts
   /** Load a build page (Cloudflare-aware) and return its full HTML, or null. */
