@@ -89,12 +89,12 @@ export function checkComp(roster: Roster): CompReport {
         message: `Subgroup ${i + 1} has Pure DPS but no stability source (no build provides Stability).`
       })
     }
-    const stabilityProviders = sg.filter((e) => providesStability(e.role)).length
-    if (stabilityProviders >= 2) {
+    const hasCleanse = sg.some((e) => providesCleanse(e.role))
+    if (!hasCleanse) {
       findings.push({
         severity: 'warning',
         subgroup: i,
-        message: `Subgroup ${i + 1} doubles its stability source — boons cap at 5 targets, so the second is largely wasted here.`
+        message: `Subgroup ${i + 1} has no cleanse support — at least 1 cleanse per subgroup is expected.`
       })
     }
   })
@@ -112,7 +112,7 @@ export function checkComp(roster: Roster): CompReport {
     findings.push({
       severity: 'warning',
       subgroup: null,
-      message: 'No Secondary Support anywhere — no dedicated healing/condition cleanse/barrier sustain.'
+      message: 'No healing or cleanse source anywhere in the squad — no condition cleanse / barrier sustain.'
     })
   }
 

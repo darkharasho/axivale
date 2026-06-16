@@ -28,12 +28,20 @@ describe('checkComp', () => {
     expect(r.findings.some((f) => /boon strip/i.test(f.message) && f.severity === 'warning')).toBe(true)
   })
 
-  it('flags doubled Primary Support in one subgroup as a warning', () => {
+  it('does NOT flag two stability supports in a subgroup (2 stab is normal)', () => {
     const roster: Roster = {
-      subgroups: [subgroup(['Primary Support', 'Primary Support', 'Pure DPS', 'Pure DPS', 'Pure DPS'])]
+      subgroups: [subgroup(['Primary Support', 'Primary Support', 'Secondary Support', 'Pure DPS', 'Pure DPS'])]
     }
     const r = checkComp(roster)
-    expect(r.findings.some((f) => /doubl/i.test(f.message) && f.severity === 'warning')).toBe(true)
+    expect(r.findings.some((f) => /doubl/i.test(f.message))).toBe(false)
+  })
+
+  it('warns when a subgroup has no cleanse support', () => {
+    const roster: Roster = {
+      subgroups: [subgroup(['Primary Support', 'Tertiary Support', 'Pure DPS', 'Pure DPS', 'Boon Strip DPS'])]
+    }
+    const r = checkComp(roster)
+    expect(r.findings.some((f) => /cleanse/i.test(f.message) && f.subgroup === 0)).toBe(true)
   })
 
   it('reports an unknown role instead of silently passing', () => {
@@ -60,6 +68,14 @@ describe('checkComp', () => {
     const roster: Roster = { subgroups: [[]] }
     const r = checkComp(roster)
     expect(r.findings.some((f) => /empty/i.test(f.message))).toBe(true)
+  })
+
+  it('does not warn about cleanse when a subgroup has a Secondary Support', () => {
+    const roster: Roster = {
+      subgroups: [subgroup(['Primary Support', 'Secondary Support', 'Pure DPS', 'Pure DPS', 'Boon Strip DPS'])]
+    }
+    const r = checkComp(roster)
+    expect(r.findings.some((f) => /cleanse/i.test(f.message))).toBe(false)
   })
 
   it('oversized subgroup with 2 Primary Support does not emit a doubling warning', () => {
