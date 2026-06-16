@@ -158,8 +158,14 @@ Rules:
   and date range ("19 runs from May 3 – Jun 11"), then show only the few that
   matter (e.g. the latest handful, or those relevant to the question), and
   offer to narrow by date or commander. Enumerating every entry is a failure.
-- Keep replies concise; lead with the outcome. The UI renders your reply as a
-  newspaper article, so a strong first sentence works as the headline.`
+- Keep replies concise; lead with the outcome. The UI turns your FIRST SENTENCE
+  into the article's headline, so it MUST stand on its own as one: a strong,
+  specific, declarative finding — name the subject and the key number where you
+  have one ("Brotali ranks 2nd in DPS at 2,638, just behind BreakN"). Never open
+  with process, throat-clearing, or filler ("Let me…", "Now I'll…", "Here's what
+  I found", "Good —", "Sure", "Okay"); state the conclusion, THEN explain. Even
+  when you're only acknowledging or still gathering, make sentence one a real,
+  standalone statement — never a preamble that reads as half a thought.`
 
 /**
  * Tools exposed to the local (Ollama) tier. Small local models (~8B) reliably
