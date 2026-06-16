@@ -12,6 +12,7 @@ import type { DerivedComp } from './meta/compDerive'
 export interface MetaSource {
   label: string
   url: string
+  group: 'meta' | 'wiki' | 'general'
   status: 'ok' | 'error' | 'never'
   fetchedAt: string | null
   error: string | null
@@ -37,7 +38,7 @@ export interface MetaMode {
 
 type SeedShape = {
   mode: string
-  sources: Array<{ label: string; url: string }>
+  sources: Array<{ label: string; url: string; group?: 'meta' | 'wiki' | 'general' }>
   notes?: string
   playbook?: { principles?: string; blessed?: boolean }
 }
@@ -72,8 +73,8 @@ const DEFAULT_SEED: SeedShape[] = [
     mode: 'WvW',
     sources: [
       // Layer 3 — mechanics truth (wiki)
-      { label: 'GW2 Wiki (Squad)', url: 'https://wiki.guildwars2.com/wiki/Squad' },
-      { label: 'GW2 Wiki (Boon)', url: 'https://wiki.guildwars2.com/wiki/Boon' },
+      { label: 'GW2 Wiki (Squad)', url: 'https://wiki.guildwars2.com/wiki/Squad', group: 'wiki' },
+      { label: 'GW2 Wiki (Boon)', url: 'https://wiki.guildwars2.com/wiki/Boon', group: 'wiki' },
       // Layer 1 — composition rules (WvW guides)
       { label: 'Snowcrows (WvW Roles)', url: 'https://snowcrows.com/guides/wvw/wvw-basics-understanding-roles' },
       { label: 'Guild Order (WvW Squad Leadership)', url: 'https://guildorder.com/games/gw2/guides/wvw-squad-leadership' },
@@ -90,6 +91,16 @@ const DEFAULT_SEED: SeedShape[] = [
     sources: [
       { label: 'MetaBattle (Roaming)', url: 'https://metabattle.com/wiki/WvW_Roaming' },
       { label: 'GuildJen (Roaming)', url: 'https://guildjen.com/gw2-wvw-builds/' }
+    ]
+  }
+  ,{
+    mode: 'General',
+    sources: [
+      { label: 'Snowcrows (Guides)', url: 'https://snowcrows.com/guides', group: 'general' },
+      { label: 'GuildJen (Guides)', url: 'https://guildjen.com/category/guides/', group: 'general' },
+      { label: 'Hardstuck (Guides)', url: 'https://hardstuck.gg/gw2/guides/', group: 'general' },
+      { label: 'Discretize (Fractals)', url: 'https://next.discretize.eu/fractals/', group: 'general' },
+      { label: 'Discretize (Guides)', url: 'https://next.discretize.eu/guides/', group: 'general' }
     ]
   }
 ]
@@ -133,9 +144,10 @@ export class MetaStore {
       }
       const synced: MetaSource[] = seed.sources.map((s) => {
         const prev = existing.sources.find((p) => p.url === s.url)
+        const group = s.group ?? 'meta'
         return prev
-          ? { ...prev, label: s.label }
-          : { label: s.label, url: s.url, status: 'never', fetchedAt: null, error: null }
+          ? { ...prev, label: s.label, group }
+          : { label: s.label, url: s.url, group, status: 'never', fetchedAt: null, error: null }
       })
       if (JSON.stringify(existing.sources) !== JSON.stringify(synced)) {
         existing.sources = synced
@@ -152,6 +164,7 @@ export class MetaStore {
       sources: seed.sources.map((s) => ({
         label: s.label,
         url: s.url,
+        group: s.group ?? 'meta',
         status: 'never' as const,
         fetchedAt: null,
         error: null
@@ -181,6 +194,7 @@ export class MetaStore {
       sources: (m.sources ?? []).map((s) => ({
         label: s.label,
         url: s.url,
+        group: s.group ?? 'meta',
         status: s.status ?? 'never',
         fetchedAt: s.fetchedAt ?? null,
         error: s.error ?? null
@@ -230,6 +244,7 @@ export class MetaStore {
         return {
           label: s.label,
           url: s.url,
+          group: prev?.group ?? 'meta',
           status: prev?.status ?? 'never',
           fetchedAt: prev?.fetchedAt ?? null,
           error: prev?.error ?? null

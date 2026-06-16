@@ -198,6 +198,39 @@ describe('MetaStore provenance', () => {
   })
 })
 
+describe('MetaStore groups', () => {
+  it('seeds a General mode whose sources are group=general', () => {
+    const store = new MetaStore(tmpFile())
+    const general = store.list().find((m) => m.mode === 'General')
+    expect(general).toBeTruthy()
+    expect(general!.sources.length).toBeGreaterThan(0)
+    expect(general!.sources.every((s) => s.group === 'general')).toBe(true)
+  })
+
+  it('tags WvW GW2-wiki sources as group=wiki and build sources as group=meta', () => {
+    const store = new MetaStore(tmpFile())
+    const wvw = store.list().find((m) => m.mode === 'WvW')!
+    const wikiSrc = wvw.sources.find((s) => s.url.includes('wiki.guildwars2.com'))!
+    const buildSrc = wvw.sources.find((s) => s.url.includes('metabattle.com'))!
+    expect(wikiSrc.group).toBe('wiki')
+    expect(buildSrc.group).toBe('meta')
+  })
+
+  it('normalizes a legacy source with no group to meta', () => {
+    const path = tmpFile()
+    writeFileSync(path, JSON.stringify({
+      modes: [{
+        id: 'x', mode: 'PvE',
+        sources: [{ label: 'L', url: 'https://snowcrows.com/builds/raids', status: 'ok', fetchedAt: null, error: null }],
+        notes: '', playbook: {}, refreshedAt: null, updatedAt: 'now'
+      }]
+    }))
+    const store = new MetaStore(path)
+    const pve = store.list().find((m) => m.mode === 'PvE')!
+    expect(pve.sources[0].group).toBe('meta')
+  })
+})
+
 describe('MetaStore reconcile', () => {
   it('seeds PvE with snowcrows raids/open-world + metabattle (no hardstuck)', () => {
     const s = new MetaStore(tmpPath())
