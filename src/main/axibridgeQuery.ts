@@ -1,4 +1,5 @@
 import type { DisplayPayload } from './providers/types'
+import type { JqEngine } from './jqEngine'
 
 export const DEFAULT_ROW_LIMIT = 50
 export const MAX_RESULT_BYTES = 20_000
@@ -179,4 +180,13 @@ export function shapeQueryResult(
 
   // Scalar or nested/irregular → code block.
   return { value: result, display: codeDisplay(opts.title, result) }
+}
+
+export async function runAxibridgeQuery(
+  deps: { service: QueryableService; jq: JqEngine },
+  args: QueryArgs
+): Promise<ShapedResult> {
+  const doc = await buildQueryDocument(deps.service, args)
+  const outputs = await deps.jq.run(args.query, doc)
+  return shapeQueryResult(outputs, { title: 'Query result', limit: args.limit ?? DEFAULT_ROW_LIMIT })
 }

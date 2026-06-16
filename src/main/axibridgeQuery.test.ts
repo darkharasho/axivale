@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildQueryDocument, shapeQueryResult, type QueryableService } from './axibridgeQuery'
+import { runAxibridgeQuery } from './axibridgeQuery'
+import type { JqEngine } from './jqEngine'
 
 function fakeService(overrides: Partial<QueryableService> = {}): QueryableService {
   return {
@@ -107,5 +109,30 @@ describe('shapeQueryResult', () => {
     const value = shaped.value as { rows: unknown[]; truncated: boolean }
     expect(JSON.stringify(value).length).toBeLessThanOrEqual(20_000)
     expect(value.truncated).toBe(true)
+  })
+})
+
+describe('runAxibridgeQuery', () => {
+  it('feeds the document through jq and shapes the output', async () => {
+    const svc = fakeService()
+    const jq: JqEngine = {
+      run: vi.fn(async (expr: string, input: unknown) => {
+        expect(expr).toBe('.rollup.playerRows')
+        return [(input as { rollup: { playerRows: unknown[] } }).rollup.playerRows]
+      })
+    }
+    const shaped = await runAxibridgeQuery({ service: svc, jq }, { query: '.rollup.playerRows' })
+    expect(jq.run).toHaveBeenCalledOnce()
+    expect(shaped.display?.kind).toBe('table')
+  })
+
+  it('defaults the row limit to DEFAULT_ROW_LIMIT', async () => {
+    const svc = fakeService({
+      attendance: vi.fn(async () => ({ attendance: Array.from({ length: 60 }, (_, i) => ({ account: `P.${i}` })) }))
+    })
+    const jq: JqEngine = { run: vi.fn(async (_e, input) => [(input as { rollup: { playerRows: unknown[] } }).rollup.playerRows]) }
+    const shaped = await runAxibridgeQuery({ service: svc, jq }, { query: '.rollup.playerRows' })
+    expect((shaped.value as { total: number }).total).toBe(60)
+    expect((shaped.display as { data: { rows: unknown[] } }).data.rows).toHaveLength(50)
   })
 })
