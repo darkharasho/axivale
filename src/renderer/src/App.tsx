@@ -3,10 +3,9 @@ import './theme.css'
 import { applyEvent, type AgentEvent, type Turn } from './state'
 import Masthead, { type Section } from './components/Masthead'
 import MetaLearningBanner from './components/MetaLearningBanner'
-import Builds from './components/panels/Builds'
-import Comps from './components/panels/Comps'
+import Operations from './components/panels/Operations'
+import OperationsNav, { type OperationsSection } from './components/panels/OperationsNav'
 import Roster from './components/panels/Roster'
-import Bureau from './components/panels/Bureau'
 import Skills from './components/panels/Skills'
 import SkillsNav from './components/panels/SkillsNav'
 import { useSkills } from './components/panels/useSkills'
@@ -25,10 +24,8 @@ import type { RendererConversation, RendererMetaMode, RendererMetaProgress } fro
 
 const SECTION_TITLES: Record<Section, string> = {
   dispatches: 'Dispatches',
-  builds: 'Builds',
-  comps: 'Compositions',
+  operations: 'Operations',
   roster: 'Roster',
-  bureau: 'Bureau',
   skills: 'Skills',
   meta: 'Meta',
   settings: 'Settings'
@@ -107,6 +104,8 @@ export default function App(): ReactElement {
   const skillsCtl = useSkills()
   const skills = skillsCtl.skills
   const [forcedSkillId, setForcedSkillId] = useState<string | null>(null)
+  // Active sub-section of the merged Operations tab (Builds/Comps/Bureau).
+  const [operationsSection, setOperationsSection] = useState<OperationsSection>('builds')
 
   async function shareResponse(conversationId: string, turnId: number): Promise<void> {
     setShareState({ status: 'publishing' })
@@ -406,6 +405,8 @@ export default function App(): ReactElement {
           <MetaNav modes={metaModes} busy={metaBusy} active={activeMetaMode} onSelect={setActiveMetaMode} />
         ) : section === 'skills' ? (
           <SkillsNav ctl={skillsCtl} />
+        ) : section === 'operations' ? (
+          <OperationsNav active={operationsSection} onSelect={setOperationsSection} />
         ) : (
         <Editions
           items={editionItems}
@@ -448,10 +449,8 @@ export default function App(): ReactElement {
           {section === 'settings' && (
             <Settings section={settingsSection} onChanged={refreshStatus} onProviderChanged={() => void newConversation()} />
           )}
-          {section === 'builds' && <Builds />}
-          {section === 'comps' && <Comps />}
+          {section === 'operations' && <Operations active={operationsSection} />}
           {section === 'roster' && <Roster />}
-          {section === 'bureau' && <Bureau />}
           {section === 'skills' && <Skills ctl={skillsCtl} />}
           {section === 'meta' && (
             <Meta
@@ -490,7 +489,7 @@ export default function App(): ReactElement {
             </div>
           )}
         </div>
-        {section !== 'settings' && section !== 'meta' && section !== 'skills' && (
+        {(section === 'dispatches' || section === 'roster') && (
           <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
         )}
       </div>
