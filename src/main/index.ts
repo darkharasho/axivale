@@ -59,6 +59,7 @@ import { WikiFactsClient } from './meta/wikiFacts'
 import { WikiClient } from '@axiapps/gw2-data/wiki'
 import { WikiRefIngester } from './meta/wiki/ingest'
 import { fetchCategoryMembers } from './meta/wiki/skillCrawl'
+import { liveWikiSearch } from './meta/wiki/liveSearch'
 import { deriveCompFromRepos } from './meta/deriveComp'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
@@ -203,6 +204,7 @@ app.whenReady().then(async () => {
   const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
   const wikiFacts = new WikiFactsClient()
   const wikiIndex = new LanceMetaIndex(join(app.getPath('userData'), 'wiki-lance'), metaEmbedder, 'wiki_chunks')
+  const generalIndex = new LanceMetaIndex(join(app.getPath('userData'), 'general-lance'), metaEmbedder, 'general_chunks')
   const ollama = new OllamaManager(app.getPath('userData'), createOllamaDeps())
   const sendLearnProgress = (e: LearnProgress): void => {
     const win = mainWindow
@@ -238,6 +240,8 @@ app.whenReady().then(async () => {
     fetcher: metaFetcher,
     cache: metaCache,
     index: metaIndex,
+    wikiIndex,
+    generalIndex,
     model: (prompt) =>
       runClaudeOnce(prompt, {
         oauthToken: store.getSecret('claudeOauthToken'),
@@ -393,6 +397,11 @@ app.whenReady().then(async () => {
       },
       metaIndex: () => metaIndex,
       wikiIndex: () => wikiIndex,
+      generalIndex: () => generalIndex,
+      wikiLiveSearch: (q: string) => liveWikiSearch(q, {
+        fetchJson: (url) => fetch(url, { headers: { 'User-Agent': 'AxiVale/0.4 (https://github.com/darkharasho)' } }).then((r) => r.json()),
+        getWikitext: async (title) => (await new WikiClient().getWikitextBatch([title])).get(title) ?? null
+      }),
       wikiFacts,
       fetchBuildPage: (url: string) => metaFetcher.fetchBuildPage(url),
       fetchBuildPageRaw: (url: string) => metaFetcher.fetchBuildPageRaw(url),
@@ -990,6 +999,16 @@ app.whenReady().then(async () => {
     } catch {
       return []
     }
+  })
+
+  ipcMain.handle('general:index-stats', async () => {
+    try { return await generalIndex.stats() } catch { return { total: 0, byMode: {}, bySource: {}, lastIndexedAt: null } }
+  })
+  ipcMain.handle('general:index-sample', async (_e, opts: { mode?: string; limit: number }) => {
+    try { return await generalIndex.sample(opts) } catch { return [] }
+  })
+  ipcMain.handle('general:index-search', async (_e, query: string) => {
+    try { return await generalIndex.search(query, { k: 8 }) } catch { return [] }
   })
 
   function drainConfirms(): void {

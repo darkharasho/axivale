@@ -40,6 +40,8 @@ export interface ToolDeps {
   wikiIndex: () => MetaIndex
   /** General-guides corpus search (lazy; resolved per-call). */
   generalIndex: () => MetaIndex
+  /** On-demand live GW2 wiki search fallback (optional). */
+  wikiLiveSearch?: (q: string) => Promise<Array<{title:string;url:string;snippet:string}>>
   /** On-demand GW2 wiki skill/trait facts with PvE/WvW/PvP splits. */
   wikiFacts: WikiFacts
   /** Load a build page (Cloudflare-aware) and return its full HTML, or null. */

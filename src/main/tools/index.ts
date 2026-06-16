@@ -58,7 +58,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ...buildMetaSearchTools(deps.metaIndex),
     ...buildCompCheckTools(),
     ...buildGw2WikiTools(deps.wikiFacts),
-    ...buildGw2WikiSearchTools(deps.wikiIndex),
+    ...buildGw2WikiSearchTools(deps.wikiIndex, deps.wikiLiveSearch),
     ...buildGeneralSearchTools(deps.generalIndex)
   ]
 }
