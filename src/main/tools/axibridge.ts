@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { safeRich } from './shared'
 import type { AxibridgeService } from '../axibridgeService'
 import { localRunDate } from '../axibridgeRunDate'
+import { runAxibridgeQuery } from '../axibridgeQuery'
+import { jqEngine, type JqEngine } from '../jqEngine'
 
 const chartSpecSchema = z.object({
   type: z.enum(['line', 'bar', 'area']),
@@ -24,7 +26,10 @@ const msToHours = (ms: number): number => Math.round((ms / 3_600_000) * 10) / 10
  * every call — mirrors how other settings-derived clients are resolved.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkMcpToolDefinition<any>> {
+export function buildAxibridgeTools(
+  service: () => AxibridgeService,
+  jq: JqEngine = jqEngine
+): Array<SdkMcpToolDefinition<any>> {
   return [
     tool(
       'axibridge_repos_status',
@@ -232,6 +237,32 @@ export function buildAxibridgeTools(service: () => AxibridgeService): Array<SdkM
             }
           }
         }
+      })
+    ),
+    tool(
+      'axibridge_query',
+      [
+        'Deep query of ALL AxiBridge content with a jq expression — the escape hatch when the other axibridge_* tools cannot shape an answer.',
+        'The query runs over one document:',
+        '{ repos: ["owner/repo"], runs: [run index entries], rollup: { playerRows, commanderRows }, summaries: { <runId>: run summary } }.',
+        'playerRows/commanderRows carry raw fields (combatTimeMs, squadTimeMs, fightsLed, …) — project and aggregate them in the query.',
+        'summaries is EMPTY unless you scope per-run detail: pass from/to (loads the runs in that window) or runs[] (explicit ids).',
+        'Results are capped to `limit` rows (default 50); raise limit or narrow the query to see more. The full jq stream is returned.',
+        'Example: ".rollup.playerRows | sort_by(-.combatTimeMs) | .[] | {account, runs, combatTimeMs}"'
+      ].join(' '),
+      {
+        query: z.string().describe('jq expression evaluated over the AxiBridge document (see tool description for its shape).'),
+        from: z.string().optional().describe('Earliest date YYYY-MM-DD; also loads per-run summaries in range into .summaries'),
+        to: z.string().optional().describe('Latest date YYYY-MM-DD; also loads per-run summaries in range into .summaries'),
+        runs: z.array(z.string()).optional().describe('Explicit run ids to load into .summaries'),
+        limit: z.number().int().positive().optional().describe('Max rows in the result (default 50)')
+      },
+      safeRich(async ({ query, from, to, runs, limit }) => {
+        const { value, display } = await runAxibridgeQuery(
+          { service: service(), jq },
+          { query, from, to, runs, limit }
+        )
+        return { value, display }
       })
     ),
     tool(
