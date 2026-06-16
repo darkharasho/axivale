@@ -104,7 +104,18 @@ function resolvePreview(draft: RosterDraft, m: RendererReconciledMember): string
 function LinkCard({ ctl, m }: { ctl: RosterController; m: RendererReconciledMember }): ReactElement | null {
   if (!m.accountName) return null // only GW2-account rows are linkable here
   const options = ctl.discordMembers
-    .map((d) => ({ value: d.id, label: d.display_name || d.name || d.id }))
+    .map((d) => {
+      const dn = d.display_name?.trim()
+      const un = d.name?.trim()
+      const label = dn && un && dn !== un ? `${dn} (${un})` : dn || un || d.id
+      return {
+        value: d.id,
+        label,
+        icon: d.avatar,
+        initial: (dn || un || '?').charAt(0),
+        search: `${dn ?? ''} ${un ?? ''}` // match display name AND username
+      }
+    })
     .sort((a, b) => a.label.localeCompare(b.label))
   return (
     <div className="spcard">

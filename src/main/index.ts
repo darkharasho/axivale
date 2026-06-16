@@ -874,6 +874,21 @@ app.whenReady().then(async () => {
       haveInGame = false
     }
 
+    // TEMP diagnostics for the "same user not folding" report: do membersLinked
+    // member_ids match the Discord overview ids, and does any person span several?
+    try {
+      const overviewIds = new Set(discordMembers.map((d) => d.id))
+      const ids = linked.map((l) => l.member_id)
+      const inOverview = ids.filter((id) => overviewIds.has(id)).length
+      console.log(
+        `[roster] linked=${linked.length} uniqueMemberIds=${new Set(ids).size} idsInOverview=${inOverview}/${ids.length}`
+      )
+      console.log('[roster] sample linked entry:', JSON.stringify(linked[0]))
+      console.log('[roster] manual links:', JSON.stringify(rosterLinks.list()))
+    } catch (e) {
+      console.error('[roster] diag failed', e)
+    }
+
     // Guild-member role is stored per server (each has its own roles).
     let memberRoleId: string | null = null
     try {

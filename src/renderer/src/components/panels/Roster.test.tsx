@@ -102,7 +102,7 @@ describe('Roster panel (GW2-first + manual links)', () => {
     fireEvent.click(within(nav).getByText('Ghost.0000'))
     // open the Discord-user picker and choose Ghosty
     fireEvent.click(await screen.findByText(/pick a discord user/i))
-    fireEvent.click(await screen.findByText('Ghosty'))
+    fireEvent.click(await screen.findByText(/Ghosty \(ghosty\)/))
     await waitFor(() => expect(linkSet).toHaveBeenCalledWith('Ghost.0000', 'm9'))
   })
 

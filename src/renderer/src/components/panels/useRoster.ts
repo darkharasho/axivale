@@ -26,6 +26,22 @@ export interface DiscordMemberLite {
   id: string
   name?: string
   display_name?: string
+  /** Avatar image URL, when the overview provides one. */
+  avatar?: string
+}
+
+/** Build a Discord CDN avatar URL from whatever the overview member exposes
+ *  (a ready url, or an avatar hash + id), else undefined. */
+function avatarUrl(d: {
+  id: string
+  avatar?: string
+  avatar_url?: string
+  avatar_hash?: string
+}): string | undefined {
+  if (d.avatar_url) return d.avatar_url
+  const hash = d.avatar_hash ?? d.avatar
+  if (hash && /^[a-z0-9_]+$/i.test(hash)) return `https://cdn.discordapp.com/avatars/${d.id}/${hash}.png?size=32`
+  return undefined
 }
 
 /** Stable selection key — prefer the GW2 account (GW2-first rows keep their key
@@ -116,7 +132,15 @@ export function useRoster(active: boolean): RosterController {
       try {
         const ov = await axi<Overview>('discordOverview', true)
         setDiscordMembers(
-          (ov.members ?? []).map((d) => ({ id: d.id, name: d.name, display_name: d.display_name }))
+          (ov.members ?? []).map((d) => {
+            const raw = d as DiscordMemberLite & { avatar_url?: string; avatar_hash?: string }
+            return {
+              id: d.id,
+              name: d.name,
+              display_name: d.display_name,
+              avatar: avatarUrl(raw)
+            }
+          })
         )
       } catch {
         /* picker just stays empty */

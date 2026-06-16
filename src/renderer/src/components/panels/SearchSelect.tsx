@@ -3,6 +3,18 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactEle
 export interface SearchSelectOption {
   value: string
   label: string
+  /** Optional leading avatar image URL. */
+  icon?: string
+  /** Fallback letter shown in a placeholder circle when there's no icon. */
+  initial?: string
+  /** Extra text the filter should match (e.g. a username), beyond the label. */
+  search?: string
+}
+
+function Lead({ o }: { o: SearchSelectOption }): ReactElement | null {
+  if (o.icon) return <img className="ssel-ava" src={o.icon} alt="" />
+  if (o.initial) return <span className="ssel-ava ssel-ava-ph">{o.initial}</span>
+  return null
 }
 
 /**
@@ -45,7 +57,8 @@ export function SearchSelect({
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()
-    return needle ? options.filter((o) => o.label.toLowerCase().includes(needle)) : options
+    if (!needle) return options
+    return options.filter((o) => `${o.label} ${o.search ?? ''}`.toLowerCase().includes(needle))
   }, [options, q])
 
   // Navigable rows: the clear/placeholder option, then the filtered options.
@@ -77,7 +90,10 @@ export function SearchSelect({
   return (
     <div className="ssel" ref={ref}>
       <button type="button" className="ssel-btn" onClick={() => setOpen((o) => !o)}>
-        <span className={current ? '' : 'ph'}>{current ? current.label : placeholder}</span>
+        <span className={`ssel-cur${current ? '' : ' ph'}`}>
+          {current && <Lead o={current} />}
+          {current ? current.label : placeholder}
+        </span>
         <span className="caret">▾</span>
       </button>
       {open && (
@@ -99,6 +115,7 @@ export function SearchSelect({
                 onMouseEnter={() => setHi(i)}
                 onClick={() => choose(o.value)}
               >
+                <Lead o={o} />
                 {o.label}
               </button>
             ))}
