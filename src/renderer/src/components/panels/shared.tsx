@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { Hash } from 'lucide-react'
 import { classIconUrl } from './classIcons'
+import { classIconSvg } from './classIconSvg'
 
 /** Typed wrapper around the whitelisted AxiTools bridge. */
 export function axi<T>(method: string, ...args: unknown[]): Promise<T> {
@@ -84,6 +85,34 @@ export function ClassIcon({
       title={name ?? undefined}
       width={size}
       height={size}
+    />
+  )
+}
+
+/**
+ * GW2 class/elite-spec icon rendered as inline SVG — same wiki art as
+ * {@link ClassIcon} (profession color + black outline) but vector, so it stays
+ * crisp at any size. The stored markup self-sizes to the wrapper's height,
+ * keeping the icon's native aspect ratio. Returns nothing when the name isn't a
+ * known class/spec, so it's safe to drop in anywhere a name might appear.
+ */
+export function ClassIconSvg({
+  name,
+  size = 18
+}: {
+  name: string | null | undefined
+  size?: number
+}): ReactElement | null {
+  const svg = classIconSvg(name)
+  if (!svg) return null
+  return (
+    <span
+      className="classicon classicon-svg"
+      role="img"
+      aria-label={name ?? undefined}
+      title={name ?? undefined}
+      style={{ display: 'inline-block', height: size, lineHeight: 0 }}
+      dangerouslySetInnerHTML={{ __html: svg }}
     />
   )
 }

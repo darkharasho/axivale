@@ -4,8 +4,11 @@ import remarkGfm from 'remark-gfm'
 import { Camera, Check, X, Share2 } from 'lucide-react'
 import type { Turn } from '../state'
 import { rehypeEmojiIcons } from './rehypeEmojiIcons'
-import { renderEmojiSpan, renderExtLink } from './emojiIcons'
+import { rehypeClassIcons } from './rehypeClassIcons'
+import { renderExtLink } from './emojiIcons'
+import { renderRichSpan } from './richSpan'
 import { splitHeadline } from './headline'
+import { stripRawJson } from './sanitizeProse'
 import { couponLabel } from './ToolCoupon'
 import RichDisplay from './rich/RichDisplay'
 import WireThinking from './WireThinking'
@@ -82,7 +85,8 @@ export default function Article({
   conversationId: string | null
   onShare?: (conversationId: string, turnId: number) => void
 }): ReactElement {
-  const { headline, rest } = splitHeadline(turn.agentText)
+  const { headline, rest: rawRest } = splitHeadline(turn.agentText)
+  const rest = stripRawJson(rawRest)
   const thinking = !turn.done && turn.agentText.trim() === ''
   const streaming = !turn.done && turn.agentText.trim() !== ''
   const articleRef = useRef<HTMLDivElement>(null)
@@ -161,10 +165,10 @@ export default function Article({
                   single line — no bold/heading styling, no literal [text](url) syntax. */}
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeEmojiIcons]}
+                rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons]}
                 disallowedElements={['em', 'strong', 'code', 'del', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']}
                 unwrapDisallowed
-                components={{ p: ({ children }) => <>{children}</>, span: renderEmojiSpan, a: renderExtLink }}
+                components={{ p: ({ children }) => <>{children}</>, span: renderRichSpan, a: renderExtLink }}
               >
                 {headline}
               </ReactMarkdown>
@@ -195,8 +199,8 @@ export default function Article({
                       <Fragment key={i}>
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeEmojiIcons]}
-                          components={{ span: renderEmojiSpan, a: renderExtLink }}
+                          rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons]}
+                          components={{ span: renderRichSpan, a: renderExtLink }}
                         >
                           {seg}
                         </ReactMarkdown>
