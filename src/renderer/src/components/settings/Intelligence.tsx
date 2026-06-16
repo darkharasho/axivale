@@ -26,8 +26,8 @@ export interface IntelligenceProps {
   setLlmKey: (v: string) => void
   setCustomModel: (v: string) => void
   onAddLlmKey: (service: 'gemini' | 'openai') => void
-  onActivateLlmKey: (service: ProviderName, label: string) => void
-  onRemoveLlmKey: (service: ProviderName, label: string) => void
+  onActivateLlmKey: (service: 'gemini' | 'openai', label: string) => void
+  onRemoveLlmKey: (service: 'gemini' | 'openai', label: string) => void
   geminiModels: Array<{ value: string; label: string }>
   openaiModels: Array<{ value: string; label: string }>
   // local
@@ -120,13 +120,14 @@ export default function Intelligence(p: IntelligenceProps): ReactElement {
         </>
       )}
 
-      {(p.provider === 'gemini' || p.provider === 'openai') && (
+      {(p.provider === 'gemini' || p.provider === 'openai') &&
+        ((llmService: 'gemini' | 'openai') => (
         <>
           <Card title="API keys">
             <Keyring
-              keys={p.provider === 'gemini' ? p.geminiKeys : p.openaiKeys}
-              onActivate={(label) => p.onActivateLlmKey(p.provider, label)}
-              onRemove={(label) => p.onRemoveLlmKey(p.provider, label)}
+              keys={llmService === 'gemini' ? p.geminiKeys : p.openaiKeys}
+              onActivate={(label) => p.onActivateLlmKey(llmService, label)}
+              onRemove={(label) => p.onRemoveLlmKey(llmService, label)}
             />
             <Field label="Label">
               <input
@@ -140,7 +141,7 @@ export default function Intelligence(p: IntelligenceProps): ReactElement {
             <Field
               label="API key"
               help={
-                p.provider === 'gemini'
+                llmService === 'gemini'
                   ? 'Create a free key at aistudio.google.com → Get API key.'
                   : 'Create a key at platform.openai.com → API keys.'
               }
@@ -150,7 +151,7 @@ export default function Intelligence(p: IntelligenceProps): ReactElement {
                 type="password"
                 value={p.llmKey}
                 placeholder={
-                  p.provider === 'gemini' ? 'paste Gemini API key' : 'paste OpenAI API key'
+                  llmService === 'gemini' ? 'paste Gemini API key' : 'paste OpenAI API key'
                 }
                 onChange={(e) => p.setLlmKey(e.target.value)}
               />
@@ -159,7 +160,7 @@ export default function Intelligence(p: IntelligenceProps): ReactElement {
               <button
                 className="sbtn"
                 disabled={!p.llmKey}
-                onClick={() => p.onAddLlmKey(p.provider as 'gemini' | 'openai')}
+                onClick={() => p.onAddLlmKey(llmService)}
               >
                 Add key
               </button>
@@ -206,7 +207,7 @@ export default function Intelligence(p: IntelligenceProps): ReactElement {
             </Field>
           </Card>
         </>
-      )}
+        ))(p.provider)}
 
       {p.provider === 'local' && (
         <>
