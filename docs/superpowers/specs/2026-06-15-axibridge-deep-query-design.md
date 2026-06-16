@@ -56,20 +56,31 @@ ever sees clean, readable, appropriately-sized results. No query syntax, no
 
 ### Size discipline (first-class — "there's a LOT of data")
 
-This is the core of fixing the blob. The tool enforces, in order:
+This is the core of fixing the blob. **Critical distinction:** caps apply to
+the *returned result*, never to what jq can *process*. jq always runs over the
+full virtual document (all touched runs, the whole rollup) — aggregations,
+counts, sums, and joins see 100% of the data. The caps only bound the final
+projected value so it doesn't become a runaway blob in chat. Nothing is ever
+silently dropped from computation.
 
-1. **Result count cap.** Array results are capped at a default N (e.g. 50
-   rows). When truncated, return `showing N of M` so the agent/user knows
-   data was cut, and the agent can re-query with a tighter filter or
-   aggregation.
-2. **Serialized-size cap.** Hard byte ceiling on the returned payload. If a
-   result is under the count cap but still huge (wide objects), truncate and
-   note it.
+The tool enforces, in order:
+
+1. **Result count cap — agent-controllable, not a wall.** Array results default
+   to a soft limit of ~50 rows, but the tool exposes a `limit` param the agent
+   can raise (or set to "all") when it genuinely needs the full list. When a
+   result is truncated, return `showing N of M` so the agent knows there's more
+   and can raise the limit or paginate. The default protects the *user* from a
+   runaway blob; it never blocks the *agent* from the data.
+2. **Serialized-size cap — the only hard backstop.** A byte ceiling on the
+   returned payload guards against pathological cases (e.g. a high `limit` over
+   very wide objects). On hit, truncate and note it via `showing N of M`. This
+   is the single true limit; everything else is the agent's call.
 3. **Depth/length cap on the pretty-printed fallback.** Nested values are
-   printed with bounded depth and elided with `…` past the limit.
+   printed with bounded depth and elided with `…` past the limit (display only).
 4. **Tool description nudges projection.** The tool doc instructs the agent to
    project only needed fields and aggregate server-side (via jq) rather than
-   pulling whole reports — so the *first* result is already small.
+   pulling whole reports — so the *first* result is already small, and raising
+   `limit` is rarely necessary.
 
 ### Result presentation (kills the blob)
 
