@@ -855,6 +855,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-srcchip.fetching .led{background:var(--accent-b)}
 /* nav refreshing spinner (reuses meta-spin keyframes) */
 .snav-item .meta-spin{margin-left:auto}
+.meta-pane-status{margin:-14px 0 16px}
 
 /* ---- Comp playbook: WvW-only launcher (below sources) + popup ---- */
 .meta-pb-launch {
