@@ -1,7 +1,7 @@
 import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, requireDiscordGuild, type ToolDeps } from './shared'
-import { rankIdentities, type ResolveMemberLite } from '../identityResolve'
+import { rankIdentities, mergeManualLinks, type ResolveMemberLite } from '../identityResolve'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
@@ -238,6 +238,27 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
           accounts?: Array<Record<string, unknown>>
           [key: string]: unknown
         }>
+        // Append manually-linked accounts to their member so they show alongside
+        // the AxiTools auto-links.
+        const manualByMember = new Map<string, string[]>()
+        for (const l of deps.rosterLinks()) {
+          const arr = manualByMember.get(l.memberId) ?? []
+          arr.push(l.accountName)
+          manualByMember.set(l.memberId, arr)
+        }
+        for (const m of raw) {
+          const extra = m.member_id ? manualByMember.get(m.member_id) : undefined
+          if (!extra) continue
+          const present = new Set(
+            (m.accounts ?? []).map((a) => String(a.account_name ?? '').toLowerCase())
+          )
+          m.accounts = [
+            ...(m.accounts ?? []),
+            ...extra
+              .filter((name) => !present.has(name.toLowerCase()))
+              .map((name) => ({ account_name: name, manual_link: true }))
+          ]
+        }
         // Fold in local annotations keyed by Discord member_id, when present.
         const annByMember = new Map(deps.rosterAnnotations().map((a) => [a.memberId, a]))
         const annotate = <T extends { member_id?: string }>(m: T): T => {
@@ -286,9 +307,10 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
         limit: z.number().optional().describe('Max candidates to return (default 8)')
       },
       safe(async ({ name, limit }) => {
-        const members = (await deps.axitools.membersLinked(
+        const raw = (await deps.axitools.membersLinked(
           requireDiscordGuild(deps)
         )) as ResolveMemberLite[]
+        const members = mergeManualLinks(raw, deps.rosterLinks())
         const matches = rankIdentities(name, members, deps.rosterAnnotations(), limit ?? 8)
         return { query: name, matches }
       })

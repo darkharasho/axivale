@@ -38,10 +38,12 @@ import { AgentService } from './agent'
 import { ConversationStore, type Conversation } from './conversationStore'
 import { SkillStore } from './skillStore'
 import { RosterStore } from './rosterStore'
+import { LinkStore } from './linkStore'
 import {
   reconcileRoster,
   type DiscordMemberRaw,
-  type LinkedMemberRaw
+  type LinkedMemberRaw,
+  type InGameMemberRaw
 } from './rosterReconcile'
 import { MetaStore } from './metaStore'
 import { MetaCache } from './meta/cache'
@@ -194,6 +196,7 @@ app.whenReady().then(async () => {
   const skills = new SkillStore(join(app.getPath('userData'), 'skills.json'))
   const meta = new MetaStore(join(app.getPath('userData'), 'meta.json'))
   const rosterAnnotations = new RosterStore(join(app.getPath('userData'), 'rosterAnnotations.json'))
+  const rosterLinks = new LinkStore(join(app.getPath('userData'), 'rosterLinks.json'))
   const metaCache = new MetaCache(join(app.getPath('userData'), 'meta-cache'))
   const metaEmbedder = new TransformersEmbedder(join(app.getPath('userData'), 'meta-models'))
   const metaIndex = new LanceMetaIndex(join(app.getPath('userData'), 'meta-lance'), metaEmbedder)
@@ -379,7 +382,8 @@ app.whenReady().then(async () => {
       wikiFacts,
       fetchBuildPage: (url: string) => metaFetcher.fetchBuildPage(url),
       fetchBuildPageRaw: (url: string) => metaFetcher.fetchBuildPageRaw(url),
-      rosterAnnotations: () => rosterAnnotations.list()
+      rosterAnnotations: () => rosterAnnotations.list(),
+      rosterLinks: () => rosterLinks.list()
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),
@@ -805,6 +809,12 @@ app.whenReady().then(async () => {
     rosterAnnotations.remove(memberId)
   )
 
+  ipcMain.handle('roster:links:list', () => rosterLinks.list())
+  ipcMain.handle('roster:links:set', (_e, accountName: string, memberId: string) =>
+    rosterLinks.set(accountName, memberId)
+  )
+  ipcMain.handle('roster:links:delete', (_e, accountName: string) => rosterLinks.remove(accountName))
+
   ipcMain.handle('roster:reconcile', async () => {
     const guildId = store.getSetting('guildId')
     if (!guildId) throw new Error('No server connected — add an AxiVale key in Settings.')
@@ -832,15 +842,17 @@ app.whenReady().then(async () => {
       discordMembers = []
     }
 
-    // In-game GW2 guild roster is best-effort: it needs a gw2 key + guild id and
-    // can fail independently. A miss just means we can't confirm in-guild status.
-    let inGameAccounts: string[] = []
+    // In-game GW2 guild roster is the preferred base: it needs a gw2 key + guild id
+    // and can fail independently. A miss falls back to the linked roster.
+    let inGameRoster: InGameMemberRaw[] = []
     let haveInGame = false
     try {
       const gw2GuildId = store.getSetting('gw2GuildId')
       if (gw2GuildId && store.getActiveKey('gw2')) {
         const roster = await buildGw2().guildMembers(gw2GuildId)
-        inGameAccounts = roster.map((m) => m.name).filter(Boolean)
+        inGameRoster = roster
+          .filter((m) => Boolean(m.name))
+          .map((m) => ({ name: m.name, rank: m.rank, joined: m.joined }))
         haveInGame = true
       }
     } catch {
@@ -862,7 +874,8 @@ app.whenReady().then(async () => {
     return reconcileRoster({
       discordMembers,
       linked: Array.isArray(linked) ? linked : [],
-      inGameAccounts,
+      inGameRoster,
+      manualLinks: rosterLinks.list(),
       annotations: rosterAnnotations.list(),
       memberRoleId,
       haveInGame

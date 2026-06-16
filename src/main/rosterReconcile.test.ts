@@ -11,91 +11,81 @@ const base: ReconcileInput = {
     { member_id: 'm1', accounts: [{ account_name: 'harasho.4281', characters: ['Axi'] }] },
     { member_id: 'm2', accounts: [{ account_name: 'Logan.1234' }] }
   ],
-  inGameAccounts: ['harasho.4281', 'Ghost.0000'],
+  inGameRoster: [
+    { name: 'harasho.4281', rank: 'Officer', joined: '2024-11-01' },
+    { name: 'Ghost.0000', rank: 'Member', joined: '2025-01-01' }
+  ],
+  manualLinks: [],
   annotations: [{ memberId: 'm1', nickname: 'Bob', aliases: ['bobby'], notes: 'tank', tags: ['core'] }],
   memberRoleId: 'member',
   haveInGame: true
 }
 
-describe('reconcileRoster', () => {
-  it('marks a linked + in-game member as verified and carries annotations', () => {
+describe('reconcileRoster (GW2-first)', () => {
+  it('bases the roster on the in-game guild and matches Discord on top', () => {
     const r = reconcileRoster(base)
-    const bob = r.find((m) => m.memberId === 'm1')!
+    const bob = r.find((m) => m.accountName === 'harasho.4281')!
     expect(bob.status).toBe('verified')
-    expect(bob.hasMemberRole).toBe(true)
-    expect(bob.linked).toBe(true)
-    expect(bob.inGuild).toBe(true)
+    expect(bob.memberId).toBe('m1')
+    expect(bob.linkSource).toBe('auto')
+    expect(bob.rank).toBe('Officer')
     expect(bob.nickname).toBe('Bob')
-    expect(bob.label).toBe('Bob')
+    expect(bob.inGuild).toBe(true)
   })
 
-  it('flags a linked member not in the in-game roster as left-guild', () => {
+  it('shows an in-game account with no Discord match as unlinked', () => {
+    const r = reconcileRoster(base)
+    const ghost = r.find((m) => m.accountName === 'Ghost.0000')!
+    expect(ghost.status).toBe('unlinked')
+    expect(ghost.memberId).toBeNull()
+    expect(ghost.linkSource).toBeNull()
+  })
+
+  it('honors a manual link over (and without) an auto link', () => {
+    const r = reconcileRoster({
+      ...base,
+      manualLinks: [{ accountName: 'ghost.0000', memberId: 'm2' }]
+    })
+    const ghost = r.find((m) => m.accountName === 'Ghost.0000')!
+    expect(ghost.status).toBe('verified')
+    expect(ghost.memberId).toBe('m2')
+    expect(ghost.linkSource).toBe('manual')
+    // m2 is now placed in-game, so it should NOT also appear as left-guild
+    expect(r.filter((m) => m.memberId === 'm2')).toHaveLength(1)
+  })
+
+  it('lists a linked member not in the in-game roster as left-guild', () => {
     const r = reconcileRoster(base)
     const logan = r.find((m) => m.memberId === 'm2')!
     expect(logan.status).toBe('left-guild')
     expect(logan.inGuild).toBe(false)
   })
 
-  it('excludes non-member-role users who are not linked', () => {
-    const r = reconcileRoster(base)
-    expect(r.find((m) => m.memberId === 'm3')).toBeUndefined()
-  })
-
-  it('surfaces in-game accounts with no Discord match', () => {
-    const r = reconcileRoster(base)
-    const ghost = r.find((m) => m.status === 'in-game-only')!
-    expect(ghost.memberId).toBeNull()
-    expect(ghost.accounts[0].account_name).toBe('Ghost.0000')
-  })
-
-  it('reports no-key for a role member who never linked', () => {
+  it('lists a role member with no key as no-key, excludes non-members', () => {
     const r = reconcileRoster({
       ...base,
-      discordMembers: [{ id: 'm4', name: 'newbie', roles: ['member'] }],
-      linked: [],
-      inGameAccounts: [],
-      annotations: []
+      discordMembers: [...base.discordMembers, { id: 'm4', name: 'newbie', roles: ['member'] }]
     })
-    const newbie = r.find((m) => m.memberId === 'm4')!
-    expect(newbie.status).toBe('no-key')
-    expect(newbie.linked).toBe(false)
+    expect(r.find((m) => m.memberId === 'm4')!.status).toBe('no-key')
+    expect(r.find((m) => m.memberId === 'm3')).toBeUndefined() // 'guest' role, not linked
   })
 
-  it('falls back to the linked roster when no role is configured', () => {
-    const r = reconcileRoster({ ...base, memberRoleId: null })
-    // m3 (no link, no role match) excluded; m1/m2 present via their links
-    expect(r.some((m) => m.memberId === 'm1')).toBe(true)
-    expect(r.some((m) => m.memberId === 'm3')).toBe(false)
-    expect(r.find((m) => m.memberId === 'm1')!.hasMemberRole).toBe(false)
-  })
-
-  it('still lists linked members when the Discord overview is unavailable', () => {
-    // Regression: roster must not blank out just because discordOverview returned
-    // no members — linked members are the floor.
-    const r = reconcileRoster({
-      ...base,
-      discordMembers: [],
-      annotations: []
-    })
-    expect(r.find((m) => m.memberId === 'm1')!.status).toBe('verified')
-    expect(r.find((m) => m.memberId === 'm2')!.status).toBe('left-guild')
-    // falls back to linked member_name when no Discord overlay is present
-    const withName = reconcileRoster({
-      discordMembers: [],
-      linked: [{ member_id: 'mX', member_name: 'solo', accounts: [{ account_name: 'Solo.1' }] }],
-      inGameAccounts: [],
-      annotations: [],
-      memberRoleId: 'member',
-      haveInGame: false
-    })
-    expect(withName[0].discordName).toBe('solo')
-    expect(withName[0].label).toBe('solo')
-  })
-
-  it('uses linked status (not left-guild) when the in-game roster is unavailable', () => {
-    const r = reconcileRoster({ ...base, inGameAccounts: [], haveInGame: false })
-    expect(r.find((m) => m.memberId === 'm1')!.status).toBe('linked')
+  it('falls back to the linked roster when no in-game roster is available', () => {
+    const r = reconcileRoster({ ...base, inGameRoster: [], haveInGame: false })
+    const bob = r.find((m) => m.memberId === 'm1')!
+    expect(bob.status).toBe('linked')
+    expect(r.some((m) => m.status === 'unlinked')).toBe(false)
     expect(r.find((m) => m.memberId === 'm2')!.status).toBe('linked')
-    expect(r.some((m) => m.status === 'in-game-only')).toBe(false)
+  })
+
+  it('fallback still honors manual links for the Discord match label', () => {
+    const r = reconcileRoster({
+      ...base,
+      inGameRoster: [],
+      haveInGame: false,
+      manualLinks: [{ accountName: 'harasho.4281', memberId: 'm1' }]
+    })
+    // m1 still resolves with its annotation nickname
+    expect(r.find((m) => m.memberId === 'm1')!.label).toBe('Bob')
   })
 })

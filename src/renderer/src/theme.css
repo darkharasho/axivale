@@ -651,6 +651,10 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .rst-chip-in::placeholder{color:var(--faint)}
 .rst-resolve{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint);margin-top:12px;line-height:1.6}
 .rst-resolve b{color:var(--green)}
+/* discord-link card */
+.rst-link-row{display:flex;align-items:center;gap:12px}
+.rst-link-state{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim)}
+.rst-link-state b{color:var(--ink)}
 /* ---- InputBar skill picker (custom dark dropdown) ---- */
 .skill-pick-wrap{position:relative;display:inline-block;-webkit-app-region:no-drag}
 .skill-pick{background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;cursor:pointer}

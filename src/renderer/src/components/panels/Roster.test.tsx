@@ -14,6 +14,10 @@ function member(p: Partial<RendererReconciledMember>): RendererReconciledMember 
     displayName: 'Bob',
     hasMemberRole: true,
     accounts: [{ account_name: 'harasho.4281', characters: ['Axi'], inGuild: true }],
+    accountName: 'harasho.4281',
+    rank: 'Officer',
+    joined: '2024-11-01',
+    linkSource: 'auto',
     guildLabels: ['EWW'],
     linked: true,
     inGuild: true,
@@ -27,6 +31,20 @@ function member(p: Partial<RendererReconciledMember>): RendererReconciledMember 
   }
 }
 
+const unlinked = member({
+  memberId: null,
+  discordName: undefined,
+  displayName: undefined,
+  hasMemberRole: false,
+  accounts: [{ account_name: 'Ghost.0000', characters: [], inGuild: true }],
+  accountName: 'Ghost.0000',
+  rank: 'Member',
+  linkSource: null,
+  linked: false,
+  status: 'unlinked',
+  label: 'Ghost.0000'
+})
+
 function Harness(): ReactElement {
   const ctl = useRoster(true)
   return (
@@ -39,11 +57,14 @@ function Harness(): ReactElement {
 
 function officer(over: Record<string, unknown> = {}) {
   return {
-    rosterReconcile: vi.fn().mockResolvedValue([
-      member({}),
-      member({ memberId: 'm2', discordName: 'newbie', displayName: 'Newbie', label: 'Newbie', linked: false, inGuild: false, accounts: [], status: 'no-key' })
-    ]),
+    rosterReconcile: vi.fn().mockResolvedValue([member({}), unlinked]),
     rosterAnnotationUpsert: vi.fn().mockResolvedValue(null),
+    rosterLinkSet: vi.fn().mockResolvedValue({ accountName: 'Ghost.0000', memberId: 'm9', createdAt: '' }),
+    rosterLinkDelete: vi.fn().mockResolvedValue(undefined),
+    axitools: vi.fn().mockResolvedValue({
+      roles: [],
+      members: [{ id: 'm9', name: 'ghosty', display_name: 'Ghosty' }]
+    }),
     ...over
   }
 }
@@ -52,27 +73,38 @@ beforeEach(() => {
   ;(window as unknown as { officer: unknown }).officer = officer()
 })
 
-describe('Roster panel', () => {
-  it('reconciles, lists members in the rail, and opens the first', async () => {
+describe('Roster panel (GW2-first + manual links)', () => {
+  it('lists members in the rail and opens the first', async () => {
     render(<Harness />)
-    // first member selected -> its nickname field is shown
     await screen.findByPlaceholderText(/preferred short name/i)
     const nav = screen.getByRole('navigation')
     expect(within(nav).getByText('Bob')).toBeTruthy()
-    expect(within(nav).getByText('Newbie')).toBeTruthy()
+    expect(within(nav).getByText('Ghost.0000')).toBeTruthy()
   })
 
-  it('filters the rail by status with the chips', async () => {
+  it('filters to unlinked accounts', async () => {
     render(<Harness />)
     await screen.findByPlaceholderText(/preferred short name/i)
     const nav = screen.getByRole('navigation')
-    expect(within(nav).getByText('Bob')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /no key/i }))
+    fireEvent.click(screen.getByRole('button', { name: /unlinked/i }))
     expect(within(nav).queryByText('Bob')).toBeNull()
-    expect(within(nav).getByText('Newbie')).toBeTruthy()
+    expect(within(nav).getByText('Ghost.0000')).toBeTruthy()
   })
 
-  it('saves an annotation for the selected member', async () => {
+  it('manually links a Discord user to an unlinked GW2 account', async () => {
+    const linkSet = vi.fn().mockResolvedValue({ accountName: 'Ghost.0000', memberId: 'm9', createdAt: '' })
+    ;(window as unknown as { officer: unknown }).officer = officer({ rosterLinkSet: linkSet })
+    render(<Harness />)
+    await screen.findByPlaceholderText(/preferred short name/i)
+    const nav = screen.getByRole('navigation')
+    fireEvent.click(within(nav).getByText('Ghost.0000'))
+    // open the Discord-user picker and choose Ghosty
+    fireEvent.click(await screen.findByText(/pick a discord user/i))
+    fireEvent.click(await screen.findByText('Ghosty'))
+    await waitFor(() => expect(linkSet).toHaveBeenCalledWith('Ghost.0000', 'm9'))
+  })
+
+  it('saves an annotation for a linked member', async () => {
     const upsert = vi.fn().mockResolvedValue(null)
     ;(window as unknown as { officer: unknown }).officer = officer({ rosterAnnotationUpsert: upsert })
     render(<Harness />)

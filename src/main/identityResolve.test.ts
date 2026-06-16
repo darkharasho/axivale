@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { rankIdentities, type ResolveMemberLite, type ResolveAnnotationLite } from './identityResolve'
+import {
+  rankIdentities,
+  mergeManualLinks,
+  type ResolveMemberLite,
+  type ResolveAnnotationLite
+} from './identityResolve'
 
 const members: ResolveMemberLite[] = [
   {
@@ -44,6 +49,23 @@ describe('rankIdentities', () => {
 
   it('returns nothing for an unknown name', () => {
     expect(rankIdentities('nobody', members, annotations)).toEqual([])
+  })
+
+  it('resolves a manually-linked account via mergeManualLinks', () => {
+    // m1 (Bob) was never auto-linked to Spare.5555; a manual link ties them.
+    const merged = mergeManualLinks(members, [{ accountName: 'Spare.5555', memberId: 'm1' }])
+    const out = rankIdentities('spare', merged, annotations)
+    expect(out[0].member_id).toBe('m1')
+    expect(out[0].account_names).toContain('Spare.5555')
+    // and the nickname still resolves to the now-richer account set
+    expect(rankIdentities('Bob', merged, annotations)[0].account_names).toContain('Spare.5555')
+  })
+
+  it('creates a synthetic member when a manual link targets an unlinked member', () => {
+    const merged = mergeManualLinks([], [{ accountName: 'New.1', memberId: 'mX' }])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].member_id).toBe('mX')
+    expect(merged[0].accounts?.[0].account_name).toBe('New.1')
   })
 
   it('ranks an exact nickname above a loose substring', () => {

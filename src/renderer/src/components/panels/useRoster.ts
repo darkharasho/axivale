@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { RendererReconciledMember, RosterStatus } from '../../../../preload/index.d'
-import { errText, isOffline } from './shared'
+import { axi, errText, isOffline, type Overview } from './shared'
 
 export interface RosterDraft {
   nickname: string
@@ -10,7 +10,7 @@ export interface RosterDraft {
 }
 const EMPTY: RosterDraft = { nickname: '', aliases: [], notes: '', tags: [] }
 
-export type RosterFilter = 'all' | 'no-key' | 'mismatch' | 'annotated'
+export type RosterFilter = 'all' | 'unlinked' | 'no-key' | 'annotated'
 
 /** Per-status display: rail LED tone + short labels for the row sub-line and badge. */
 export const STATUS_META: Record<RosterStatus, { led: 'g' | 'a' | 'r'; sub: string; badge: string }> =
@@ -19,13 +19,20 @@ export const STATUS_META: Record<RosterStatus, { led: 'g' | 'a' | 'r'; sub: stri
     linked: { led: 'g', sub: 'linked', badge: 'GW2 key linked' },
     'no-key': { led: 'a', sub: 'no key linked', badge: 'No GW2 key' },
     'left-guild': { led: 'r', sub: 'not in guild', badge: 'Not in in-game guild' },
-    'in-game-only': { led: 'r', sub: 'no Discord match', badge: 'In-game, no Discord' }
+    unlinked: { led: 'a', sub: 'no Discord match', badge: 'No Discord — link one' }
   }
 
-/** Stable selection key — Discord member id, or the account name for an
- *  in-game-only row that has no Discord match. */
+export interface DiscordMemberLite {
+  id: string
+  name?: string
+  display_name?: string
+}
+
+/** Stable selection key — prefer the GW2 account (GW2-first rows keep their key
+ *  across linking), else the Discord member id. */
 export function rosterKey(m: RendererReconciledMember): string {
-  return m.memberId ?? `acct:${m.accounts[0]?.account_name ?? '?'}`
+  if (m.accountName) return `acct:${m.accountName}`
+  return m.memberId ?? '?'
 }
 
 function annotated(m: RendererReconciledMember): boolean {
@@ -34,8 +41,8 @@ function annotated(m: RendererReconciledMember): boolean {
 
 function matchesFilter(m: RendererReconciledMember, f: RosterFilter): boolean {
   if (f === 'all') return true
+  if (f === 'unlinked') return m.status === 'unlinked'
   if (f === 'no-key') return m.status === 'no-key'
-  if (f === 'mismatch') return m.status === 'left-guild' || m.status === 'in-game-only'
   return annotated(m)
 }
 
@@ -72,6 +79,10 @@ export interface RosterController {
   select: (m: RendererReconciledMember) => void
   refresh: () => Promise<void>
   save: () => Promise<void>
+  /** Discord members for the manual-link picker. */
+  discordMembers: DiscordMemberLite[]
+  link: (accountName: string, memberId: string) => Promise<void>
+  unlink: (accountName: string) => Promise<void>
 }
 
 export function useRoster(active: boolean): RosterController {
@@ -84,6 +95,7 @@ export function useRoster(active: boolean): RosterController {
   const [filter, setFilter] = useState<RosterFilter>('all')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [draft, setDraft] = useState<RosterDraft>(EMPTY)
+  const [discordMembers, setDiscordMembers] = useState<DiscordMemberLite[]>([])
 
   const loadDraft = useCallback((m: RendererReconciledMember | null) => {
     setDraft(
@@ -100,6 +112,15 @@ export function useRoster(active: boolean): RosterController {
       setMembers(list)
       setOffline(false)
       setError('')
+      // Discord member list for the manual-link picker (best-effort overlay).
+      try {
+        const ov = await axi<Overview>('discordOverview', true)
+        setDiscordMembers(
+          (ov.members ?? []).map((d) => ({ id: d.id, name: d.name, display_name: d.display_name }))
+        )
+      } catch {
+        /* picker just stays empty */
+      }
       // Keep the current selection if it still exists, else pick the first.
       setSelectedKey((prev) => {
         const keep = prev ? list.find((m) => rosterKey(m) === prev) : undefined
@@ -156,6 +177,16 @@ export function useRoster(active: boolean): RosterController {
     )
   }
 
+  async function link(accountName: string, memberId: string): Promise<void> {
+    await window.officer.rosterLinkSet(accountName, memberId)
+    await refresh()
+  }
+
+  async function unlink(accountName: string): Promise<void> {
+    await window.officer.rosterLinkDelete(accountName)
+    await refresh()
+  }
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return members.filter((m) => matchesFilter(m, filter) && (!q || haystack(m).includes(q)))
@@ -167,7 +198,7 @@ export function useRoster(active: boolean): RosterController {
       linked: 0,
       'no-key': 0,
       'left-guild': 0,
-      'in-game-only': 0
+      unlinked: 0
     }
     for (const m of members) c[m.status]++
     return c
@@ -192,6 +223,9 @@ export function useRoster(active: boolean): RosterController {
     dirty,
     select,
     refresh,
-    save
+    save,
+    discordMembers,
+    link,
+    unlink
   }
 }

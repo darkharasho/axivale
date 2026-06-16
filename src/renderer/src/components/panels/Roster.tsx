@@ -1,6 +1,7 @@
 import { useState, type ReactElement, type KeyboardEvent } from 'react'
 import type { RendererReconciledMember } from '../../../../preload/index.d'
 import { Offline } from './shared'
+import { SearchSelect } from './SearchSelect'
 import { STATUS_META, type RosterController, type RosterDraft } from './useRoster'
 
 /** Inline chip editor for a string list (aliases / tags). Enter or comma commits. */
@@ -57,25 +58,26 @@ function Badge({ tone, text }: { tone: 'ok' | 'warn' | 'dim'; text: string }): R
 }
 
 function badges(m: RendererReconciledMember): ReactElement {
-  const guild =
-    m.inGuild
-      ? <Badge key="g" tone="ok" text="In-game guild ✓" />
-      : m.status === 'left-guild'
-        ? <Badge key="g" tone="warn" text="Not in in-game guild" />
-        : <Badge key="g" tone="dim" text="In-game unconfirmed" />
   return (
     <div className="rst-badges">
-      {m.memberId ? (
-        m.hasMemberRole ? (
-          <Badge tone="ok" text="Member role" />
-        ) : (
-          <Badge tone="warn" text="No member role" />
-        )
+      {m.inGuild ? (
+        <Badge tone="ok" text="In-game guild ✓" />
+      ) : m.status === 'left-guild' ? (
+        <Badge tone="warn" text="Not in in-game guild" />
       ) : (
-        <Badge tone="warn" text="No Discord match" />
+        <Badge tone="dim" text="In-game unconfirmed" />
       )}
-      {m.linked ? <Badge tone="ok" text="GW2 key linked" /> : <Badge tone="warn" text="No GW2 key" />}
-      {guild}
+      {m.memberId ? (
+        <Badge tone="ok" text={m.linkSource === 'manual' ? 'Discord linked (manual)' : 'Discord linked'} />
+      ) : (
+        <Badge tone="warn" text="No Discord — link one" />
+      )}
+      {m.accounts.length ? (
+        <Badge tone="ok" text="GW2 account" />
+      ) : (
+        <Badge tone="warn" text="No GW2 account" />
+      )}
+      {m.hasMemberRole && <Badge tone="ok" text="Member role" />}
     </div>
   )
 }
@@ -84,13 +86,57 @@ function resolvePreview(draft: RosterDraft, m: RendererReconciledMember): string
   const terms = [draft.nickname, ...draft.aliases, m.discordName, m.displayName]
     .filter((x): x is string => Boolean(x && x.trim()))
     .filter((v, i, a) => a.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i)
-  const acct = m.accounts[0]?.account_name
+  const acct = m.accountName ?? m.accounts[0]?.account_name
   if (!terms.length || !acct) return ''
   return `${terms.join(', ')} → ${acct}`
 }
 
-/** Detail editor for the selected roster member: reconciled identity + the local
- *  annotation editor. The master list lives in RosterNav; both share one controller. */
+/** Discord-link card: pick a Discord user for an unlinked GW2 account, or unlink a
+ *  manual link. Auto links (from AxiTools) are shown read-only. */
+function LinkCard({ ctl, m }: { ctl: RosterController; m: RendererReconciledMember }): ReactElement | null {
+  if (!m.accountName) return null // only GW2-account rows are linkable here
+  const options = ctl.discordMembers
+    .map((d) => ({ value: d.id, label: d.display_name || d.name || d.id }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  return (
+    <div className="spcard">
+      <div className="spcard-h">
+        <span className="spcard-t">Discord link</span>
+      </div>
+      <div className="spcard-b">
+        {m.memberId ? (
+          <div className="rst-link-row">
+            <span className="rst-link-state">
+              {m.linkSource === 'manual' ? 'Manually linked to ' : 'Auto-linked to '}
+              <b>{m.displayName || m.discordName || m.memberId}</b>
+            </span>
+            {m.linkSource === 'manual' && (
+              <button className="sbtn ghost" onClick={() => void ctl.unlink(m.accountName as string)}>
+                Unlink
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="rst-hint">
+              This GW2 account isn’t tied to a Discord user. Link one so notes and the AI can resolve them.
+            </p>
+            <SearchSelect
+              value=""
+              options={options}
+              onChange={(memberId) => void ctl.link(m.accountName as string, memberId)}
+              placeholder={options.length ? 'Pick a Discord user…' : 'No Discord members loaded'}
+              searchPlaceholder="Find a Discord user…"
+            />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Detail editor for the selected roster member: reconciled identity, manual link,
+ *  and the local annotation editor. */
 export default function Roster({ ctl }: { ctl: RosterController }): ReactElement {
   const { current, draft, setDraft, dirty, save, offline, loaded, error } = ctl
 
@@ -105,7 +151,7 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
     const msg = !loaded
       ? 'Reconciling the roster…'
       : ctl.members.length === 0
-        ? 'No members yet. Connect a server in Settings, have members link their GW2 keys with the bot, and optionally set a guild-member role under Settings → AxiTools.'
+        ? 'No members yet. Connect a server and set your GW2 guild + key in Settings so the in-game roster loads.'
         : 'Select a member.'
     return (
       <div className="sk2-detail sk2-blank">
@@ -123,10 +169,11 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
         <div className="sk2-head-txt">
           <h1 className="rst-name">{draft.nickname || current.label}</h1>
           <div className="rst-sub">
-            {current.discordName ? `@${current.discordName}` : 'in-game only'}
-            {current.displayName && current.displayName !== current.discordName
-              ? ` · "${current.displayName}" in Discord`
-              : ''}
+            {current.discordName
+              ? `@${current.discordName}${current.displayName && current.displayName !== current.discordName ? ` · "${current.displayName}"` : ''}`
+              : current.accountName
+                ? `${current.accountName} · no Discord link`
+                : 'unlinked'}
           </div>
         </div>
         <button className="sbtn" disabled={!canAnnotate || !dirty} onClick={() => void save()}>
@@ -144,6 +191,23 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
           </span>
         </div>
         <div className="spcard-b rst-kvs">
+          <div className="rst-kv">
+            <span className="k">GW2 account</span>
+            <span className="v">
+              {current.accounts.length
+                ? current.accounts.map((a) => a.account_name).join(', ')
+                : '— not linked'}
+            </span>
+          </div>
+          {current.rank && (
+            <div className="rst-kv">
+              <span className="k">In-game rank</span>
+              <span className="v">
+                {current.rank}
+                {current.joined ? ` · joined ${current.joined.slice(0, 10)}` : ''}
+              </span>
+            </div>
+          )}
           {current.discordName && (
             <div className="rst-kv">
               <span className="k">Discord</span>
@@ -153,14 +217,6 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
               </span>
             </div>
           )}
-          <div className="rst-kv">
-            <span className="k">GW2 account</span>
-            <span className="v">
-              {current.accounts.length
-                ? current.accounts.map((a) => a.account_name).join(', ')
-                : '— not linked'}
-            </span>
-          </div>
           {current.accounts.some((a) => a.characters.length > 0) && (
             <div className="rst-kv">
               <span className="k">Characters</span>
@@ -176,15 +232,15 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
         </div>
       </div>
 
+      <LinkCard ctl={ctl} m={current} />
+
       <div className="spcard">
         <div className="spcard-h">
           <span className="spcard-t">Annotations — taught to the AI</span>
         </div>
         <div className="spcard-b">
           {!canAnnotate && (
-            <p className="rst-hint">
-              No Discord member to anchor an annotation. Tie this account to a Discord member first.
-            </p>
+            <p className="rst-hint">Link a Discord user above to add notes the AI can use.</p>
           )}
           <fieldset className="rst-fields" disabled={!canAnnotate}>
             <div className="rst-field">

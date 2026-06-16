@@ -19,6 +19,35 @@ export interface ResolveAnnotationLite {
   tags: string[]
 }
 
+export interface ManualLinkLite {
+  accountName: string
+  memberId: string
+}
+
+/** Fold user-created manual links into the linked-member list so the agent
+ *  resolves manually-linked accounts too: append each link's account to its
+ *  member (creating a synthetic member entry when AxiTools never linked them). */
+export function mergeManualLinks(
+  members: ResolveMemberLite[],
+  links: ManualLinkLite[]
+): ResolveMemberLite[] {
+  const byId = new Map<string, ResolveMemberLite>(
+    members.map((m) => [m.member_id, { ...m, accounts: [...(m.accounts ?? [])] }])
+  )
+  for (const link of links) {
+    let m = byId.get(link.memberId)
+    if (!m) {
+      m = { member_id: link.memberId, accounts: [] }
+      byId.set(link.memberId, m)
+    }
+    const has = (m.accounts ?? []).some(
+      (a) => (a.account_name ?? '').toLowerCase() === link.accountName.toLowerCase()
+    )
+    if (!has) m.accounts = [...(m.accounts ?? []), { account_name: link.accountName }]
+  }
+  return [...byId.values()]
+}
+
 export interface IdentityMatch {
   member_id: string
   member_name?: string

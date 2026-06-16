@@ -6,6 +6,7 @@ import type { DisplayPayload } from '../providers/types'
 import type { MetaIndex } from '../meta/rag/index'
 import type { WikiFacts } from '../meta/wikiFacts'
 import type { RosterAnnotation } from '../rosterStore'
+import type { RosterLink } from '../linkStore'
 
 /** Structural launcher type so tests stub one method instead of the whole class. */
 export interface AxiforgeLauncherLike {
@@ -30,6 +31,9 @@ export interface ToolDeps {
   /** Local, user-maintained roster annotations (nickname/aliases/notes/tags), keyed
    *  by Discord member_id — lets the agent resolve loose name references. */
   rosterAnnotations: () => RosterAnnotation[]
+  /** User-created Discord<->GW2 manual links (account_name -> member_id) that
+   *  supplement the AxiTools auto-links. */
+  rosterLinks: () => RosterLink[]
   /** Hybrid meta corpus search (lazy; resolved per-call). */
   metaIndex: () => MetaIndex
   /** GW2-wiki reference corpus search (lazy). */

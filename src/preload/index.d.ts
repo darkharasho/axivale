@@ -121,7 +121,7 @@ export interface RendererRosterAnnotation {
   updatedAt: string
 }
 
-export type RosterStatus = 'verified' | 'linked' | 'no-key' | 'left-guild' | 'in-game-only'
+export type RosterStatus = 'verified' | 'linked' | 'no-key' | 'left-guild' | 'unlinked'
 
 export interface RendererReconciledAccount {
   account_name: string
@@ -135,6 +135,13 @@ export interface RendererReconciledMember {
   displayName?: string
   hasMemberRole: boolean
   accounts: RendererReconciledAccount[]
+  /** Primary GW2 account name for this row (GW2-first base), if any. */
+  accountName?: string
+  /** In-game guild rank / join date when this row comes from the GW2 roster. */
+  rank?: string
+  joined?: string | null
+  /** How the Discord identity was attached: auto (AxiTools), manual, or none. */
+  linkSource: 'auto' | 'manual' | null
   guildLabels: string[]
   linked: boolean
   inGuild: boolean
@@ -144,6 +151,12 @@ export interface RendererReconciledMember {
   notes: string
   tags: string[]
   label: string
+}
+
+export interface RendererRosterLink {
+  accountName: string
+  memberId: string
+  createdAt: string
 }
 
 export interface OfficerApi {
@@ -249,6 +262,9 @@ export interface OfficerApi {
   ): Promise<RendererRosterAnnotation | null>
   rosterAnnotationDelete(memberId: string): Promise<void>
   rosterReconcile(): Promise<RendererReconciledMember[]>
+  rosterLinksList(): Promise<RendererRosterLink[]>
+  rosterLinkSet(accountName: string, memberId: string): Promise<RendererRosterLink>
+  rosterLinkDelete(accountName: string): Promise<void>
   resetSession(conversationId: string): Promise<void>
   cancelTurn(conversationId: string): Promise<void>
   listConversations(): Promise<RendererConversation[]>

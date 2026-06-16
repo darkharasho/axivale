@@ -62,6 +62,10 @@ contextBridge.exposeInMainWorld('officer', {
   rosterAnnotationDelete: (memberId: string) =>
     ipcRenderer.invoke('roster:annotations:delete', memberId),
   rosterReconcile: () => ipcRenderer.invoke('roster:reconcile'),
+  rosterLinksList: () => ipcRenderer.invoke('roster:links:list'),
+  rosterLinkSet: (accountName: string, memberId: string) =>
+    ipcRenderer.invoke('roster:links:set', accountName, memberId),
+  rosterLinkDelete: (accountName: string) => ipcRenderer.invoke('roster:links:delete', accountName),
   resetSession: (conversationId: string) => ipcRenderer.invoke('agent:reset', conversationId),
   cancelTurn: (conversationId: string) => ipcRenderer.invoke('agent:cancel', conversationId),
   listConversations: () => ipcRenderer.invoke('conversations:list'),

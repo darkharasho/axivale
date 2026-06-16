@@ -3,8 +3,8 @@ import { rosterKey, STATUS_META, type RosterController, type RosterFilter } from
 
 const FILTERS: Array<{ key: RosterFilter; label: string }> = [
   { key: 'all', label: 'All' },
+  { key: 'unlinked', label: 'Unlinked' },
   { key: 'no-key', label: 'No key' },
-  { key: 'mismatch', label: 'Mismatch' },
   { key: 'annotated', label: 'Noted' }
 ]
 
