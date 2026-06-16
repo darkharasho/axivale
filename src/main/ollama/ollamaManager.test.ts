@@ -80,3 +80,19 @@ describe('OllamaManager.pullModel', () => {
     await expect(m.pullModel('bogus', () => {})).rejects.toThrow(/no such model/)
   })
 })
+
+describe('OllamaManager.ensureServerRunning', () => {
+  it('fails fast when the server process exits before becoming ready', async () => {
+    const deps = makeDeps({
+      httpGet: vi.fn().mockRejectedValue(new Error('ECONNREFUSED')),
+      spawnServe: vi.fn().mockReturnValue({
+        kill: vi.fn(),
+        on: (event: string, cb: (arg?: unknown) => void) => {
+          if (event === 'exit') cb(1)
+        }
+      })
+    })
+    const m = new OllamaManager('/ud', deps)
+    await expect(m.ensureServerRunning()).rejects.toThrow(/exited before becoming ready/)
+  })
+})

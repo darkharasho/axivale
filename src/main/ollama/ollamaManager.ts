@@ -1,5 +1,5 @@
 import path from 'path'
-import { resolveAsset } from './assets'
+import { resolveAsset, OllamaAsset } from './assets'
 import { parsePullLine, PullProgress } from './pullProgress'
 
 export interface OllamaStatus {
@@ -35,13 +35,14 @@ const DEFAULT_ENDPOINT = 'http://127.0.0.1:11434'
 export class OllamaManager {
   private baseDir: string
   private binPath: string
+  private asset: OllamaAsset
   private serve: ServeHandle | null = null
   private endpoint = DEFAULT_ENDPOINT
 
   constructor(userDataPath: string, private deps: OllamaDeps) {
     this.baseDir = path.join(userDataPath, 'ollama')
-    const asset = resolveAsset(deps.platform, deps.arch)
-    this.binPath = path.join(this.baseDir, asset.binRelPath)
+    this.asset = resolveAsset(deps.platform, deps.arch)
+    this.binPath = path.join(this.baseDir, this.asset.binRelPath)
   }
 
   getEndpoint(): string {
@@ -68,15 +69,14 @@ export class OllamaManager {
 
   async install(onProgress: (p: StageProgress) => void): Promise<void> {
     if (this.isInstalled()) return
-    const asset = resolveAsset(this.deps.platform, this.deps.arch)
     this.deps.mkdirSync(this.baseDir, { recursive: true })
-    const archivePath = path.join(this.baseDir, `ollama.${asset.archive === 'tgz' ? 'tgz' : 'zip'}`)
+    const archivePath = path.join(this.baseDir, `ollama.${this.asset.archive}`)
     onProgress({ stage: 'Downloading Ollama', percent: 0 })
-    await this.deps.download(asset.url, archivePath, (pct) =>
+    await this.deps.download(this.asset.url, archivePath, (pct) =>
       onProgress({ stage: 'Downloading Ollama', percent: pct })
     )
     onProgress({ stage: 'Extracting Ollama' })
-    await this.deps.extract(asset.archive, archivePath, this.baseDir)
+    await this.deps.extract(this.asset.archive, archivePath, this.baseDir)
     if (this.deps.platform !== 'win32') {
       this.deps.chmodSync(this.binPath, 0o755)
     }
@@ -86,9 +86,18 @@ export class OllamaManager {
   async ensureServerRunning(): Promise<void> {
     const status = await this.getStatus()
     if (status.serverRunning) return
-    this.serve = this.deps.spawnServe(this.binPath, this.endpoint)
-    // Poll /api/tags until it answers, up to ~30s.
+    let exitReason: string | null = null
+    const handle = this.deps.spawnServe(this.binPath, this.endpoint)
+    this.serve = handle
+    handle.on('exit', (code) => {
+      exitReason = `Ollama server exited before becoming ready (code ${String(code)})`
+    })
+    handle.on('error', (err) => {
+      exitReason = `Ollama server failed to start: ${err instanceof Error ? err.message : String(err)}`
+    })
+    // Poll /api/tags until it answers, up to ~30s, aborting early if the process dies.
     for (let i = 0; i < 60; i++) {
+      if (exitReason) throw new Error(exitReason)
       try {
         await this.deps.httpGet(`${this.endpoint}/api/tags`)
         return
