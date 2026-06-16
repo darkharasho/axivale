@@ -41,6 +41,7 @@ import { RosterStore } from './rosterStore'
 import { LinkStore } from './linkStore'
 import {
   reconcileRoster,
+  accountAnchor,
   type DiscordMemberRaw,
   type LinkedMemberRaw,
   type InGameMemberRaw
@@ -810,9 +811,23 @@ app.whenReady().then(async () => {
   )
 
   ipcMain.handle('roster:links:list', () => rosterLinks.list())
-  ipcMain.handle('roster:links:set', (_e, accountName: string, memberId: string) =>
-    rosterLinks.set(accountName, memberId)
-  )
+  ipcMain.handle('roster:links:set', (_e, accountName: string, memberId: string) => {
+    const link = rosterLinks.set(accountName, memberId)
+    // Carry any annotation made on the unlinked account over to the member, so
+    // notes persist once the account is tied to a Discord user.
+    const acctKey = accountAnchor(accountName)
+    const acctAnn = rosterAnnotations.get(acctKey)
+    if (acctAnn && !rosterAnnotations.get(memberId)) {
+      rosterAnnotations.upsert(memberId, {
+        nickname: acctAnn.nickname,
+        aliases: acctAnn.aliases,
+        notes: acctAnn.notes,
+        tags: acctAnn.tags
+      })
+      rosterAnnotations.remove(acctKey)
+    }
+    return link
+  })
   ipcMain.handle('roster:links:delete', (_e, accountName: string) => rosterLinks.remove(accountName))
 
   ipcMain.handle('roster:reconcile', async () => {

@@ -162,19 +162,20 @@ export function useRoster(active: boolean): RosterController {
   }
 
   async function save(): Promise<void> {
-    if (!current?.memberId) return
+    if (!current) return
     const patch = {
       nickname: draft.nickname.trim(),
       aliases: draft.aliases,
       notes: draft.notes,
       tags: draft.tags
     }
-    await window.officer.rosterAnnotationUpsert(current.memberId, patch)
+    // Annotations anchor on the Discord member when linked, else the GW2 account,
+    // so unlinked rows are annotatable too.
+    const key = current.annotationKey
+    await window.officer.rosterAnnotationUpsert(key, patch)
     // Update locally instead of a full network re-reconcile.
-    const label = patch.nickname || current.displayName || current.discordName || current.label
-    setMembers((prev) =>
-      prev.map((m) => (m.memberId === current.memberId ? { ...m, ...patch, label } : m))
-    )
+    const label = patch.nickname || current.displayName || current.discordName || current.accountName || current.label
+    setMembers((prev) => prev.map((m) => (m.annotationKey === key ? { ...m, ...patch, label } : m)))
   }
 
   async function link(accountName: string, memberId: string): Promise<void> {

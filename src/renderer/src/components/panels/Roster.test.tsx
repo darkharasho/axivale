@@ -10,6 +10,7 @@ import type { RendererReconciledMember } from '../../../../preload/index.d'
 function member(p: Partial<RendererReconciledMember>): RendererReconciledMember {
   return {
     memberId: 'm1',
+    annotationKey: 'm1',
     discordName: 'harasho',
     displayName: 'Bob',
     hasMemberRole: true,
@@ -33,6 +34,7 @@ function member(p: Partial<RendererReconciledMember>): RendererReconciledMember 
 
 const unlinked = member({
   memberId: null,
+  annotationKey: 'acct:Ghost.0000',
   discordName: undefined,
   displayName: undefined,
   hasMemberRole: false,
@@ -102,6 +104,21 @@ describe('Roster panel (GW2-first + manual links)', () => {
     fireEvent.click(await screen.findByText(/pick a discord user/i))
     fireEvent.click(await screen.findByText('Ghosty'))
     await waitFor(() => expect(linkSet).toHaveBeenCalledWith('Ghost.0000', 'm9'))
+  })
+
+  it('annotates an unlinked GW2 account (anchored on the account)', async () => {
+    const upsert = vi.fn().mockResolvedValue(null)
+    ;(window as unknown as { officer: unknown }).officer = officer({ rosterAnnotationUpsert: upsert })
+    render(<Harness />)
+    await screen.findByPlaceholderText(/preferred short name/i)
+    const nav = screen.getByRole('navigation')
+    fireEvent.click(within(nav).getByText('Ghost.0000'))
+    const nick = (await screen.findByPlaceholderText(/preferred short name/i)) as HTMLInputElement
+    fireEvent.change(nick, { target: { value: 'Spook' } })
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    await waitFor(() =>
+      expect(upsert).toHaveBeenCalledWith('acct:Ghost.0000', { nickname: 'Spook', aliases: [], notes: '', tags: [] })
+    )
   })
 
   it('saves an annotation for a linked member', async () => {

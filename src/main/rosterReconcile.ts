@@ -1,12 +1,12 @@
 // src/main/rosterReconcile.ts
 //
 // Merges the identity signals a guild has into one reconciled roster. The
-// in-game GW2 guild roster is the base when available (GW2-first): every guild
-// account is a row, with its Discord identity matched on top via a manual link
-// first, then the AxiTools auto-link. Discord members who aren't in the in-game
-// roster (no-key / left-guild) come after. When there's no in-game roster we
-// fall back to seeding from the AxiTools-linked members. Kept pure (no IO) so
-// the merge is unit-testable; the IPC layer fetches the raw sources.
+// in-game GW2 guild roster is the base (GW2-first): every guild account is
+// matched to a Discord member via a manual link first, then the AxiTools
+// auto-link, and all of a member's accounts fold under one identity row (people
+// have many GW2 accounts but one Discord user). Accounts with no match stay as
+// their own "unlinked" rows; Discord members not in the in-game roster come
+// after (left-guild / no-key). Pure (no IO) so the merge is unit-testable.
 
 export interface DiscordMemberRaw {
   id: string
@@ -50,18 +50,26 @@ export interface ReconciledAccount {
   account_name: string
   characters: string[]
   inGuild: boolean
+  rank?: string
+  joined?: string | null
 }
 
 /** Reconciliation state, used for the rail LED + filter chips. */
 export type RosterStatus =
-  | 'verified' // in the in-game guild + matched to a Discord member
-  | 'linked' // matched to a Discord member, in-game status unconfirmed
+  | 'verified' // matched to a Discord member, at least one account in the in-game guild
+  | 'linked' // matched to a Discord member, in-game status unconfirmed (no GW2 roster)
   | 'no-key' // a Discord guild member who never linked a GW2 key
-  | 'left-guild' // matched to a Discord member, but not in the in-game guild roster
+  | 'left-guild' // matched to a Discord member, but no account in the in-game guild
   | 'unlinked' // in the in-game guild, but no Discord member matched
+
+/** Key an annotation rides on: the Discord member_id when linked, else the GW2
+ *  account (so unlinked accounts can still be annotated). */
+export const accountAnchor = (accountName: string): string => `acct:${accountName.trim()}`
 
 export interface ReconciledMember {
   memberId: string | null
+  /** Where this row's annotation is stored (member_id or accountAnchor()). */
+  annotationKey: string
   discordName?: string
   displayName?: string
   hasMemberRole: boolean
@@ -95,27 +103,15 @@ export interface ReconcileInput {
 
 const lc = (s: string): string => s.trim().toLowerCase()
 
-function emptyAnn(memberId: string | null): AnnotationRaw {
-  return { memberId: memberId ?? '', nickname: '', aliases: [], notes: '', tags: [] }
+function emptyAnn(key: string): AnnotationRaw {
+  return { memberId: key, nickname: '', aliases: [], notes: '', tags: [] }
 }
 
-/** Index linked-member accounts by lower-cased account name -> { memberId, characters, labels }. */
-function indexLinkedAccounts(linked: LinkedMemberRaw[]): Map<
-  string,
-  { memberId: string; characters: string[]; labels: string[] }
-> {
-  const m = new Map<string, { memberId: string; characters: string[]; labels: string[] }>()
-  for (const l of linked) {
-    for (const a of l.accounts ?? []) {
-      if (!a.account_name) continue
-      m.set(lc(a.account_name), {
-        memberId: l.member_id,
-        characters: a.characters ?? [],
-        labels: Object.values(a.guild_labels ?? {})
-      })
-    }
-  }
-  return m
+interface Acc {
+  name: string
+  characters: string[]
+  labels: string[]
+  manual: boolean
 }
 
 export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
@@ -123,192 +119,96 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
     input
   const roleConfigured = Boolean(memberRoleId)
   const discordById = new Map(discordMembers.map((d) => [d.id, d]))
-  const annByMember = new Map(annotations.map((a) => [a.memberId, a]))
-  const manualByAccount = new Map(manualLinks.map((l) => [lc(l.accountName), l.memberId]))
-  const linkedByAccount = indexLinkedAccounts(linked)
-  const hasMemberRole = (memberId: string): boolean =>
-    roleConfigured ? (discordById.get(memberId)?.roles ?? []).includes(memberRoleId as string) : false
-
-  // Fallback path: no in-game roster — seed from linked members (Phase C behavior).
-  if (!haveInGame) return reconcileFromLinked(input)
-
-  const out: ReconciledMember[] = []
-  const placedMembers = new Set<string>()
-
-  // 1. GW2-first base: one row per in-game guild account, Discord matched on top.
-  for (const gm of inGameRoster) {
-    const acctLc = lc(gm.name)
-    const manualMember = manualByAccount.get(acctLc)
-    const auto = linkedByAccount.get(acctLc)
-    const memberId = manualMember ?? auto?.memberId ?? null
-    const linkSource: 'auto' | 'manual' | null = manualMember ? 'manual' : auto ? 'auto' : null
-    const discord = memberId ? discordById.get(memberId) : undefined
-    const ann = annByMember.get(memberId ?? '') ?? emptyAnn(memberId)
-    if (memberId) placedMembers.add(memberId)
-
-    out.push({
-      memberId,
-      discordName: discord?.name,
-      displayName: discord?.display_name,
-      hasMemberRole: memberId ? hasMemberRole(memberId) : false,
-      accounts: [{ account_name: gm.name, characters: auto?.characters ?? [], inGuild: true }],
-      accountName: gm.name,
-      rank: gm.rank,
-      joined: gm.joined ?? null,
-      linkSource,
-      guildLabels: auto?.labels ?? [],
-      linked: Boolean(memberId),
-      inGuild: true,
-      status: memberId ? 'verified' : 'unlinked',
-      nickname: ann.nickname,
-      aliases: ann.aliases,
-      notes: ann.notes,
-      tags: ann.tags,
-      label: ann.nickname || discord?.display_name || discord?.name || gm.name
-    })
-  }
-
-  // 2. Discord members not represented by an in-game account: linked-but-not-in-guild
-  //    (left-guild) and role-holders with no key (no-key). Role-gated like the roster.
-  for (const link of linked) {
-    if (placedMembers.has(link.member_id)) continue
-    if (roleConfigured && !hasMemberRole(link.member_id)) continue
-    const accounts = (link.accounts ?? [])
-      .map((a) => a.account_name)
-      .filter((n): n is string => Boolean(n))
-      .map((name) => ({
-        account_name: name,
-        characters: link.accounts?.find((a) => a.account_name === name)?.characters ?? [],
-        inGuild: false
-      }))
-    pushSecondary(out, {
-      memberId: link.member_id,
-      discord: discordById.get(link.member_id),
-      memberName: link.member_name,
-      accounts,
-      guildLabels: [...new Set((link.accounts ?? []).flatMap((a) => Object.values(a.guild_labels ?? {})))],
-      hasRole: hasMemberRole(link.member_id),
-      ann: annByMember.get(link.member_id) ?? emptyAnn(link.member_id),
-      status: accounts.length ? 'left-guild' : 'no-key'
-    })
-    placedMembers.add(link.member_id)
-  }
-
-  // 3. Role-holding Discord members who never linked a key at all.
-  if (roleConfigured) {
-    for (const dm of discordMembers) {
-      if (placedMembers.has(dm.id)) continue
-      if (!(dm.roles ?? []).includes(memberRoleId as string)) continue
-      pushSecondary(out, {
-        memberId: dm.id,
-        discord: dm,
-        accounts: [],
-        guildLabels: [],
-        hasRole: true,
-        ann: annByMember.get(dm.id) ?? emptyAnn(dm.id),
-        status: 'no-key'
-      })
-      placedMembers.add(dm.id)
-    }
-  }
-
-  return sortRoster(out)
-}
-
-function pushSecondary(
-  out: ReconciledMember[],
-  o: {
-    memberId: string
-    discord?: DiscordMemberRaw
-    memberName?: string
-    accounts: ReconciledAccount[]
-    guildLabels: string[]
-    hasRole: boolean
-    ann: AnnotationRaw
-    status: RosterStatus
-  }
-): void {
-  const discordName = o.discord?.name ?? o.memberName
-  out.push({
-    memberId: o.memberId,
-    discordName,
-    displayName: o.discord?.display_name,
-    hasMemberRole: o.hasRole,
-    accounts: o.accounts,
-    accountName: o.accounts[0]?.account_name,
-    linkSource: o.accounts.length ? 'auto' : null,
-    guildLabels: o.guildLabels,
-    linked: o.accounts.length > 0,
-    inGuild: false,
-    status: o.status,
-    nickname: o.ann.nickname,
-    aliases: o.ann.aliases,
-    notes: o.ann.notes,
-    tags: o.ann.tags,
-    label: o.ann.nickname || o.discord?.display_name || discordName || o.accounts[0]?.account_name || o.memberId
-  })
-}
-
-function sortRoster(rows: ReconciledMember[]): ReconciledMember[] {
-  return rows.sort((a, b) => a.label.localeCompare(b.label))
-}
-
-/** Fallback when the in-game roster isn't available: seed from AxiTools-linked
- *  members (Phase C behavior), still honoring manual links for the Discord match. */
-function reconcileFromLinked(input: ReconcileInput): ReconciledMember[] {
-  const { discordMembers, linked, manualLinks, annotations, memberRoleId } = input
-  const roleConfigured = Boolean(memberRoleId)
-  const discordById = new Map(discordMembers.map((d) => [d.id, d]))
-  const annByMember = new Map(annotations.map((a) => [a.memberId, a]))
-  const linkedByMember = new Set(linked.map((l) => l.member_id))
-  const manualByMember = new Map<string, string[]>()
-  for (const l of manualLinks) {
-    const arr = manualByMember.get(l.memberId) ?? []
-    arr.push(l.accountName)
-    manualByMember.set(l.memberId, arr)
-  }
+  const annByKey = new Map(annotations.map((a) => [a.memberId, a]))
+  const inGameByName = new Map(inGameRoster.map((g) => [lc(g.name), g]))
   const hasMemberRole = (id: string): boolean =>
     roleConfigured ? (discordById.get(id)?.roles ?? []).includes(memberRoleId as string) : false
 
+  // account name (lc) -> member, for resolving in-game accounts. Manual wins.
+  const autoByAccount = new Map<string, string>()
+  for (const l of linked) {
+    for (const a of l.accounts ?? []) if (a.account_name) autoByAccount.set(lc(a.account_name), l.member_id)
+  }
+  const manualByAccount = new Map(manualLinks.map((m) => [lc(m.accountName), m.memberId]))
+
+  // Gather each member's accounts (auto links + manual links), folded together.
+  const memberAccts = new Map<string, Map<string, Acc>>()
+  const addAcct = (memberId: string, name: string, characters: string[], labels: string[], manual: boolean): void => {
+    const m = memberAccts.get(memberId) ?? new Map<string, Acc>()
+    memberAccts.set(memberId, m)
+    const k = lc(name)
+    const ex = m.get(k)
+    m.set(k, {
+      name: ex?.name ?? name,
+      characters: characters.length ? characters : (ex?.characters ?? []),
+      labels: [...new Set([...(ex?.labels ?? []), ...labels])],
+      manual: Boolean(ex?.manual) || manual
+    })
+  }
+  for (const l of linked) {
+    for (const a of l.accounts ?? []) {
+      if (a.account_name) {
+        addAcct(l.member_id, a.account_name, a.characters ?? [], Object.values(a.guild_labels ?? {}), false)
+      }
+    }
+  }
+  for (const ml of manualLinks) addAcct(ml.memberId, ml.accountName, [], [], true)
+
   const out: ReconciledMember[] = []
-  for (const link of linked) {
-    const dm = discordById.get(link.member_id)
-    const accounts: ReconciledAccount[] = (link.accounts ?? [])
-      .map((a) => a.account_name)
-      .filter((n): n is string => Boolean(n))
-      .map((name) => ({
-        account_name: name,
-        characters: link.accounts?.find((a) => a.account_name === name)?.characters ?? [],
-        inGuild: false
-      }))
-    const ann = annByMember.get(link.member_id) ?? emptyAnn(link.member_id)
-    const discordName = dm?.name ?? link.member_name
+
+  // 1. One folded row per matched Discord member.
+  for (const [memberId, accts] of memberAccts) {
+    const list = [...accts.values()]
+    const accounts: ReconciledAccount[] = list
+      .map((a) => {
+        const ig = inGameByName.get(lc(a.name))
+        return {
+          account_name: ig?.name ?? a.name, // prefer the canonical in-game casing
+          characters: a.characters,
+          inGuild: Boolean(ig),
+          rank: ig?.rank,
+          joined: ig?.joined ?? null
+        }
+      })
+      .sort((a, b) => Number(b.inGuild) - Number(a.inGuild))
+    const inGuild = accounts.some((a) => a.inGuild)
+    // When we know the in-game roster, a linked-but-absent member is only kept if
+    // they carry the guild-member role (else they're just some linked Discord user).
+    if (haveInGame && !inGuild && roleConfigured && !hasMemberRole(memberId)) continue
+    const discord = discordById.get(memberId)
+    const ann = annByKey.get(memberId) ?? emptyAnn(memberId)
     out.push({
-      memberId: link.member_id,
-      discordName,
-      displayName: dm?.display_name,
-      hasMemberRole: hasMemberRole(link.member_id),
+      memberId,
+      annotationKey: memberId,
+      discordName: discord?.name,
+      displayName: discord?.display_name,
+      hasMemberRole: hasMemberRole(memberId),
       accounts,
       accountName: accounts[0]?.account_name,
-      linkSource: accounts.length ? 'auto' : null,
-      guildLabels: [...new Set((link.accounts ?? []).flatMap((a) => Object.values(a.guild_labels ?? {})))],
-      linked: accounts.length > 0,
-      inGuild: false,
-      status: accounts.length ? 'linked' : 'no-key',
+      rank: accounts[0]?.rank,
+      joined: accounts[0]?.joined ?? null,
+      linkSource: list.some((a) => a.manual) ? 'manual' : 'auto',
+      guildLabels: [...new Set(list.flatMap((a) => a.labels))],
+      linked: true,
+      inGuild,
+      status: inGuild ? 'verified' : haveInGame ? 'left-guild' : 'linked',
       nickname: ann.nickname,
       aliases: ann.aliases,
       notes: ann.notes,
       tags: ann.tags,
-      label: ann.nickname || dm?.display_name || discordName || accounts[0]?.account_name || link.member_id
+      label: ann.nickname || discord?.display_name || discord?.name || accounts[0]?.account_name || memberId
     })
   }
+
+  // 2. Role-holding Discord members who never linked a key.
   if (roleConfigured) {
     for (const dm of discordMembers) {
-      if (linkedByMember.has(dm.id)) continue
+      if (memberAccts.has(dm.id)) continue
       if (!(dm.roles ?? []).includes(memberRoleId as string)) continue
-      const ann = annByMember.get(dm.id) ?? emptyAnn(dm.id)
+      const ann = annByKey.get(dm.id) ?? emptyAnn(dm.id)
       out.push({
         memberId: dm.id,
+        annotationKey: dm.id,
         discordName: dm.name,
         displayName: dm.display_name,
         hasMemberRole: true,
@@ -326,5 +226,35 @@ function reconcileFromLinked(input: ReconcileInput): ReconciledMember[] {
       })
     }
   }
-  return sortRoster(out)
+
+  // 3. In-game accounts with no Discord match — their own unlinked rows.
+  if (haveInGame) {
+    for (const gm of inGameRoster) {
+      const k = lc(gm.name)
+      if (manualByAccount.get(k) ?? autoByAccount.get(k)) continue // folded into a member row
+      const annKey = accountAnchor(gm.name)
+      const ann = annByKey.get(annKey) ?? emptyAnn(annKey)
+      out.push({
+        memberId: null,
+        annotationKey: annKey,
+        hasMemberRole: false,
+        accounts: [{ account_name: gm.name, characters: [], inGuild: true, rank: gm.rank, joined: gm.joined ?? null }],
+        accountName: gm.name,
+        rank: gm.rank,
+        joined: gm.joined ?? null,
+        linkSource: null,
+        guildLabels: [],
+        linked: false,
+        inGuild: true,
+        status: 'unlinked',
+        nickname: ann.nickname,
+        aliases: ann.aliases,
+        notes: ann.notes,
+        tags: ann.tags,
+        label: ann.nickname || gm.name
+      })
+    }
+  }
+
+  return out.sort((a, b) => a.label.localeCompare(b.label))
 }

@@ -82,6 +82,14 @@ function badges(m: RendererReconciledMember): ReactElement {
   )
 }
 
+/** "Display Name (username)" when both are known, else whichever exists. */
+function discordLabel(m: RendererReconciledMember): string {
+  const d = m.displayName?.trim()
+  const u = m.discordName?.trim()
+  if (d && u && d !== u) return `${d} (${u})`
+  return d || u || m.memberId || ''
+}
+
 function resolvePreview(draft: RosterDraft, m: RendererReconciledMember): string {
   const terms = [draft.nickname, ...draft.aliases, m.discordName, m.displayName]
     .filter((x): x is string => Boolean(x && x.trim()))
@@ -108,7 +116,7 @@ function LinkCard({ ctl, m }: { ctl: RosterController; m: RendererReconciledMemb
           <div className="rst-link-row">
             <span className="rst-link-state">
               {m.linkSource === 'manual' ? 'Manually linked to ' : 'Auto-linked to '}
-              <b>{m.displayName || m.discordName || m.memberId}</b>
+              <b>{discordLabel(m)}</b>
             </span>
             {m.linkSource === 'manual' && (
               <button className="sbtn ghost" onClick={() => void ctl.unlink(m.accountName as string)}>
@@ -160,7 +168,6 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
     )
   }
 
-  const canAnnotate = Boolean(current.memberId)
   const preview = resolvePreview(draft, current)
 
   return (
@@ -169,14 +176,14 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
         <div className="sk2-head-txt">
           <h1 className="rst-name">{draft.nickname || current.label}</h1>
           <div className="rst-sub">
-            {current.discordName
-              ? `@${current.discordName}${current.displayName && current.displayName !== current.discordName ? ` · "${current.displayName}"` : ''}`
+            {current.memberId
+              ? `Discord: ${discordLabel(current)}`
               : current.accountName
                 ? `${current.accountName} · no Discord link`
                 : 'unlinked'}
           </div>
         </div>
-        <button className="sbtn" disabled={!canAnnotate || !dirty} onClick={() => void save()}>
+        <button className="sbtn" disabled={!dirty} onClick={() => void save()}>
           Save
         </button>
       </div>
@@ -187,36 +194,33 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
           <span className="spcard-t">Identity</span>
           <span className={`spcard-s ${STATUS_META[current.status].led === 'g' ? 'ok' : 'err'}`}>
             <span className="led" />
-            {STATUS_META[current.status].sub}
+            {current.linkSource === 'manual' ? 'manual link' : STATUS_META[current.status].sub}
           </span>
         </div>
         <div className="spcard-b rst-kvs">
-          <div className="rst-kv">
-            <span className="k">GW2 account</span>
-            <span className="v">
-              {current.accounts.length
-                ? current.accounts.map((a) => a.account_name).join(', ')
-                : '— not linked'}
-            </span>
-          </div>
-          {current.rank && (
-            <div className="rst-kv">
-              <span className="k">In-game rank</span>
-              <span className="v">
-                {current.rank}
-                {current.joined ? ` · joined ${current.joined.slice(0, 10)}` : ''}
-              </span>
-            </div>
-          )}
           {current.discordName && (
             <div className="rst-kv">
               <span className="k">Discord</span>
-              <span className="v">
-                {current.discordName}
-                {current.displayName ? ` · ${current.displayName}` : ''}
-              </span>
+              <span className="v">{discordLabel(current)}</span>
             </div>
           )}
+          <div className="rst-kv">
+            <span className="k">{current.accounts.length > 1 ? 'GW2 accounts' : 'GW2 account'}</span>
+            <span className="v">
+              {current.accounts.length ? (
+                current.accounts.map((a) => (
+                  <div key={a.account_name}>
+                    {a.account_name}
+                    {a.inGuild
+                      ? ` · ${a.rank ?? 'member'}${a.joined ? `, joined ${a.joined.slice(0, 10)}` : ''}`
+                      : ' · not in in-game guild'}
+                  </div>
+                ))
+              ) : (
+                <>— not linked</>
+              )}
+            </span>
+          </div>
           {current.accounts.some((a) => a.characters.length > 0) && (
             <div className="rst-kv">
               <span className="k">Characters</span>
@@ -239,10 +243,7 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
           <span className="spcard-t">Annotations — taught to the AI</span>
         </div>
         <div className="spcard-b">
-          {!canAnnotate && (
-            <p className="rst-hint">Link a Discord user above to add notes the AI can use.</p>
-          )}
-          <fieldset className="rst-fields" disabled={!canAnnotate}>
+          <fieldset className="rst-fields">
             <div className="rst-field">
               <label className="rst-label">Nickname</label>
               <input

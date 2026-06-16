@@ -70,6 +70,38 @@ describe('reconcileRoster (GW2-first)', () => {
     expect(r.find((m) => m.memberId === 'm3')).toBeUndefined() // 'guest' role, not linked
   })
 
+  it('folds multiple GW2 accounts under one Discord identity', () => {
+    const r = reconcileRoster({
+      ...base,
+      linked: [
+        { member_id: 'm1', accounts: [{ account_name: 'harasho.4281' }, { account_name: 'harasho.alt.9999' }] }
+      ],
+      inGameRoster: [
+        { name: 'harasho.4281', rank: 'Officer', joined: '2024-11-01' },
+        { name: 'harasho.alt.9999', rank: 'Alt', joined: '2025-02-02' }
+      ],
+      manualLinks: [{ accountName: 'Ghost.0000', memberId: 'm1' }]
+    })
+    const rows = r.filter((m) => m.memberId === 'm1')
+    expect(rows).toHaveLength(1) // one identity, not three rows
+    const names = rows[0].accounts.map((a) => a.account_name).sort()
+    expect(names).toEqual(['Ghost.0000', 'harasho.4281', 'harasho.alt.9999'])
+    expect(rows[0].linkSource).toBe('manual') // any manual link marks the identity
+    // Ghost.0000 is no longer its own unlinked row
+    expect(r.some((m) => m.status === 'unlinked')).toBe(false)
+  })
+
+  it('anchors an unlinked account annotation on the account and resolves the label', () => {
+    const r = reconcileRoster({
+      ...base,
+      annotations: [{ memberId: 'acct:Ghost.0000', nickname: 'Spook', aliases: [], notes: 'pug', tags: [] }]
+    })
+    const ghost = r.find((m) => m.accountName === 'Ghost.0000')!
+    expect(ghost.annotationKey).toBe('acct:Ghost.0000')
+    expect(ghost.nickname).toBe('Spook')
+    expect(ghost.label).toBe('Spook')
+  })
+
   it('falls back to the linked roster when no in-game roster is available', () => {
     const r = reconcileRoster({ ...base, inGameRoster: [], haveInGame: false })
     const bob = r.find((m) => m.memberId === 'm1')!

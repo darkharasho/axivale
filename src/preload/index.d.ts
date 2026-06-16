@@ -127,10 +127,14 @@ export interface RendererReconciledAccount {
   account_name: string
   characters: string[]
   inGuild: boolean
+  rank?: string
+  joined?: string | null
 }
 
 export interface RendererReconciledMember {
   memberId: string | null
+  /** Where this row's annotation is stored (member_id or account anchor). */
+  annotationKey: string
   discordName?: string
   displayName?: string
   hasMemberRole: boolean

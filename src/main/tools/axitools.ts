@@ -310,8 +310,14 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
         const raw = (await deps.axitools.membersLinked(
           requireDiscordGuild(deps)
         )) as ResolveMemberLite[]
-        const members = mergeManualLinks(raw, deps.rosterLinks())
-        const matches = rankIdentities(name, members, deps.rosterAnnotations(), limit ?? 8)
+        const anns = deps.rosterAnnotations()
+        // Annotations made on an unlinked GW2 account are keyed "acct:<name>" —
+        // surface them as resolvable account-only identities.
+        const acctMembers: ResolveMemberLite[] = anns
+          .filter((a) => a.memberId.startsWith('acct:'))
+          .map((a) => ({ member_id: a.memberId, accounts: [{ account_name: a.memberId.slice(5) }] }))
+        const members = [...mergeManualLinks(raw, deps.rosterLinks()), ...acctMembers]
+        const matches = rankIdentities(name, members, anns, limit ?? 8)
         return { query: name, matches }
       })
     )

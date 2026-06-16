@@ -52,7 +52,7 @@ export default function RosterNav({ ctl }: { ctl: RosterController }): ReactElem
                 <div className="sk2-item-nm">{m.label}</div>
                 <div className="sk2-item-wh">
                   {m.accounts[0]?.account_name ? `${m.accounts[0].account_name} · ` : ''}
-                  {meta.sub}
+                  {m.linkSource === 'manual' ? 'manual' : meta.sub}
                 </div>
               </div>
             </li>
