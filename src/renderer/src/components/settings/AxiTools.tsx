@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Pane, Card, Field, Keyring, type KeyLabel } from '../panelui'
+import GuildMemberRoleField from './GuildMemberRoleField'
 
 export interface AxiGuild {
   id: string
@@ -67,6 +68,9 @@ export default function AxiTools(p: AxiToolsProps): ReactElement {
             Bound to <b>{p.axiGuild.name}</b> · {p.axiGuild.id}
           </div>
         )}
+      </Card>
+      <Card title="Guild roster">
+        <GuildMemberRoleField />
       </Card>
     </Pane>
   )

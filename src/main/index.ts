@@ -38,6 +38,11 @@ import { AgentService } from './agent'
 import { ConversationStore, type Conversation } from './conversationStore'
 import { SkillStore } from './skillStore'
 import { RosterStore } from './rosterStore'
+import {
+  reconcileRoster,
+  type DiscordMemberRaw,
+  type LinkedMemberRaw
+} from './rosterReconcile'
 import { MetaStore } from './metaStore'
 import { MetaCache } from './meta/cache'
 import { BrowserWindowFetcher } from './meta/fetcher'
@@ -799,6 +804,40 @@ app.whenReady().then(async () => {
   ipcMain.handle('roster:annotations:delete', (_e, memberId: string) =>
     rosterAnnotations.remove(memberId)
   )
+
+  ipcMain.handle('roster:reconcile', async () => {
+    const guildId = store.getSetting('guildId')
+    if (!guildId) throw new Error('No server connected — add an AxiVale key in Settings.')
+    const client = buildAxitools()
+    const [overview, linked] = await Promise.all([
+      client.discordOverview(guildId, true) as Promise<{ members?: DiscordMemberRaw[] }>,
+      client.membersLinked(guildId) as Promise<LinkedMemberRaw[]>
+    ])
+
+    // In-game GW2 guild roster is best-effort: it needs a gw2 key + guild id and
+    // can fail independently. A miss just means we can't confirm in-guild status.
+    let inGameAccounts: string[] = []
+    let haveInGame = false
+    const gw2GuildId = store.getSetting('gw2GuildId')
+    if (gw2GuildId && store.getActiveKey('gw2')) {
+      try {
+        const roster = await buildGw2().guildMembers(gw2GuildId)
+        inGameAccounts = roster.map((m) => m.name).filter(Boolean)
+        haveInGame = true
+      } catch {
+        haveInGame = false
+      }
+    }
+
+    return reconcileRoster({
+      discordMembers: overview.members ?? [],
+      linked: Array.isArray(linked) ? linked : [],
+      inGameAccounts,
+      annotations: rosterAnnotations.list(),
+      memberRoleId: store.getSetting('discordMemberRoleId') || null,
+      haveInGame
+    })
+  })
 
   ipcMain.handle('meta:list', () => meta.list())
   ipcMain.handle('meta:add-mode', (_e, seed: { mode: string; sources: { label: string; url: string }[]; notes?: string }) =>

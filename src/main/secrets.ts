@@ -31,6 +31,8 @@ export type SettingKey =
   | 'axibridgeCacheCapBytes'
   | 'windowBounds'
   | 'wikiIngestedAt'
+  /** Discord role id that marks a guild member — anchors the reconciled roster. */
+  | 'discordMemberRoleId'
 
 /** Services that hold a ring of labeled keys with one active. */
 export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'

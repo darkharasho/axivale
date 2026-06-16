@@ -1,191 +1,230 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
-import { axi, errText, isOffline, Offline } from './shared'
-import { SearchSelect } from './SearchSelect'
+import { useState, type ReactElement, type KeyboardEvent } from 'react'
+import type { RendererReconciledMember } from '../../../../preload/index.d'
+import { Offline } from './shared'
+import { STATUS_META, type RosterController, type RosterDraft } from './useRoster'
 
-interface LinkedAccount {
-  account_name: string
-  characters: string[]
-  gw2_guild_ids: string[]
-  guild_labels: Record<string, string>
-}
-
-interface Member {
-  member_id: string
-  member_name?: string
-  accounts: LinkedAccount[]
-  preferred_role_id?: string
-}
-
-function guildLabels(m: Member): string[] {
-  const labels = new Set<string>()
-  for (const a of m.accounts) {
-    for (const label of Object.values(a.guild_labels ?? {})) labels.add(label)
+/** Inline chip editor for a string list (aliases / tags). Enter or comma commits. */
+function ChipInput({
+  values,
+  onChange,
+  placeholder
+}: {
+  values: string[]
+  onChange: (next: string[]) => void
+  placeholder: string
+}): ReactElement {
+  const [text, setText] = useState('')
+  function commit(): void {
+    const v = text.trim().replace(/,$/, '').trim()
+    if (v && !values.some((x) => x.toLowerCase() === v.toLowerCase())) onChange([...values, v])
+    setText('')
   }
-  return [...labels]
-}
-
-function characterCount(m: Member): number {
-  return m.accounts.reduce((n, a) => n + (a.characters?.length ?? 0), 0)
-}
-
-function memberGuildLabels(m: Member): Set<string> {
-  const labels = new Set<string>()
-  for (const a of m.accounts) {
-    for (const label of Object.values(a.guild_labels ?? {})) labels.add(label)
-  }
-  return labels
-}
-
-/** All text a search should match against, lowercased. */
-function searchHaystack(m: Member): string {
-  const parts: string[] = [m.member_name ?? '', m.member_id]
-  for (const a of m.accounts) {
-    parts.push(a.account_name, ...(a.characters ?? []))
-  }
-  return parts.join(' ').toLowerCase()
-}
-
-export default function Roster(): ReactElement {
-  const [members, setMembers] = useState<Member[]>([])
-  const [loaded, setLoaded] = useState(false)
-  const [offline, setOffline] = useState(false)
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [query, setQuery] = useState('')
-  const [guildFilter, setGuildFilter] = useState('')
-
-  const load = useCallback(async () => {
-    setBusy(true)
-    try {
-      setMembers(await axi<Member[]>('membersLinked'))
-      setOffline(false)
-      setError('')
-    } catch (e) {
-      if (isOffline(e)) setOffline(true)
-      else setError(errText(e))
-    } finally {
-      setLoaded(true)
-      setBusy(false)
+  function onKey(e: KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      commit()
+    } else if (e.key === 'Backspace' && !text && values.length) {
+      onChange(values.slice(0, -1))
     }
-  }, [])
+  }
+  return (
+    <div className="rst-chips">
+      {values.map((v) => (
+        <span key={v} className="rst-chip">
+          {v}
+          <b onClick={() => onChange(values.filter((x) => x !== v))}>✕</b>
+        </span>
+      ))}
+      <input
+        className="rst-chip-in"
+        value={text}
+        placeholder={placeholder}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={onKey}
+        onBlur={commit}
+      />
+    </div>
+  )
+}
 
-  useEffect(() => {
-    void load()
-  }, [load])
+function Badge({ tone, text }: { tone: 'ok' | 'warn' | 'dim'; text: string }): ReactElement {
+  return (
+    <span className={`rst-badge ${tone}`}>
+      <span className="d" />
+      {text}
+    </span>
+  )
+}
 
-  // Guild options for the filter, union across all members, alphabetized.
-  const guildOptions = useMemo(() => {
-    const all = new Set<string>()
-    for (const m of members) for (const l of memberGuildLabels(m)) all.add(l)
-    return [...all].sort((a, b) => a.localeCompare(b))
-  }, [members])
+function badges(m: RendererReconciledMember): ReactElement {
+  const guild =
+    m.inGuild
+      ? <Badge key="g" tone="ok" text="In-game guild ✓" />
+      : m.status === 'left-guild'
+        ? <Badge key="g" tone="warn" text="Not in in-game guild" />
+        : <Badge key="g" tone="dim" text="In-game unconfirmed" />
+  return (
+    <div className="rst-badges">
+      {m.memberId ? (
+        m.hasMemberRole ? (
+          <Badge tone="ok" text="Member role" />
+        ) : (
+          <Badge tone="warn" text="No member role" />
+        )
+      ) : (
+        <Badge tone="warn" text="No Discord match" />
+      )}
+      {m.linked ? <Badge tone="ok" text="GW2 key linked" /> : <Badge tone="warn" text="No GW2 key" />}
+      {guild}
+    </div>
+  )
+}
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return members.filter((m) => {
-      if (q && !searchHaystack(m).includes(q)) return false
-      if (guildFilter && !memberGuildLabels(m).has(guildFilter)) return false
-      return true
-    })
-  }, [members, query, guildFilter])
+function resolvePreview(draft: RosterDraft, m: RendererReconciledMember): string {
+  const terms = [draft.nickname, ...draft.aliases, m.discordName, m.displayName]
+    .filter((x): x is string => Boolean(x && x.trim()))
+    .filter((v, i, a) => a.findIndex((x) => x.toLowerCase() === v.toLowerCase()) === i)
+  const acct = m.accounts[0]?.account_name
+  if (!terms.length || !acct) return ''
+  return `${terms.join(', ')} → ${acct}`
+}
+
+/** Detail editor for the selected roster member: reconciled identity + the local
+ *  annotation editor. The master list lives in RosterNav; both share one controller. */
+export default function Roster({ ctl }: { ctl: RosterController }): ReactElement {
+  const { current, draft, setDraft, dirty, save, offline, loaded, error } = ctl
 
   if (offline) {
     return (
-      <div className="settings">
+      <div className="sk2-detail sk2-blank">
         <Offline />
       </div>
     )
   }
+  if (!current) {
+    return (
+      <div className="sk2-detail sk2-blank">
+        <div className="panel-empty">{loaded ? 'Select a member.' : 'Reconciling the roster…'}</div>
+      </div>
+    )
+  }
+
+  const canAnnotate = Boolean(current.memberId)
+  const preview = resolvePreview(draft, current)
 
   return (
-    <div className="settings">
-      <div className="sgroup">
-        <h2>Linked Membership</h2>
-        <div className="srow">
-          <div className="countline">
-            <b>{filtered.length}</b>
-            {query || guildFilter ? ` of ${members.length}` : ''}{' '}
-            {members.length === 1 ? 'member' : 'members'}
-            {query || guildFilter ? ' shown' : ' linked'}
+    <div className="sk2-detail rst-detail">
+      <div className="sk2-head">
+        <div className="sk2-head-txt">
+          <h1 className="rst-name">{draft.nickname || current.label}</h1>
+          <div className="rst-sub">
+            {current.discordName ? `@${current.discordName}` : 'in-game only'}
+            {current.displayName && current.displayName !== current.discordName
+              ? ` · "${current.displayName}" in Discord`
+              : ''}
           </div>
-          <button className="sbtn out" disabled={busy} onClick={() => void load()}>
-            Refresh
-          </button>
         </div>
-        {members.length > 0 && (
-          <div className="roster-filters">
-            <input
-              className="rfilter-search"
-              type="text"
-              value={query}
-              placeholder="Search member, account, or character…"
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <SearchSelect
-              value={guildFilter}
-              options={guildOptions.map((g) => ({ value: g, label: g }))}
-              onChange={setGuildFilter}
-              placeholder="All guilds"
-              searchPlaceholder="Filter guilds…"
-            />
-            {(query || guildFilter) && (
-              <button
-                className="sbtn out"
-                onClick={() => {
-                  setQuery('')
-                  setGuildFilter('')
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        )}
-        {members.length === 0 ? (
-          <div className="panel-empty">
-            {loaded ? 'No members have linked their accounts yet.' : 'Fetching the roster…'}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="panel-empty">No members match the current filters.</div>
-        ) : (
-          <table className="roster-table">
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Accounts</th>
-                <th>Guilds</th>
-                <th>Characters</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((m) => (
-                <tr key={m.member_id}>
-                  <td className="nm2 mono">{m.member_name || m.member_id}</td>
-                  <td className="mono">
-                    {m.accounts.length > 0 ? m.accounts.map((a) => a.account_name).join(', ') : '—'}
-                  </td>
-                  <td className="mono">
-                    {(() => {
-                      const labels = guildLabels(m)
-                      return labels.length > 0 ? (
-                        <div className="guildlines">
-                          {labels.map((g) => (
-                            <span key={g}>{g}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        '—'
-                      )
-                    })()}
-                  </td>
-                  <td className="mono">{characterCount(m)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {error && <div className="sstatus err">{error}</div>}
+        <button className="sbtn" disabled={!canAnnotate || !dirty} onClick={() => void save()}>
+          Save
+        </button>
       </div>
+      {badges(current)}
+
+      <div className="spcard">
+        <div className="spcard-h">
+          <span className="spcard-t">Identity</span>
+          <span className={`spcard-s ${STATUS_META[current.status].led === 'g' ? 'ok' : 'err'}`}>
+            <span className="led" />
+            {STATUS_META[current.status].sub}
+          </span>
+        </div>
+        <div className="spcard-b rst-kvs">
+          {current.discordName && (
+            <div className="rst-kv">
+              <span className="k">Discord</span>
+              <span className="v">
+                {current.discordName}
+                {current.displayName ? ` · ${current.displayName}` : ''}
+              </span>
+            </div>
+          )}
+          <div className="rst-kv">
+            <span className="k">GW2 account</span>
+            <span className="v">
+              {current.accounts.length
+                ? current.accounts.map((a) => a.account_name).join(', ')
+                : '— not linked'}
+            </span>
+          </div>
+          {current.accounts.some((a) => a.characters.length > 0) && (
+            <div className="rst-kv">
+              <span className="k">Characters</span>
+              <span className="v">{current.accounts.flatMap((a) => a.characters).join(', ')}</span>
+            </div>
+          )}
+          {current.guildLabels.length > 0 && (
+            <div className="rst-kv">
+              <span className="k">Guilds</span>
+              <span className="v">{current.guildLabels.join(', ')}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="spcard">
+        <div className="spcard-h">
+          <span className="spcard-t">Annotations — taught to the AI</span>
+        </div>
+        <div className="spcard-b">
+          {!canAnnotate && (
+            <p className="rst-hint">
+              No Discord member to anchor an annotation. Tie this account to a Discord member first.
+            </p>
+          )}
+          <fieldset className="rst-fields" disabled={!canAnnotate}>
+            <div className="rst-field">
+              <label className="rst-label">Nickname</label>
+              <input
+                className="rst-input"
+                value={draft.nickname}
+                placeholder="Preferred short name, e.g. Bob"
+                onChange={(e) => setDraft({ ...draft, nickname: e.target.value })}
+              />
+            </div>
+            <div className="rst-field">
+              <label className="rst-label">Aliases</label>
+              <ChipInput
+                values={draft.aliases}
+                onChange={(aliases) => setDraft({ ...draft, aliases })}
+                placeholder="add an alias…"
+              />
+            </div>
+            <div className="rst-field">
+              <label className="rst-label">Notes (context for the AI)</label>
+              <textarea
+                className="rst-area"
+                value={draft.notes}
+                placeholder="Role, playstyle, timezone, anything worth knowing."
+                onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+              />
+            </div>
+            <div className="rst-field">
+              <label className="rst-label">Tags</label>
+              <ChipInput
+                values={draft.tags}
+                onChange={(tags) => setDraft({ ...draft, tags })}
+                placeholder="add a tag…"
+              />
+            </div>
+          </fieldset>
+          {preview && (
+            <div className="rst-resolve">
+              AI can resolve <b>{preview}</b>
+            </div>
+          )}
+        </div>
+      </div>
+      {error && <div className="sstatus err">{error}</div>}
     </div>
   )
 }

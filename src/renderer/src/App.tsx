@@ -6,6 +6,8 @@ import MetaLearningBanner from './components/MetaLearningBanner'
 import Operations from './components/panels/Operations'
 import OperationsNav, { type OperationsSection } from './components/panels/OperationsNav'
 import Roster from './components/panels/Roster'
+import RosterNav from './components/panels/RosterNav'
+import { useRoster } from './components/panels/useRoster'
 import Skills from './components/panels/Skills'
 import SkillsNav from './components/panels/SkillsNav'
 import { useSkills } from './components/panels/useSkills'
@@ -106,6 +108,8 @@ export default function App(): ReactElement {
   const [forcedSkillId, setForcedSkillId] = useState<string | null>(null)
   // Active sub-section of the merged Operations tab (Builds/Comps/Bureau).
   const [operationsSection, setOperationsSection] = useState<OperationsSection>('builds')
+  // Roster reconciliation + annotations, shared by RosterNav (rail) and Roster.
+  const rosterCtl = useRoster(section === 'roster')
 
   async function shareResponse(conversationId: string, turnId: number): Promise<void> {
     setShareState({ status: 'publishing' })
@@ -407,6 +411,8 @@ export default function App(): ReactElement {
           <SkillsNav ctl={skillsCtl} />
         ) : section === 'operations' ? (
           <OperationsNav active={operationsSection} onSelect={setOperationsSection} />
+        ) : section === 'roster' ? (
+          <RosterNav ctl={rosterCtl} />
         ) : (
         <Editions
           items={editionItems}
@@ -450,7 +456,7 @@ export default function App(): ReactElement {
             <Settings section={settingsSection} onChanged={refreshStatus} onProviderChanged={() => void newConversation()} />
           )}
           {section === 'operations' && <Operations active={operationsSection} />}
-          {section === 'roster' && <Roster />}
+          {section === 'roster' && <Roster ctl={rosterCtl} />}
           {section === 'skills' && <Skills ctl={skillsCtl} />}
           {section === 'meta' && (
             <Meta
@@ -489,7 +495,7 @@ export default function App(): ReactElement {
             </div>
           )}
         </div>
-        {(section === 'dispatches' || section === 'roster') && (
+        {section === 'dispatches' && (
           <RightRail memberCount={memberCount} buildsCount={buildsCount} turns={turns} />
         )}
       </div>

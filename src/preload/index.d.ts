@@ -121,6 +121,31 @@ export interface RendererRosterAnnotation {
   updatedAt: string
 }
 
+export type RosterStatus = 'verified' | 'linked' | 'no-key' | 'left-guild' | 'in-game-only'
+
+export interface RendererReconciledAccount {
+  account_name: string
+  characters: string[]
+  inGuild: boolean
+}
+
+export interface RendererReconciledMember {
+  memberId: string | null
+  discordName?: string
+  displayName?: string
+  hasMemberRole: boolean
+  accounts: RendererReconciledAccount[]
+  guildLabels: string[]
+  linked: boolean
+  inGuild: boolean
+  status: RosterStatus
+  nickname: string
+  aliases: string[]
+  notes: string
+  tags: string[]
+  label: string
+}
+
 export interface OfficerApi {
   getSetting(key: string): Promise<string | null>
   setSetting(key: string, value: string): Promise<void>
@@ -223,6 +248,7 @@ export interface OfficerApi {
     patch: Partial<{ nickname: string; aliases: string[]; notes: string; tags: string[] }>
   ): Promise<RendererRosterAnnotation | null>
   rosterAnnotationDelete(memberId: string): Promise<void>
+  rosterReconcile(): Promise<RendererReconciledMember[]>
   resetSession(conversationId: string): Promise<void>
   cancelTurn(conversationId: string): Promise<void>
   listConversations(): Promise<RendererConversation[]>
