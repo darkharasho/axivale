@@ -64,6 +64,10 @@ export function SearchSelect({
   // Navigable rows: the clear/placeholder option, then the filtered options.
   const rows = useMemo(() => [{ value: '', label: placeholder }, ...filtered], [filtered, placeholder])
   useEffect(() => setHi(0), [q])
+  // Keep the keyboard-highlighted option in view as it moves.
+  useEffect(() => {
+    ;(listRef.current?.children[hi] as HTMLElement | undefined)?.scrollIntoView({ block: 'nearest' })
+  }, [hi])
 
   function choose(v: string): void {
     onChange(v)
