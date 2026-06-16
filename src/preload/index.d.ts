@@ -29,6 +29,7 @@ export interface RendererMetaSource {
   status: 'ok' | 'error' | 'never'
   fetchedAt: string | null
   error: string | null
+  group: 'meta' | 'wiki' | 'general'
 }
 export interface RendererDerivedComp {
   window: { fromISO: string; toISO: string; days: number }

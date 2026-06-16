@@ -17,7 +17,7 @@ export default function MetaNav({
 }): ReactElement {
   return (
     <nav className="rail left snav">
-      <div className="snav-h">Meta</div>
+      <div className="snav-h">Sources</div>
       <button
         className={`snav-item${active === META_OVERVIEW ? ' on' : ''}`}
         onClick={() => onSelect(META_OVERVIEW)}

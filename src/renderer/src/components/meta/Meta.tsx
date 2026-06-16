@@ -75,26 +75,28 @@ export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaP
           <ModeSummary notes={m.notes} />
         </Card>
         <Card title="Sources">
-          <div className="meta-srcs">
-            {m.sources.map((s) => {
-              const isFetching = fetching[m.id] === s.url
-              const cls = isFetching ? 'fetching' : s.status
-              return (
-                <a
-                  key={s.url}
-                  className={`meta-srcchip ${cls}`}
-                  href={s.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={s.error ?? undefined}
-                >
-                  <span className="led" />
-                  {s.label}
-                  {isFetching ? ' · fetching…' : ''}
-                </a>
-              )
-            })}
-          </div>
+          {(['meta', 'wiki', 'general'] as const).map((g) => {
+            const srcs = m.sources.filter((s) => s.group === g)
+            if (srcs.length === 0) return null
+            return (
+              <div key={g} className="meta-srcgroup">
+                <div className="meta-srcgroup-h">{g}</div>
+                <div className="meta-srcs">
+                  {srcs.map((s) => {
+                    const isFetching = fetching[m.id] === s.url
+                    const cls = isFetching ? 'fetching' : s.status
+                    return (
+                      <a key={s.url} className={`meta-srcchip ${cls}`} href={s.url} target="_blank" rel="noreferrer" title={s.error ?? undefined}>
+                        <span className="led" />
+                        {s.label}
+                        {isFetching ? ' · fetching…' : ''}
+                      </a>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </Card>
         {/* Squad-comp playbook is WvW-only; Roaming/PvE never show it. */}
         {m.mode === 'WvW' && (
