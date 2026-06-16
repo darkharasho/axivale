@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { rosterKey, STATUS_META, type RosterController, type RosterFilter } from './useRoster'
+import { rosterKey, linkLabel, STATUS_META, type RosterController, type RosterFilter } from './useRoster'
 
 const FILTERS: Array<{ key: RosterFilter; label: string }> = [
   { key: 'all', label: 'All' },
@@ -52,7 +52,7 @@ export default function RosterNav({ ctl }: { ctl: RosterController }): ReactElem
                 <div className="sk2-item-nm">{m.label}</div>
                 <div className="sk2-item-wh">
                   {m.accounts[0]?.account_name ? `${m.accounts[0].account_name} · ` : ''}
-                  {m.linkSource === 'manual' ? 'manual' : meta.sub}
+                  {linkLabel(m) ?? meta.sub}
                 </div>
               </div>
             </li>

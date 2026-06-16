@@ -2,7 +2,7 @@ import { useState, type ReactElement, type KeyboardEvent } from 'react'
 import type { RendererReconciledMember } from '../../../../preload/index.d'
 import { Offline } from './shared'
 import { SearchSelect } from './SearchSelect'
-import { STATUS_META, type RosterController, type RosterDraft } from './useRoster'
+import { STATUS_META, linkLabel, type RosterController, type RosterDraft } from './useRoster'
 
 /** Inline chip editor for a string list (aliases / tags). Enter or comma commits. */
 function ChipInput({
@@ -258,7 +258,11 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
             <span className="spcard-t">Identity</span>
             <span className={`spcard-s ${STATUS_META[current.status].led === 'g' ? 'ok' : 'err'}`}>
               <span className="led" />
-              {current.linkSource === 'manual' ? 'manual link' : STATUS_META[current.status].sub}
+              {linkLabel(current) === 'mix'
+                ? 'mixed links'
+                : linkLabel(current) === 'manual'
+                  ? 'manual link'
+                  : STATUS_META[current.status].sub}
             </span>
           </div>
           <div className="spcard-b rst-kvs">

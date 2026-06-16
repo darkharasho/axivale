@@ -121,6 +121,25 @@ describe('Roster panel (GW2-first + manual links)', () => {
     )
   })
 
+  it('labels a mixed (manual + API) identity as "mix" in the rail', async () => {
+    const mixed = member({
+      label: 'Haro',
+      accounts: [
+        { account_name: 'harasho.4281', characters: [], inGuild: true, manual: false },
+        { account_name: 'gloom.2415', characters: [], inGuild: true, manual: true }
+      ],
+      linkSource: 'manual'
+    })
+    ;(window as unknown as { officer: unknown }).officer = officer({
+      rosterReconcile: vi.fn().mockResolvedValue([mixed])
+    })
+    render(<Harness />)
+    await screen.findByPlaceholderText(/preferred short name/i)
+    const nav = screen.getByRole('navigation')
+    expect(within(nav).getByText(/· mix$/)).toBeTruthy()
+    expect(within(nav).queryByText(/· manual$/)).toBeNull()
+  })
+
   it('shows a per-account unlink only for manual accounts and unlinks that account', async () => {
     const del = vi.fn().mockResolvedValue(undefined)
     const folded = member({

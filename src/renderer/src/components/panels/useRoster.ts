@@ -51,6 +51,13 @@ export function rosterKey(m: RendererReconciledMember): string {
   return m.accountName ? `acct:${m.accountName}` : '?'
 }
 
+/** How this identity's accounts were linked, for the rail/detail label:
+ *  'mix' (both manual + API/auto accounts), 'manual' (all manual), else null. */
+export function linkLabel(m: RendererReconciledMember): 'mix' | 'manual' | null {
+  if (m.linkSource !== 'manual') return null
+  return m.accounts.some((a) => !a.manual) ? 'mix' : 'manual'
+}
+
 function annotated(m: RendererReconciledMember): boolean {
   return Boolean(m.nickname || m.aliases.length || m.notes || m.tags.length)
 }
