@@ -4,7 +4,7 @@ import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { MetaStore } from '../metaStore'
-import { MetaRefresher, type MetaProgress } from './refresh'
+import { MetaRefresher, estimatePages, type MetaProgress } from './refresh'
 import type { RawCache } from './cache'
 import type { MetaFetcher, FetchResult } from './fetcher'
 import { FakeMetaIndex } from './rag/testFake'
@@ -84,8 +84,10 @@ describe('MetaRefresher', () => {
       only: 'gw2mists'
     })
     // only the targeted source is re-crawled; the sibling is NOT re-fetched
-    expect(f.fetch).toHaveBeenCalledWith(gm.url)
-    expect(f.fetch).not.toHaveBeenCalledWith(mb.url)
+    // (fetch is now called as (url, onPage) — assert on the url arg of each call)
+    const fetchedUrls = (f.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])
+    expect(fetchedUrls).toContain(gm.url)
+    expect(fetchedUrls).not.toContain(mb.url)
     // distill still sees BOTH (fresh target + cached sibling) so consensus survives
     const prompt = model.mock.calls[0][0] as string
     expect(prompt).toContain('fresh gw2mists tiers')
@@ -164,7 +166,7 @@ describe('MetaRefresher progress', () => {
     expect(events[events.length - 1]).toBe('idle')
   })
 
-  it('refresh-start total equals the configured-source count across stale modes', async () => {
+  it('refresh-start total is page-grained (sum of per-source page estimates)', async () => {
     const s = store()
     // mark all-but-one mode fresh so exactly one is stale
     s.list().forEach((x) => {
@@ -181,9 +183,31 @@ describe('MetaRefresher progress', () => {
       emit: (e) => events.push(e)
     }).refreshStale()
     const start = events.find((e) => e.type === 'refresh-start')
-    expect(start).toBeTruthy()
-    // PvE seeds three configured sources (Snowcrows, MetaBattle, Hardstuck).
-    expect(start).toEqual({ type: 'refresh-start', total: pve.sources.length })
+    const expected = pve.sources.reduce((n, x) => n + estimatePages(x.url), 0)
+    expect(start).toEqual({ type: 'refresh-start', total: expected })
+    // page-grained: much larger than the bare source count (multi-page crawls)
+    expect(expected).toBeGreaterThan(pve.sources.length)
+  })
+
+  it('emits a page event per crawled page so the bar moves within a source', async () => {
+    const s = store()
+    const m = s.list().find((x) => x.mode === 'PvE')!
+    const url = m.sources[0].url
+    const events: MetaProgress[] = []
+    // a fetcher that ticks onPage 3 times (simulating a 3-page crawl)
+    const f: MetaFetcher = {
+      fetch: vi.fn(async (_u: string, onPage?: () => void) => {
+        onPage?.(); onPage?.(); onPage?.()
+        return { ok: true, text: 'r', pages: [] } as FetchResult
+      })
+    }
+    await new MetaRefresher({
+      store: s, fetcher: f, cache: fakeCache(), model: vi.fn().mockResolvedValue('n'),
+      now: () => Date.now(), emit: (e) => events.push(e)
+    }).refreshStale({ only: url })
+    const pageEvents = events.filter((e) => e.type === 'page')
+    expect(pageEvents.length).toBe(3)
+    expect(pageEvents[0]).toMatchObject({ type: 'page', url })
   })
 })
 

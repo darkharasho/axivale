@@ -17,12 +17,26 @@ import { corpusForUrl, type Corpus } from './corpus'
 const SEVEN_DAYS_MS = 7 * 86_400_000
 
 export type MetaProgress =
-  | { type: 'refresh-start'; total: number } // total = configured sources across stale modes
+  | { type: 'refresh-start'; total: number } // total = estimated pages across fetched sources
   | { type: 'mode-start'; modeId: string }
   | { type: 'source-start'; modeId: string; url: string }
+  | { type: 'page'; modeId: string; url: string } // one crawled page within a source
   | { type: 'source-done'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
   | { type: 'idle' }
+
+// Rough per-source page estimates (mirror the crawler caps in fetcher.ts /
+// snowcrows.ts) so the progress bar is page-grained, not source-grained. We
+// OVER-estimate on purpose: the real page count is ≤ the cap, so the bar ends a
+// little short and snaps to done — never the reverse (hitting 100% then freezing).
+export function estimatePages(url: string): number {
+  const cfg = configForUrl(url)
+  if (!cfg) return 1
+  if (cfg.kind === 'wiki') return 1
+  if (cfg.kind === 'static') return 60 // snowcrows MAX_PAGES
+  if (cfg.kind === 'browser') return cfg.linkSelector ? 30 : 1 // MAX_CRAWL_PAGES vs single page
+  return 1
+}
 
 export interface RefresherDeps {
   store: MetaStore
@@ -64,15 +78,14 @@ export class MetaRefresher {
       const stale = only
         ? store.list().filter((m) => m.sources.some((s) => configForUrl(s.url) && targets(s)))
         : store.list().filter((m) => isStale(m, now(), staleMs))
-      // Progress counts only sources we actually FETCH (the targeted ones when scoped).
-      const totalSources = stale.reduce(
-        (n, m) => n + m.sources.filter((s) => configForUrl(s.url) && targets(s)).length,
-        0
-      )
-      if (totalSources > 0) emit({ type: 'refresh-start', total: totalSources })
+      // Page-grained total: sum the per-source page estimates of the sources we
+      // actually FETCH (the targeted ones when scoped), so the bar moves per page.
+      const fetched = stale.flatMap((m) => m.sources.filter((s) => configForUrl(s.url) && targets(s)))
+      const totalPages = fetched.reduce((n, s) => n + estimatePages(s.url), 0)
+      if (fetched.length > 0) emit({ type: 'refresh-start', total: totalPages })
       // Resolve the authoritative elite-spec map ONCE per run (only when there's
       // work), so every distill in this run is grounded by the same map.
-      const specMap = totalSources > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
+      const specMap = fetched.length > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
       for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
         const buildRaws: Array<{ source: string; text: string }> = []
@@ -91,7 +104,8 @@ export class MetaRefresher {
           }
           emit({ type: 'source-start', modeId: mode.id, url: src.url })
           console.log(`[meta] fetch start (${mode.id}):`, src.url)
-          const r = await fetcher.fetch(src.url)
+          // Tick per crawled page so the bar moves during a long multi-page crawl.
+          const r = await fetcher.fetch(src.url, () => emit({ type: 'page', modeId: mode.id, url: src.url }))
           store.recordFetch(
             mode.id,
             src.url,

@@ -79,6 +79,7 @@ export type RendererMetaProgress =
   | { type: 'refresh-start'; total: number }
   | { type: 'mode-start'; modeId: string }
   | { type: 'source-start'; modeId: string; url: string }
+  | { type: 'page'; modeId: string; url: string }
   | { type: 'source-done'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
   | { type: 'idle' }

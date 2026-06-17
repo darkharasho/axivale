@@ -22,6 +22,7 @@ export interface MetaProps {
   active: string
   busy: Record<string, boolean>
   fetching: Record<string, string | null>
+  pages?: Record<string, number>
   onRefresh: () => void
 }
 
@@ -76,7 +77,7 @@ function WikiPanel(): ReactElement {
   )
 }
 
-export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaProps): ReactElement {
+export default function Meta({ modes, active, busy, fetching, pages, onRefresh }: MetaProps): ReactElement {
   if (active === META_OVERVIEW) {
     return (
       <div className="settings meta-panel">
@@ -150,13 +151,14 @@ export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaP
                 <div className="meta-srcs">
                   {srcs.map((s) => {
                     const isFetching = fetching[m.id] === s.url
+                    const pageCount = isFetching ? (pages?.[m.id] ?? 0) : 0
                     const cls = isFetching ? 'fetching' : s.status
                     return (
                       <span key={s.url} className="meta-srcchip-wrap">
                         <a className={`meta-srcchip ${cls}`} href={s.url} target="_blank" rel="noreferrer" title={s.error ?? undefined}>
                           <span className="led" />
                           {s.label}
-                          {isFetching ? ' · fetching…' : ''}
+                          {isFetching ? (pageCount > 0 ? ` · ${pageCount} pages…` : ' · fetching…') : ''}
                         </a>
                         {import.meta.env.DEV && (
                           <button
