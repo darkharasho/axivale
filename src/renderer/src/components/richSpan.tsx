@@ -51,6 +51,17 @@ export function renderRichSpan(
     const name = data['data-class']
     if (typeof name === 'string' && name.length > 0) return <ClassTag name={name} label={children} />
   }
+  if (classes.includes('axi-entity')) {
+    const type = data['data-entity-type']
+    const name = data['data-entity-name']
+    if (typeof type === 'string' && typeof name === 'string') {
+      return (
+        <span className={className} data-entity-type={type} data-entity-name={name}>
+          {children}
+        </span>
+      )
+    }
+  }
   return (
     <span className={className} {...rest}>
       {children}
