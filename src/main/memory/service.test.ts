@@ -1,5 +1,5 @@
 // src/main/memory/service.test.ts
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mkdtempSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -54,7 +54,7 @@ describe('MemoryService.recall', () => {
     const out = await service.recall({ query: 'wvw', entity: '111', limit: 5 })
     expect(out.facts[0].id).toBe(id)
     expect(out.facts[0].entityName).toBe('Zara')
-    expect(out.facts[0].timesUsed).toBeGreaterThanOrEqual(0)
+    expect(out.facts[0].timesUsed).toBe(0)
     expect(store.getFact(id)?.useCount).toBe(1)
   })
 })

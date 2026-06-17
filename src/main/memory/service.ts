@@ -37,6 +37,8 @@ export class MemoryService {
       const near = await this.index.nearest(input.body, 'fact', { entity })
       if (near && near.cosine >= FACT_DUP_COSINE) {
         this.store.markFactRelearned(near.id, { entity, tags })
+        const merged = this.store.getFact(near.id)!
+        await this.index.upsert({ id: near.id, kind: 'fact', entity: merged.entity, text: merged.body })
         return { id: near.id, kind: 'fact', merged: true }
       }
       const fact = this.store.insertFact({ body: input.body, entity, tags, source })
@@ -119,6 +121,7 @@ export class MemoryService {
     if (!a) return
     if (a.archived) await this.index.remove(id)
     else await this.index.upsert({ id, kind: a.kind, entity: a.entity, text: `${a.title}\n${a.body}` })
+    this.store.rerank()
   }
 
   async deleteFact(id: string): Promise<void> { this.store.deleteFact(id); await this.index.remove(id) }
