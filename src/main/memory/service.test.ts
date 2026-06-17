@@ -33,8 +33,8 @@ describe('MemoryService.remember', () => {
 
   it('merges a semantic near-duplicate above the cosine threshold', async () => {
     const { service, store } = svc()
-    await service.remember({ kind: 'fact', body: 'plays wvw small scale roaming', entity: null })
-    const r2 = await service.remember({ kind: 'fact', body: 'plays wvw small scale roaming often', entity: null })
+    await service.remember({ kind: 'fact', body: 'zara plays wvw small scale roaming open field skirmish duel fights kiting bomb cleave peel rez stealth dodge', entity: null })
+    const r2 = await service.remember({ kind: 'fact', body: 'zara plays wvw small scale roaming open field skirmish duel fights kiting bomb cleave peel rez stealth dodge often', entity: null })
     expect(r2.merged).toBe(true)
     expect(store.list().facts).toHaveLength(1)
   })

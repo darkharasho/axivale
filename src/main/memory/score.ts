@@ -7,7 +7,7 @@ import type { MemoryFact, MemoryArtifact } from './types'
 export const HALF_LIFE_MS = 21 * 86_400_000
 export const ARCHIVE_AFTER_MS = 180 * 86_400_000
 export const FACT_PIN_BUDGET = 40
-export const FACT_DUP_COSINE = 0.8
+export const FACT_DUP_COSINE = 0.9
 export const ARTIFACT_DUP_COSINE = 0.85
 
 const USER_PIN_BASE = 1_000_000
