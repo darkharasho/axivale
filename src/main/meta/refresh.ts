@@ -17,12 +17,26 @@ import { corpusForUrl, type Corpus } from './corpus'
 const SEVEN_DAYS_MS = 7 * 86_400_000
 
 export type MetaProgress =
-  | { type: 'refresh-start'; total: number } // total = configured sources across stale modes
+  | { type: 'refresh-start'; total: number } // total = estimated pages across fetched sources
   | { type: 'mode-start'; modeId: string }
   | { type: 'source-start'; modeId: string; url: string }
+  | { type: 'page'; modeId: string; url: string } // one crawled page within a source
   | { type: 'source-done'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
   | { type: 'idle' }
+
+// Rough per-source page estimates (mirror the crawler caps in fetcher.ts /
+// snowcrows.ts) so the progress bar is page-grained, not source-grained. We
+// OVER-estimate on purpose: the real page count is ≤ the cap, so the bar ends a
+// little short and snaps to done — never the reverse (hitting 100% then freezing).
+export function estimatePages(url: string): number {
+  const cfg = configForUrl(url)
+  if (!cfg) return 1
+  if (cfg.kind === 'wiki') return 1
+  if (cfg.kind === 'static') return 60 // snowcrows MAX_PAGES
+  if (cfg.kind === 'browser') return cfg.linkSelector ? 30 : 1 // MAX_CRAWL_PAGES vs single page
+  return 1
+}
 
 export interface RefresherDeps {
   store: MetaStore
@@ -46,31 +60,52 @@ function isStale(mode: MetaMode, now: number, staleMs: number): boolean {
 export class MetaRefresher {
   constructor(private readonly deps: RefresherDeps) {}
 
-  async refreshStale(): Promise<void> {
+  /**
+   * Re-crawl + re-distill. With no args, processes every stale mode and fetches
+   * all its sources. With `only` (a URL or substring), targets just the matching
+   * source(s) for a fast iteration: fetches only those, but pulls every OTHER
+   * build source from the raw cache so the consensus distill still sees the full
+   * source set (a single-source re-distill would otherwise wipe the cross-source
+   * notes). Modes containing a matching source are processed regardless of staleness.
+   */
+  async refreshStale(opts: { only?: string } = {}): Promise<void> {
     const { store, fetcher, cache, model, now } = this.deps
     const emit = this.deps.emit ?? ((): void => {})
     const staleMs = this.deps.staleMs ?? SEVEN_DAYS_MS
+    const only = opts.only?.trim() || undefined
+    const targets = (s: { url: string }): boolean => !only || s.url.includes(only)
     try {
-      const stale = store.list().filter((m) => isStale(m, now(), staleMs))
-      // Progress is per-source (not per-mode) so the bar moves as each source
-      // finishes its crawl, instead of sitting still for a whole mode.
-      const totalSources = stale.reduce(
-        (n, m) => n + m.sources.filter((s) => configForUrl(s.url)).length,
-        0
-      )
-      if (totalSources > 0) emit({ type: 'refresh-start', total: totalSources })
+      const stale = only
+        ? store.list().filter((m) => m.sources.some((s) => configForUrl(s.url) && targets(s)))
+        : store.list().filter((m) => isStale(m, now(), staleMs))
+      // Page-grained total: sum the per-source page estimates of the sources we
+      // actually FETCH (the targeted ones when scoped), so the bar moves per page.
+      const fetched = stale.flatMap((m) => m.sources.filter((s) => configForUrl(s.url) && targets(s)))
+      const totalPages = fetched.reduce((n, s) => n + estimatePages(s.url), 0)
+      if (fetched.length > 0) emit({ type: 'refresh-start', total: totalPages })
       // Resolve the authoritative elite-spec map ONCE per run (only when there's
-      // stale work), so every distill in this run is grounded by the same map.
-      const specMap = totalSources > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
+      // work), so every distill in this run is grounded by the same map.
+      const specMap = fetched.length > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
       for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
         const buildRaws: Array<{ source: string; text: string }> = []
         const ruleRaws: string[] = []
         for (const src of mode.sources) {
           if (!configForUrl(src.url)) continue
+          if (!targets(src)) {
+            // Not the targeted source — reuse its cached raw text so the distiller
+            // keeps full cross-source consensus without re-crawling it.
+            const cached = cache.get(src.url)
+            if (cached) {
+              if (resolveContent(src.url) === 'rules') ruleRaws.push(cached)
+              else buildRaws.push({ source: src.label, text: cached })
+            }
+            continue
+          }
           emit({ type: 'source-start', modeId: mode.id, url: src.url })
           console.log(`[meta] fetch start (${mode.id}):`, src.url)
-          const r = await fetcher.fetch(src.url)
+          // Tick per crawled page so the bar moves during a long multi-page crawl.
+          const r = await fetcher.fetch(src.url, () => emit({ type: 'page', modeId: mode.id, url: src.url }))
           store.recordFetch(
             mode.id,
             src.url,

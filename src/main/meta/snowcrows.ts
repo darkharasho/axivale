@@ -226,6 +226,8 @@ export interface SnowcrowsDeps {
   now?: () => number
   /** Politeness delay between fetches; tests pass 0. */
   delayMs?: number
+  /** Fires once per visited page so callers can show page-grained progress. */
+  onPage?: () => void
 }
 
 export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}): Promise<FetchResult> {
@@ -264,6 +266,7 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
     const key = normKey(pageUrl)
     if (key === null || visited.has(key)) continue
     visited.add(key)
+    deps.onPage?.() // tick per visited page so progress moves through the crawl
 
     const html = await getHtml(pageUrl)
     await sleep(deps.delayMs ?? PAGE_DELAY_MS)

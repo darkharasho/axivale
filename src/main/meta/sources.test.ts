@@ -77,6 +77,9 @@ describe('source registry', () => {
     expect(gm?.selector).not.toBe('body')
     expect(gm?.linkSelector).toBeTruthy()
     expect(gm?.crawlDepth).toBe(2)
+    // landing (tier-list) page captured separately from per-build detail pages,
+    // via the verified container that holds ALL tier tables (not a per-tier wrap).
+    expect(gm?.landingSelector).toBe('.gm-builds-table-stack')
     // MetaBattle unchanged
     expect(configForUrl('https://metabattle.com/wiki/Build:X')?.selector).toBe('#mw-content-text')
   })

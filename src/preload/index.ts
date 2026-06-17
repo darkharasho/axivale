@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld('officer', {
     ipcRenderer.invoke('meta:update-playbook', id, patch),
   metaDeriveComp: (id: string) => ipcRenderer.invoke('meta:derive-comp', id),
   metaForceRefresh: () => ipcRenderer.invoke('meta:force-refresh'),
+  metaRefreshSource: (only: string) => ipcRenderer.invoke('meta:refresh-source', only),
   metaIndexStats: () => ipcRenderer.invoke('meta:index-stats'),
   metaIndexSample: (opts: { mode?: string; limit: number }) => ipcRenderer.invoke('meta:index-sample', opts),
   metaIndexSearch: (query: string, mode?: string) => ipcRenderer.invoke('meta:index-search', query, mode),

@@ -35,7 +35,8 @@ export default function MetaLearningBanner(): ReactElement | null {
   return (
     <>
       {active.map(([phase, row]) => {
-        const pct = row.total > 0 ? Math.round((row.done / row.total) * 100) : 0
+        // Clamp: the page total is an estimate (caps), so done may exceed it.
+        const pct = row.total > 0 ? Math.min(100, Math.round((row.done / row.total) * 100)) : 0
         return (
           <div className="learn-banner" key={phase}>
             <span className="learn-label">{row.label}</span>

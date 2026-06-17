@@ -81,6 +81,7 @@ export default function App(): ReactElement {
   const [metaModes, setMetaModes] = useState<RendererMetaMode[]>([])
   const [metaBusy, setMetaBusy] = useState<Record<string, boolean>>({})
   const [metaFetching, setMetaFetching] = useState<Record<string, string | null>>({})
+  const [metaPages, setMetaPages] = useState<Record<string, number>>({})
   const [activeMetaMode, setActiveMetaMode] = useState<string>(META_OVERVIEW)
 
   function refreshMeta(): void {
@@ -90,8 +91,12 @@ export default function App(): ReactElement {
     refreshMeta()
     return window.officer.onMetaProgress((e: RendererMetaProgress) => {
       if (e.type === 'mode-start') setMetaBusy((b) => ({ ...b, [e.modeId]: true }))
-      else if (e.type === 'source-start') setMetaFetching((f) => ({ ...f, [e.modeId]: e.url }))
-      else if (e.type === 'mode-done') {
+      else if (e.type === 'source-start') {
+        setMetaFetching((f) => ({ ...f, [e.modeId]: e.url }))
+        setMetaPages((p) => ({ ...p, [e.modeId]: 0 })) // reset page counter for the new source
+      } else if (e.type === 'page') {
+        setMetaPages((p) => ({ ...p, [e.modeId]: (p[e.modeId] ?? 0) + 1 }))
+      } else if (e.type === 'mode-done') {
         setMetaBusy((b) => ({ ...b, [e.modeId]: false }))
         setMetaFetching((f) => ({ ...f, [e.modeId]: null }))
         refreshMeta()
@@ -508,6 +513,7 @@ export default function App(): ReactElement {
                 active={activeMetaMode}
                 busy={metaBusy}
                 fetching={metaFetching}
+                pages={metaPages}
                 onRefresh={refreshMeta}
               />
             )

@@ -25,7 +25,9 @@ export type FetchResult =
   | { ok: false; error: string }
 
 export interface MetaFetcher {
-  fetch(url: string): Promise<FetchResult>
+  /** onPage (optional) fires once per crawled page so callers can show
+   *  page-grained progress during a long multi-page crawl. */
+  fetch(url: string, onPage?: () => void): Promise<FetchResult>
 }
 
 const FETCH_TIMEOUT_MS = 20_000
@@ -169,8 +171,8 @@ export class BrowserWindowFetcher implements MetaFetcher {
   }
 
   /** Serialize all fetches through the single window. */
-  fetch(url: string): Promise<FetchResult> {
-    const run = this.chain.then(() => this.fetchOne(url))
+  fetch(url: string, onPage?: () => void): Promise<FetchResult> {
+    const run = this.chain.then(() => this.fetchOne(url, onPage))
     this.chain = run.catch(() => undefined)
     return run
   }
@@ -213,13 +215,20 @@ export class BrowserWindowFetcher implements MetaFetcher {
     }
   }
 
-  private async fetchOne(url: string): Promise<FetchResult> {
+  private async fetchOne(url: string, onPage?: () => void): Promise<FetchResult> {
     const cfg = configForUrl(url)
     if (!cfg) return { ok: false, error: 'no extractor' }
-    if (cfg.kind === 'wiki') return fetchWiki(url, cfg)
-    if (cfg.kind === 'static') return fetchSnowcrowsStatic(url, { crawlDepth: cfg.crawlDepth })
+    if (cfg.kind === 'wiki') {
+      const r = await fetchWiki(url, cfg)
+      onPage?.()
+      return r
+    }
+    if (cfg.kind === 'static') return fetchSnowcrowsStatic(url, { crawlDepth: cfg.crawlDepth, onPage })
 
     const selector = cfg.selector ?? 'body'
+    // The landing page (level 0) may hold index/tier-list content outside the
+    // per-build node — capture it with landingSelector when configured.
+    const landingSelector = cfg.landingSelector ?? selector
     const depth = cfg.linkSelector ? (cfg.crawlDepth ?? 1) : 0
     try {
       const pages: FetchedPage[] = []
@@ -235,10 +244,11 @@ export class BrowserWindowFetcher implements MetaFetcher {
         const key = normalizeUrl(pageUrl)
         if (key === null || visited.has(key)) continue
         visited.add(key)
+        onPage?.() // tick per visited page so progress moves through the crawl
 
         let extracted: { title: string; text: string; date?: string } | null
         try {
-          extracted = await this.loadChecked(pageUrl, selector)
+          extracted = await this.loadChecked(pageUrl, level === 0 ? landingSelector : selector)
         } catch {
           loadErrors++
           continue // skip a bad page; keep walking

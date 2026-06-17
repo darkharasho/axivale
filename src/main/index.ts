@@ -339,7 +339,7 @@ app.whenReady().then(async () => {
       // (the wiki ingest feeds it as phase 'wiki').
       if (e.type === 'refresh-start')
         sendLearnProgress({ phase: 'meta', kind: 'start', total: e.total, label: 'Learning the current meta…' })
-      else if (e.type === 'source-done') sendLearnProgress({ phase: 'meta', kind: 'advance' })
+      else if (e.type === 'page') sendLearnProgress({ phase: 'meta', kind: 'advance' })
       else if (e.type === 'idle') sendLearnProgress({ phase: 'meta', kind: 'done' })
     }
   })
@@ -1138,6 +1138,11 @@ app.whenReady().then(async () => {
   ipcMain.handle('meta:force-refresh', () => {
     meta.markAllStale()
     void metaRefresher.refreshStale()
+  })
+  // Re-crawl a single source (by URL or substring) and re-distill from cache for
+  // the rest — fast iteration without the full multi-source crawl.
+  ipcMain.handle('meta:refresh-source', (_e, only: string) => {
+    void metaRefresher.refreshStale({ only })
   })
   ipcMain.handle('meta:index-stats', async () => {
     try {

@@ -10,6 +10,11 @@ export interface SourceConfig {
   kind: 'browser' | 'wiki' | 'static'
   /** required for kind==='browser': element whose innerText we extract */
   selector?: string
+  /** browser only: selector for the LANDING page (crawl level 0) when it differs
+   *  from the per-build `selector`. Used to capture a tier-list/index page whose
+   *  content (e.g. gw2mists' "S TIER / A TIER" build groupings) lives outside the
+   *  per-build node — so build→tier reaches the distiller. Falls back to `selector`. */
+  landingSelector?: string
   /** required for kind==='wiki': MediaWiki api.php base; page title is parsed from the URL */
   wikiApi?: string
   // depth-1: CSS selector for build-page links on the landing page
@@ -26,7 +31,13 @@ export const SOURCE_CONFIGS: SourceConfig[] = [
   { host: 'snowcrows.com', kind: 'static', crawlDepth: 2 },
   { host: 'hardstuck.gg', kind: 'browser', selector: 'section.gw2-build-page', linkSelector: 'main a[href*="/gw2/builds/"]', crawlDepth: 2 },
   { host: 'guildjen.com', kind: 'browser', selector: '.entry-content', linkSelector: 'a[href*="-build"]', crawlDepth: 2 },
-  { host: 'gw2mists.com', kind: 'browser', selector: '.gm-build-detail-page', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },
+  // Detail pages give gear/skills; the landing tier-list page gives each build's
+  // TIER (grouped tables headed "S Tier - Meta", "A Tier - Great", …) plus Rating/
+  // Popularity/Last-update columns the detail page omits. `.gm-builds-table-stack`
+  // is the single node holding ALL the tier tables (verified against the live DOM);
+  // don't target .gm-builds-explorer-table-wrap — querySelector would grab only the
+  // first (S-tier) group. So capture the stack on the landing page, details per build.
+  { host: 'gw2mists.com', kind: 'browser', selector: '.gm-build-detail-page', landingSelector: '.gm-builds-table-stack', linkSelector: 'a[href*="/builds/"]', crawlDepth: 2 },
   { host: 'metabattle.com', kind: 'browser', selector: '#mw-content-text', linkSelector: '#mw-content-text a[href*="/wiki/"]' },
   // Discretize [dT] — fractal/CM, mechanics, and profession guides (general corpus).
   // Content lives at archive.discretize.eu (a Gatsby SSR app with hashed emotion-CSS

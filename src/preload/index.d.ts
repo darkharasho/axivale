@@ -79,6 +79,7 @@ export type RendererMetaProgress =
   | { type: 'refresh-start'; total: number }
   | { type: 'mode-start'; modeId: string }
   | { type: 'source-start'; modeId: string; url: string }
+  | { type: 'page'; modeId: string; url: string }
   | { type: 'source-done'; modeId: string; url: string }
   | { type: 'mode-done'; modeId: string }
   | { type: 'idle' }
@@ -306,6 +307,7 @@ export interface OfficerApi {
   ): Promise<RendererMetaMode | null>
   metaRemoveMode(id: string): Promise<void>
   metaForceRefresh(): Promise<void>
+  metaRefreshSource(only: string): Promise<void>
   metaUpdatePlaybook(id: string, patch: { principles?: string; overrides?: string; blessed?: boolean }): Promise<RendererMetaMode | null>
   metaDeriveComp(id: string): Promise<{ ok: boolean; error?: string; mode?: RendererMetaMode }>
   metaIndexStats(): Promise<RendererMetaIndexStats>
