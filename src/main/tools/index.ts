@@ -11,6 +11,7 @@ import { buildGw2WikiTools } from './gw2Wiki'
 import { buildGw2WikiSearchTools } from './gw2WikiSearch'
 import { buildGeneralSearchTools } from './generalSearch'
 import { buildCompCheckTools } from './compCheck'
+import { buildMemoryTools } from './memory'
 
 export type { ToolDeps } from './shared'
 export { DESTRUCTIVE_DISCORD_ACTIONS }
@@ -59,6 +60,7 @@ export function buildOfficerTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
     ...buildCompCheckTools(),
     ...buildGw2WikiTools(deps.wikiFacts),
     ...buildGw2WikiSearchTools(deps.wikiIndex, deps.wikiLiveSearch),
-    ...buildGeneralSearchTools(deps.generalIndex)
+    ...buildGeneralSearchTools(deps.generalIndex),
+    ...buildMemoryTools(deps)
   ]
 }

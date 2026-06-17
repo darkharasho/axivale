@@ -47,7 +47,9 @@ describe('toToolSpecs', () => {
       generalIndex: () => ({}) as never,
       wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
       fetchBuildPage: async () => null,
-      fetchBuildPageRaw: async () => null
+      fetchBuildPageRaw: async () => null,
+      memory: () => ({}) as never,
+      resolveEntityKey: async () => null
     })
     const specs = toToolSpecs(tools)
     expect(specs.length).toBe(tools.length)

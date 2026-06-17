@@ -7,6 +7,7 @@ import type { MetaIndex } from '../meta/rag/index'
 import type { WikiFacts } from '../meta/wikiFacts'
 import type { RosterAnnotation } from '../rosterStore'
 import type { RosterLink } from '../linkStore'
+import type { MemoryService } from '../memory/service'
 
 /** Structural launcher type so tests stub one method instead of the whole class. */
 export interface AxiforgeLauncherLike {
@@ -40,6 +41,10 @@ export interface ToolDeps {
   wikiIndex: () => MetaIndex
   /** General-guides corpus search (lazy; resolved per-call). */
   generalIndex: () => MetaIndex
+  /** Durable officer memory (facts + artifacts). */
+  memory: () => MemoryService
+  /** Resolve a loose name to a single roster identity key, or null if ambiguous/none. */
+  resolveEntityKey: (name: string) => Promise<{ key: string; name: string } | null>
   /** On-demand live GW2 wiki search fallback (optional). */
   wikiLiveSearch?: (q: string) => Promise<Array<{title:string;url:string;snippet:string}>>
   /** On-demand GW2 wiki skill/trait facts with PvE/WvW/PvP splits. */
