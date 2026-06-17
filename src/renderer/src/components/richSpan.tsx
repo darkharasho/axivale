@@ -54,9 +54,13 @@ export function renderRichSpan(
   if (classes.includes('axi-entity')) {
     const type = data['data-entity-type']
     const name = data['data-entity-name']
+    const icon = data['data-entity-icon']
     if (typeof type === 'string' && typeof name === 'string') {
       return (
         <span className={className} data-entity-type={type} data-entity-name={name}>
+          {typeof icon === 'string' && icon.length > 0 && (
+            <img className="axi-entity__ico" src={icon} alt="" loading="lazy" />
+          )}
           {children}
         </span>
       )

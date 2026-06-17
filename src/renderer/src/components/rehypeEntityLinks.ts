@@ -2,7 +2,7 @@ import { visitParents, SKIP } from 'unist-util-visit-parents'
 import type { Root, Text, Element, ElementContent } from 'hast'
 
 type EntityType = 'skill' | 'trait' | 'item'
-interface EntityDictionaryEntry { name: string; type: EntityType }
+interface EntityDictionaryEntry { name: string; type: EntityType; icon?: string }
 interface EntityDictionary { entries: EntityDictionaryEntry[] }
 
 const SKIP_PARENTS = new Set(['a', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
@@ -12,25 +12,28 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function entitySpan(type: EntityType, name: string, label: string): Element {
+function entitySpan(type: EntityType, name: string, label: string, icon?: string): Element {
   return {
     type: 'element',
     tagName: 'span',
     properties: {
       className: ['axi-entity', `axi-entity--${type}`],
       'data-entity-type': type,
-      'data-entity-name': name
+      'data-entity-name': name,
+      ...(typeof icon === 'string' && icon.length > 0 ? { 'data-entity-icon': icon } : {})
     },
     children: [{ type: 'text', value: label }]
   }
 }
 
 interface CompiledDictionary {
-  entries: EntityDictionaryEntry[]
-  byName: Map<string, EntityType>
+  byName: Map<string, { type: EntityType; icon?: string }>
   textRe: RegExp | null
 }
 
+// Cache keyed by dictionary object identity; stores the compiled byName + textRe.
+// Whether the text pass RUNS is determined at call time by the autoTextMatch flag —
+// so one compiled entry is shared regardless of the flag.
 const compiledCache = new WeakMap<EntityDictionary, CompiledDictionary>()
 
 function compileDictionary(dictionary: EntityDictionary): CompiledDictionary {
@@ -39,18 +42,19 @@ function compileDictionary(dictionary: EntityDictionary): CompiledDictionary {
 
   // Longest-first so the alternation prefers the longest name; entries are pre-sorted but re-sort defensively.
   const entries = [...dictionary.entries].sort((a, b) => b.name.length - a.name.length)
-  const byName = new Map(entries.map((e) => [e.name, e.type]))
+  const byName = new Map(entries.map((e) => [e.name, { type: e.type, icon: e.icon }]))
   const textRe =
     entries.length > 0
       ? new RegExp(`(?<![\\w])(${entries.map((e) => escapeRe(e.name)).join('|')})(?![\\w])`, 'g')
       : null
 
-  const compiled: CompiledDictionary = { entries, byName, textRe }
+  const compiled: CompiledDictionary = { byName, textRe }
   compiledCache.set(dictionary, compiled)
   return compiled
 }
 
-export function rehypeEntityLinks(opts: { dictionary: EntityDictionary }) {
+export function rehypeEntityLinks(opts: { dictionary: EntityDictionary; autoTextMatch?: boolean }) {
+  const autoTextMatch = opts.autoTextMatch ?? false
   const { byName, textRe } = compileDictionary(opts.dictionary)
 
   return (tree: Root): void => {
@@ -77,7 +81,7 @@ export function rehypeEntityLinks(opts: { dictionary: EntityDictionary }) {
       const value = node.value
 
       // Marker pass takes priority: split the text on [[type:Name]] first, then run the
-      // text matcher only on the plain segments between markers.
+      // text matcher only on the plain segments between markers (and only if autoTextMatch is enabled).
       MARKER.lastIndex = 0
       let m: RegExpExecArray | null
       let lastMarkerEnd = 0
@@ -92,11 +96,14 @@ export function rehypeEntityLinks(opts: { dictionary: EntityDictionary }) {
       let changed = false
       for (const seg of segments) {
         if ('marker' in seg) {
-          out.push(entitySpan(seg.marker[0], seg.marker[1], seg.marker[1]))
+          const [type, name] = seg.marker
+          const entry = byName.get(name)
+          out.push(entitySpan(type, name, name, entry?.icon))
           changed = true
           continue
         }
-        if (!textRe) {
+        // Text pass: only runs when autoTextMatch is explicitly true
+        if (!autoTextMatch || !textRe) {
           out.push({ type: 'text', value: seg.text })
           continue
         }
@@ -106,10 +113,10 @@ export function rehypeEntityLinks(opts: { dictionary: EntityDictionary }) {
         let segChanged = false
         while ((tm = textRe.exec(seg.text))) {
           const name = tm[1]
-          const type = byName.get(name)
-          if (!type) continue
+          const entry = byName.get(name)
+          if (!entry) continue
           if (tm.index > cursor) out.push({ type: 'text', value: seg.text.slice(cursor, tm.index) })
-          out.push(entitySpan(type, name, name))
+          out.push(entitySpan(entry.type, name, name, entry.icon))
           cursor = tm.index + name.length
           segChanged = true
         }
