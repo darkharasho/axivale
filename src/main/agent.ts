@@ -3,7 +3,9 @@ import { buildTurnSystemPrompt } from './skillPrompt'
 import type { Skill } from './skillStore'
 import { buildMetaReference } from './metaPrompt'
 import { buildPlaybookReference } from './playbookPrompt'
+import { buildMemoryReference } from './memoryPrompt'
 import type { MetaMode } from './metaStore'
+import type { MemoryFact } from './memory/types'
 import { MCP_PREFIX, type AgentEvent, type ProviderConfig, type ProviderName } from './providers/types'
 import { evaluateToolPermission } from './providers/permission'
 import { createAdapter } from './providers'
@@ -222,6 +224,8 @@ export interface AgentDeps {
   skills: () => Skill[]
   /** Meta-reference modes, read fresh per turn (build/comp bias). */
   meta: () => MetaMode[]
+  /** Pinned durable memory facts, read fresh per turn (cloud-only context). */
+  pinnedMemory: () => MemoryFact[]
 }
 
 interface LiveAdapter {
@@ -302,7 +306,10 @@ export class AgentService {
       const systemPrompt =
         (provider === 'local'
           ? base
-          : base + buildMetaReference(this.deps.meta()) + buildPlaybookReference(this.deps.meta())) +
+          : base +
+            buildMetaReference(this.deps.meta()) +
+            buildPlaybookReference(this.deps.meta()) +
+            buildMemoryReference(this.deps.pinnedMemory())) +
         dateLine
       const turn = adapter.runTurn({
         prompt: promptText,

@@ -196,7 +196,8 @@ describe('AgentService turn serialization', () => {
       loadSession: () => ({}),
       saveSession: vi.fn(),
       skills: () => [],
-      meta: () => []
+      meta: () => [],
+      pinnedMemory: () => []
     }
 
     const agent = new AgentService(mockDeps)
@@ -263,7 +264,8 @@ describe('AgentService turn serialization', () => {
       loadSession: () => ({}),
       saveSession: vi.fn(),
       skills: () => [],
-      meta: () => []
+      meta: () => [],
+      pinnedMemory: () => []
     }
     const agent = new AgentService(deps)
 
@@ -322,7 +324,8 @@ describe('AgentService persistence', () => {
       loadSession: () => ({}),
       saveSession,
       skills: () => [],
-      meta: () => []
+      meta: () => [],
+      pinnedMemory: () => []
     }
     const agent = new AgentService(deps)
     await agent.runTurn('c9', 'hello', () => {})
