@@ -16,6 +16,7 @@ Reference (read, don't import — it's app code, not the npm lib): AxiForge `det
 - Entity types exactly `'skill' | 'trait' | 'item'`. Type shapes stay lockstep.
 - Full suite stays green; renderer typecheck stays at the 1 known pre-existing `App.test.tsx` error; main entities typecheck 0.
 - `Gw2ApiClient.fetchByIds(endpoint, ids, lang?)` is in `node_modules/@axiapps/gw2-data/src/api/client.js` — returns the raw GW2 API objects array (each with `id, name, description, icon, chat_link, facts[]`). It caches internally (MemoryCache). The `icon` is already a full URL.
+- Note: Gw2ApiClient.fetchByIds does not cache; repeat detail fetches are avoided by EntityService's per-entity success cache, not the client.
 
 ---
 

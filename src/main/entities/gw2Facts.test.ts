@@ -91,6 +91,13 @@ describe('formatFact', () => {
     expect(result?.label).not.toContain('</c>')
   })
 
+  it('Buff with markup in text field strips the markup', () => {
+    const result = formatFact({ type: 'Buff', status: 'Boon', text: '<c=@reminder>Active Bonus</c>', duration: 5 })
+    expect(result?.label).toContain('Active Bonus')
+    expect(result?.label).not.toContain('<c=')
+    expect(result?.label).not.toContain('</c>')
+  })
+
   it('unknown type with text falls back to label only', () => {
     expect(formatFact({ type: 'SomeFutureType', text: 'Special thing' }))
       .toEqual({ label: 'Special thing' })

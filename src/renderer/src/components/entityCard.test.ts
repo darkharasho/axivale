@@ -20,6 +20,23 @@ describe('renderEntityCardHtml', () => {
     expect(html).not.toContain('<img src=x>')
     expect(html).toContain('&lt;img')
   })
+  it('label-only fact renders text without trailing colon or empty bold tag', () => {
+    const html = renderEntityCardHtml({
+      type: 'skill', name: 'Test', subtitle: 'Skill',
+      facts: [{ label: 'Might ×3 (8s)' }], wikiUrl: 'https://x'
+    })
+    expect(html).toContain('Might ×3 (8s)')
+    expect(html).not.toContain('<b></b>')
+    expect(html).not.toContain(': <b>')
+  })
+  it('label + value fact renders label: <b>value</b>', () => {
+    const html = renderEntityCardHtml({
+      type: 'skill', name: 'Test', subtitle: 'Skill',
+      facts: [{ label: 'Recharge', value: '4s' }], wikiUrl: 'https://x'
+    })
+    expect(html).toContain('Recharge: ')
+    expect(html).toContain('<b>4s</b>')
+  })
 })
 
 describe('renderEntityEmptyHtml', () => {

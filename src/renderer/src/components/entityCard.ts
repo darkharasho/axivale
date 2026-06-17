@@ -31,7 +31,7 @@ export function renderEntityCardHtml(card: EntityCard): string {
   const desc = card.description ? `<p class="axi-ecard__desc">${esc(card.description)}</p>` : ''
   const facts = card.facts.length
     ? `<ul class="axi-ecard__facts">${card.facts
-        .map((f) => `<li><span class="axi-ecard__dot"></span><span>${f.label ? esc(f.label) + ': ' : ''}<b>${esc(f.value ?? '')}</b></span></li>`)
+        .map((f) => `<li><span class="axi-ecard__dot"></span><span>${f.label && f.value != null ? esc(f.label) + ': <b>' + esc(f.value) + '</b>' : f.label ? esc(f.label) : '<b>' + esc(f.value ?? '') + '</b>'}</span></li>`)
         .join('')}</ul>`
     : ''
   return `<div class="axi-ecard axi-ecard--${card.type}">

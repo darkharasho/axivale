@@ -15,17 +15,18 @@ const BUFF_NORMALIZED = new Set(['Buff'])
  * Returns a single label string: "Name ×N (Ds)[: description]"
  */
 function formatBuffConditionText(fact: Gw2Fact): string {
-  const rawStatus = String(fact.status || fact.text || 'Unknown').replace(/\s*\(effect\)\s*$/i, '')
-  const hasAltText = !!(fact.text && fact.status && fact.text !== fact.status
-    && fact.text !== 'Apply Buff/Condition' && !/\(effect\)$/i.test(fact.text))
-  const name = hasAltText ? String(fact.text) : rawStatus
+  const cleanText = fact.text ? stripGw2Markup(String(fact.text)) : undefined
+  const rawStatus = String(fact.status || cleanText || 'Unknown').replace(/\s*\(effect\)\s*$/i, '')
+  const hasAltText = !!(cleanText && fact.status && cleanText !== fact.status
+    && cleanText !== 'Apply Buff/Condition' && !/\(effect\)$/i.test(cleanText))
+  const name = hasAltText ? cleanText : rawStatus
   const count = Number(fact.apply_count) || 0
   const stackPart = count > 1 ? ` ×${count}` : ''
   const duration = fact.duration ? ` (${fact.duration}s)` : ''
   const extra = fact.description
     ? `: ${stripGw2Markup(String(fact.description))}`
-    : (fact.text && fact.status && fact.text !== fact.status && fact.text !== 'Apply Buff/Condition')
-      ? `: ${String(fact.text)}`
+    : (cleanText && fact.status && cleanText !== fact.status && cleanText !== 'Apply Buff/Condition')
+      ? `: ${cleanText}`
       : ''
   return `${name}${stackPart}${duration}${extra}`
 }
