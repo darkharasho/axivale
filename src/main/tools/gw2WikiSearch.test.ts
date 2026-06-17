@@ -19,13 +19,31 @@ describe('gw2_wiki_search fallback', () => {
     const res = await t.handler({ query: 'how to craft twilight' }, {})
     expect((res.content[0] as { text: string }).text).toContain('Twilight')
   })
-  it('uses index hits when present (no fallback)', async () => {
+  it('uses index hits without live for a plain mechanics query', async () => {
     let called = false
     const live = async () => { called = true; return [] }
     const tools = buildGw2WikiSearchTools(() => idx([{ source: 'wiki', url: 'u', title: 'Boon', snippet: 's' }]), live)
     const t = tools.find((x) => x.name === 'gw2_wiki_search')!
     await t.handler({ query: 'boon duration' }, {})
     expect(called).toBe(false)
+  })
+  it('also consults live for obtain/craft queries even when the index has hits', async () => {
+    let called = false
+    const live = async () => {
+      called = true
+      return [{ title: 'Twilight III: Dusk', url: 'https://wiki.guildwars2.com/wiki/Twilight_III:_Dusk', snippet: 'Gloominator; Aquatic Murk' }]
+    }
+    const tools = buildGw2WikiSearchTools(
+      () => idx([{ source: 'wiki', url: 'https://wiki.guildwars2.com/wiki/Legendary_weapon', title: 'Legendary weapon', snippet: 'overview' }]),
+      live
+    )
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    const res = await t.handler({ query: 'how do I craft the precursor for Twilight' }, {})
+    expect(called).toBe(true)
+    const out = (res.content[0] as { text: string }).text
+    // live (table-complete) result is surfaced first, ahead of the weak index overview
+    expect(out.indexOf('Twilight III: Dusk')).toBeLessThan(out.indexOf('Legendary weapon'))
+    expect(out).toContain('Gloominator')
   })
   it('forwards category arg to index search as mode', async () => {
     let capturedOpts: unknown

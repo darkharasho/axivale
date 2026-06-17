@@ -59,7 +59,7 @@ import { WikiFactsClient } from './meta/wikiFacts'
 import { WikiClient } from '@axiapps/gw2-data/wiki'
 import { WikiRefIngester } from './meta/wiki/ingest'
 import { fetchCategoryMembers } from './meta/wiki/skillCrawl'
-import { liveWikiSearch } from './meta/wiki/liveSearch'
+import { liveWikiSearch, cleanWikiHtml } from './meta/wiki/liveSearch'
 import { deriveCompFromRepos } from './meta/deriveComp'
 import type { SessionState } from './providers/types'
 import { setupUpdater } from './updater'
@@ -398,10 +398,26 @@ app.whenReady().then(async () => {
       metaIndex: () => metaIndex,
       wikiIndex: () => wikiIndex,
       generalIndex: () => generalIndex,
-      wikiLiveSearch: (q: string) => liveWikiSearch(q, {
-        fetchJson: (url) => fetch(url, { headers: { 'User-Agent': 'AxiVale/0.4 (https://github.com/darkharasho)' } }).then((r) => r.json()),
-        getWikitext: async (title) => (await new WikiClient().getWikitextBatch([title])).get(title) ?? null
-      }),
+      wikiLiveSearch: (q: string) => {
+        const ua = { 'User-Agent': 'AxiVale/0.4 (https://github.com/darkharasho)' }
+        return liveWikiSearch(q, {
+          fetchJson: (url) => fetch(url, { headers: ua }).then((r) => r.json()),
+          // Rendered HTML (action=parse), cleaned — preserves template-built collection/
+          // recipe/achievement tables that raw wikitext strips away. See liveSearch.ts.
+          getPageText: async (title) => {
+            const url =
+              'https://wiki.guildwars2.com/api.php?action=parse&prop=text&format=json&redirects=1&page=' +
+              encodeURIComponent(title)
+            try {
+              const json = await fetch(url, { headers: ua }).then((r) => r.json())
+              const html = json?.parse?.text?.['*']
+              return html ? cleanWikiHtml(html) : null
+            } catch {
+              return null
+            }
+          }
+        })
+      },
       wikiFacts,
       fetchBuildPage: (url: string) => metaFetcher.fetchBuildPage(url),
       fetchBuildPageRaw: (url: string) => metaFetcher.fetchBuildPageRaw(url),

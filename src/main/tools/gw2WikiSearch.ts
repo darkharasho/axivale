@@ -6,6 +6,14 @@ import type { MetaIndex } from '../meta/rag/index'
 
 type LiveSearch = (query: string) => Promise<Array<{ title: string; url: string; snippet: string }>>
 
+// Queries about OBTAINING something (crafting, collections, recipes, achievements)
+// need the live wiki: the per-tier task tables live in MediaWiki templates that
+// the pre-ingested wikitext corpus strips away, so the index only holds weak
+// overview chunks for them. Consult the live (rendered-HTML) lookup for these even
+// when the index returns hits, so the actual current tier task lists reach the model.
+const OBTAIN_RE =
+  /\b(craft|crafting|precursor|collection|collections|recipe|recipes|achievement|achievements|unlock|obtain|gift of|how (do i|to)\b.*\b(get|make|craft|unlock|obtain|build))\b/i
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildGw2WikiSearchTools(wikiIndex: () => MetaIndex, liveSearch?: LiveSearch): Array<SdkMcpToolDefinition<any>> {
   return [
@@ -18,12 +26,30 @@ export function buildGw2WikiSearchTools(wikiIndex: () => MetaIndex, liveSearch?:
       },
       safe(async ({ query, category }: { query: string; category?: string }) => {
         const hits = await wikiIndex().search(query, { mode: category, k: 6 })
-        if (hits.length > 0) return hits.map((h) => ({ title: h.title, url: h.url, snippet: h.snippet }))
-        if (liveSearch) {
-          const live = await liveSearch(query)
-          if (live.length > 0) return live
+        const indexed = hits.map((h) => ({ title: h.title, url: h.url, snippet: h.snippet }))
+        // Hit the live lookup when the index is empty OR the question is about
+        // obtaining/crafting something (where the index only holds weak overview
+        // chunks and the real tier tables live on rendered collection pages).
+        const wantLive = !!liveSearch && (indexed.length === 0 || OBTAIN_RE.test(query))
+        let live: Array<{ title: string; url: string; snippet: string }> = []
+        if (wantLive && liveSearch) {
+          try {
+            live = await liveSearch(query)
+          } catch {
+            /* live lookup is best-effort; fall through to index hits */
+          }
         }
-        return { note: 'no wiki match indexed or found live' }
+        // Live results first (current, table-complete), then index hits; dedup by url.
+        const seen = new Set<string>()
+        const merged: Array<{ title: string; url: string; snippet: string }> = []
+        for (const h of [...live, ...indexed]) {
+          if (seen.has(h.url)) continue
+          seen.add(h.url)
+          merged.push(h)
+          if (merged.length >= 6) break
+        }
+        if (merged.length === 0) return { note: 'no wiki match indexed or found live' }
+        return merged
       })
     )
   ]
