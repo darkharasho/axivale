@@ -1159,6 +1159,11 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .mem-search::placeholder{color:var(--faint)}
 .mem-search:focus{border-color:var(--accent-b)}
 .mem-arch-toggle{flex:0 0 auto}
+/* Kind filter chips: meta-srcchip is unstyled-background on a <button> (defaults to
+   white); make them transparent like the rest of the dark theme + a real selected state. */
+.mem-chip{background:none;cursor:pointer}
+.mem-chip:hover{border-color:var(--rule2);color:var(--ink)}
+.mem-chip.on{border-color:var(--accent-b);color:var(--ink)}
 /* Fact / artifact rows */
 .mem-list{display:flex;flex-direction:column;gap:0}
 .mem-row{padding:10px 0;border-bottom:1px dotted var(--line)}

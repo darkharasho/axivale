@@ -22,6 +22,10 @@ function shortDate(iso: string | null): string {
 type KindFilter = RendererMemoryKind | 'all'
 const KIND_CHIPS: KindFilter[] = ['all', 'fact', 'playbook', 'anti_pattern', 'heuristic']
 
+/** Display label for a memory kind — the chips/badges are CSS-uppercased, so the
+ *  raw enum's underscore ("ANTI_PATTERN") reads as a jarring break. Hyphenate. */
+const kindLabel = (k: KindFilter): string => (k === 'anti_pattern' ? 'anti-pattern' : k)
+
 export default function MemoryPanel(): ReactElement {
   const [facts, setFacts] = useState<RendererMemoryFact[]>([])
   const [artifacts, setArtifacts] = useState<RendererMemoryArtifact[]>([])
@@ -153,10 +157,10 @@ export default function MemoryPanel(): ReactElement {
           {KIND_CHIPS.map((k) => (
             <button
               key={k}
-              className={`meta-srcchip${kind === k ? ' ok' : ''}`}
+              className={`meta-srcchip mem-chip${kind === k ? ' on' : ''}`}
               onClick={() => setKind(k)}
             >
-              {k}
+              {kindLabel(k)}
             </button>
           ))}
         </div>
@@ -244,7 +248,7 @@ export default function MemoryPanel(): ReactElement {
                     <div className="mem-badges">
                       {a.archived && <span className="mem-badge archived">archived</span>}
                       <span className="mem-badge source">{a.source}</span>
-                      <span className="mem-badge kind">{a.kind}</span>
+                      <span className="mem-badge kind">{kindLabel(a.kind)}</span>
                       {a.entity && <span className="mem-badge entity">{a.entity}</span>}
                     </div>
                     <span className="mem-prov">{timeAgo(a.createdAt)}</span>
