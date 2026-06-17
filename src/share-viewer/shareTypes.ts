@@ -14,6 +14,11 @@ export interface SharedTurn {
   filedAt: string
   tools: SharedTool[]
 }
+export interface ShareEntity {
+  name: string
+  type: 'skill' | 'trait' | 'item'
+  icon?: string
+}
 export interface ShareDoc {
   v: 1
   id: string
@@ -22,4 +27,5 @@ export interface ShareDoc {
   createdAt: string
   app: { name: string; version: string }
   turns: SharedTurn[]
+  entities?: ShareEntity[]
 }
