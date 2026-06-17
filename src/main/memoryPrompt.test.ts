@@ -17,4 +17,12 @@ describe('buildMemoryReference', () => {
     expect(out).toContain('- Raids Tue/Thu 8pm EST')
     expect(out).toContain('- Prefers Snowcrows')
   })
+  it('returns empty string when the first fact alone exceeds the char budget', () => {
+    expect(buildMemoryReference([f({ body: 'x'.repeat(4001) })])).toBe('')
+  })
+  it('stops adding bullets once the budget is exceeded', () => {
+    const out = buildMemoryReference([f({ body: 'A'.repeat(3000) }), f({ body: 'B'.repeat(3000) })])
+    expect(out).toContain('A'.repeat(3000))
+    expect(out).not.toContain('B'.repeat(3000))
+  })
 })
