@@ -825,8 +825,18 @@ app.whenReady().then(async () => {
     }
     try {
       const guilds = await buildAxitools().listGuilds()
-      // The key is scoped to one Discord server; remember it as the active guild.
-      if (guilds.length > 0) store.setSetting('guildId', String(guilds[0].id))
+      // The key is scoped to one Discord server; remember it as the active guild
+      // and cache the server identity on the key so the keyring can label it.
+      if (guilds.length > 0) {
+        store.setSetting('guildId', String(guilds[0].id))
+        const activeLabel = store.getActiveLabel('axivale')
+        if (activeLabel) {
+          store.setKeyMeta('axivale', activeLabel, {
+            name: guilds[0].name,
+            id: String(guilds[0].id)
+          })
+        }
+      }
       return { ok: true, guilds }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }

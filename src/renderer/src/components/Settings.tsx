@@ -52,6 +52,7 @@ interface AxiGuild {
 interface KeyLabel {
   label: string
   active: boolean
+  meta?: { name?: string; id?: string }
 }
 
 export interface SettingsProps {
@@ -549,7 +550,12 @@ export default function Settings({
   }
 
   async function addAxiKey(): Promise<void> {
-    await window.officer.addKey('axivale', axiLabel.trim() || 'unnamed', axiKey)
+    // Keep labels unique so a new key never silently overwrites an existing one.
+    const base = axiLabel.trim() || 'server'
+    const taken = new Set(axiKeys.map((k) => k.label))
+    let label = base
+    for (let n = 2; taken.has(label); n++) label = `${base} ${n}`
+    await window.officer.addKey('axivale', label, axiKey)
     setAxiLabel('')
     setAxiKey('')
     await refreshKeyLists()
@@ -564,8 +570,17 @@ export default function Settings({
 
   async function removeAxi(label: string): Promise<void> {
     await window.officer.removeKey('axivale', label)
-    await refreshKeyLists()
-    onChanged()
+    const remaining = await window.officer.listKeys('axivale')
+    setAxiKeys(remaining)
+    // Removing the active (or last) key leaves the binding stale — reconnect
+    // with whatever key remains active, or clear the status when none is left.
+    if (remaining.some((k) => k.active)) {
+      await connectActiveAxi()
+    } else {
+      setAxiGuild(null)
+      setAxiStatus(null)
+      onChanged()
+    }
   }
 
   return (

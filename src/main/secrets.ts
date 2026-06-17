@@ -41,14 +41,23 @@ export type SettingKey =
 /** Services that hold a ring of labeled keys with one active. */
 export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'
 
+/** Resolved identity for a key (e.g. the Discord server an AxiVale key binds to),
+ *  cached so the keyring can show which server/account each key talks to. */
+export interface KeyMeta {
+  name?: string
+  id?: string
+}
+
 export interface KeyLabel {
   label: string
   active: boolean
+  meta?: KeyMeta
 }
 
 interface StoredKey {
   label: string
   key: string
+  meta?: KeyMeta
 }
 
 const RING_SECRET: Record<KeyService, SecretKey> = {
@@ -160,27 +169,47 @@ export class SettingsStore {
     return ring[0]?.label ?? null
   }
 
+  /** The active key's label, or null when the ring is empty. */
+  getActiveLabel(service: KeyService): string | null {
+    return this.activeLabel(service, this.readRing(service))
+  }
+
   listKeyLabels(service: KeyService): KeyLabel[] {
     const ring = this.readRing(service)
     const active = this.activeLabel(service, ring)
-    return ring.map((k) => ({ label: k.label, active: k.label === active }))
+    return ring.map((k) => ({ label: k.label, active: k.label === active, meta: k.meta }))
   }
 
   addKey(service: KeyService, label: string, key: string): void {
+    // Re-adding an existing label replaces its key; carry no stale meta forward.
     const ring = this.readRing(service).filter((k) => k.label !== label)
     ring.push({ label, key })
     this.writeRing(service, ring)
   }
 
   removeKey(service: KeyService, label: string): void {
-    this.writeRing(
-      service,
-      this.readRing(service).filter((k) => k.label !== label)
-    )
+    const ring = this.readRing(service).filter((k) => k.label !== label)
+    this.writeRing(service, ring)
+    // If the removed key was the chosen active one, retarget the setting at the
+    // new first key (or clear it) so the active pointer never dangles.
+    if (this.getSetting(ACTIVE_SETTING[service]) === label) {
+      const next = ring[0]?.label
+      if (next) this.setSetting(ACTIVE_SETTING[service], next)
+      else this.setSetting(ACTIVE_SETTING[service], '')
+    }
   }
 
   setActiveKey(service: KeyService, label: string): void {
     this.setSetting(ACTIVE_SETTING[service], label)
+  }
+
+  /** Cache resolved identity (server/account) on a key by label; no-op if gone. */
+  setKeyMeta(service: KeyService, label: string, meta: KeyMeta): void {
+    const ring = this.readRing(service)
+    const entry = ring.find((k) => k.label === label)
+    if (!entry) return
+    entry.meta = meta
+    this.writeRing(service, ring)
   }
 
   /** The active key's material — for main-process consumers only. */

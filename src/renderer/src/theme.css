@@ -523,6 +523,9 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .skey .rad{width:7px;height:7px;border-radius:50%;border:1px solid var(--rule2);flex:none}
 .skey.on .rad{background:var(--accent);border-color:var(--accent)}
 .skey .badge{margin-left:auto;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b)}
+.skey .kmeta{font-size:9.5px;letter-spacing:.04em;color:var(--faint);padding:1px 6px;border:1px solid var(--line);border-radius:3px}
+.skey .badge+.kx,.skey .kmeta~.kx{padding-left:6px}
+.skey:not(:has(.badge)) .kx{margin-left:auto}
 .skey .kx{color:var(--faint);cursor:pointer;padding-left:6px}
 .skey .kx:hover{color:var(--accent-b)}
 

@@ -113,6 +113,53 @@ describe('SettingsStore keyrings', () => {
   })
 })
 
+describe('SettingsStore key metadata + active retargeting', () => {
+  it('caches and lists per-key metadata, surviving reload', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'axivale-'))
+    const path = join(dir, 'settings.json')
+    const store = new SettingsStore(path, fakeCipher)
+    store.addKey('axivale', 'EWW', 'axt1.a.s1')
+    store.setKeyMeta('axivale', 'EWW', { name: 'East Wind', id: '42' })
+    expect(store.listKeyLabels('axivale')).toEqual([
+      { label: 'EWW', active: true, meta: { name: 'East Wind', id: '42' } }
+    ])
+    // persists encrypted and reloads
+    expect(new SettingsStore(path, fakeCipher).listKeyLabels('axivale')[0].meta).toEqual({
+      name: 'East Wind',
+      id: '42'
+    })
+  })
+
+  it('setKeyMeta is a no-op for an unknown label', () => {
+    const store = makeStore()
+    store.addKey('axivale', 'EWW', 'axt1.a.s1')
+    store.setKeyMeta('axivale', 'ghost', { name: 'nope' })
+    expect(store.listKeyLabels('axivale')[0].meta).toBeUndefined()
+  })
+
+  it('re-adding a label drops stale metadata', () => {
+    const store = makeStore()
+    store.addKey('axivale', 'EWW', 'axt1.a.s1')
+    store.setKeyMeta('axivale', 'EWW', { name: 'East Wind' })
+    store.addKey('axivale', 'EWW', 'axt1.a.s2')
+    expect(store.listKeyLabels('axivale')[0].meta).toBeUndefined()
+  })
+
+  it('retargets the active-key setting when the chosen active key is removed', () => {
+    const store = makeStore()
+    store.addKey('axivale', 'EWW', 'axt1.a.s1')
+    store.addKey('axivale', 'VGL', 'axt1.b.s2')
+    store.setActiveKey('axivale', 'EWW')
+    expect(store.getActiveLabel('axivale')).toBe('EWW')
+    store.removeKey('axivale', 'EWW')
+    // setting now points at the survivor, not the deleted label
+    expect(store.getActiveLabel('axivale')).toBe('VGL')
+    expect(store.getActiveKey('axivale')).toBe('axt1.b.s2')
+    store.removeKey('axivale', 'VGL')
+    expect(store.getActiveLabel('axivale')).toBeNull()
+  })
+})
+
 describe('provider keyrings', () => {
   it('supports gemini and openai keyrings with active-key selection', () => {
     const store = makeStore()

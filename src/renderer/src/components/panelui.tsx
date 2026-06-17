@@ -3,6 +3,8 @@ import type { ReactElement, ReactNode } from 'react'
 export interface KeyLabel {
   label: string
   active: boolean
+  /** Resolved identity for the key (e.g. the Discord server it binds to). */
+  meta?: { name?: string; id?: string }
 }
 
 /** Section pane wrapper: kicker + title + one-line description, then children. */
@@ -118,6 +120,7 @@ export function Keyring({
         >
           <span className="rad" />
           {k.label}
+          {k.meta?.name && <span className="kmeta">{k.meta.name}</span>}
           {k.active && <span className="badge">active</span>}
           <span
             className="kx"

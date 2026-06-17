@@ -36,9 +36,14 @@ export class AxitoolsClient {
           Authorization: `Bearer ${this.token}`,
           ...(body !== undefined ? { 'content-type': 'application/json' } : {})
         },
-        body: body !== undefined ? JSON.stringify(body) : undefined
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        // Without a deadline an unreachable/hung host wedges the status check.
+        signal: AbortSignal.timeout(8000)
       })
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'TimeoutError') {
+        throw new AxitoolsError('The AxiTools bot did not respond in time — is it running?')
+      }
       throw new AxitoolsError(
         'The AxiTools bot is not reachable — is it running on this machine?'
       )
@@ -46,6 +51,13 @@ export class AxitoolsClient {
     if (resp.status === 204) return undefined as T
     const data = await resp.json().catch(() => ({}))
     if (!resp.ok) {
+      // A rejected key is distinct from a generic API fault — say so plainly.
+      if (resp.status === 401 || resp.status === 403) {
+        throw new AxitoolsError(
+          (data as { error?: string }).error ??
+            'This AxiVale key was rejected (invalid or revoked). Regenerate it in Discord with /config apikey generate.'
+        )
+      }
       throw new AxitoolsError(
         (data as { error?: string }).error ?? `AxiTools API error (HTTP ${resp.status})`
       )

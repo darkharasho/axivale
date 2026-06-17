@@ -1,7 +1,40 @@
 import { app, ipcMain, type BrowserWindow } from 'electron'
+import { appendFileSync, mkdirSync } from 'fs'
+import { join } from 'path'
 import electronUpdater from 'electron-updater'
 
 const { autoUpdater } = electronUpdater
+
+/**
+ * Minimal file logger for the update lifecycle. electron-updater's default
+ * logger is `console`, whose output is lost in a packaged app — so a silently
+ * failed check or download leaves no trace. This writes to logs/updater.log
+ * (Console.app-readable) so we can always see what a check actually did.
+ */
+function makeUpdaterLog(): { info: typeof log; warn: typeof log; error: typeof log; debug: typeof log } {
+  let file: string | null = null
+  try {
+    const dir = app.getPath('logs')
+    mkdirSync(dir, { recursive: true })
+    file = join(dir, 'updater.log')
+  } catch {
+    file = null
+  }
+  function log(...args: unknown[]): void {
+    const line = args
+      .map((a) => (a instanceof Error ? a.stack ?? a.message : typeof a === 'string' ? a : JSON.stringify(a)))
+      .join(' ')
+    const stamped = `${new Date().toISOString()} ${line}\n`
+    if (file) {
+      try {
+        appendFileSync(file, stamped)
+      } catch {
+        /* logging must never throw */
+      }
+    }
+  }
+  return { info: log, warn: log, error: log, debug: log }
+}
 
 /** Update lifecycle pushed to the renderer for a non-intrusive banner. */
 export type UpdateStatus =
@@ -43,17 +76,36 @@ export function setupUpdater(getWindow: () => BrowserWindow | null): void {
 
   if (!app.isPackaged) return
 
+  const ulog = makeUpdaterLog()
+  autoUpdater.logger = ulog
+  ulog.info(`updater armed — current version ${app.getVersion()}`)
+
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
 
-  autoUpdater.on('checking-for-update', () => send({ state: 'checking' }))
-  autoUpdater.on('update-available', (info) => send({ state: 'available', version: info.version }))
-  autoUpdater.on('update-not-available', () => send({ state: 'none' }))
+  autoUpdater.on('checking-for-update', () => {
+    ulog.info('checking for update')
+    send({ state: 'checking' })
+  })
+  autoUpdater.on('update-available', (info) => {
+    ulog.info(`update available: ${info.version}`)
+    send({ state: 'available', version: info.version })
+  })
+  autoUpdater.on('update-not-available', (info) => {
+    ulog.info(`no update available (latest seen: ${info?.version ?? 'unknown'})`)
+    send({ state: 'none' })
+  })
   autoUpdater.on('download-progress', (p) =>
     send({ state: 'downloading', percent: Math.round(p.percent) })
   )
-  autoUpdater.on('update-downloaded', (info) => send({ state: 'ready', version: info.version }))
-  autoUpdater.on('error', (err) => send({ state: 'error', message: err.message }))
+  autoUpdater.on('update-downloaded', (info) => {
+    ulog.info(`update downloaded: ${info.version} — installs on quit`)
+    send({ state: 'ready', version: info.version })
+  })
+  autoUpdater.on('error', (err) => {
+    ulog.error('updater error:', err)
+    send({ state: 'error', message: err.message })
+  })
 
   // Check shortly after launch, then hourly.
   setTimeout(() => void autoUpdater.checkForUpdates().catch(() => {}), 4000)

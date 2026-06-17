@@ -361,7 +361,7 @@ export interface OfficerApi {
   onConfirmRequest(cb: (req: unknown) => void): () => void
   respondConfirm(id: string, allowed: boolean): void
   windowControl(action: 'minimize' | 'maximize-toggle' | 'close'): void
-  listKeys(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'): Promise<Array<{ label: string; active: boolean }>>
+  listKeys(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'): Promise<Array<{ label: string; active: boolean; meta?: { name?: string; id?: string } }>>
   addKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github', label: string, key: string): Promise<void>
   removeKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github', label: string): Promise<void>
   setActiveKey(service: 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github', label: string): Promise<void>
