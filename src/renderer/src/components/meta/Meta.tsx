@@ -152,11 +152,23 @@ export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaP
                     const isFetching = fetching[m.id] === s.url
                     const cls = isFetching ? 'fetching' : s.status
                     return (
-                      <a key={s.url} className={`meta-srcchip ${cls}`} href={s.url} target="_blank" rel="noreferrer" title={s.error ?? undefined}>
-                        <span className="led" />
-                        {s.label}
-                        {isFetching ? ' · fetching…' : ''}
-                      </a>
+                      <span key={s.url} className="meta-srcchip-wrap">
+                        <a className={`meta-srcchip ${cls}`} href={s.url} target="_blank" rel="noreferrer" title={s.error ?? undefined}>
+                          <span className="led" />
+                          {s.label}
+                          {isFetching ? ' · fetching…' : ''}
+                        </a>
+                        {import.meta.env.DEV && (
+                          <button
+                            className="meta-srcchip-refresh"
+                            title="Re-crawl just this source (re-distills from cache for the rest)"
+                            disabled={isFetching}
+                            onClick={() => void window.officer.metaRefreshSource(s.url)}
+                          >
+                            ↻
+                          </button>
+                        )}
+                      </span>
                     )
                   })}
                 </div>

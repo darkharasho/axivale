@@ -306,6 +306,7 @@ export interface OfficerApi {
   ): Promise<RendererMetaMode | null>
   metaRemoveMode(id: string): Promise<void>
   metaForceRefresh(): Promise<void>
+  metaRefreshSource(only: string): Promise<void>
   metaUpdatePlaybook(id: string, patch: { principles?: string; overrides?: string; blessed?: boolean }): Promise<RendererMetaMode | null>
   metaDeriveComp(id: string): Promise<{ ok: boolean; error?: string; mode?: RendererMetaMode }>
   metaIndexStats(): Promise<RendererMetaIndexStats>

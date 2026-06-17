@@ -71,6 +71,28 @@ describe('MetaRefresher', () => {
     expect(after.notes).toBe('partial meta')
   })
 
+  it('scoped refresh fetches only the targeted source and reuses cached siblings for consensus', async () => {
+    const s = store()
+    const m = s.list().find((x) => x.mode === 'WvW')!
+    const mb = m.sources.find((x) => x.url.includes('metabattle.com'))!
+    const gm = m.sources.find((x) => x.url.includes('gw2mists.com'))!
+    const cache = fakeCache()
+    cache.put(mb.url, 'cached metabattle builds') // sibling cached from a prior full crawl
+    const f = fetcher({ [gm.url]: { ok: true, text: 'fresh gw2mists tiers', pages: [] } })
+    const model = vi.fn().mockResolvedValue('redistilled')
+    await new MetaRefresher({ store: s, fetcher: f, cache, model, now: () => Date.now() }).refreshStale({
+      only: 'gw2mists'
+    })
+    // only the targeted source is re-crawled; the sibling is NOT re-fetched
+    expect(f.fetch).toHaveBeenCalledWith(gm.url)
+    expect(f.fetch).not.toHaveBeenCalledWith(mb.url)
+    // distill still sees BOTH (fresh target + cached sibling) so consensus survives
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt).toContain('fresh gw2mists tiers')
+    expect(prompt).toContain('cached metabattle builds')
+    expect(s.get(m.id)!.notes).toBe('redistilled')
+  })
+
   it('no-auth path: records fetches but leaves notes intact when the model is empty', async () => {
     const s = store()
     const m = s.list().find((x) => x.mode === 'PvE')!

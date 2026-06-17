@@ -1139,6 +1139,11 @@ app.whenReady().then(async () => {
     meta.markAllStale()
     void metaRefresher.refreshStale()
   })
+  // Re-crawl a single source (by URL or substring) and re-distill from cache for
+  // the rest — fast iteration without the full multi-source crawl.
+  ipcMain.handle('meta:refresh-source', (_e, only: string) => {
+    void metaRefresher.refreshStale({ only })
+  })
   ipcMain.handle('meta:index-stats', async () => {
     try {
       return await metaIndex.stats()

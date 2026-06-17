@@ -46,21 +46,32 @@ function isStale(mode: MetaMode, now: number, staleMs: number): boolean {
 export class MetaRefresher {
   constructor(private readonly deps: RefresherDeps) {}
 
-  async refreshStale(): Promise<void> {
+  /**
+   * Re-crawl + re-distill. With no args, processes every stale mode and fetches
+   * all its sources. With `only` (a URL or substring), targets just the matching
+   * source(s) for a fast iteration: fetches only those, but pulls every OTHER
+   * build source from the raw cache so the consensus distill still sees the full
+   * source set (a single-source re-distill would otherwise wipe the cross-source
+   * notes). Modes containing a matching source are processed regardless of staleness.
+   */
+  async refreshStale(opts: { only?: string } = {}): Promise<void> {
     const { store, fetcher, cache, model, now } = this.deps
     const emit = this.deps.emit ?? ((): void => {})
     const staleMs = this.deps.staleMs ?? SEVEN_DAYS_MS
+    const only = opts.only?.trim() || undefined
+    const targets = (s: { url: string }): boolean => !only || s.url.includes(only)
     try {
-      const stale = store.list().filter((m) => isStale(m, now(), staleMs))
-      // Progress is per-source (not per-mode) so the bar moves as each source
-      // finishes its crawl, instead of sitting still for a whole mode.
+      const stale = only
+        ? store.list().filter((m) => m.sources.some((s) => configForUrl(s.url) && targets(s)))
+        : store.list().filter((m) => isStale(m, now(), staleMs))
+      // Progress counts only sources we actually FETCH (the targeted ones when scoped).
       const totalSources = stale.reduce(
-        (n, m) => n + m.sources.filter((s) => configForUrl(s.url)).length,
+        (n, m) => n + m.sources.filter((s) => configForUrl(s.url) && targets(s)).length,
         0
       )
       if (totalSources > 0) emit({ type: 'refresh-start', total: totalSources })
       // Resolve the authoritative elite-spec map ONCE per run (only when there's
-      // stale work), so every distill in this run is grounded by the same map.
+      // work), so every distill in this run is grounded by the same map.
       const specMap = totalSources > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
       for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
@@ -68,6 +79,16 @@ export class MetaRefresher {
         const ruleRaws: string[] = []
         for (const src of mode.sources) {
           if (!configForUrl(src.url)) continue
+          if (!targets(src)) {
+            // Not the targeted source — reuse its cached raw text so the distiller
+            // keeps full cross-source consensus without re-crawling it.
+            const cached = cache.get(src.url)
+            if (cached) {
+              if (resolveContent(src.url) === 'rules') ruleRaws.push(cached)
+              else buildRaws.push({ source: src.label, text: cached })
+            }
+            continue
+          }
           emit({ type: 'source-start', modeId: mode.id, url: src.url })
           console.log(`[meta] fetch start (${mode.id}):`, src.url)
           const r = await fetcher.fetch(src.url)

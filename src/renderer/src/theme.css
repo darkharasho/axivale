@@ -933,6 +933,11 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-srcchip.never .led{background:var(--faint)}
 .meta-srcchip.fetching{color:var(--accent-b);border-color:var(--accent-b)}
 .meta-srcchip.fetching .led{background:var(--accent-b)}
+/* DEV-only per-source re-crawl button sitting next to a source chip */
+.meta-srcchip-wrap{display:inline-flex;align-items:stretch}
+.meta-srcchip-refresh{border:1px solid var(--rule);border-left:none;background:none;color:var(--ink-dim);font-size:10px;line-height:1;padding:0 7px;cursor:pointer}
+.meta-srcchip-refresh:hover:not(:disabled){border-color:var(--rule2);color:var(--ink)}
+.meta-srcchip-refresh:disabled{opacity:.4;cursor:default}
 /* nav refreshing spinner (reuses meta-spin keyframes) */
 .snav-item .meta-spin{margin-left:auto}
 .meta-pane-status{margin:-14px 0 16px}
