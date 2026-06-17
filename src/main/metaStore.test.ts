@@ -199,12 +199,26 @@ describe('MetaStore provenance', () => {
 })
 
 describe('MetaStore groups', () => {
-  it('seeds a General mode whose sources are group=general', () => {
+  it('seeds a Guides mode whose sources are group=general', () => {
     const store = new MetaStore(tmpFile())
-    const general = store.list().find((m) => m.mode === 'General')
-    expect(general).toBeTruthy()
-    expect(general!.sources.length).toBeGreaterThan(0)
-    expect(general!.sources.every((s) => s.group === 'general')).toBe(true)
+    const guides = store.list().find((m) => m.mode === 'Guides')
+    expect(guides).toBeTruthy()
+    expect(guides!.sources.length).toBeGreaterThan(0)
+    expect(guides!.sources.every((s) => s.group === 'general')).toBe(true)
+  })
+
+  it('migrates a legacy General mode to Guides on load', () => {
+    const path = tmpFile()
+    writeFileSync(path, JSON.stringify({
+      modes: [{
+        id: 'g', mode: 'General',
+        sources: [{ label: 'Snowcrows (Guides)', url: 'https://snowcrows.com/guides', group: 'general', status: 'ok', fetchedAt: null, error: null }],
+        notes: '', playbook: {}, refreshedAt: null, updatedAt: 'now'
+      }]
+    }))
+    const store = new MetaStore(path)
+    expect(store.list().find((m) => m.mode === 'General')).toBeUndefined()
+    expect(store.list().find((m) => m.mode === 'Guides')).toBeTruthy()
   })
 
   it('tags WvW GW2-wiki sources as group=wiki and build sources as group=meta', () => {

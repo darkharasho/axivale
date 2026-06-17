@@ -6,8 +6,8 @@ export const META_OVERVIEW = 'overview'
 /** The Wiki reference corpus view uses this sentinel as its id. */
 export const WIKI_REF = 'wiki-ref'
 
-/** General-corpus modes live under the General group; everything else is Meta. */
-const isGeneral = (m: RendererMetaMode): boolean => m.mode === 'General'
+/** The Guides corpus mode lives under the Guides group; everything else is Meta. */
+const isGuides = (m: RendererMetaMode): boolean => m.mode === 'Guides'
 
 export default function MetaNav({
   modes,
@@ -20,8 +20,8 @@ export default function MetaNav({
   active: string
   onSelect: (id: string) => void
 }): ReactElement {
-  const metaModes = modes.filter((m) => !isGeneral(m))
-  const generalModes = modes.filter(isGeneral)
+  const metaModes = modes.filter((m) => !isGuides(m))
+  const guideModes = modes.filter(isGuides)
   let n = 0
   const no = (): string => String(++n).padStart(2, '0')
 
@@ -64,11 +64,11 @@ export default function MetaNav({
         Reference corpus
       </button>
 
-      <div className="snav-grp">General</div>
-      {generalModes.length > 0 ? (
-        generalModes.map(modeBtn)
+      <div className="snav-grp">Guides</div>
+      {guideModes.length > 0 ? (
+        guideModes.map(modeBtn)
       ) : (
-        <div className="snav-empty">No general sources.</div>
+        <div className="snav-empty">No guide sources.</div>
       )}
     </nav>
   )

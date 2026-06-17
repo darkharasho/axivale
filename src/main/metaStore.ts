@@ -94,7 +94,7 @@ const DEFAULT_SEED: SeedShape[] = [
     ]
   }
   ,{
-    mode: 'General',
+    mode: 'Guides',
     sources: [
       { label: 'Snowcrows (Guides)', url: 'https://snowcrows.com/guides', group: 'general' },
       { label: 'GuildJen (Guides)', url: 'https://guildjen.com/category/guides/', group: 'general' },
@@ -192,6 +192,8 @@ export class MetaStore {
   private normalize(m: MetaMode): MetaMode {
     return {
       ...m,
+      // Migrate the legacy 'General' guide mode to its new name 'Guides'.
+      mode: m.mode === 'General' ? 'Guides' : m.mode,
       refreshedAt: m.refreshedAt ?? null,
       sources: (m.sources ?? []).map((s) => ({
         label: s.label,

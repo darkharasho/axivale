@@ -86,8 +86,13 @@ export class MetaRefresher {
           }
           emit({ type: 'source-done', modeId: mode.id, url: src.url })
         }
-        // combine build-table + comp-rule notes into one blob; either half may be null
-        {
+        if (mode.mode === 'Guides') {
+          // Guides are prose, not builds — a build-tier table summary makes no sense.
+          // Stamp the refresh (so it isn't re-crawled every cycle) with empty notes;
+          // the value lives in the indexed general corpus, not a distilled summary.
+          if (buildRaws.length || ruleRaws.length) store.recordDistill(mode.id, '')
+        } else {
+          // combine build-table + comp-rule notes into one blob; either half may be null
           const buildNotes = buildRaws.length ? await distill(mode.mode, buildRaws, model, specMap) : null
           const compNotes = ruleRaws.length ? await distillComp(mode.mode, ruleRaws, model) : null
           const combined = [buildNotes, compNotes].filter(Boolean).join('\n\n')

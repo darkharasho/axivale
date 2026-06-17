@@ -124,16 +124,19 @@ export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaP
     <div className="settings meta-panel">
       <Pane no={String(modes.indexOf(m) + 1).padStart(2, '0')} title={m.mode} sub="">
         <div className="meta-pane-status">{status}</div>
-        <Card title="Summary">
-          <ModeSummary notes={m.notes} />
-        </Card>
+        {/* Guides are prose, not builds — there's no build-tier table to summarize. */}
+        {m.mode !== 'Guides' && (
+          <Card title="Summary">
+            <ModeSummary notes={m.notes} />
+          </Card>
+        )}
         <Card title="Sources">
           {(['meta', 'wiki', 'general'] as const).map((g) => {
             const srcs = m.sources.filter((s) => (s.group ?? 'meta') === g)
             if (srcs.length === 0) return null
             return (
               <div key={g} className="meta-srcgroup">
-                <div className="meta-srcgroup-h">{g}</div>
+                <div className="meta-srcgroup-h">{g === 'general' ? 'guides' : g}</div>
                 <div className="meta-srcs">
                   {srcs.map((s) => {
                     const isFetching = fetching[m.id] === s.url
