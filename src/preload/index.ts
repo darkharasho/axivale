@@ -135,6 +135,9 @@ contextBridge.exposeInMainWorld('officer', {
   ollamaInstall: () => ipcRenderer.invoke('ollama:install'),
   ollamaPullModel: (model: string) => ipcRenderer.invoke('ollama:pull-model', model),
   ollamaUninstall: () => ipcRenderer.invoke('ollama:uninstall'),
+  resolveEntity: (input: { type: 'skill' | 'trait' | 'item'; name: string }) =>
+    ipcRenderer.invoke('entity:resolve', input),
+  entityDictionary: () => ipcRenderer.invoke('entity:dictionary'),
   onOllamaProgress: (cb: (p: { kind: string; stage?: string; status?: string; percent?: number }) => void) => {
     const handler = (
       _e: unknown,

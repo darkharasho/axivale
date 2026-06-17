@@ -68,6 +68,8 @@ import { OllamaManager } from './ollama/ollamaManager'
 import { createOllamaDeps } from './ollama/realDeps'
 import { detectHardware } from './ollama/hardware'
 import type { ProviderConfig, ProviderName } from './providers/types'
+import { EntityService } from './entities/service'
+import { fetchGw2Names } from './entities/dictionary'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -722,6 +724,16 @@ app.whenReady().then(async () => {
     () => axiforge.catalogUpgrades() as Promise<ForgeUpgradeCatalog>
   )
   ipcMain.handle('axiforge:catalog-upgrades', () => forgeCatalog.getUpgrades())
+
+  const entityService = new EntityService({
+    wikiFacts,
+    getCatalog: () => forgeCatalog.getUpgrades(),
+    fetchNames: (e) => fetchGw2Names(e, (url) => fetch(url) as unknown as Promise<{ ok: boolean; json(): Promise<unknown> }>)
+  })
+  ipcMain.handle('entity:resolve', (_event, input: { type: 'skill' | 'trait' | 'item'; name: string }) =>
+    entityService.resolve(input)
+  )
+  ipcMain.handle('entity:dictionary', () => entityService.dictionary())
 
   ipcMain.handle('axitools:status', async () => {
     if (!parseAxivaleKey(store.getActiveKey('axivale') ?? '')) {

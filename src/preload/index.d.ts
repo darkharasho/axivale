@@ -1,3 +1,17 @@
+export type EntityType = 'skill' | 'trait' | 'item'
+export interface EntityFact { label: string; value?: string }
+export interface EntityCard {
+  type: EntityType
+  name: string
+  icon?: string
+  subtitle?: string
+  description?: string
+  facts: EntityFact[]
+  wikiUrl: string
+}
+export interface EntityDictionaryEntry { name: string; type: EntityType }
+export interface EntityDictionary { entries: EntityDictionaryEntry[] }
+
 export interface RendererSessionState {
   claudeSessionId?: string
   history?: unknown[]
@@ -319,6 +333,8 @@ export interface OfficerApi {
   onOllamaProgress(
     cb: (p: { kind: string; stage?: string; status?: string; percent?: number }) => void
   ): () => void
+  resolveEntity(input: { type: EntityType; name: string }): Promise<EntityCard | null>
+  entityDictionary(): Promise<EntityDictionary>
 }
 
 export type UpdateStatus =
