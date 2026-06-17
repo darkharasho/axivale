@@ -3,6 +3,7 @@ import type { RendererReconciledMember } from '../../../../preload/index.d'
 import { Offline } from './shared'
 import { SearchSelect } from './SearchSelect'
 import { STATUS_META, linkLabel, type RosterController, type RosterDraft } from './useRoster'
+import MemoryRollup from '../memory/MemoryRollup'
 
 /** Inline chip editor for a string list (aliases / tags). Enter or comma commits. */
 function ChipInput({
@@ -361,6 +362,7 @@ export default function Roster({ ctl }: { ctl: RosterController }): ReactElement
               />
             </div>
           </fieldset>
+          {current.memberId && <MemoryRollup entity={current.memberId} />}
           {preview && (
             <div className="rst-resolve">
               AI can resolve <b>{preview}</b>

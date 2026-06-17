@@ -67,6 +67,7 @@ function officer(over: Record<string, unknown> = {}) {
       roles: [],
       members: [{ id: 'm9', name: 'ghosty', display_name: 'Ghosty' }]
     }),
+    memoryFactsForEntity: vi.fn().mockResolvedValue([]),
     ...over
   }
 }

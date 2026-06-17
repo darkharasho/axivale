@@ -1182,3 +1182,10 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .mem-add-input{width:100%;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--ink);font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;padding:8px 11px;resize:vertical;outline:none}
 .mem-add-input:focus{border-color:var(--accent-b)}
 .mem-add-input::placeholder{color:var(--faint)}
+
+/* Roster rollup — What AxiVale knows */
+.mem-rollup{margin-top:14px;padding-top:12px;border-top:1px dashed var(--rule)}
+.mem-rollup-h{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+.mem-rollup-list{list-style:none;display:flex;flex-direction:column;gap:5px}
+.mem-rollup-list li{font-size:13px;line-height:1.5;color:var(--ink-dim)}
+.mem-rollup-tags{color:var(--faint)}
