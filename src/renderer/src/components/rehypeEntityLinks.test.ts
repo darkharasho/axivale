@@ -72,3 +72,14 @@ describe('rehypeEntityLinks — text pass', () => {
     expect(run('<pre><code>Shelter</code></pre>')).not.toContain('axi-entity')
   })
 })
+
+describe('rehypeEntityLinks — shared-regex lastIndex safety', () => {
+  it('correctly wraps entities on two sequential runs reusing the same dictionary object', () => {
+    // Both runs use the same `dict` object (same WeakMap entry → same shared regex).
+    // If lastIndex were not reset between runs, the second run could miss matches.
+    const run1 = run('<p>Cast Shelter here</p>')
+    const run2 = run('<p>Cast Shelter again</p>')
+    expect(run1).toContain('data-entity-name="Shelter"')
+    expect(run2).toContain('data-entity-name="Shelter"')
+  })
+})

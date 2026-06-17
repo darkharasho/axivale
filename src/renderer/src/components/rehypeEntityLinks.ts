@@ -25,14 +25,33 @@ function entitySpan(type: EntityType, name: string, label: string): Element {
   }
 }
 
-export function rehypeEntityLinks(opts: { dictionary: EntityDictionary }) {
+interface CompiledDictionary {
+  entries: EntityDictionaryEntry[]
+  byName: Map<string, EntityType>
+  textRe: RegExp | null
+}
+
+const compiledCache = new WeakMap<EntityDictionary, CompiledDictionary>()
+
+function compileDictionary(dictionary: EntityDictionary): CompiledDictionary {
+  const cached = compiledCache.get(dictionary)
+  if (cached) return cached
+
   // Longest-first so the alternation prefers the longest name; entries are pre-sorted but re-sort defensively.
-  const entries = [...opts.dictionary.entries].sort((a, b) => b.name.length - a.name.length)
+  const entries = [...dictionary.entries].sort((a, b) => b.name.length - a.name.length)
   const byName = new Map(entries.map((e) => [e.name, e.type]))
   const textRe =
     entries.length > 0
       ? new RegExp(`(?<![\\w])(${entries.map((e) => escapeRe(e.name)).join('|')})(?![\\w])`, 'g')
       : null
+
+  const compiled: CompiledDictionary = { entries, byName, textRe }
+  compiledCache.set(dictionary, compiled)
+  return compiled
+}
+
+export function rehypeEntityLinks(opts: { dictionary: EntityDictionary }) {
+  const { byName, textRe } = compileDictionary(opts.dictionary)
 
   return (tree: Root): void => {
     visitParents(tree, 'text', (node: Text, ancestors) => {
