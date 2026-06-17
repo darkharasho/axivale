@@ -69,7 +69,7 @@ import { createOllamaDeps } from './ollama/realDeps'
 import { detectHardware } from './ollama/hardware'
 import type { ProviderConfig, ProviderName } from './providers/types'
 import { EntityService } from './entities/service'
-import { fetchGw2Names } from './entities/dictionary'
+import { fetchGw2Entities } from './entities/dictionary'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -728,7 +728,7 @@ app.whenReady().then(async () => {
   const entityService = new EntityService({
     wikiFacts,
     getCatalog: () => forgeCatalog.getUpgrades(),
-    fetchNames: (e) => fetchGw2Names(e, (url) => fetch(url) as unknown as Promise<{ ok: boolean; json(): Promise<unknown> }>)
+    fetchEntities: (e) => fetchGw2Entities(e, (url) => fetch(url) as unknown as Promise<{ ok: boolean; json(): Promise<unknown> }>)
   })
   ipcMain.handle('entity:resolve', (_event, input: { type: 'skill' | 'trait' | 'item'; name: string }) =>
     entityService.resolve(input)

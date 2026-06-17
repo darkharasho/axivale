@@ -8,12 +8,13 @@ import { buildDictionary, type EntityDictionary } from './dictionary'
 interface Deps {
   wikiFacts: WikiFacts
   getCatalog: () => Promise<ForgeUpgradeCatalog | null>
-  fetchNames: (e: 'skills' | 'traits') => Promise<string[]>
+  fetchEntities: (e: 'skills' | 'traits') => Promise<{ name: string; icon?: string }[]>
 }
 
 export class EntityService {
   private readonly cache = new Map<string, EntityCard>()
   private dict: EntityDictionary | null = null
+  private iconIndex: Map<string, string> | null = null
 
   constructor(private readonly deps: Deps) {}
 
@@ -31,6 +32,9 @@ export class EntityService {
     } else {
       const facts = await this.deps.wikiFacts.lookup(input.name)
       card = wikiFactsToCard(input.type, facts)
+      if (card && this.iconIndex) {
+        card.icon ??= this.iconIndex.get(`${input.type}:${input.name}`)
+      }
     }
     if (card) this.cache.set(key, card) // never cache a miss
     return card
@@ -40,13 +44,32 @@ export class EntityService {
     if (this.dict) return this.dict
     const [catalog, skills, traits] = await Promise.all([
       this.deps.getCatalog(),
-      this.deps.fetchNames('skills'),
-      this.deps.fetchNames('traits')
+      this.deps.fetchEntities('skills'),
+      this.deps.fetchEntities('traits')
     ])
+    const catalogRunes = catalog?.runes ?? []
+    const catalogRelics = catalog?.relics ?? []
     const items = [
-      ...(catalog?.runes ?? []).map((r) => r.name),
-      ...(catalog?.relics ?? []).map((r) => r.name)
+      ...catalogRunes.map((r) => ({ name: r.name, icon: r.icon })),
+      ...catalogRelics.map((r) => ({ name: r.name, icon: r.icon }))
     ]
+
+    // Build icon index keyed by `type:name` — built once alongside the dictionary
+    const iconIndex = new Map<string, string>()
+    for (const e of skills) {
+      if (e.icon) iconIndex.set(`skill:${e.name}`, e.icon)
+    }
+    for (const e of traits) {
+      if (e.icon) iconIndex.set(`trait:${e.name}`, e.icon)
+    }
+    for (const r of catalogRunes) {
+      if (r.icon) iconIndex.set(`item:${r.name}`, r.icon)
+    }
+    for (const r of catalogRelics) {
+      if (r.icon) iconIndex.set(`item:${r.name}`, r.icon)
+    }
+    this.iconIndex = iconIndex
+
     this.dict = buildDictionary({ skills, traits, items })
     return this.dict
   }

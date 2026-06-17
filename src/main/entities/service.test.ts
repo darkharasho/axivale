@@ -9,10 +9,12 @@ function makeService(over: Partial<ConstructorParameters<typeof EntityService>[0
       recharge: { pve: 30, wvw: 30, pvp: 30 }, activation: { pve: 0, wvw: 0, pvp: 0 }
     })) },
     getCatalog: async () => ({
-      runes: [{ id: 1, name: 'Superior Rune of the Monk', bonuses: ['+25 Healing'] }],
-      relics: [{ name: 'Relic of the Monk' }]
+      runes: [{ id: 1, name: 'Superior Rune of the Monk', icon: 'https://render.gw2.com/rune.png', bonuses: ['+25 Healing'] }],
+      relics: [{ name: 'Relic of the Monk', icon: 'https://render.gw2.com/relic.png' }]
     }),
-    fetchNames: async (e) => (e === 'skills' ? ['Shelter'] : ['Zeal']),
+    fetchEntities: async (e) => (e === 'skills'
+      ? [{ name: 'Shelter', icon: 'https://render.gw2.com/shelter.png' }]
+      : [{ name: 'Zeal', icon: 'https://render.gw2.com/zeal.png' }]),
     ...over
   })
 }
@@ -42,6 +44,13 @@ describe('EntityService.resolve', () => {
     await svc.resolve({ type: 'item', name: 'Nope' })
     expect(getCatalog).toHaveBeenCalledTimes(2)
   })
+  it('attaches icon from icon index to a resolved skill card', async () => {
+    const svc = makeService()
+    // dictionary() must be called first to build the icon index
+    await svc.dictionary()
+    const card = await svc.resolve({ type: 'skill', name: 'Shelter' })
+    expect(card?.icon).toBe('https://render.gw2.com/shelter.png')
+  })
 })
 
 describe('EntityService.dictionary', () => {
@@ -52,5 +61,12 @@ describe('EntityService.dictionary', () => {
     expect(names).toContain('Zeal')
     expect(names).toContain('Superior Rune of the Monk')
     expect(names).toContain('Relic of the Monk')
+  })
+  it('dictionary entries carry icon from fetched data', async () => {
+    const dict = await makeService().dictionary()
+    const shelter = dict.entries.find((e) => e.name === 'Shelter')
+    expect(shelter?.icon).toBe('https://render.gw2.com/shelter.png')
+    const rune = dict.entries.find((e) => e.name === 'Superior Rune of the Monk')
+    expect(rune?.icon).toBe('https://render.gw2.com/rune.png')
   })
 })

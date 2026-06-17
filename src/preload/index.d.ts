@@ -9,7 +9,7 @@ export interface EntityCard {
   facts: EntityFact[]
   wikiUrl: string
 }
-export interface EntityDictionaryEntry { name: string; type: EntityType }
+export interface EntityDictionaryEntry { name: string; type: EntityType; icon?: string }
 export interface EntityDictionary { entries: EntityDictionaryEntry[] }
 
 export interface RendererSessionState {
