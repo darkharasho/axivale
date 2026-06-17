@@ -305,7 +305,7 @@ export default function Masthead(props: MastheadProps): ReactElement {
             ['02', 'operations', 'Operations'],
             ['03', 'roster', 'Roster'],
             ['04', 'skills', 'Skills'],
-            ['05', 'meta', 'Meta'],
+            ['05', 'meta', 'Sources'],
             ['06', 'settings', 'Settings']
           ] as Array<[string, Section, string]>
         ).map(([no, key, label]) => (
