@@ -54,4 +54,11 @@ describe('system prompt', () => {
   it('tells the model to validate WvW rosters with comp_check', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/comp_check/)
   })
+
+  it('instructs the model to wrap GW2 skills/traits/items with [[type:Name]] markers', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toContain('[[skill:')
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/\[\[trait:/)
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/\[\[item:/)
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/canonical in-game name/i)
+  })
 })
