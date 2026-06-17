@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 type EntityType = 'skill' | 'trait' | 'item'
-export interface EntityDictionary { entries: { name: string; type: EntityType }[] }
+export interface EntityDictionary { entries: { name: string; type: EntityType; icon?: string }[] }
 
 const EMPTY: EntityDictionary = { entries: [] }
 
