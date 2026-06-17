@@ -1,7 +1,7 @@
 import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, requireDiscordGuild, type ToolDeps } from './shared'
-import { rankIdentities, mergeManualLinks, type ResolveMemberLite } from '../identityResolve'
+import { rankIdentities, mergeManualLinks, loggedPlayerMembers, type ResolveMemberLite } from '../identityResolve'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
@@ -301,25 +301,29 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'resolve_identity',
-      'Resolve a loose or partial name reference — a nickname, Discord display name, first name, or in-game shorthand like "Bob" or "@bobby" — to the guild member(s) it most likely refers to. Searches the user-maintained roster annotations (nicknames/aliases/notes/tags) joined with the linked roster (member name, GW2 account names, characters), and returns ranked candidates with their GW2 account name(s) and notes. Use this whenever the user names a person you cannot already match to an exact GW2 account.',
+      'Resolve a loose or partial name reference — a nickname, Discord display name, first name, or in-game shorthand like "Bob" or "@bobby" — to the guild member(s) it most likely refers to. Searches the user-maintained roster annotations (nicknames/aliases/notes/tags) joined with the linked roster (member name, GW2 account names, characters) AND recurring players seen in AxiBridge combat logs (so a logged-but-unlinked account like "BreakN.5496" still resolves from "break"). Returns ranked candidates with their GW2 account name(s) and notes. Use this whenever the user names a person you cannot already match to an exact GW2 account.',
       {
         name: z.string().describe('The loose/partial name to resolve, e.g. "Bob", "@bobby", "Logan"'),
         limit: z.number().optional().describe('Max candidates to return (default 8)')
       },
       safe(async ({ name, limit }) => {
-        const gid = requireDiscordGuild(deps)
-        const raw = (await deps.axitools.membersLinked(gid)) as ResolveMemberLite[]
+        // The linked roster + Discord display names need a connected guild, but
+        // logged AxiBridge players do not — so resolve against whatever's available
+        // rather than hard-failing when no Discord guild is connected.
+        const gid = deps.discordGuildId()
         const anns = deps.rosterAnnotations()
-        // Discord display names (best-effort) let the resolver match by display
-        // name and its cleaned form, not just the username.
+        let raw: ResolveMemberLite[] = []
         const displayById = new Map<string, string>()
-        try {
-          const ov = (await deps.axitools.discordOverview(gid, true)) as {
-            members?: Array<{ id: string; display_name?: string }>
+        if (gid) {
+          raw = (await deps.axitools.membersLinked(gid)) as ResolveMemberLite[]
+          try {
+            const ov = (await deps.axitools.discordOverview(gid, true)) as {
+              members?: Array<{ id: string; display_name?: string }>
+            }
+            for (const d of ov.members ?? []) if (d.display_name) displayById.set(d.id, d.display_name)
+          } catch {
+            /* no display names — fall back to username/account/annotations */
           }
-          for (const d of ov.members ?? []) if (d.display_name) displayById.set(d.id, d.display_name)
-        } catch {
-          /* no display names — fall back to username/account/annotations */
         }
         // Annotations made on an unlinked GW2 account are keyed "acct:<name>" —
         // surface them as resolvable account-only identities.
@@ -330,7 +334,18 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
           ...m,
           display_name: displayById.get(m.member_id) ?? m.display_name
         }))
-        const matches = rankIdentities(name, members, anns, limit ?? 8)
+        // Recurring logged players (e.g. BreakN.5496) the linked roster lacks.
+        let logged: ResolveMemberLite[] = []
+        try {
+          const att = await deps.axibridge().attendance({})
+          logged = loggedPlayerMembers(
+            (att.attendance ?? []).map((r) => ({ account: r.account, runs: r.runs })),
+            members
+          )
+        } catch {
+          /* best-effort — resolve against the roster alone */
+        }
+        const matches = rankIdentities(name, [...members, ...logged], anns, limit ?? 8)
         return { query: name, matches }
       })
     )

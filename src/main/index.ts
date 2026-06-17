@@ -57,7 +57,7 @@ import { LanceMetaIndex } from './meta/rag/index'
 import { MemoryStore } from './memoryStore'
 import { LanceMemoryIndex } from './memory/index'
 import { MemoryService } from './memory/service'
-import { rankIdentities, mergeManualLinks, type ResolveMemberLite } from './identityResolve'
+import { rankIdentities, mergeManualLinks, loggedPlayerMembers, type ResolveMemberLite } from './identityResolve'
 import { runClaudeOnce } from './meta/model'
 import { fetchEliteSpecMap } from './meta/specMap'
 import { WikiFactsClient } from './meta/wikiFacts'
@@ -368,31 +368,47 @@ app.whenReady().then(async () => {
   // Mirrors the resolve_identity tool's member gathering so memory anchors the same way.
   async function resolveEntityKey(name: string): Promise<{ key: string; name: string } | null> {
     const gid = store.getSetting('guildId') ?? ''
-    if (gid === '') return null
+    // Linked-roster + Discord-display lookups need a guild; logged AxiBridge
+    // players do not — so resolve against logged players even when no guild is set.
     let raw: ResolveMemberLite[] = []
-    try {
-      raw = (await buildAxitools().membersLinked(gid)) as ResolveMemberLite[]
-    } catch {
-      raw = []
+    const displayById = new Map<string, string>()
+    if (gid !== '') {
+      try {
+        raw = (await buildAxitools().membersLinked(gid)) as ResolveMemberLite[]
+      } catch {
+        raw = []
+      }
+      try {
+        const ov = (await buildAxitools().discordOverview(gid, true)) as {
+          members?: Array<{ id: string; display_name?: string }>
+        }
+        for (const d of ov.members ?? []) if (d.display_name) displayById.set(d.id, d.display_name)
+      } catch {
+        /* best-effort — fall back to existing display_name/account/annotations */
+      }
     }
     const anns = rosterAnnotations.list()
     const acctMembers: ResolveMemberLite[] = anns
       .filter((a) => a.memberId.startsWith('acct:'))
       .map((a) => ({ member_id: a.memberId, accounts: [{ account_name: a.memberId.slice(5) }] }))
-    const displayById = new Map<string, string>()
-    try {
-      const ov = (await buildAxitools().discordOverview(gid, true)) as {
-        members?: Array<{ id: string; display_name?: string }>
-      }
-      for (const d of ov.members ?? []) if (d.display_name) displayById.set(d.id, d.display_name)
-    } catch {
-      /* best-effort — fall back to existing display_name/account/annotations */
-    }
     const members = [...mergeManualLinks(raw, rosterLinks.list()), ...acctMembers].map((m) => ({
       ...m,
       display_name: displayById.get(m.member_id) ?? m.display_name
     }))
-    const ranked = rankIdentities(name, members, anns, 2)
+    // Append recurring logged players (BreakN.5496 etc.) the linked roster lacks.
+    let logged: ResolveMemberLite[] = []
+    try {
+      const att = await axibridge.attendance({})
+      logged = loggedPlayerMembers(
+        (att.attendance ?? []).map((r) => ({ account: r.account, runs: r.runs })),
+        members
+      )
+    } catch {
+      /* best-effort — no AxiBridge data, resolve against the roster alone */
+    }
+    const pool = [...members, ...logged]
+    if (pool.length === 0) return null
+    const ranked = rankIdentities(name, pool, anns, 2)
     if (ranked.length === 0) return null
     if (ranked.length > 1 && ranked[1].score >= ranked[0].score) return null // ambiguous tie
     const top = ranked[0]
@@ -718,10 +734,15 @@ app.whenReady().then(async () => {
       const conv = conversations.get(conversationId)
       if (!conv) return { ok: false as const, error: 'Conversation not found.' }
       const id = makeShareId()
+      // Bake referenced skill/trait/item entities into the doc so the offline
+      // share viewer can render their chips+icons (it has no Electron/API). Never
+      // let dictionary build failure (e.g. offline) block sharing.
+      const dictionary = await entityService.dictionary().catch(() => ({ entries: [] }))
       const doc = buildSharePayload(conv, {
         id,
         createdAt: new Date().toISOString(),
-        appVersion: app.getVersion()
+        appVersion: app.getVersion(),
+        dictionary: dictionary.entries
       })
       const { url, live } = await sharePublisher.publishDoc(doc)
       shares.add({
@@ -743,11 +764,13 @@ app.whenReady().then(async () => {
       const conv = conversations.get(conversationId)
       if (!conv) return { ok: false as const, error: 'Conversation not found.' }
       const id = makeShareId()
+      const dictionary = await entityService.dictionary().catch(() => ({ entries: [] }))
       const doc = buildSharePayload(conv, {
         id,
         createdAt: new Date().toISOString(),
         appVersion: app.getVersion(),
-        turnId
+        turnId,
+        dictionary: dictionary.entries
       })
       const { url, live } = await sharePublisher.publishDoc(doc)
       shares.add({

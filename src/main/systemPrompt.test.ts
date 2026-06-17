@@ -55,6 +55,33 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/comp_check/)
   })
 
+  it('forbids fabricated stats and guessed citation URLs', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/no fabricated evidence/i)
+    expect(p).toMatch(/popularity/i)
+    expect(p).toMatch(/never write a url you did not receive/i)
+  })
+
+  it('requires a source for every recommended/tier-labeled build and flags bare "core" picks', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/A build with no source is not a recommendation/i)
+    expect(p).toMatch(/Core <profession>/i)
+  })
+
+  it('makes source recency part of correctness', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/recency is part of correctness/i)
+    expect(p).toMatch(/most recent tier list/i)
+  })
+
+  it('nudges proactive durable memory (remember/recall)', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/durable memory/i)
+    expect(p).toMatch(/remember/)
+    expect(p).toMatch(/recall/)
+    expect(p).toMatch(/standing fact/i)
+  })
+
   it('instructs the model to wrap GW2 skills/traits/items with [[type:Name]] markers', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toContain('[[skill:')
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/\[\[trait:/)

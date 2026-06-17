@@ -64,20 +64,26 @@ export class MetaRefresher {
       const specMap = totalSources > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
       for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
-        const buildRaws: string[] = []
+        const buildRaws: Array<{ source: string; text: string }> = []
         const ruleRaws: string[] = []
         for (const src of mode.sources) {
           if (!configForUrl(src.url)) continue
           emit({ type: 'source-start', modeId: mode.id, url: src.url })
           console.log(`[meta] fetch start (${mode.id}):`, src.url)
           const r = await fetcher.fetch(src.url)
-          store.recordFetch(mode.id, src.url, r.ok ? { ok: true } : { ok: false, error: r.error })
+          store.recordFetch(
+            mode.id,
+            src.url,
+            r.ok ? { ok: true, sourceDate: r.date ?? null } : { ok: false, error: r.error }
+          )
           if (r.ok) {
             cache.put(src.url, r.text)
             if (resolveContent(src.url) === 'rules') {
               ruleRaws.push(r.text)
             } else {
-              buildRaws.push(r.text)
+              // Tag with the configured source label so the distiller attributes
+              // builds/dates to a real source and can weight cross-source consensus.
+              buildRaws.push({ source: src.label, text: r.text })
             }
             console.log(`[meta] fetch ok (${mode.id}): ${src.url} — ${r.pages.length} page(s)`)
             await this.ingest(mode.mode, src.url, r.pages)
@@ -93,7 +99,8 @@ export class MetaRefresher {
           if (buildRaws.length || ruleRaws.length) store.recordDistill(mode.id, '')
         } else {
           // combine build-table + comp-rule notes into one blob; either half may be null
-          const buildNotes = buildRaws.length ? await distill(mode.mode, buildRaws, model, specMap) : null
+          const today = new Date().toISOString().slice(0, 10)
+          const buildNotes = buildRaws.length ? await distill(mode.mode, buildRaws, model, specMap, today) : null
           const compNotes = ruleRaws.length ? await distillComp(mode.mode, ruleRaws, model) : null
           const combined = [buildNotes, compNotes].filter(Boolean).join('\n\n')
           if (combined) store.recordDistill(mode.id, combined)

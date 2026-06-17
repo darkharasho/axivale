@@ -11,14 +11,17 @@
 import { BrowserWindow, session } from 'electron'
 import { configForUrl, type SourceConfig } from './sources'
 import { fetchSnowcrowsStatic } from './snowcrows'
+import { extractPublishDate, newestDate } from './publishDate'
 
 export interface FetchedPage {
   url: string
   title: string
   text: string
+  /** Page's self-declared publish/modified date (YYYY-MM-DD), if it has one. */
+  date?: string
 }
 export type FetchResult =
-  | { ok: true; text: string; pages: FetchedPage[] }
+  | { ok: true; text: string; pages: FetchedPage[]; date?: string }
   | { ok: false; error: string }
 
 export interface MetaFetcher {
@@ -233,7 +236,7 @@ export class BrowserWindowFetcher implements MetaFetcher {
         if (key === null || visited.has(key)) continue
         visited.add(key)
 
-        let extracted: { title: string; text: string } | null
+        let extracted: { title: string; text: string; date?: string } | null
         try {
           extracted = await this.loadChecked(pageUrl, selector)
         } catch {
@@ -245,7 +248,12 @@ export class BrowserWindowFetcher implements MetaFetcher {
           continue // challenged — skip, keep walking
         }
         if (extracted.text) {
-          pages.push({ url: pageUrl, title: extracted.title, text: extracted.text.slice(0, MAX_EXTRACT_CHARS) })
+          pages.push({
+            url: pageUrl,
+            title: extracted.title,
+            text: extracted.text.slice(0, MAX_EXTRACT_CHARS),
+            date: extracted.date
+          })
         }
 
         // Expand links if we haven't hit the depth limit. collectLinks runs on the
@@ -271,7 +279,7 @@ export class BrowserWindowFetcher implements MetaFetcher {
         return { ok: false, error: reason }
       }
       const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n').slice(0, MAX_CRAWL_TOTAL_CHARS)
-      return { ok: true, text, pages }
+      return { ok: true, text, pages, date: newestDate(pages.map((p) => p.date)) }
     } catch (e) {
       try {
         if (this.win && !this.win.isDestroyed()) this.win.webContents.stop()
@@ -284,7 +292,10 @@ export class BrowserWindowFetcher implements MetaFetcher {
 
   /** loadAndExtract + challenge handling: retries once on a Cloudflare interstitial,
    *  returns null if the page is still challenged (caller skips it). */
-  private async loadChecked(url: string, selector: string): Promise<{ title: string; text: string } | null> {
+  private async loadChecked(
+    url: string,
+    selector: string
+  ): Promise<{ title: string; text: string; date?: string } | null> {
     let out = await this.loadAndExtract(url, selector)
     if (isChallengePage(out.title, out.text)) {
       await sleep(3_000)
@@ -302,7 +313,10 @@ export class BrowserWindowFetcher implements MetaFetcher {
    * in `img[alt]`, `[title]`/`[aria-label]`, or the wiki-link href path. Harvesting
    * those recovers component names that pure innerText drops. Throws on load timeout.
    */
-  private async loadAndExtract(url: string, selector: string): Promise<{ title: string; text: string }> {
+  private async loadAndExtract(
+    url: string,
+    selector: string
+  ): Promise<{ title: string; text: string; date?: string }> {
     const win = this.window()
     const load = win.loadURL(url)
     const timeout = new Promise<never>((_, rej) =>
@@ -327,22 +341,42 @@ export class BrowserWindowFetcher implements MetaFetcher {
         });
         return Array.from(labels);
       };
+      // Structured date signals only (JSON-LD, article/meta dates, <time>) —
+      // parsed in Node by extractPublishDate. Cheap to gather, small to transfer.
+      const dateHint = () => {
+        const dh = [];
+        document.querySelectorAll('script[type="application/ld+json"]').forEach((n) => dh.push(n.textContent || ''));
+        document.querySelectorAll('meta[property],meta[name],meta[itemprop]').forEach((n) => {
+          const k = (n.getAttribute('property') || n.getAttribute('name') || n.getAttribute('itemprop') || '').toLowerCase();
+          if (/modified|published|date|last-modified/.test(k)) dh.push(n.outerHTML);
+        });
+        document.querySelectorAll('time[datetime]').forEach((n) => dh.push(n.outerHTML));
+        return dh.join('\\n');
+      };
       const tick = () => {
         const el = document.querySelector(sel);
         const txt = el && el.innerText ? el.innerText : '';
         if (txt.length >= ${MIN_CONTENT_CHARS}) {
           const labels = harvest(el);
           const extra = labels.length ? '\\n\\n[components] ' + labels.join(' · ') : '';
-          resolve({ title: document.title || '', text: txt + extra });
+          resolve({ title: document.title || '', text: txt + extra, dateHint: dateHint() });
         } else if (Date.now() - start > ${CONTENT_WAIT_MS}) {
           // Selector never rendered enough content (list/cookie/filter page) — yield nothing.
-          resolve({ title: document.title || '', text: '' });
+          resolve({ title: document.title || '', text: '', dateHint: '' });
         } else setTimeout(tick, 500);
       };
       tick();
     })`
-    const out = (await win.webContents.executeJavaScript(script)) as { title: string; text: string }
-    return { title: (out?.title ?? '').trim(), text: (out?.text ?? '').trim() }
+    const out = (await win.webContents.executeJavaScript(script)) as {
+      title: string
+      text: string
+      dateHint?: string
+    }
+    return {
+      title: (out?.title ?? '').trim(),
+      text: (out?.text ?? '').trim(),
+      date: extractPublishDate(out?.dateHint ?? '') ?? undefined
+    }
   }
 
   /** Collect candidate build-page hrefs from the currently-loaded landing page. */

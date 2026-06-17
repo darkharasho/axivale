@@ -24,6 +24,15 @@ export interface SharedTurn {
   tools: SharedTool[]
 }
 
+/** A resolved GW2 entity referenced by a `[[type:Name]]` marker in the turns,
+ *  baked in at publish time so the viewer (no Electron/API) can render the chip
+ *  + icon without resolving anything. Only referenced entities are kept. */
+export interface ShareEntity {
+  name: string
+  type: 'skill' | 'trait' | 'item'
+  icon?: string
+}
+
 export interface ShareDoc {
   v: 1
   id: string
@@ -32,4 +41,6 @@ export interface ShareDoc {
   createdAt: string
   app: { name: string; version: string }
   turns: SharedTurn[]
+  /** Entities referenced by `[[…]]` markers in the turns; omitted when none. */
+  entities?: ShareEntity[]
 }

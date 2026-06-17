@@ -90,6 +90,36 @@ describe('buildSharePayload — response', () => {
   })
 })
 
+describe('buildSharePayload — entity dictionary baking', () => {
+  const DICT = [
+    { name: 'Disrupting Stab', type: 'skill' as const, icon: 'https://r/stab.png' },
+    { name: 'Winds of Disenchantment', type: 'skill' as const, icon: 'https://r/winds.png' },
+    { name: 'Scholar', type: 'item' as const, icon: 'https://r/scholar.png' }
+  ]
+
+  it('bakes only the entities referenced by [[…]] markers in the turns', () => {
+    const c = conv({ turns: [turn({ agentText: 'Use [[skill:Disrupting Stab]] on cooldown.' })] })
+    const doc = buildSharePayload(c, { ...OPTS, dictionary: DICT })
+    expect(doc.entities).toEqual([{ name: 'Disrupting Stab', type: 'skill', icon: 'https://r/stab.png' }])
+  })
+
+  it('omits the entities field entirely when no markers are present', () => {
+    const doc = buildSharePayload(conv(), { ...OPTS, dictionary: DICT })
+    expect(doc.entities).toBeUndefined()
+  })
+
+  it('omits entities when a marker has no dictionary match', () => {
+    const c = conv({ turns: [turn({ agentText: 'Use [[skill:Unknown Skill]].' })] })
+    expect(buildSharePayload(c, { ...OPTS, dictionary: DICT }).entities).toBeUndefined()
+  })
+
+  it('bakes referenced entities for a single-response share too', () => {
+    const c = conv({ turns: [turn({ id: 2, agentText: '[[item:Scholar]] runes win.' })] })
+    const doc = buildSharePayload(c, { ...OPTS, turnId: 2, dictionary: DICT })
+    expect(doc.entities).toEqual([{ name: 'Scholar', type: 'item', icon: 'https://r/scholar.png' }])
+  })
+})
+
 describe('deriveTitle', () => {
   it('strips leading markdown heading/bullet markers and takes the first non-empty line', () => {
     expect(deriveTitle('## Hello\n\nworld')).toBe('Hello')

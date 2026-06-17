@@ -11,13 +11,14 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { rehypeEmojiIcons } from '../renderer/src/components/rehypeEmojiIcons'
 import { rehypeClassIcons } from '../renderer/src/components/rehypeClassIcons'
+import { rehypeEntityLinks } from '../renderer/src/components/rehypeEntityLinks'
 import { renderExtLink } from '../renderer/src/components/emojiIcons'
 import { renderRichSpan } from '../renderer/src/components/richSpan'
 import { splitHeadline, stripMarkdown } from '../renderer/src/components/headline'
 import { stripRawJson } from '../renderer/src/components/sanitizeProse'
 import { couponLabel } from '../renderer/src/components/ToolCoupon'
 import RichDisplay from '../renderer/src/components/rich/RichDisplay'
-import type { ShareDoc, SharedTurn } from './shareTypes'
+import type { ShareDoc, SharedTurn, ShareEntity } from './shareTypes'
 
 /** Roman numeral; 0 has none, so keep it literal. */
 function toRoman(n: number): string {
@@ -61,7 +62,21 @@ function docUrl(id: string): string {
   return new URL(`shares/${id}.json`, base).toString()
 }
 
-function ArticleView({ turn, kicker }: { turn: SharedTurn; kicker: string }): ReactElement {
+function ArticleView({
+  turn,
+  kicker,
+  entities
+}: {
+  turn: SharedTurn
+  kicker: string
+  entities: ShareEntity[]
+}): ReactElement {
+  // Resolve [[skill|trait|item:Name]] markers using the dictionary baked into the
+  // share doc at publish time — the viewer has no Electron/API to resolve them live.
+  const entityPlugin: [typeof rehypeEntityLinks, { dictionary: { entries: ShareEntity[] } }] = [
+    rehypeEntityLinks,
+    { dictionary: { entries: entities } }
+  ]
   const { headline, rest: rawRest } = splitHeadline(turn.agentText)
   const rest = stripRawJson(rawRest)
   // Unlike the main app (where excluded tables fall back to the Actions panel),
@@ -95,7 +110,7 @@ function ArticleView({ turn, kicker }: { turn: SharedTurn; kicker: string }): Re
           <Fragment key={i}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons]}
+              rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons, entityPlugin]}
               components={{ span: renderRichSpan, a: renderExtLink }}
             >
               {seg}
@@ -193,7 +208,7 @@ export default function ShareApp(): ReactElement {
               <span className="t" />
             </div>
           )}
-          <ArticleView turn={turn} kicker={kicker} />
+          <ArticleView turn={turn} kicker={kicker} entities={doc.entities ?? []} />
         </Fragment>
       ))}
 

@@ -8,7 +8,9 @@ const CLASS_NAMES = Object.entries(PROFESSIONS)
   .flatMap(([prof, specs]) => [prof, ...specs])
   .sort((a, b) => b.length - a.length)
 
-const PATTERN = `\\b(${CLASS_NAMES.join('|')})\\b`
+// Optional trailing "s" so prose plurals ("Spellbreakers", "Firebrands") still
+// match; the icon lookup normalizes the plural back to the canonical name.
+const PATTERN = `\\b(${CLASS_NAMES.join('|')})s?\\b`
 
 /** Fresh regex per use — exec() with /g/ carries state via lastIndex. */
 export function makeClassRegex(): RegExp {

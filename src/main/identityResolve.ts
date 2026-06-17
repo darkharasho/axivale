@@ -49,6 +49,42 @@ export function mergeManualLinks(
   return [...byId.values()]
 }
 
+/** A player seen in AxiBridge combat logs, for resolving loose names against
+ *  recurring logged players (not just the linked Discord roster). */
+export interface LoggedPlayerLite {
+  account: string
+  runs: number
+}
+
+/** Minimum logged runs for a player to be resolvable by name — keeps one-off
+ *  pugs out of the identity pool while catching anyone recurring. */
+export const MIN_LOGGED_RUNS = 3
+
+/** Synthetic `acct:<name>` members for recurring logged players, so loose names
+ *  ("break") resolve to logged accounts ("BreakN.5496") the linked roster lacks.
+ *  Skips any account already present among `existing` (linked roster / annotations
+ *  win) so the same person never appears twice and trips the ambiguous-tie guard. */
+export function loggedPlayerMembers(
+  players: LoggedPlayerLite[],
+  existing: ResolveMemberLite[],
+  minRuns = MIN_LOGGED_RUNS
+): ResolveMemberLite[] {
+  const have = new Set(
+    existing.flatMap((m) =>
+      (m.accounts ?? []).map((a) => (a.account_name ?? '').toLowerCase()).filter(Boolean)
+    )
+  )
+  const out: ResolveMemberLite[] = []
+  for (const p of players) {
+    if (p.runs < minRuns) continue
+    const acct = p.account?.trim()
+    if (!acct || have.has(acct.toLowerCase())) continue
+    have.add(acct.toLowerCase())
+    out.push({ member_id: `acct:${acct}`, accounts: [{ account_name: acct }] })
+  }
+  return out
+}
+
 export interface IdentityMatch {
   member_id: string
   member_name?: string

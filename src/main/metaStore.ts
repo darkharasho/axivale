@@ -16,6 +16,9 @@ export interface MetaSource {
   status: 'ok' | 'error' | 'never'
   fetchedAt: string | null
   error: string | null
+  /** The source's own declared publish/modified date (YYYY-MM-DD), distinct from
+   *  fetchedAt (when AxiVale crawled it). null when the page declares none. */
+  sourceDate: string | null
 }
 
 export interface Playbook {
@@ -51,11 +54,26 @@ interface FileShape {
 
 const DEBOUNCE_MS = 300
 
-const WVW_PRINCIPLES = `### WvW comp principles (per Veridian [rdux], top comp-maker)
+// Standalone principles so the scrub migration can backfill each into stored
+// playbooks that predate it (detected via the marker noted on each below).
+// marker: 'melee-driven'
+const MELEE_PRINCIPLE =
+  '- The meta is melee-driven: spike comes from the melee train. Builds with a real ranged spike (e.g. spear Evoker) are rare standouts — treat ranged backline as a small accent, not the backbone of the comp.'
+// marker: 'Down Contribution'
+const DOWN_CONTRIBUTION_PRINCIPLE =
+  '- In WvW, DPS is NOT the primary damage stat: Down Contribution is #1 (it is what turns pressure into kills), total damage is #2 behind it, and raw DPS is a distant tiebreaker — judge a build or player by the downs they create, not parsed DPS.'
+
+// Order matters: backfilled into existing playbooks in this same order, before
+// the iteration-heavy closer.
+const BACKFILL_PRINCIPLES = [MELEE_PRINCIPLE, DOWN_CONTRIBUTION_PRINCIPLE]
+
+const WVW_PRINCIPLES = `### WvW comp principles
 - ~2 stability supports per subgroup is normal (not wasteful).
 - At least 1 cleanse support per subgroup is required.
 - Normal comp = reliable boon-rip + reliable burst, at ~2:1 boon-rip:burst DPS (up to 3:1 by damage rate).
 - Outlier-stacking: when a build is a broken outlier, stacking it can BE the comp (all-Untamed, Soulbeast stacks).
+${MELEE_PRINCIPLE}
+${DOWN_CONTRIBUTION_PRINCIPLE}
 - The meta is iteration-heavy — treat any comp as a baseline to refine, not gospel.`
 
 const DEFAULT_SEED: SeedShape[] = [
@@ -107,6 +125,30 @@ const DEFAULT_SEED: SeedShape[] = [
   }
 ]
 
+/** Migrate stored WvW principles to the current baseline: strip any legacy
+ *  attribution (e.g. "(per <name>, top comp-maker)") so the agent never
+ *  name-drops a source, and backfill any newer baseline principle the stored
+ *  copy predates. All steps are idempotent and only touch WvW principles. */
+function scrubPlaybook(p: Playbook): Playbook {
+  let principles = p.principles.replace(/^(### WvW comp principles)\s*\([^)]*\)/m, '$1')
+  if (/^### WvW comp principles/m.test(principles)) {
+    // Insert each missing principle just before the iteration-heavy closer
+    // (or append if that closer was edited away), preserving seed order.
+    for (const principle of BACKFILL_PRINCIPLES) {
+      // Dedup on the principle's first clause — enough to detect an earlier copy
+      // without requiring a verbatim match the user may have lightly edited.
+      const marker = principle.slice(0, 40)
+      if (principles.includes(marker)) continue
+      const idx = principles.indexOf('- The meta is iteration-heavy')
+      principles =
+        idx >= 0
+          ? `${principles.slice(0, idx)}${principle}\n${principles.slice(idx)}`
+          : `${principles.replace(/\s*$/, '')}\n${principle}`
+    }
+  }
+  return principles === p.principles ? p : { ...p, principles }
+}
+
 function defaultPlaybook(seed?: { principles?: string; blessed?: boolean }): Playbook {
   return {
     derived: null,
@@ -149,7 +191,7 @@ export class MetaStore {
         const group = s.group ?? 'meta'
         return prev
           ? { ...prev, label: s.label, group }
-          : { label: s.label, url: s.url, group, status: 'never', fetchedAt: null, error: null }
+          : { label: s.label, url: s.url, group, status: 'never', fetchedAt: null, error: null, sourceDate: null }
       })
       if (JSON.stringify(existing.sources) !== JSON.stringify(synced)) {
         existing.sources = synced
@@ -169,7 +211,8 @@ export class MetaStore {
         group: s.group ?? 'meta',
         status: 'never' as const,
         fetchedAt: null,
-        error: null
+        error: null,
+        sourceDate: null
       })),
       notes: seed.notes ?? '',
       playbook: defaultPlaybook(seed.playbook),
@@ -201,9 +244,10 @@ export class MetaStore {
         group: s.group ?? 'meta',
         status: s.status ?? 'never',
         fetchedAt: s.fetchedAt ?? null,
-        error: s.error ?? null
+        error: s.error ?? null,
+        sourceDate: s.sourceDate ?? null
       })),
-      playbook: m.playbook ? { ...defaultPlaybook(), ...m.playbook } : defaultPlaybook()
+      playbook: m.playbook ? scrubPlaybook({ ...defaultPlaybook(), ...m.playbook }) : defaultPlaybook()
     }
   }
 
@@ -251,7 +295,8 @@ export class MetaStore {
           group: prev?.group ?? 'meta',
           status: prev?.status ?? 'never',
           fetchedAt: prev?.fetchedAt ?? null,
-          error: prev?.error ?? null
+          error: prev?.error ?? null,
+          sourceDate: prev?.sourceDate ?? null
         }
       })
     if (patch.notes !== undefined) mode.notes = patch.notes
@@ -260,13 +305,20 @@ export class MetaStore {
     return mode
   }
 
-  recordFetch(modeId: string, url: string, result: { ok: true } | { ok: false; error: string }): void {
+  recordFetch(
+    modeId: string,
+    url: string,
+    result: { ok: true; sourceDate?: string | null } | { ok: false; error: string }
+  ): void {
     const mode = this.get(modeId)
     if (!mode) return
     const src = mode.sources.find((s) => s.url === url)
     if (!src) return
     src.status = result.ok ? 'ok' : 'error'
     src.error = result.ok ? null : result.error
+    // A fresh successful crawl is authoritative for the source date: record what
+    // this fetch found (or null if the page declares none). Leave it untouched on error.
+    if (result.ok) src.sourceDate = result.sourceDate ?? null
     src.fetchedAt = new Date().toISOString()
     mode.updatedAt = new Date().toISOString()
     this.scheduleWrite()

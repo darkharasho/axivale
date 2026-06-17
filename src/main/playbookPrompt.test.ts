@@ -58,6 +58,21 @@ describe('buildPlaybookReference', () => {
     expect(out).toMatch(/gaps/i)
   })
 
+  it('emits guild overrides as BINDING, after (and overriding) the reference framing', () => {
+    const out = buildPlaybookReference([
+      mode({ blessed: true, principles: 'p', overrides: "don't recommend core necro" })
+    ])
+    expect(out).toMatch(/Guild overrides \(BINDING/i)
+    expect(out).toMatch(/OVERRIDE the meta sources/i)
+    expect(out).toContain("don't recommend core necro")
+    // binding overrides must come AFTER the "reference, not law" caveat so it isn't softened
+    expect(out.indexOf('Guild overrides')).toBeGreaterThan(out.indexOf('REFERENCE, not law'))
+  })
+
+  it('omits the overrides line when there are none', () => {
+    expect(buildPlaybookReference([mode({ blessed: true, principles: 'p' })])).not.toMatch(/Guild overrides/)
+  })
+
   it('flags low confidence', () => {
     const out = buildPlaybookReference([
       mode({

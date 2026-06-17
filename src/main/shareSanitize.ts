@@ -6,7 +6,7 @@
 
 import type { Conversation } from './conversationStore'
 import type { Turn } from './providers/types'
-import type { ShareDoc, SharedTurn } from './shareTypes'
+import type { ShareDoc, SharedTurn, ShareEntity } from './shareTypes'
 
 export interface BuildShareOptions {
   id: string
@@ -14,6 +14,24 @@ export interface BuildShareOptions {
   appVersion: string
   /** When set, share only this turn as a standalone kind:"response". */
   turnId?: number
+  /** Full entity dictionary; only entries referenced by `[[…]]` markers in the
+   *  shared turns are baked into the doc so the offline viewer can render them. */
+  dictionary?: ShareEntity[]
+}
+
+const ENTITY_MARKER = /\[\[(?:skill|trait|item):([^\]]+)\]\]/g
+
+/** The dictionary subset referenced by `[[type:Name]]` markers across the turns.
+ *  Keyed by name (the viewer's resolver is name-keyed), so type is ignored here. */
+function referencedEntities(turns: SharedTurn[], dictionary: ShareEntity[]): ShareEntity[] {
+  if (dictionary.length === 0) return []
+  const names = new Set<string>()
+  for (const t of turns) {
+    ENTITY_MARKER.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = ENTITY_MARKER.exec(t.agentText)) !== null) names.add(m[1].trim())
+  }
+  return names.size === 0 ? [] : dictionary.filter((e) => names.has(e.name))
 }
 
 /** First non-empty line, with a leading markdown heading/bullet marker removed. */
@@ -44,22 +62,29 @@ export function buildSharePayload(conv: Conversation, opts: BuildShareOptions): 
     app: { name: 'AxiVale', version: opts.appVersion }
   }
 
+  const dictionary = opts.dictionary ?? []
+
   if (opts.turnId !== undefined) {
     const target = conv.turns.find((t) => t.id === opts.turnId)
     if (!target) throw new Error('Response not found in conversation.')
+    const turns = [sanitizeTurn(target, false)]
+    const entities = referencedEntities(turns, dictionary)
     return {
       ...base,
       kind: 'response',
       title: deriveTitle(target.agentText) || 'AxiVale dispatch',
-      turns: [sanitizeTurn(target, false)]
+      turns,
+      ...(entities.length ? { entities } : {})
     }
   }
 
-  const turns = conv.turns.filter((t) => t.done && !t.error)
+  const turns = conv.turns.filter((t) => t.done && !t.error).map((t) => sanitizeTurn(t, true))
+  const entities = referencedEntities(turns, dictionary)
   return {
     ...base,
     kind: 'conversation',
     title: conv.title?.trim() || deriveTitle(turns[0]?.userText ?? '') || 'AxiVale dispatch',
-    turns: turns.map((t) => sanitizeTurn(t, true))
+    turns,
+    ...(entities.length ? { entities } : {})
   }
 }
