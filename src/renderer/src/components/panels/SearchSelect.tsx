@@ -11,6 +11,9 @@ export interface SearchSelectOption {
   search?: string
 }
 
+/** Most option rows we render at once; the search box reaches the rest. */
+const MAX_VISIBLE = 50
+
 function Lead({ o }: { o: SearchSelectOption }): ReactElement | null {
   if (o.icon) return <img className="ssel-ava" src={o.icon} alt="" />
   if (o.initial) return <span className="ssel-ava ssel-ava-ph">{o.initial}</span>
@@ -61,8 +64,14 @@ export function SearchSelect({
     return options.filter((o) => `${o.label} ${o.search ?? ''}`.toLowerCase().includes(needle))
   }, [options, q])
 
-  // Navigable rows: the clear/placeholder option, then the filtered options.
-  const rows = useMemo(() => [{ value: '', label: placeholder }, ...filtered], [filtered, placeholder])
+  // Cap how many options we actually render: a full guild's worth of avatar rows
+  // re-painting on every keystroke is what made typing here stutter. Narrow with
+  // the search box to reach anything past the cap.
+  const visible = useMemo(() => filtered.slice(0, MAX_VISIBLE), [filtered])
+  const hidden = filtered.length - visible.length
+
+  // Navigable rows: the clear/placeholder option, then the (capped) options.
+  const rows = useMemo(() => [{ value: '', label: placeholder }, ...visible], [visible, placeholder])
   useEffect(() => setHi(0), [q])
   // Keep the keyboard-highlighted option in view as it moves.
   useEffect(() => {
@@ -124,6 +133,7 @@ export function SearchSelect({
               </button>
             ))}
             {filtered.length === 0 && <div className="ssel-empty">no matches</div>}
+            {hidden > 0 && <div className="ssel-empty">{hidden} more — keep typing to narrow</div>}
           </div>
         </div>
       )}

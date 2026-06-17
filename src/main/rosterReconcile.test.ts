@@ -54,6 +54,21 @@ describe('reconcileRoster (GW2-first)', () => {
     expect(r.filter((m) => m.memberId === 'm2')).toHaveLength(1)
   })
 
+  it('lets a manual link override the auto link, not duplicate the account', () => {
+    // harasho.4281 is auto-linked to m1 but the user manually linked it to m2.
+    // The account must belong to m2 only — not appear under both identities.
+    const r = reconcileRoster({
+      ...base,
+      manualLinks: [{ accountName: 'harasho.4281', memberId: 'm2' }]
+    })
+    const owners = r.filter((m) => m.accounts.some((a) => a.account_name === 'harasho.4281'))
+    expect(owners).toHaveLength(1)
+    expect(owners[0].memberId).toBe('m2')
+    expect(owners[0].accounts.find((a) => a.account_name === 'harasho.4281')!.manual).toBe(true)
+    // m1 no longer carries the overridden account.
+    expect(r.find((m) => m.memberId === 'm1')?.accounts.some((a) => a.account_name === 'harasho.4281')).toBeFalsy()
+  })
+
   it('lists a linked member not in the in-game roster as left-guild', () => {
     const r = reconcileRoster(base)
     const logan = r.find((m) => m.memberId === 'm2')!

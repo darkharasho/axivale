@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type KeyboardEvent } from 'react'
+import { useMemo, useState, type ReactElement, type KeyboardEvent } from 'react'
 import type { RendererReconciledMember } from '../../../../preload/index.d'
 import { Offline } from './shared'
 import { SearchSelect } from './SearchSelect'
@@ -131,21 +131,28 @@ function resolvePreview(draft: RosterDraft, m: RendererReconciledMember): string
 /** Discord-link card: pick a Discord user for an unlinked GW2 account, or unlink a
  *  manual link. Auto links (from AxiTools) are shown read-only. */
 function LinkCard({ ctl, m }: { ctl: RosterController; m: RendererReconciledMember }): ReactElement | null {
+  // Built once per Discord list, not on every keystroke in the annotation fields:
+  // re-mapping/sorting the whole guild each render made typing (aliases especially)
+  // stutter on large rosters.
+  const options = useMemo(
+    () =>
+      ctl.discordMembers
+        .map((d) => {
+          const dn = d.display_name?.trim()
+          const un = d.name?.trim()
+          const label = dn && un && dn !== un ? `${dn} (${un})` : dn || un || d.id
+          return {
+            value: d.id,
+            label,
+            icon: d.avatar,
+            initial: (dn || un || '?').charAt(0),
+            search: `${dn ?? ''} ${un ?? ''}` // match display name AND username
+          }
+        })
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [ctl.discordMembers]
+  )
   if (!m.accountName) return null // only GW2-account rows are linkable here
-  const options = ctl.discordMembers
-    .map((d) => {
-      const dn = d.display_name?.trim()
-      const un = d.name?.trim()
-      const label = dn && un && dn !== un ? `${dn} (${un})` : dn || un || d.id
-      return {
-        value: d.id,
-        label,
-        icon: d.avatar,
-        initial: (dn || un || '?').charAt(0),
-        search: `${dn ?? ''} ${un ?? ''}` // match display name AND username
-      }
-    })
-    .sort((a, b) => a.label.localeCompare(b.label))
   return (
     <div className="spcard">
       <div className="spcard-h">

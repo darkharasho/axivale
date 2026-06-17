@@ -983,8 +983,6 @@ app.whenReady().then(async () => {
         members?: DiscordMemberRaw[]
       }
       discordMembers = overview.members ?? []
-      // TEMP: reveal the real member shape so we can wire avatars to the right field.
-      console.log('[roster] sample discord member:', JSON.stringify(discordMembers[0]))
     } catch {
       discordMembers = []
     }

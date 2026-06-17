@@ -152,9 +152,13 @@ export function reconcileRoster(input: ReconcileInput): ReconciledMember[] {
   }
   for (const l of linked) {
     for (const a of l.accounts ?? []) {
-      if (a.account_name) {
-        addAcct(l.member_id, a.account_name, a.characters ?? [], Object.values(a.guild_labels ?? {}), false)
-      }
+      if (!a.account_name) continue
+      // A manual link to a *different* member overrides this auto link, so the
+      // account folds under the user's choice only — never both (which would
+      // surface the same account as two identity rows).
+      const manualMember = manualByAccount.get(lc(a.account_name))
+      if (manualMember && manualMember !== l.member_id) continue
+      addAcct(l.member_id, a.account_name, a.characters ?? [], Object.values(a.guild_labels ?? {}), false)
     }
   }
   for (const ml of manualLinks) addAcct(ml.memberId, ml.accountName, [], [], true)
