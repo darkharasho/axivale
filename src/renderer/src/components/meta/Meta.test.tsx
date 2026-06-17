@@ -60,6 +60,13 @@ describe('Meta pane', () => {
     expect(screen.getByText('Hardstuck')).toBeTruthy()
   })
 
+  it('shows an about blurb (not a tier summary) for the Guides dataset', () => {
+    render(<Meta modes={[mode({ mode: 'Guides' })]} active="1" busy={{}} fetching={{}} onRefresh={noop} />)
+    expect(screen.getByText(/Long-form GW2 guides/i)).toBeTruthy()
+    expect(screen.queryByText('Summary')).toBeNull()
+    expect(screen.queryByText('Scourge + Firebrand core.')).toBeNull()
+  })
+
   it('shows the comp playbook launcher only for WvW', () => {
     const { rerender } = render(
       <Meta modes={[mode({ id: '1', mode: 'WvW' })]} active="1" busy={{}} fetching={{}} onRefresh={noop} />

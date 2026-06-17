@@ -124,8 +124,18 @@ export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaP
     <div className="settings meta-panel">
       <Pane no={String(modes.indexOf(m) + 1).padStart(2, '0')} title={m.mode} sub="">
         <div className="meta-pane-status">{status}</div>
-        {/* Guides are prose, not builds — there's no build-tier table to summarize. */}
-        {m.mode !== 'Guides' && (
+        {/* Guides are prose, not builds — describe the dataset instead of a tier table. */}
+        {m.mode === 'Guides' ? (
+          <Card title="About this dataset">
+            <div className="meta-note">
+              Long-form GW2 guides — boss/encounter and fractal CM strategy, open-world and farming
+              approaches, and profession how-tos — gathered from Snowcrows, GuildJen, Hardstuck, and
+              Discretize. AxiVale searches this corpus when you ask how to <em>approach</em> something
+              rather than which build to run; specific builds live under Meta and game mechanics under
+              Wiki.
+            </div>
+          </Card>
+        ) : (
           <Card title="Summary">
             <ModeSummary notes={m.notes} />
           </Card>
