@@ -52,7 +52,7 @@ describe('fetchGw2Names', () => {
 })
 
 describe('fetchGw2Entities', () => {
-  it('requests ?ids=all and returns name+icon, skipping rows without a string name', async () => {
+  it('requests ?ids=all and returns id+name+icon, skipping rows without a string name or numeric id', async () => {
     const calls: string[] = []
     const fetchImpl = async (url: string) => {
       calls.push(url)
@@ -68,8 +68,8 @@ describe('fetchGw2Entities', () => {
     const entities = await fetchGw2Entities('skills', fetchImpl)
     expect(calls).toEqual(['https://api.guildwars2.com/v2/skills?ids=all'])
     expect(entities).toEqual([
-      { name: 'Shelter', icon: 'https://render.guildwars2.com/file/shelter.png' },
-      { name: 'Bane Signet' }
+      { id: 1, name: 'Shelter', icon: 'https://render.guildwars2.com/file/shelter.png' },
+      { id: 3, name: 'Bane Signet' }
     ])
   })
   it('returns [] when the response is not ok', async () => {

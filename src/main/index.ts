@@ -70,6 +70,9 @@ import { detectHardware } from './ollama/hardware'
 import type { ProviderConfig, ProviderName } from './providers/types'
 import { EntityService } from './entities/service'
 import { fetchGw2Entities } from './entities/dictionary'
+import { Gw2ApiClient } from '@axiapps/gw2-data'
+
+const gw2Api = new Gw2ApiClient()
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -726,9 +729,12 @@ app.whenReady().then(async () => {
   ipcMain.handle('axiforge:catalog-upgrades', () => forgeCatalog.getUpgrades())
 
   const entityService = new EntityService({
-    wikiFacts,
     getCatalog: () => forgeCatalog.getUpgrades(),
-    fetchEntities: (e) => fetchGw2Entities(e, (url) => fetch(url) as unknown as Promise<{ ok: boolean; json(): Promise<unknown> }>)
+    fetchEntities: (e) => fetchGw2Entities(e, (url) => fetch(url) as unknown as Promise<{ ok: boolean; json(): Promise<unknown> }>),
+    fetchEntityDetail: async (endpoint, id) => {
+      const results = await gw2Api.fetchByIds(endpoint, [id])
+      return results[0] ?? null
+    }
   })
   ipcMain.handle('entity:resolve', (_event, input: { type: 'skill' | 'trait' | 'item'; name: string }) =>
     entityService.resolve(input)

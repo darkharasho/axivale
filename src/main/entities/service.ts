@@ -1,20 +1,29 @@
 // src/main/entities/service.ts
-import type { WikiFacts } from '../meta/wikiFacts'
+import type { Gw2Fact } from '@axiapps/gw2-data'
+import { stripGw2Markup } from '@axiapps/gw2-data'
 import type { ForgeUpgradeCatalog } from '../forgeCatalog'
 import type { EntityCard, EntityType } from './types'
-import { wikiFactsToCard, catalogItemToCard } from './normalize'
+import { catalogItemToCard, wikiUrlFor } from './normalize'
 import { buildDictionary, type EntityDictionary } from './dictionary'
+import { formatFacts } from './gw2Facts'
 
 interface Deps {
-  wikiFacts: WikiFacts
   getCatalog: () => Promise<ForgeUpgradeCatalog | null>
-  fetchEntities: (e: 'skills' | 'traits') => Promise<{ name: string; icon?: string }[]>
+  fetchEntities: (e: 'skills' | 'traits') => Promise<{ id: number; name: string; icon?: string }[]>
+  fetchEntityDetail: (
+    endpoint: 'skills' | 'traits',
+    id: number
+  ) => Promise<{ description?: string; icon?: string; facts?: Gw2Fact[] } | null>
 }
 
 interface GW2EntityData {
-  skills: { name: string; icon?: string }[]
-  traits: { name: string; icon?: string }[]
+  skills: { id: number; name: string; icon?: string }[]
+  traits: { id: number; name: string; icon?: string }[]
 }
+
+type EntityIndexEntry = { id: number; icon?: string }
+
+const SUBTITLE: Record<EntityType, string> = { skill: 'Skill', trait: 'Trait', item: 'Item' }
 
 export class EntityService {
   private readonly cache = new Map<string, EntityCard>()
@@ -22,7 +31,7 @@ export class EntityService {
 
   // Store the in-flight promise so concurrent callers share one fetch (no double-fetch)
   private dataPromise: Promise<GW2EntityData> | null = null
-  private iconIndexPromise: Promise<Map<string, string>> | null = null
+  private entityIndexPromise: Promise<Map<string, EntityIndexEntry>> | null = null
 
   constructor(private readonly deps: Deps) {}
 
@@ -37,21 +46,25 @@ export class EntityService {
     return this.dataPromise
   }
 
-  /** Builds the skill/trait icon index once; resolves immediately after first build. */
-  private ensureIconIndex(): Promise<Map<string, string>> {
-    if (!this.iconIndexPromise) {
-      this.iconIndexPromise = this.ensureData().then(({ skills, traits }) => {
-        const index = new Map<string, string>()
+  /** Builds the skill/trait entity index (id + optional icon) once; keyed by `type:name`. */
+  private ensureEntityIndex(): Promise<Map<string, EntityIndexEntry>> {
+    if (!this.entityIndexPromise) {
+      this.entityIndexPromise = this.ensureData().then(({ skills, traits }) => {
+        const index = new Map<string, EntityIndexEntry>()
         for (const e of skills) {
-          if (e.icon) index.set(`skill:${e.name}`, e.icon)
+          const entry: EntityIndexEntry = { id: e.id }
+          if (e.icon) entry.icon = e.icon
+          index.set(`skill:${e.name}`, entry)
         }
         for (const e of traits) {
-          if (e.icon) index.set(`trait:${e.name}`, e.icon)
+          const entry: EntityIndexEntry = { id: e.id }
+          if (e.icon) entry.icon = e.icon
+          index.set(`trait:${e.name}`, entry)
         }
         return index
       })
     }
-    return this.iconIndexPromise
+    return this.entityIndexPromise
   }
 
   async resolve(input: { type: EntityType; name: string }): Promise<EntityCard | null> {
@@ -66,14 +79,21 @@ export class EntityService {
         catalog?.relics.find((r) => r.name === input.name)
       card = entry ? catalogItemToCard(entry) : null
     } else {
-      const [facts, iconIndex] = await Promise.all([
-        this.deps.wikiFacts.lookup(input.name),
-        this.ensureIconIndex()
-      ])
-      card = wikiFactsToCard(input.type, facts)
-      if (card) {
-        // Attach icon BEFORE caching so card is never cached icon-less
-        card.icon ??= iconIndex.get(`${input.type}:${input.name}`)
+      const idx = await this.ensureEntityIndex()
+      const indexEntry = idx.get(`${input.type}:${input.name}`)
+      if (!indexEntry) return null // unknown name — not cached
+
+      const endpoint = input.type === 'skill' ? 'skills' : 'traits'
+      const detail = await this.deps.fetchEntityDetail(endpoint, indexEntry.id)
+
+      card = {
+        type: input.type,
+        name: input.name,
+        subtitle: SUBTITLE[input.type],
+        icon: detail?.icon ?? indexEntry.icon,
+        description: detail?.description ? stripGw2Markup(detail.description) : undefined,
+        facts: formatFacts(detail?.facts),
+        wikiUrl: wikiUrlFor(input.name)
       }
     }
     if (card) this.cache.set(key, card) // never cache a miss
@@ -92,7 +112,12 @@ export class EntityService {
       ...catalogRunes.map((r) => ({ name: r.name, icon: r.icon })),
       ...catalogRelics.map((r) => ({ name: r.name, icon: r.icon }))
     ]
-    this.dict = buildDictionary({ skills, traits, items })
+    // buildDictionary takes {name, icon?} — derive from the richer id+name+icon rows
+    this.dict = buildDictionary({
+      skills: skills.map((s) => ({ name: s.name, icon: s.icon })),
+      traits: traits.map((t) => ({ name: t.name, icon: t.icon })),
+      items
+    })
     return this.dict
   }
 }

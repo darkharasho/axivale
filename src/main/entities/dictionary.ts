@@ -53,14 +53,15 @@ export async function fetchGw2Names(
 export async function fetchGw2Entities(
   endpoint: 'skills' | 'traits',
   fetchImpl: FetchLike
-): Promise<{ name: string; icon?: string }[]> {
+): Promise<{ id: number; name: string; icon?: string }[]> {
   const res = await fetchImpl(`https://api.guildwars2.com/v2/${endpoint}?ids=all`)
   if (!res.ok) return []
-  const rows = (await res.json()) as Array<{ name?: unknown; icon?: unknown }>
-  const result: { name: string; icon?: string }[] = []
+  const rows = (await res.json()) as Array<{ id?: unknown; name?: unknown; icon?: unknown }>
+  const result: { id: number; name: string; icon?: string }[] = []
   for (const r of rows) {
     if (typeof r.name !== 'string' || r.name.length === 0) continue
-    const entry: { name: string; icon?: string } = { name: r.name }
+    if (typeof r.id !== 'number') continue
+    const entry: { id: number; name: string; icon?: string } = { id: r.id, name: r.name }
     if (typeof r.icon === 'string') entry.icon = r.icon
     result.push(entry)
   }
