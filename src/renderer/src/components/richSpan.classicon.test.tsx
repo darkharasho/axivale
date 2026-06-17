@@ -28,6 +28,22 @@ describe('class-icon prose pipeline', () => {
     expect(container.textContent).toContain('Dragonhunter')
   })
 
+  it('decorates pluralized class names', () => {
+    const { container } = md('Stack Spellbreakers and Firebrands together.')
+    expect(container.querySelectorAll('.axi-class').length).toBe(2)
+    expect(container.querySelectorAll('svg').length).toBe(2)
+    // The plural label is preserved even though the icon resolves to the singular.
+    expect(container.textContent).toContain('Spellbreakers')
+    expect(container.textContent).toContain('Firebrands')
+  })
+
+  it('decorates a "Core" profession qualifier', () => {
+    const { container } = md('Core Necromancer is mandatory for fights.')
+    expect(container.querySelectorAll('.axi-class').length).toBe(1)
+    expect(container.querySelectorAll('svg').length).toBe(1)
+    expect(container.textContent).toContain('Necromancer')
+  })
+
   it('leaves unrecognized words untouched', () => {
     const { container } = md('The barbarian fled.')
     expect(container.querySelectorAll('.axi-class').length).toBe(0)
