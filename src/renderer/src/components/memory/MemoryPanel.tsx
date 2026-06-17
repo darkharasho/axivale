@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef, type ReactElement } from 'react'
-import type { RendererMemoryFact, RendererMemoryArtifact } from '../../../../preload/index.d'
+import { useEffect, useState, type ReactElement } from 'react'
+import type { RendererMemoryFact, RendererMemoryArtifact, RendererMemoryKind } from '../../../../preload/index.d'
 import { Pane, Card } from '../panelui'
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string | null): string {
+  if (!iso) return 'never'
   const ms = Date.now() - Date.parse(iso)
-  if (Number.isNaN(ms)) return ''
+  if (Number.isNaN(ms)) return 'never'
   const days = Math.floor(ms / 86_400_000)
   if (days >= 1) return `${days}d ago`
   const hrs = Math.floor(ms / 3_600_000)
@@ -12,19 +13,36 @@ function timeAgo(iso: string): string {
   return 'just now'
 }
 
+function shortDate(iso: string | null): string {
+  if (!iso) return 'never'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? 'never' : d.toLocaleDateString()
+}
+
+type KindFilter = RendererMemoryKind | 'all'
+const KIND_CHIPS: KindFilter[] = ['all', 'fact', 'playbook', 'anti_pattern', 'heuristic']
+
 export default function MemoryPanel(): ReactElement {
   const [facts, setFacts] = useState<RendererMemoryFact[]>([])
   const [artifacts, setArtifacts] = useState<RendererMemoryArtifact[]>([])
   const [search, setSearch] = useState('')
+  const [kind, setKind] = useState<KindFilter>('all')
   const [showArchived, setShowArchived] = useState(false)
   const [newBody, setNewBody] = useState('')
+  const [newEntity, setNewEntity] = useState('')
   const [adding, setAdding] = useState(false)
   const [reindexing, setReindexing] = useState(false)
+  const [stats, setStats] = useState<{ total: number; lastIndexedAt: string | null } | null>(null)
 
   async function load(): Promise<void> {
     const list = await window.officer.memoryList({ includeArchived: true })
     setFacts(list.facts)
     setArtifacts(list.artifacts)
+    if (typeof window.officer.memoryIndexStats === 'function') {
+      void window.officer.memoryIndexStats().then((s) =>
+        setStats({ total: s.total, lastIndexedAt: s.lastIndexedAt })
+      )
+    }
   }
 
   useEffect(() => {
@@ -38,27 +56,39 @@ export default function MemoryPanel(): ReactElement {
   const q = search.toLowerCase()
   const visibleFacts = facts.filter((f) => {
     if (!showArchived && f.archived) return false
+    if (kind !== 'all' && kind !== 'fact') return false
     if (q && !f.body.toLowerCase().includes(q) && !(f.entity ?? '').toLowerCase().includes(q)) return false
     return true
   })
   const visibleArtifacts = artifacts.filter((a) => {
     if (!showArchived && a.archived) return false
+    if (kind !== 'all' && kind !== a.kind) return false
     if (q && !a.title.toLowerCase().includes(q) && !a.body.toLowerCase().includes(q)) return false
     return true
   })
 
   async function handlePin(f: RendererMemoryFact): Promise<void> {
-    await window.officer.memoryPin(f.id, !f.pinned)
+    await window.officer.memoryPin(f.id, !f.userPinned)
     void load()
   }
 
-  async function handleArchive(f: RendererMemoryFact): Promise<void> {
-    await window.officer.memoryUpdate('fact', f.id, { archived: true })
+  async function handleArchiveFact(f: RendererMemoryFact): Promise<void> {
+    await window.officer.memoryUpdate('fact', f.id, { archived: !f.archived })
     void load()
   }
 
-  async function handleDelete(f: RendererMemoryFact): Promise<void> {
+  async function handleDeleteFact(f: RendererMemoryFact): Promise<void> {
     await window.officer.memoryDelete('fact', f.id)
+    void load()
+  }
+
+  async function handleArchiveArtifact(a: RendererMemoryArtifact): Promise<void> {
+    await window.officer.memoryUpdate('artifact', a.id, { archived: !a.archived })
+    void load()
+  }
+
+  async function handleDeleteArtifact(a: RendererMemoryArtifact): Promise<void> {
+    await window.officer.memoryDelete('artifact', a.id)
     void load()
   }
 
@@ -68,8 +98,9 @@ export default function MemoryPanel(): ReactElement {
     if (!body) return
     setAdding(true)
     try {
-      await window.officer.memoryCreate({ kind: 'fact', body })
+      await window.officer.memoryCreate({ kind: 'fact', body, entity: newEntity.trim() || null })
       setNewBody('')
+      setNewEntity('')
       void load()
     } finally {
       setAdding(false)
@@ -92,6 +123,13 @@ export default function MemoryPanel(): ReactElement {
         title="Memory"
         sub="Facts and artifacts the assistant has learned or that you have added. Pinned items are always recalled; archived items are hidden by default."
       >
+        {/* Stats bar */}
+        <div className="meta-pane-status">
+          <span className="meta-fresh">
+            {stats ? `${stats.total} indexed · updated ${shortDate(stats.lastIndexedAt)}` : 'loading…'}
+          </span>
+        </div>
+
         {/* Filters row */}
         <div className="mem-filters">
           <input
@@ -107,6 +145,19 @@ export default function MemoryPanel(): ReactElement {
           >
             {showArchived ? 'Hide archived' : 'Show archived'}
           </button>
+        </div>
+
+        {/* Kind filter chips */}
+        <div className="meta-srcs" style={{ marginBottom: 18 }}>
+          {KIND_CHIPS.map((k) => (
+            <button
+              key={k}
+              className={`meta-srcchip${kind === k ? ' ok' : ''}`}
+              onClick={() => setKind(k)}
+            >
+              {k}
+            </button>
+          ))}
         </div>
 
         {/* Facts */}
@@ -131,22 +182,20 @@ export default function MemoryPanel(): ReactElement {
                     <button
                       className="rowbtn"
                       onClick={() => void handlePin(f)}
-                      aria-label={f.pinned ? 'Unpin' : 'Pin'}
+                      aria-label={f.userPinned ? 'Unpin' : 'Pin'}
                     >
-                      {f.pinned ? 'unpin' : 'pin'}
+                      {f.userPinned ? 'unpin' : 'pin'}
                     </button>
-                    {!f.archived && (
-                      <button
-                        className="rowbtn"
-                        onClick={() => void handleArchive(f)}
-                        aria-label="Archive"
-                      >
-                        archive
-                      </button>
-                    )}
+                    <button
+                      className="rowbtn"
+                      onClick={() => void handleArchiveFact(f)}
+                      aria-label={f.archived ? 'Restore' : 'Archive'}
+                    >
+                      {f.archived ? 'restore' : 'archive'}
+                    </button>
                     <button
                       className="rowbtn zap"
-                      onClick={() => void handleDelete(f)}
+                      onClick={() => void handleDeleteFact(f)}
                       aria-label="Delete"
                     >
                       delete
@@ -165,6 +214,12 @@ export default function MemoryPanel(): ReactElement {
               value={newBody}
               onChange={(e) => setNewBody(e.target.value)}
               rows={2}
+            />
+            <input
+              className="mem-add-input"
+              placeholder="about (name, optional)"
+              value={newEntity}
+              onChange={(e) => setNewEntity(e.target.value)}
             />
             <button className="sbtn" type="submit" disabled={adding || !newBody.trim()}>
               {adding ? 'Adding…' : 'Add fact'}
@@ -192,6 +247,22 @@ export default function MemoryPanel(): ReactElement {
                       {a.entity && <span className="mem-badge entity">{a.entity}</span>}
                     </div>
                     <span className="mem-prov">{timeAgo(a.createdAt)}</span>
+                  </div>
+                  <div className="mem-acts">
+                    <button
+                      className="rowbtn"
+                      onClick={() => void handleArchiveArtifact(a)}
+                      aria-label={a.archived ? 'Restore' : 'Archive'}
+                    >
+                      {a.archived ? 'restore' : 'archive'}
+                    </button>
+                    <button
+                      className="rowbtn zap"
+                      onClick={() => void handleDeleteArtifact(a)}
+                      aria-label="Delete artifact"
+                    >
+                      delete
+                    </button>
                   </div>
                 </div>
               ))}
