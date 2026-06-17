@@ -64,7 +64,7 @@ export class MetaRefresher {
       const specMap = totalSources > 0 && this.deps.eliteSpecs ? await this.deps.eliteSpecs() : {}
       for (const mode of stale) {
         emit({ type: 'mode-start', modeId: mode.id })
-        const buildRaws: string[] = []
+        const buildRaws: Array<{ source: string; text: string }> = []
         const ruleRaws: string[] = []
         for (const src of mode.sources) {
           if (!configForUrl(src.url)) continue
@@ -81,7 +81,9 @@ export class MetaRefresher {
             if (resolveContent(src.url) === 'rules') {
               ruleRaws.push(r.text)
             } else {
-              buildRaws.push(r.text)
+              // Tag with the configured source label so the distiller attributes
+              // builds/dates to a real source and can weight cross-source consensus.
+              buildRaws.push({ source: src.label, text: r.text })
             }
             console.log(`[meta] fetch ok (${mode.id}): ${src.url} — ${r.pages.length} page(s)`)
             await this.ingest(mode.mode, src.url, r.pages)
