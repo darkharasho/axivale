@@ -54,6 +54,10 @@ import { MetaRefresher } from './meta/refresh'
 import type { LearnProgress } from './meta/progress'
 import { TransformersEmbedder } from './meta/rag/embedder'
 import { LanceMetaIndex } from './meta/rag/index'
+import { MemoryStore } from './memoryStore'
+import { LanceMemoryIndex } from './memory/index'
+import { MemoryService } from './memory/service'
+import { rankIdentities, mergeManualLinks, type ResolveMemberLite } from './identityResolve'
 import { runClaudeOnce } from './meta/model'
 import { fetchEliteSpecMap } from './meta/specMap'
 import { WikiFactsClient } from './meta/wikiFacts'
@@ -277,6 +281,10 @@ app.whenReady().then(async () => {
   const wikiFacts = new WikiFactsClient()
   const wikiIndex = new LanceMetaIndex(join(app.getPath('userData'), 'wiki-lance'), metaEmbedder, 'wiki_chunks')
   const generalIndex = new LanceMetaIndex(join(app.getPath('userData'), 'general-lance'), metaEmbedder, 'general_chunks')
+  // Durable self-authored memory: JSON records + a derived LanceDB recall/dedup
+  // index reusing the single meta embedder (no second model load).
+  const memoryStore = new MemoryStore(join(app.getPath('userData'), 'memory.json'))
+  const memoryIndex = new LanceMemoryIndex(join(app.getPath('userData'), 'memory-lance'), metaEmbedder)
   const ollama = new OllamaManager(app.getPath('userData'), createOllamaDeps())
   const sendLearnProgress = (e: LearnProgress): void => {
     const win = mainWindow
@@ -354,6 +362,40 @@ app.whenReady().then(async () => {
     return new AxitoolsClient(parsed.baseUrl, parsed.token)
   }
   const buildGw2 = (): Gw2Client => new Gw2Client(store.getActiveKey('gw2') ?? '')
+
+  // Resolve a loose name to a single roster identity key (member_id or acct:<name>),
+  // returning null when nothing matches or the top two candidates tie (ambiguous).
+  // Mirrors the resolve_identity tool's member gathering so memory anchors the same way.
+  async function resolveEntityKey(name: string): Promise<{ key: string; name: string } | null> {
+    const gid = store.getSetting('guildId') ?? ''
+    if (gid === '') return null
+    let raw: ResolveMemberLite[] = []
+    try {
+      raw = (await buildAxitools().membersLinked(gid)) as ResolveMemberLite[]
+    } catch {
+      raw = []
+    }
+    const anns = rosterAnnotations.list()
+    const acctMembers: ResolveMemberLite[] = anns
+      .filter((a) => a.memberId.startsWith('acct:'))
+      .map((a) => ({ member_id: a.memberId, accounts: [{ account_name: a.memberId.slice(5) }] }))
+    const members = [...mergeManualLinks(raw, rosterLinks.list()), ...acctMembers]
+    const ranked = rankIdentities(name, members, anns, 2)
+    if (ranked.length === 0) return null
+    if (ranked.length > 1 && ranked[1].score >= ranked[0].score) return null // ambiguous tie
+    const top = ranked[0]
+    const label = top.nickname || top.display_name || top.member_name || top.account_names[0] || name
+    return { key: top.member_id, name: label }
+  }
+
+  // Best-effort display name for a stored identity key (for recall provenance).
+  function entityDisplay(key: string): string | undefined {
+    if (key.startsWith('acct:')) return key.slice(5)
+    const a = rosterAnnotations.list().find((x) => x.memberId === key)
+    return a?.nickname || a?.aliases?.[0] || undefined
+  }
+
+  const memoryService = new MemoryService(memoryStore, memoryIndex, { entityName: entityDisplay })
 
   // Auto-connect AxiTools on startup: resolve (and persist) guildId from the
   // active key so the roster reconcile and the guild-role picker work right after
@@ -494,10 +536,13 @@ app.whenReady().then(async () => {
       fetchBuildPage: (url: string) => metaFetcher.fetchBuildPage(url),
       fetchBuildPageRaw: (url: string) => metaFetcher.fetchBuildPageRaw(url),
       rosterAnnotations: () => rosterAnnotations.list(),
-      rosterLinks: () => rosterLinks.list()
+      rosterLinks: () => rosterLinks.list(),
+      memory: () => memoryService,
+      resolveEntityKey
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),
+    pinnedMemory: () => memoryStore.list().facts.filter((f) => f.pinned),
     config: providerConfig,
     loadSession: (conversationId: string): SessionState =>
       conversations.get(conversationId)?.session ?? {},
@@ -1114,6 +1159,50 @@ app.whenReady().then(async () => {
     try { return await generalIndex.search(query, { k: 8 }) } catch { return [] }
   })
 
+  // Durable memory: records are authoritative (JSON store); the LanceDB index is
+  // derived. Mutating handlers fire memory:progress so the panel/rollup refresh.
+  const emitMemoryProgress = (): void => {
+    const win = mainWindow
+    if (win && !win.isDestroyed()) win.webContents.send('memory:progress', { type: 'changed' })
+  }
+
+  ipcMain.handle('memory:list', (_e, opts?: { includeArchived?: boolean }) => memoryService.list(opts))
+  ipcMain.handle('memory:search', async (_e, query: string, entity?: string | null, kinds?: string[]) => {
+    try {
+      return await memoryService.recall({ query, entity: entity ?? null, kinds: kinds as never, limit: 20 })
+    } catch {
+      return { facts: [], artifacts: [] }
+    }
+  })
+  ipcMain.handle(
+    'memory:create',
+    async (_e, input: { kind: string; body: string; title?: string; entity?: string | null; tags?: string[] }) => {
+      const r = await memoryService.createManual(input as never)
+      emitMemoryProgress()
+      return r
+    }
+  )
+  ipcMain.handle('memory:update', async (_e, kind: 'fact' | 'artifact', id: string, patch: Record<string, unknown>) => {
+    if (kind === 'fact') await memoryService.updateFact(id, patch as never)
+    else await memoryService.updateArtifact(id, patch as never)
+    emitMemoryProgress()
+  })
+  ipcMain.handle('memory:delete', async (_e, kind: 'fact' | 'artifact', id: string) => {
+    if (kind === 'fact') await memoryService.deleteFact(id)
+    else await memoryService.deleteArtifact(id)
+    emitMemoryProgress()
+  })
+  ipcMain.handle('memory:pin', (_e, id: string, pinned: boolean) => {
+    memoryService.setPinned(id, pinned)
+    emitMemoryProgress()
+  })
+  ipcMain.handle('memory:reindex', async () => {
+    await memoryService.reindexAll()
+    emitMemoryProgress()
+  })
+  ipcMain.handle('memory:index-stats', () => memoryService.indexStats())
+  ipcMain.handle('memory:facts-for-entity', (_e, entity: string) => memoryService.factsForEntity(entity))
+
   function drainConfirms(): void {
     for (const resolve of pendingConfirms.values()) resolve(false)
     pendingConfirms.clear()
@@ -1154,6 +1243,12 @@ app.whenReady().then(async () => {
   setupUpdater(() => mainWindow)
 
   createWindow(store)
+  // Boot reconcile: recompute pins from records, then rebuild the derived index so
+  // it matches the store after upgrades (best-effort — re-derives lazily on writes).
+  memoryStore.rerank()
+  void memoryService.reindexAll().catch(() => {
+    /* index rebuilds lazily on next write */
+  })
   metaStartTimer = setTimeout(() => void metaRefresher.refreshStale(), 5_000)
   metaTimer = setInterval(() => void metaRefresher.refreshStale(), 6 * 60 * 60 * 1000)
   setTimeout(() => void wikiIngester.ingest(), 8_000)
