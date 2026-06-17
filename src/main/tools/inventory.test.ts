@@ -86,6 +86,8 @@ describe('tools module split', () => {
       'gw2skills_parse',
       'load_skill',
       'meta_search',
+      'recall',
+      'remember',
       'resolve_identity'
     ])
   })
