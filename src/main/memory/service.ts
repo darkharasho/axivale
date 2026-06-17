@@ -7,7 +7,7 @@
 import type { MemoryStore } from '../memoryStore'
 import type { MemoryIndex } from './index'
 import { normalizeMemoryBody } from './normalize'
-import { FACT_DUP_COSINE, ARTIFACT_DUP_COSINE } from './score'
+import { FACT_DUP_COSINE, ARTIFACT_DUP_COSINE, factScore } from './score'
 import type {
   MemoryKind, MemorySource, MemoryRecallResult, RecalledFact, RecalledArtifact, ArtifactKind
 } from './types'
@@ -71,6 +71,7 @@ export class MemoryService {
   async recall(input: {
     query: string; entity?: string | null; kinds?: MemoryKind[]; limit?: number
   }): Promise<MemoryRecallResult> {
+    const now = Date.now()
     const limit = Math.min(input.limit ?? 5, 20)
     const hits = await this.index.search(input.query, { entity: input.entity ?? null, kinds: input.kinds, k: limit * 2 })
 
@@ -81,7 +82,7 @@ export class MemoryService {
     const facts: RecalledFact[] = factHits
       .map((h, i) => ({ h, i, f: this.store.getFact(h.id) }))
       .filter((x) => x.f && !x.f.archived)
-      .map((x) => ({ x, boost: (1 / i0(x.i)) * (1 + 0.25 * Math.log1p(x.f!.score)) }))
+      .map((x) => ({ x, boost: (1 / i0(x.i)) * (1 + 0.25 * Math.log1p(factScore(x.f!, now))) }))
       .sort((a, b) => b.boost - a.boost)
       .slice(0, limit)
       .map(({ x }) => {

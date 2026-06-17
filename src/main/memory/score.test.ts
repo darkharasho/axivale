@@ -1,7 +1,7 @@
 // src/main/memory/score.test.ts
 import { describe, it, expect } from 'vitest'
-import { factScore, HALF_LIFE_MS } from './score'
-import type { MemoryFact } from './types'
+import { factScore, artifactScore, HALF_LIFE_MS } from './score'
+import type { MemoryFact, MemoryArtifact } from './types'
 
 const base: MemoryFact = {
   id: 'a', body: 'x', bodyNorm: 'x', entity: null, tags: [],
@@ -28,5 +28,23 @@ describe('factScore', () => {
   })
   it('uses createdAt when never recalled', () => {
     expect(factScore({ ...base, createdAt: new Date(now).toISOString() }, now)).toBeGreaterThan(0)
+  })
+})
+
+const artBase: MemoryArtifact = {
+  id: 'a', kind: 'heuristic', title: 't', body: 'b', bodyNorm: 'b', tags: [], entity: null,
+  useCount: 0, score: 0, source: 'agent', createdAt: '', updatedAt: '', lastUsedAt: null, archived: false
+}
+
+describe('artifactScore', () => {
+  it('decays to half over one half-life (using lastUsedAt)', () => {
+    const fresh = artifactScore({ ...artBase, lastUsedAt: new Date(now).toISOString() }, now)
+    const old = artifactScore({ ...artBase, lastUsedAt: new Date(now - HALF_LIFE_MS).toISOString() }, now)
+    expect(old).toBeCloseTo(fresh / 2, 3)
+  })
+  it('ranks user source above agent source, all else equal', () => {
+    const iso = new Date(now).toISOString()
+    expect(artifactScore({ ...artBase, source: 'user', updatedAt: iso }, now))
+      .toBeGreaterThan(artifactScore({ ...artBase, source: 'agent', updatedAt: iso }, now))
   })
 })

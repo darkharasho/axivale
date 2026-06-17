@@ -18,7 +18,7 @@ const USE_WEIGHT = 0.25
 function recency(lastUsedAt: string | null, createdAt: string, now: number): number {
   const ref = lastUsedAt ?? createdAt
   const t = Date.parse(ref)
-  if (Number.isNaN(t)) return 1
+  if (Number.isNaN(t)) return 0.001
   return Math.pow(2, -Math.max(0, now - t) / HALF_LIFE_MS)
 }
 

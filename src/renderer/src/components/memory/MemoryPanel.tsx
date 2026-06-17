@@ -35,6 +35,7 @@ export default function MemoryPanel(): ReactElement {
   const [stats, setStats] = useState<{ total: number; lastIndexedAt: string | null } | null>(null)
 
   async function load(): Promise<void> {
+    // Load all (incl. archived) once; the show-archived toggle + filters run client-side.
     const list = await window.officer.memoryList({ includeArchived: true })
     setFacts(list.facts)
     setArtifacts(list.artifacts)
