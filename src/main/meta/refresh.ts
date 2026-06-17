@@ -71,7 +71,11 @@ export class MetaRefresher {
           emit({ type: 'source-start', modeId: mode.id, url: src.url })
           console.log(`[meta] fetch start (${mode.id}):`, src.url)
           const r = await fetcher.fetch(src.url)
-          store.recordFetch(mode.id, src.url, r.ok ? { ok: true } : { ok: false, error: r.error })
+          store.recordFetch(
+            mode.id,
+            src.url,
+            r.ok ? { ok: true, sourceDate: r.date ?? null } : { ok: false, error: r.error }
+          )
           if (r.ok) {
             cache.put(src.url, r.text)
             if (resolveContent(src.url) === 'rules') {
@@ -93,7 +97,8 @@ export class MetaRefresher {
           if (buildRaws.length || ruleRaws.length) store.recordDistill(mode.id, '')
         } else {
           // combine build-table + comp-rule notes into one blob; either half may be null
-          const buildNotes = buildRaws.length ? await distill(mode.mode, buildRaws, model, specMap) : null
+          const today = new Date().toISOString().slice(0, 10)
+          const buildNotes = buildRaws.length ? await distill(mode.mode, buildRaws, model, specMap, today) : null
           const compNotes = ruleRaws.length ? await distillComp(mode.mode, ruleRaws, model) : null
           const combined = [buildNotes, compNotes].filter(Boolean).join('\n\n')
           if (combined) store.recordDistill(mode.id, combined)

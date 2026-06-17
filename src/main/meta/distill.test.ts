@@ -62,4 +62,23 @@ describe('distill', () => {
     const prompt = model.mock.calls[0][0] as string
     expect(prompt).not.toContain('AUTHORITATIVE elite-spec')
   })
+
+  it('asks for an "As of" date line and an Updated column, and passes today when given', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('WvW', ['raw'], model, {}, '2026-06-17')
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt).toContain('### As of')
+    expect(prompt).toContain('`Updated`')
+    expect(prompt).toContain('today is 2026-06-17')
+    expect(prompt.toLowerCase()).toContain('stale')
+  })
+
+  it('omits the today-relative recency block when no date is given', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('WvW', ['raw'], model)
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt).not.toContain('today is')
+    // the As-of structure is still requested regardless of the date
+    expect(prompt).toContain('### As of')
+  })
 })

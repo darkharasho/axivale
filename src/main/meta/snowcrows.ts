@@ -6,6 +6,7 @@
 // the public GW2 API, and assemble a structured build doc (no prose — it isn't in
 // the static HTML). Pure parsers are unit-tested; the network crawl is smoke-tested.
 import type { FetchResult, FetchedPage } from './fetcher'
+import { extractPublishDate, newestDate } from './publishDate'
 
 const SCRAPE_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
@@ -276,7 +277,7 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
       const title = (/<h1[^>]*>([^<]+)<\/h1>/i.exec(html)?.[1] ?? pageUrl).trim()
       const names = await resolve(parsed)
       const text = assembleBuildDoc(title, parsed, names)
-      if (text) pages.push({ url: pageUrl, title, text })
+      if (text) pages.push({ url: pageUrl, title, text, date: extractPublishDate(html, now()) ?? undefined })
     } else {
       noArmory++
     }
@@ -298,5 +299,5 @@ export async function fetchSnowcrowsStatic(url: string, deps: SnowcrowsDeps = {}
     return { ok: false, error: reason }
   }
   const text = pages.map((p) => p.text).join('\n\n=== build page ===\n\n').slice(0, MAX_TOTAL_CHARS)
-  return { ok: true, text, pages }
+  return { ok: true, text, pages, date: newestDate(pages.map((p) => p.date)) }
 }
