@@ -228,19 +228,21 @@ describe('MemoryPanel', () => {
   })
 
   it('re-fetches on onMemoryProgress event', async () => {
-    let progressCb: ((e: unknown) => void) | null = null
+    // Holder object: a closure-assigned `let` would be narrowed to its null
+    // initializer by control-flow analysis, collapsing the call site to `never`.
+    const progress: { cb: ((e: unknown) => void) | null } = { cb: null }
     const list = vi.fn().mockResolvedValue({ facts: [fact()], artifacts: [] })
     ;(window as unknown as { officer: unknown }).officer = makeOfficer({
       memoryList: list,
       onMemoryProgress: vi.fn().mockImplementation((cb: (e: unknown) => void) => {
-        progressCb = cb
+        progress.cb = cb
         return () => {}
       })
     })
     render(<MemoryPanel />)
     await screen.findByText('Scourge is meta in WvW.')
     const callsBefore = list.mock.calls.length
-    if (progressCb) progressCb({ type: 'changed' })
+    progress.cb?.({ type: 'changed' })
     await waitFor(() => expect(list.mock.calls.length).toBeGreaterThan(callsBefore))
   })
 
