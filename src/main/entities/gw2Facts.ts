@@ -23,7 +23,7 @@ function formatBuffConditionText(fact: Gw2Fact): string {
   const stackPart = count > 1 ? ` ×${count}` : ''
   const duration = fact.duration ? ` (${fact.duration}s)` : ''
   const extra = fact.description
-    ? `: ${String(fact.description)}`
+    ? `: ${stripGw2Markup(String(fact.description))}`
     : (fact.text && fact.status && fact.text !== fact.status && fact.text !== 'Apply Buff/Condition')
       ? `: ${String(fact.text)}`
       : ''

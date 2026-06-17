@@ -84,6 +84,13 @@ describe('formatFact', () => {
       .toEqual({ label: 'colored', value: '5' })
   })
 
+  it('Buff description strips GW2 color markup', () => {
+    const result = formatFact({ type: 'Buff', status: 'Regeneration', duration: 5, description: 'Gain <c=@reminder>health</c> every second.' })
+    expect(result?.label).toContain('health')
+    expect(result?.label).not.toContain('<c=')
+    expect(result?.label).not.toContain('</c>')
+  })
+
   it('unknown type with text falls back to label only', () => {
     expect(formatFact({ type: 'SomeFutureType', text: 'Special thing' }))
       .toEqual({ label: 'Special thing' })
