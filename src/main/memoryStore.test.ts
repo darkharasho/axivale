@@ -41,7 +41,7 @@ describe('MemoryStore', () => {
     store.setUserPinned(last.id, true)
     store.rerank()
     const pinned = store.list().facts.filter((f) => f.pinned)
-    expect(pinned.length).toBeGreaterThanOrEqual(40)
+    expect(pinned.length).toBe(40)
     expect(pinned.find((f) => f.id === last.id)).toBeDefined()
   })
 
@@ -60,5 +60,12 @@ describe('MemoryStore', () => {
     s1.flush()
     const s2 = new MemoryStore(p)
     expect(s2.list().facts).toHaveLength(1)
+  })
+
+  it('finds an artifact by its normalized title for global dedup', () => {
+    const a = store.insertArtifact({ kind: 'heuristic', title: 'On macOS use screencapture', body: 'detail', entity: null, tags: [], source: 'agent' })
+    expect(a.bodyNorm).toBe('on macos use screencapture')
+    expect(store.findArtifactByNorm('on macos use screencapture')?.id).toBe(a.id)
+    expect(store.findArtifactByNorm('something else')).toBeNull()
   })
 })

@@ -48,7 +48,7 @@ export class MemoryStore {
       body: f.body ?? '',
       bodyNorm: f.bodyNorm ?? normalizeMemoryBody(f.body ?? ''),
       entity: f.entity ?? null,
-      tags: Array.isArray(f.tags) ? f.tags : [],
+      tags: dedupeTags(Array.isArray(f.tags) ? f.tags : []),
       pinned: !!f.pinned,
       userPinned: !!f.userPinned,
       useCount: f.useCount ?? 0,
@@ -67,7 +67,7 @@ export class MemoryStore {
       title: a.title ?? '',
       body: a.body ?? '',
       bodyNorm: a.bodyNorm ?? normalizeMemoryBody(a.title ?? ''),
-      tags: Array.isArray(a.tags) ? a.tags : [],
+      tags: dedupeTags(Array.isArray(a.tags) ? a.tags : []),
       entity: a.entity ?? null,
       useCount: a.useCount ?? 0,
       score: a.score ?? 0,
@@ -214,7 +214,7 @@ export class MemoryStore {
     const f = this.getFact(id)
     if (!f) return null
     f.userPinned = pinned
-    if (pinned) f.pinned = true
+    f.pinned = pinned ? true : false
     this.scheduleWrite()
     return f
   }
