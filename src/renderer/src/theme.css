@@ -1127,21 +1127,21 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   cursor: pointer;
 }
 .axi-entity:hover { color: var(--ink); }
-.axi-entity__ico { width: 1.05em; height: 1.05em; align-self: center; flex: 0 0 auto; border-radius: 3px; border: 1px solid var(--rule); object-fit: cover; }
+.axi-entity__ico { width: 1.2em; height: 1.2em; align-self: center; flex: 0 0 auto; border-radius: 3px; border: 1px solid var(--rule); object-fit: cover; }
 
 /* --- Hover card --- */
-.axi-ecard-pop { width: 300px; }
+.axi-ecard-pop { width: 312px; }
 .axi-ecard {
   background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
   overflow: hidden; box-shadow: 0 16px 44px rgba(0,0,0,.6); color: var(--ink-dim);
   font-size: 13.5px; line-height: 1.5;
 }
-.axi-ecard__hd { display: flex; gap: 11px; align-items: center; padding: 13px 14px; border-bottom: 1px solid var(--line); }
-.axi-ecard__icon { width: 40px; height: 40px; border-radius: 4px; flex: 0 0 auto; border: 1px solid var(--rule); object-fit: cover; background: #2a2c31; }
-.axi-ecard__nm { font-weight: 600; color: var(--ink); font-size: 15px; }
+.axi-ecard__hd { display: flex; gap: 12px; align-items: center; padding: 13px 14px; border-bottom: 1px solid var(--line); }
+.axi-ecard__icon { width: 54px; height: 54px; border-radius: 5px; flex: 0 0 auto; border: 1px solid var(--rule); object-fit: cover; background: #2a2c31; }
+.axi-ecard__nm { font-weight: 600; color: var(--ink); font-size: 16px; }
 .axi-ecard__ty { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); margin-top: 2px; }
 .axi-ecard__body { padding: 12px 14px; color: var(--ink-dim); }
-.axi-ecard__desc { margin: 0 0 8px; }
+.axi-ecard__desc { margin: 0 0 11px; color: var(--ink-dim); font-size: 13.5px; line-height: 1.55; }
 .axi-ecard__facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
 .axi-ecard__facts li { display: flex; gap: 8px; align-items: baseline; }
 .axi-ecard__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; transform: translateY(-2px); }
