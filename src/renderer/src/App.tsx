@@ -12,7 +12,8 @@ import Skills from './components/panels/Skills'
 import SkillsNav from './components/panels/SkillsNav'
 import { useSkills } from './components/panels/useSkills'
 import Meta from './components/meta/Meta'
-import MetaNav, { META_OVERVIEW } from './components/meta/MetaNav'
+import MetaNav, { META_OVERVIEW, MEMORY_VIEW } from './components/meta/MetaNav'
+import MemoryPanel from './components/memory/MemoryPanel'
 import { RightRail } from './components/Rails'
 import Editions, { type EditionItem } from './components/Editions'
 import Article from './components/Article'
@@ -499,13 +500,17 @@ export default function App(): ReactElement {
           {section === 'roster' && <Roster ctl={rosterCtl} />}
           {section === 'skills' && <Skills ctl={skillsCtl} />}
           {section === 'meta' && (
-            <Meta
-              modes={metaModes}
-              active={activeMetaMode}
-              busy={metaBusy}
-              fetching={metaFetching}
-              onRefresh={refreshMeta}
-            />
+            activeMetaMode === MEMORY_VIEW ? (
+              <MemoryPanel />
+            ) : (
+              <Meta
+                modes={metaModes}
+                active={activeMetaMode}
+                busy={metaBusy}
+                fetching={metaFetching}
+                onRefresh={refreshMeta}
+              />
+            )
           )}
           {section === 'dispatches' && (
             <div className="chat" ref={chatRef}>

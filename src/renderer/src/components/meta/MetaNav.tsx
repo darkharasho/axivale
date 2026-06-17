@@ -5,6 +5,8 @@ import type { RendererMetaMode } from '../../../../preload/index.d'
 export const META_OVERVIEW = 'overview'
 /** The Wiki reference corpus view uses this sentinel as its id. */
 export const WIKI_REF = 'wiki-ref'
+/** The Memory view (AxiVale's durable self-authored memory) uses this sentinel id. */
+export const MEMORY_VIEW = 'memory-view'
 
 /** The Guides corpus mode lives under the Guides group; everything else is Meta. */
 const isGuides = (m: RendererMetaMode): boolean => m.mode === 'Guides'
@@ -70,6 +72,15 @@ export default function MetaNav({
       ) : (
         <div className="snav-empty">No guide sources.</div>
       )}
+
+      <div className="snav-grp">Memory</div>
+      <button
+        className={`snav-item${active === MEMORY_VIEW ? ' on' : ''}`}
+        onClick={() => onSelect(MEMORY_VIEW)}
+      >
+        <span className="no">{no()}</span>
+        Memory
+      </button>
     </nav>
   )
 }

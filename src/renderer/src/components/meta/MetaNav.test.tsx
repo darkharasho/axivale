@@ -2,7 +2,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import type { RendererMetaMode } from '../../../../preload/index.d'
-import MetaNav, { WIKI_REF } from './MetaNav'
+import MetaNav, { WIKI_REF, MEMORY_VIEW } from './MetaNav'
 
 function mode(id: string, name: string): RendererMetaMode {
   return {
@@ -43,4 +43,12 @@ describe('MetaNav grouping', () => {
     expect(onSelect).toHaveBeenCalledWith(WIKI_REF)
     expect(screen.getByText('No guide sources.')).toBeTruthy()
   })
+})
+
+it('renders a Memory item that selects MEMORY_VIEW', () => {
+  const onSelect = vi.fn()
+  render(<MetaNav modes={[]} busy={{}} active={MEMORY_VIEW} onSelect={onSelect} />)
+  const btn = screen.getByRole('button', { name: /Memory/ })
+  btn.click()
+  expect(onSelect).toHaveBeenCalledWith(MEMORY_VIEW)
 })
