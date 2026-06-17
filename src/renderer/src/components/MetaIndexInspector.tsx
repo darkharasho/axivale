@@ -6,7 +6,7 @@ import type {
 } from '../../../preload/index.d'
 
 const META_MODES = ['', 'PvE', 'WvW', 'WvW Roaming']
-type Corpus = 'meta' | 'wiki'
+type Corpus = 'meta' | 'wiki' | 'general'
 
 export default function MetaIndexInspector(): ReactElement {
   const [open, setOpen] = useState(false)
@@ -21,7 +21,7 @@ export default function MetaIndexInspector(): ReactElement {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const modeRef = useRef<HTMLSpanElement>(null)
 
-  // Per-corpus API trio: meta_chunks vs the wiki reference corpus (wiki_chunks).
+  // Per-corpus API trio: meta_chunks vs the wiki reference corpus (wiki_chunks) vs general.
   const api =
     corpus === 'wiki'
       ? {
@@ -29,11 +29,17 @@ export default function MetaIndexInspector(): ReactElement {
           sample: window.officer.wikiIndexSample,
           search: window.officer.wikiIndexSearch
         }
-      : {
-          stats: window.officer.metaIndexStats,
-          sample: window.officer.metaIndexSample,
-          search: window.officer.metaIndexSearch
-        }
+      : corpus === 'general'
+        ? {
+            stats: window.officer.generalIndexStats,
+            sample: window.officer.generalIndexSample,
+            search: (query: string, _mode?: string) => window.officer.generalIndexSearch(query)
+          }
+        : {
+            stats: window.officer.metaIndexStats,
+            sample: window.officer.metaIndexSample,
+            search: window.officer.metaIndexSearch
+          }
 
   // Meta filters by game mode; wiki filters by page category (derived from stats).
   const modeOptions =
@@ -157,6 +163,13 @@ export default function MetaIndexInspector(): ReactElement {
             >
               Wiki
             </button>
+            <button
+              type="button"
+              className={`mi-tab${corpus === 'general' ? ' sel' : ''}`}
+              onClick={() => switchCorpus('general')}
+            >
+              General
+            </button>
           </div>
           <button className="action-modal__x" aria-label="Close" onClick={() => setOpen(false)}>
             ✕
@@ -250,7 +263,7 @@ export default function MetaIndexInspector(): ReactElement {
             <div className="mi-results">
               {rows.length === 0 ? (
                 <div className="mi-empty">
-                  {corpus === 'meta' ? 'index empty — run a crawl' : 'index empty — wiki ingest pending'}
+                  {corpus === 'meta' ? 'index empty — run a crawl' : corpus === 'wiki' ? 'index empty — wiki ingest pending' : 'index empty — general ingest pending'}
                 </div>
               ) : (
                 rows.map((r) =>

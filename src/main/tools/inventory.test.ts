@@ -14,8 +14,10 @@ const deps: ToolDeps = {
   rosterLinks: () => [],
   metaIndex: () => ({}) as never,
   wikiIndex: () => ({}) as never,
+  generalIndex: () => ({}) as never,
   wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
-  fetchBuildPage: async () => null
+  fetchBuildPage: async () => null,
+  fetchBuildPageRaw: async () => null
 }
 
 describe('tools module split', () => {
@@ -70,6 +72,7 @@ describe('tools module split', () => {
       'discord_messages',
       'discord_overview',
       'discord_search',
+      'general_search',
       'gw2_account_info',
       'gw2_api',
       'gw2_build_card',

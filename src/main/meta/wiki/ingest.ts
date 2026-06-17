@@ -56,7 +56,11 @@ export const DEFAULT_CRAWL_TARGETS: CrawlTarget[] = [
   ...PROFESSIONS.map((p) => ({ category: `${cap(p)} traits`, label: 'traits' })),
   { category: 'Runes', label: 'upgrades' },
   { category: 'Sigils', label: 'upgrades' },
-  { category: 'Relics', label: 'upgrades' }
+  { category: 'Relics', label: 'upgrades' },
+  { category: 'Legendary weapons', label: 'legendaries' },
+  { category: 'Legendary armor', label: 'legendaries' },
+  { category: 'Legendary trinkets', label: 'legendaries' },
+  { category: 'Masteries', label: 'masteries' }
 ]
 
 interface WorkItem {

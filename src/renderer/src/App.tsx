@@ -29,7 +29,7 @@ const SECTION_TITLES: Record<Section, string> = {
   operations: 'Operations',
   roster: 'Roster',
   skills: 'Skills',
-  meta: 'Meta',
+  meta: 'Sources',
   settings: 'Settings'
 }
 

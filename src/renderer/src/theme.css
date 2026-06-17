@@ -332,7 +332,7 @@ td.nm2{color:var(--ink)}
 .sstatus{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--ink-dim);margin-top:8px}
 .sstatus.ok{color:var(--green)}
 .sstatus.err{color:var(--accent-b)}
-.sbtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:8px 16px;text-transform:uppercase;font-weight:500;border:1px dashed rgba(255,255,255,.4);outline:3px solid var(--accent);cursor:pointer}
+.sbtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:8px 16px;text-transform:uppercase;font-weight:500;border:none;outline:1px dashed rgba(255,255,255,.5);outline-offset:-5px;cursor:pointer}
 .sbtn.out{color:var(--ink-dim);background:transparent;border:1px solid var(--rule2);outline:none}
 .sbtn:disabled{opacity:.4;cursor:default}
 .picker{margin-top:10px;display:flex;flex-direction:column;gap:4px}
@@ -467,6 +467,15 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .snav-item.on .no{color:var(--accent-b)}
 .snav-item .dot{margin-left:auto;font-size:7px;color:var(--green)}
 .snav-item .dot.off{color:var(--faint)}
+/* group sub-headers within the Sources rail (Meta / Wiki / General) */
+.snav-grp{font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent-b);padding:4px 10px;margin:12px 0 3px}
+.snav-grp:first-of-type{margin-top:4px}
+.snav-empty{padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint)}
+/* grouped source chips inside a mode's Sources card */
+.meta-srcgroup{margin-bottom:12px}
+.meta-srcgroup:last-child{margin-bottom:0}
+.meta-srcgroup-h{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px}
+.meta-note{font-size:12px;line-height:1.55;color:var(--ink-dim)}
 
 /* pane header */
 .spane{padding:22px 0;max-width:620px}
@@ -1071,6 +1080,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 .mi-inspector { margin-top: 14px; border-top: 1px dashed var(--rule2); padding-top: 10px; }
 .mi-dev { font-size: 10px; text-transform: uppercase; color: var(--accent-b); border: 1px solid var(--accent-b); border-radius: 2px; padding: 0 4px; }
+/* on the red .sbtn the accent-b badge clashes (red on red) — use a light chip instead */
+.sbtn .mi-dev { font-size: 9px; letter-spacing: .12em; color: #fff; background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.45); padding: 1px 5px; }
 .mi-corpus { display: flex; gap: 0; margin: 0 0 0 6px; }
 .mi-tab { background: rgba(0,0,0,.2); border: 1px solid var(--line); color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 5px 14px; cursor: pointer; }
 .mi-tab + .mi-tab { border-left: none; }

@@ -12,6 +12,7 @@ import { distillComp } from './distillComp'
 import { configForUrl, resolveContent } from './sources'
 import type { MetaIndex } from './rag/index'
 import { chunkPage, sha1 } from './rag/chunk'
+import { corpusForUrl, type Corpus } from './corpus'
 
 const SEVEN_DAYS_MS = 7 * 86_400_000
 
@@ -32,6 +33,8 @@ export interface RefresherDeps {
   staleMs?: number
   emit?: (e: MetaProgress) => void
   index?: MetaIndex
+  wikiIndex?: MetaIndex
+  generalIndex?: MetaIndex
   eliteSpecs?: () => Promise<Record<string, string>>
 }
 
@@ -83,8 +86,13 @@ export class MetaRefresher {
           }
           emit({ type: 'source-done', modeId: mode.id, url: src.url })
         }
-        // combine build-table + comp-rule notes into one blob; either half may be null
-        {
+        if (mode.mode === 'Guides') {
+          // Guides are prose, not builds — a build-tier table summary makes no sense.
+          // Stamp the refresh (so it isn't re-crawled every cycle) with empty notes;
+          // the value lives in the indexed general corpus, not a distilled summary.
+          if (buildRaws.length || ruleRaws.length) store.recordDistill(mode.id, '')
+        } else {
+          // combine build-table + comp-rule notes into one blob; either half may be null
           const buildNotes = buildRaws.length ? await distill(mode.mode, buildRaws, model, specMap) : null
           const compNotes = ruleRaws.length ? await distillComp(mode.mode, ruleRaws, model) : null
           const combined = [buildNotes, compNotes].filter(Boolean).join('\n\n')
@@ -97,17 +105,19 @@ export class MetaRefresher {
     }
   }
 
+  private indexFor(corpus: Corpus): MetaIndex | undefined {
+    if (corpus === 'wiki') return this.deps.wikiIndex ?? this.deps.index
+    if (corpus === 'general') return this.deps.generalIndex ?? this.deps.index
+    return this.deps.index
+  }
+
   private async ingest(mode: string, source: string, pages: { url: string; title: string; text: string }[]): Promise<void> {
-    const index = this.deps.index
-    if (!index) return
     const host = ((): string => {
-      try {
-        return new URL(source).host.replace(/^www\./, '')
-      } catch {
-        return source
-      }
+      try { return new URL(source).host.replace(/^www\./, '') } catch { return source }
     })()
     for (const page of pages) {
+      const index = this.indexFor(corpusForUrl(page.url))
+      if (!index) continue
       try {
         if ((await index.indexedHash(page.url)) === sha1(page.text)) {
           console.log('[meta] skip (unchanged):', page.url)
@@ -117,7 +127,6 @@ export class MetaRefresher {
         if (chunks.length > 0) await index.replacePage(page.url, chunks)
         console.log('[meta] indexed', chunks.length, 'chunks:', page.url)
       } catch (e) {
-        /* index failure for one page is isolated; never breaks the refresh */
         console.warn('[meta] index failed:', page.url, e)
       }
     }

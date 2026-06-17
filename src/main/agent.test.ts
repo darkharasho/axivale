@@ -178,8 +178,10 @@ describe('AgentService turn serialization', () => {
         rosterLinks: () => [],
         metaIndex: () => ({}) as never,
         wikiIndex: () => ({}) as never,
+        generalIndex: () => ({}) as never,
         wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
-        fetchBuildPage: async () => null
+        fetchBuildPage: async () => null,
+        fetchBuildPageRaw: async () => null
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -241,8 +243,10 @@ describe('AgentService turn serialization', () => {
         rosterLinks: () => [],
         metaIndex: () => ({}) as never,
         wikiIndex: () => ({}) as never,
+        generalIndex: () => ({}) as never,
         wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
-        fetchBuildPage: async () => null
+        fetchBuildPage: async () => null,
+        fetchBuildPageRaw: async () => null
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -296,8 +300,10 @@ describe('AgentService persistence', () => {
         rosterLinks: () => [],
         metaIndex: () => ({}) as never,
         wikiIndex: () => ({}) as never,
+        generalIndex: () => ({}) as never,
         wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
-        fetchBuildPage: async () => null
+        fetchBuildPage: async () => null,
+        fetchBuildPageRaw: async () => null
       }),
       config: () => ({
         provider: 'claude' as const,

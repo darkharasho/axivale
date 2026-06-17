@@ -1,6 +1,7 @@
 // src/main/meta/wiki/refPages.test.ts
 import { describe, it, expect } from 'vitest'
 import { WIKI_REF_PAGES } from './refPages'
+import { DEFAULT_CRAWL_TARGETS } from './ingest'
 
 describe('WIKI_REF_PAGES', () => {
   it('is a non-empty registry with category + title on every entry', () => {
@@ -26,5 +27,18 @@ describe('WIKI_REF_PAGES', () => {
     expect(specs).toHaveLength(27) // 3 per profession × 9
     expect(specs.map((p) => p.title)).toContain('Firebrand')
     expect(specs.map((p) => p.title)).toContain('Harbinger')
+  })
+})
+
+describe('expanded wiki coverage', () => {
+  it('includes legendary + mastery registry pages', () => {
+    const titles = WIKI_REF_PAGES.map((p) => p.title)
+    expect(titles).toContain('Legendary weapon')
+    expect(titles).toContain('Mastery')
+  })
+  it('crawls legendary and mastery categories', () => {
+    const cats = DEFAULT_CRAWL_TARGETS.map((t) => t.category)
+    expect(cats).toContain('Legendary weapons')
+    expect(cats).toContain('Masteries')
   })
 })

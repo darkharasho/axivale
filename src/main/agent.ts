@@ -152,7 +152,8 @@ Rules:
 - The GW2 API returns only PvE values — it has NO WvW/PvP balance splits.
   For the real WvW/PvP mechanics of a skill or trait (damage, recharge, boon/condi duration), call gw2_wiki_facts with the name.
   Use it whenever reasoning about WvW/roaming builds or any mechanics tradeoff; skill/trait names come from meta_search results.
-- For GW2 game mechanics and concepts — how attributes, boons, conditions, combos, armor weights, or upgrades work, and which skills/traits a profession has — call gw2_wiki_search.
+- For long-form strategy and how-to guides — boss/encounter and fractal CM strategy, open-world/farming approaches, "how to get good at X" — call general_search.
+- For broad wiki knowledge — game mechanics, AND legendary crafting, achievements, collections, masteries — call gw2_wiki_search (it falls back to a live wiki lookup when nothing is pre-indexed).
 - For a SPECIFIC skill or trait's exact numbers and WvW/PvP splits call gw2_wiki_facts; for builds call meta_search.
 - Never list out every run/report. Listings can be long; lead with the count
   and date range ("19 runs from May 3 – Jun 11"), then show only the few that
@@ -178,6 +179,7 @@ Rules:
 export const LOCAL_TOOL_ALLOWLIST: readonly string[] = [
   'meta_search',
   'gw2_wiki_search',
+  'general_search',
   'gw2_api',
   'gw2_guild_log',
   'gw2_guild_members',

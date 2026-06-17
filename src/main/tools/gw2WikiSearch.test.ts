@@ -1,20 +1,62 @@
 // src/main/tools/gw2WikiSearch.test.ts
 import { describe, it, expect } from 'vitest'
 import { buildGw2WikiSearchTools } from './gw2WikiSearch'
-import { FakeMetaIndex } from '../meta/rag/testFake'
+import type { MetaIndex } from '../meta/rag/index'
 
-describe('gw2_wiki_search tool', () => {
-  it('returns mapped hits and forwards the category filter', async () => {
-    const idx = new FakeMetaIndex([{ source: 'wiki.guildwars2.com', url: 'u', title: 'Concentration', snippet: 'boon duration', score: 1 }])
-    const t = buildGw2WikiSearchTools(() => idx)[0]
-    const res = await t.handler({ query: 'boon duration', category: 'stats' }, {})
-    expect(idx.queries[0]).toMatchObject({ query: 'boon duration', mode: 'stats' })
-    const text = (res.content[0] as { text: string }).text
-    expect(text).toContain('Concentration')
+const idx = (hits: unknown[]): MetaIndex => ({
+  indexedHash: async () => null,
+  replacePage: async () => {},
+  search: async () => hits as never,
+  stats: async () => ({ total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }),
+  sample: async () => []
+}) as MetaIndex
+
+describe('gw2_wiki_search fallback', () => {
+  it('falls back to live search when the index is empty', async () => {
+    const live = async () => [{ title: 'Twilight', url: 'https://wiki.guildwars2.com/wiki/Twilight', snippet: 'craft' }]
+    const tools = buildGw2WikiSearchTools(() => idx([]), live)
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    const res = await t.handler({ query: 'how to craft twilight' }, {})
+    expect((res.content[0] as { text: string }).text).toContain('Twilight')
   })
-  it('returns a clean message when empty', async () => {
-    const t = buildGw2WikiSearchTools(() => new FakeMetaIndex())[0]
-    const res = await t.handler({ query: 'x' }, {})
-    expect((res.content[0] as { text: string }).text.toLowerCase()).toContain('no wiki reference')
+  it('uses index hits without live for a plain mechanics query', async () => {
+    let called = false
+    const live = async () => { called = true; return [] }
+    const tools = buildGw2WikiSearchTools(() => idx([{ source: 'wiki', url: 'u', title: 'Boon', snippet: 's' }]), live)
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    await t.handler({ query: 'boon duration' }, {})
+    expect(called).toBe(false)
+  })
+  it('also consults live for obtain/craft queries even when the index has hits', async () => {
+    let called = false
+    const live = async () => {
+      called = true
+      return [{ title: 'Twilight III: Dusk', url: 'https://wiki.guildwars2.com/wiki/Twilight_III:_Dusk', snippet: 'Gloominator; Aquatic Murk' }]
+    }
+    const tools = buildGw2WikiSearchTools(
+      () => idx([{ source: 'wiki', url: 'https://wiki.guildwars2.com/wiki/Legendary_weapon', title: 'Legendary weapon', snippet: 'overview' }]),
+      live
+    )
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    const res = await t.handler({ query: 'how do I craft the precursor for Twilight' }, {})
+    expect(called).toBe(true)
+    const out = (res.content[0] as { text: string }).text
+    // live (table-complete) result is surfaced first, ahead of the weak index overview
+    expect(out.indexOf('Twilight III: Dusk')).toBeLessThan(out.indexOf('Legendary weapon'))
+    expect(out).toContain('Gloominator')
+  })
+  it('forwards category arg to index search as mode', async () => {
+    let capturedOpts: unknown
+    const spyIdx: MetaIndex = {
+      indexedHash: async () => null,
+      replacePage: async () => {},
+      search: async (_q, opts) => { capturedOpts = opts; return [{ source: 'wiki', url: 'u', title: 'Stats', snippet: 's' }] as never },
+      stats: async () => ({ total: 1, byMode: {}, bySource: {}, lastIndexedAt: null }),
+      sample: async () => []
+    } as MetaIndex
+    const tools = buildGw2WikiSearchTools(() => spyIdx)
+    const t = tools.find((x) => x.name === 'gw2_wiki_search')!
+    await t.handler({ query: 'x', category: 'stats' }, {})
+    expect((capturedOpts as { mode?: string }).mode).toBe('stats')
   })
 })
