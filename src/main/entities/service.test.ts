@@ -51,6 +51,38 @@ describe('EntityService.resolve', () => {
     const card = await svc.resolve({ type: 'skill', name: 'Shelter' })
     expect(card?.icon).toBe('https://render.gw2.com/shelter.png')
   })
+  it('attaches icon WITHOUT calling dictionary() first (regression: icon was cached-missing before fix)', async () => {
+    // Call resolve on a fresh service without ever calling dictionary()
+    // Before the fix: iconIndex was null → card cached with no icon
+    // After the fix: ensureIconIndex() is awaited inside resolve → icon is set before caching
+    const svc = makeService()
+    const card = await svc.resolve({ type: 'skill', name: 'Shelter' })
+    expect(card?.icon).toBe('https://render.gw2.com/shelter.png')
+  })
+  it('attaches icon on trait resolve WITHOUT calling dictionary() first', async () => {
+    const svc = makeService()
+    const card = await svc.resolve({ type: 'trait', name: 'Zeal' })
+    expect(card?.icon).toBe('https://render.gw2.com/zeal.png')
+  })
+  it('fetchEntities is called at most once per endpoint across multiple resolves', async () => {
+    const fetchEntities = vi.fn(async (e: 'skills' | 'traits') =>
+      e === 'skills'
+        ? [{ name: 'Shelter', icon: 'https://render.gw2.com/shelter.png' }]
+        : [{ name: 'Zeal', icon: 'https://render.gw2.com/zeal.png' }]
+    )
+    const svc = makeService({ fetchEntities })
+    // Multiple resolves for different skill/trait cards
+    await Promise.all([
+      svc.resolve({ type: 'skill', name: 'Shelter' }),
+      svc.resolve({ type: 'trait', name: 'Zeal' }),
+      svc.resolve({ type: 'skill', name: 'Shelter' }),
+    ])
+    // fetchEntities should be called once for 'skills' and once for 'traits' total
+    const skillCalls = fetchEntities.mock.calls.filter(([e]) => e === 'skills').length
+    const traitCalls = fetchEntities.mock.calls.filter(([e]) => e === 'traits').length
+    expect(skillCalls).toBe(1)
+    expect(traitCalls).toBe(1)
+  })
 })
 
 describe('EntityService.dictionary', () => {
@@ -68,5 +100,20 @@ describe('EntityService.dictionary', () => {
     expect(shelter?.icon).toBe('https://render.gw2.com/shelter.png')
     const rune = dict.entries.find((e) => e.name === 'Superior Rune of the Monk')
     expect(rune?.icon).toBe('https://render.gw2.com/rune.png')
+  })
+  it('fetchEntities is not called again when dictionary() follows resolve()', async () => {
+    const fetchEntities = vi.fn(async (e: 'skills' | 'traits') =>
+      e === 'skills'
+        ? [{ name: 'Shelter', icon: 'https://render.gw2.com/shelter.png' }]
+        : [{ name: 'Zeal', icon: 'https://render.gw2.com/zeal.png' }]
+    )
+    const svc = makeService({ fetchEntities })
+    await svc.resolve({ type: 'skill', name: 'Shelter' })
+    await svc.dictionary()
+    // Both resolve and dictionary share ensureData — should still be 1 call each
+    const skillCalls = fetchEntities.mock.calls.filter(([e]) => e === 'skills').length
+    const traitCalls = fetchEntities.mock.calls.filter(([e]) => e === 'traits').length
+    expect(skillCalls).toBe(1)
+    expect(traitCalls).toBe(1)
   })
 })
