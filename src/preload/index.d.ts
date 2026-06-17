@@ -91,6 +91,50 @@ export type RendererLearnProgress =
   | { phase: 'meta' | 'wiki'; kind: 'advance' }
   | { phase: 'meta' | 'wiki'; kind: 'done' }
 
+export type RendererArtifactKind = 'playbook' | 'anti_pattern' | 'heuristic'
+export type RendererMemoryKind = 'fact' | RendererArtifactKind
+
+export interface RendererMemoryFact {
+  id: string
+  body: string
+  bodyNorm: string
+  entity: string | null
+  tags: string[]
+  pinned: boolean
+  userPinned: boolean
+  useCount: number
+  score: number
+  source: 'agent' | 'user'
+  createdAt: string
+  lastUsedAt: string | null
+  archived: boolean
+}
+export interface RendererMemoryArtifact {
+  id: string
+  kind: RendererArtifactKind
+  title: string
+  body: string
+  bodyNorm: string
+  tags: string[]
+  entity: string | null
+  useCount: number
+  score: number
+  source: 'agent' | 'user'
+  createdAt: string
+  updatedAt: string
+  lastUsedAt: string | null
+  archived: boolean
+}
+export interface RendererMemoryList {
+  facts: RendererMemoryFact[]
+  artifacts: RendererMemoryArtifact[]
+}
+export interface RendererMemoryIndexStats {
+  total: number
+  byKind: Record<string, number>
+  lastIndexedAt: string | null
+}
+
 export interface RendererMetaChunkRow {
   id: string
   mode: string
@@ -267,6 +311,15 @@ export interface OfficerApi {
   metaIndexStats(): Promise<RendererMetaIndexStats>
   metaIndexSample(opts: { mode?: string; limit: number }): Promise<RendererMetaChunkRow[]>
   metaIndexSearch(query: string, mode?: string): Promise<RendererMetaSearchHit[]>
+  memoryList(opts?: { includeArchived?: boolean }): Promise<RendererMemoryList>
+  memorySearch(query: string, entity?: string | null, kinds?: RendererMemoryKind[]): Promise<{ facts: unknown[]; artifacts: unknown[] }>
+  memoryCreate(input: { kind: RendererMemoryKind; body: string; title?: string; entity?: string | null; tags?: string[] }): Promise<{ id: string; kind: RendererMemoryKind; merged: boolean }>
+  memoryUpdate(kind: 'fact' | 'artifact', id: string, patch: Record<string, unknown>): Promise<void>
+  memoryDelete(kind: 'fact' | 'artifact', id: string): Promise<void>
+  memoryPin(id: string, pinned: boolean): Promise<void>
+  memoryReindex(): Promise<void>
+  memoryIndexStats(): Promise<RendererMemoryIndexStats>
+  memoryFactsForEntity(entity: string): Promise<RendererMemoryFact[]>
   wikiIndexStats(): Promise<RendererMetaIndexStats>
   wikiIndexSample(opts: { mode?: string; limit: number }): Promise<RendererMetaChunkRow[]>
   wikiIndexSearch(query: string, mode?: string): Promise<RendererMetaSearchHit[]>
@@ -324,6 +377,7 @@ export interface OfficerApi {
   onUpdateStatus(cb: (status: UpdateStatus) => void): () => void
   onAxibridgeProgress(cb: (message: string) => void): () => void
   onMetaProgress(cb: (e: RendererMetaProgress) => void): () => void
+  onMemoryProgress(cb: (e: unknown) => void): () => void
   onLearnProgress(cb: (e: RendererLearnProgress) => void): () => void
   ollamaDetectHardware(): Promise<{ totalRamGb: number; recommendedModel: string; modelOptions: string[] }>
   ollamaGetStatus(): Promise<{ installed: boolean; serverRunning: boolean; version: string | null; model: string | null }>

@@ -43,6 +43,18 @@ contextBridge.exposeInMainWorld('officer', {
   metaIndexStats: () => ipcRenderer.invoke('meta:index-stats'),
   metaIndexSample: (opts: { mode?: string; limit: number }) => ipcRenderer.invoke('meta:index-sample', opts),
   metaIndexSearch: (query: string, mode?: string) => ipcRenderer.invoke('meta:index-search', query, mode),
+  memoryList: (opts?: { includeArchived?: boolean }) => ipcRenderer.invoke('memory:list', opts),
+  memorySearch: (query: string, entity?: string | null, kinds?: string[]) =>
+    ipcRenderer.invoke('memory:search', query, entity, kinds),
+  memoryCreate: (input: { kind: string; body: string; title?: string; entity?: string | null; tags?: string[] }) =>
+    ipcRenderer.invoke('memory:create', input),
+  memoryUpdate: (kind: 'fact' | 'artifact', id: string, patch: Record<string, unknown>) =>
+    ipcRenderer.invoke('memory:update', kind, id, patch),
+  memoryDelete: (kind: 'fact' | 'artifact', id: string) => ipcRenderer.invoke('memory:delete', kind, id),
+  memoryPin: (id: string, pinned: boolean) => ipcRenderer.invoke('memory:pin', id, pinned),
+  memoryReindex: () => ipcRenderer.invoke('memory:reindex'),
+  memoryIndexStats: () => ipcRenderer.invoke('memory:index-stats'),
+  memoryFactsForEntity: (entity: string) => ipcRenderer.invoke('memory:facts-for-entity', entity),
   wikiIndexStats: () => ipcRenderer.invoke('wiki:index-stats'),
   wikiIndexSample: (opts: { mode?: string; limit: number }) => ipcRenderer.invoke('wiki:index-sample', opts),
   wikiIndexSearch: (query: string, mode?: string) => ipcRenderer.invoke('wiki:index-search', query, mode),
@@ -124,6 +136,11 @@ contextBridge.exposeInMainWorld('officer', {
     const handler = (_e: unknown, payload: unknown): void => cb(payload)
     ipcRenderer.on('meta:progress', handler)
     return () => ipcRenderer.removeListener('meta:progress', handler)
+  },
+  onMemoryProgress: (cb: (e: unknown) => void) => {
+    const handler = (_e: unknown, payload: unknown): void => cb(payload)
+    ipcRenderer.on('memory:progress', handler)
+    return () => ipcRenderer.removeListener('memory:progress', handler)
   },
   onLearnProgress: (cb: (e: unknown) => void) => {
     const handler = (_e: unknown, payload: unknown): void => cb(payload)
