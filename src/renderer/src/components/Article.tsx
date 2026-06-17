@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState, type ReactElement } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Camera, Check, X, Share2 } from 'lucide-react'
@@ -7,6 +7,9 @@ import { rehypeEmojiIcons } from './rehypeEmojiIcons'
 import { rehypeClassIcons } from './rehypeClassIcons'
 import { renderExtLink } from './emojiIcons'
 import { renderRichSpan } from './richSpan'
+import { rehypeEntityLinks } from './rehypeEntityLinks'
+import { createEntityHover } from './entityHover'
+import { useEntityDictionary } from './useEntityDictionary'
 import { splitHeadline } from './headline'
 import { stripRawJson } from './sanitizeProse'
 import { couponLabel } from './ToolCoupon'
@@ -91,6 +94,16 @@ export default function Article({
   const streaming = !turn.done && turn.agentText.trim() !== ''
   const articleRef = useRef<HTMLDivElement>(null)
   const [copyState, setCopyState] = useState<CopyState>('idle')
+  const dict = useEntityDictionary()
+  useEffect(() => {
+    if (!articleRef.current) return
+    const hover = createEntityHover(articleRef.current)
+    return () => hover.destroy()
+  }, [])
+  const entityPlugin: [typeof rehypeEntityLinks, { dictionary: typeof dict }] = [
+    rehypeEntityLinks,
+    { dictionary: dict }
+  ]
 
   function handleCopy(): void {
     if (!articleRef.current || copyState !== 'idle') return
@@ -165,7 +178,7 @@ export default function Article({
                   single line — no bold/heading styling, no literal [text](url) syntax. */}
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons]}
+                rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons, entityPlugin]}
                 disallowedElements={['em', 'strong', 'code', 'del', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']}
                 unwrapDisallowed
                 components={{ p: ({ children }) => <>{children}</>, span: renderRichSpan, a: renderExtLink }}
@@ -199,7 +212,7 @@ export default function Article({
                       <Fragment key={i}>
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons]}
+                          rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons, entityPlugin]}
                           components={{ span: renderRichSpan, a: renderExtLink }}
                         >
                           {seg}
