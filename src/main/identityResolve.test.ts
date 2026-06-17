@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest'
 import {
   rankIdentities,
   mergeManualLinks,
+  loggedPlayerMembers,
+  MIN_LOGGED_RUNS,
   type ResolveMemberLite,
   type ResolveAnnotationLite
 } from './identityResolve'
@@ -84,5 +86,37 @@ describe('rankIdentities', () => {
     ]
     const out = rankIdentities('Bob', members, anns)
     expect(out[0].member_id).toBe('m1')
+  })
+})
+
+describe('loggedPlayerMembers', () => {
+  it('builds acct: members for players at/above the run threshold', () => {
+    const out = loggedPlayerMembers(
+      [{ account: 'BreakN.5496', runs: 59 }, { account: 'Pug.1', runs: 1 }],
+      []
+    )
+    expect(out).toHaveLength(1)
+    expect(out[0].member_id).toBe('acct:BreakN.5496')
+    expect(out[0].accounts?.[0].account_name).toBe('BreakN.5496')
+  })
+
+  it('lets a loose name resolve to a logged account via the discriminator local-part', () => {
+    const logged = loggedPlayerMembers([{ account: 'BreakN.5496', runs: 59 }], [])
+    const out = rankIdentities('break', logged, [])
+    expect(out[0]?.member_id).toBe('acct:BreakN.5496')
+  })
+
+  it('skips accounts already present on the linked roster (no duplicate candidate)', () => {
+    const existing: ResolveMemberLite[] = [
+      { member_id: 'm1', accounts: [{ account_name: 'BreakN.5496' }] }
+    ]
+    expect(loggedPlayerMembers([{ account: 'BreakN.5496', runs: 59 }], existing)).toHaveLength(0)
+  })
+
+  it('honors the default run threshold', () => {
+    const below = loggedPlayerMembers([{ account: 'Rare.1', runs: MIN_LOGGED_RUNS - 1 }], [])
+    const atOrAbove = loggedPlayerMembers([{ account: 'Reg.2', runs: MIN_LOGGED_RUNS }], [])
+    expect(below).toHaveLength(0)
+    expect(atOrAbove).toHaveLength(1)
   })
 })
