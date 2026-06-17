@@ -48,10 +48,14 @@ export async function distill(
 
   const consensusBlock =
     `\n\nCONSENSUS — each excerpt is prefixed with "## SOURCE: <name>"; the only valid source ` +
-    `names are: ${sourceNames.join(', ')}. Rank builds by cross-source AGREEMENT: a build that ` +
-    `MULTIPLE sources list (especially at a high tier) is consensus meta — put it first. A build ` +
-    `only ONE source lists is lower-confidence: keep it, but in its Notes write ` +
-    `"single-source: <name>" so it is NOT treated as equal to corroborated picks. ` +
+    `names are: ${sourceNames.join(', ')}. Rank builds by BOTH cross-source agreement AND tier:\n` +
+    `- A build MULTIPLE sources list, all at a high tier, is consensus meta — put it first.\n` +
+    `- When sources DISAGREE on tier (e.g. Meta on one, Great on another), the build is NOT ` +
+    `unambiguously Meta: NEVER upgrade it to the single highest tier a source gives. Record the ` +
+    `split in the Tier cell (e.g. "Meta (MetaBattle) / Great (gw2mists)") and rank it BELOW builds ` +
+    `every source rates Meta.\n` +
+    `- A build only ONE source lists is lower-confidence: keep it, but write "single-source: <name>" ` +
+    `in its Notes so it is not treated as equal to corroborated picks.\n` +
     `Cite ONLY the exact source names above — NEVER attribute a build to a source that did not ` +
     `list it, and NEVER invent a source name (e.g. do not write a site name that is not in that list).\n`
 
@@ -65,7 +69,8 @@ export async function distill(
     `naming the source (e.g. "As of: June 2026 patch (MetaBattle); gw2mists undated"). If you ` +
     `found no date anywhere, write "As of: no source date found — treat tiers as possibly stale".\n` +
     `2. A markdown TABLE of the meta builds — one row per build, columns: ` +
-    `\`Build\` (Profession + Elite Spec) | \`Role\` | \`Tier\` (if the source gives one) | ` +
+    `\`Build\` (Profession + Elite Spec) | \`Role\` | \`Tier\` (the rating each source gives; if ` +
+    `sources disagree, show the split per source — do NOT collapse to the highest) | ` +
     `\`Sources\` (which of the named sources list this build — exact names only, comma-separated) | ` +
     `\`Updated\` (the source's date/patch for this build or list, blank if none) | ` +
     `\`Notes\` (key weapons/sigils/runes or a one-line why; add "single-source: <name>" when only one ` +

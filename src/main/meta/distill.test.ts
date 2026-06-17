@@ -105,6 +105,15 @@ describe('distill', () => {
     expect(prompt).toMatch(/single-source/i)
   })
 
+  it('reconciles tier across sources instead of collapsing to the highest', async () => {
+    const model = vi.fn().mockResolvedValue('summary')
+    await distill('WvW', ex('raw one', 'raw two'), model)
+    const prompt = model.mock.calls[0][0] as string
+    expect(prompt).toMatch(/agreement AND tier/i)
+    expect(prompt).toMatch(/NEVER upgrade it to the single highest tier/i)
+    expect(prompt).toMatch(/do NOT collapse to the highest/i)
+  })
+
   it('forbids inventing a source name (the "Aros" bug) and lists the valid names', async () => {
     const model = vi.fn().mockResolvedValue('summary')
     await distill('WvW', [
