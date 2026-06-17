@@ -52,4 +52,11 @@ describe('recall tool', () => {
     expect(out.facts[0].body).toContain('wvw')
     expect(out.facts[0].entityName).toBe('Zara')
   })
+
+  it('returns a note when nothing matches', async () => {
+    const { deps: d } = deps()
+    const recall = buildMemoryTools(d).find((t) => t.name === 'recall')!
+    const out = await call(recall, { query: 'absolutely-nothing-here' })
+    expect(out.note).toBe('no matching memory yet')
+  })
 })

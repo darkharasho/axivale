@@ -25,13 +25,14 @@ export function buildMemoryTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any
         let key: string | null = null
         let resolvedName: string | undefined
         const extraTags = [...(tags ?? [])]
-        if (entity && entity.trim()) {
-          const hit = await deps.resolveEntityKey(entity)
+        const trimmed = entity?.trim()
+        if (trimmed) {
+          const hit = await deps.resolveEntityKey(trimmed)
           if (hit) { key = hit.key; resolvedName = hit.name }
-          else extraTags.push(entity.trim()) // unresolved → keep the name as a tag
+          else extraTags.push(trimmed) // unresolved → keep the name as a tag
         }
         const r = await deps.memory().remember({ kind, body, title, entity: key, tags: extraTags })
-        return { id: r.id, kind: r.kind, merged: r.merged, entity: key, entity_name: resolvedName }
+        return { id: r.id, kind: r.kind, merged: r.merged, entity: key, entity_name: resolvedName ?? null }
       })
     ),
     tool(
@@ -47,7 +48,7 @@ export function buildMemoryTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any
         query: string; entity?: string; kinds?: Array<'fact' | 'playbook' | 'anti_pattern' | 'heuristic'>; limit?: number
       }) => {
         let key: string | null = null
-        if (entity && entity.trim()) key = (await deps.resolveEntityKey(entity))?.key ?? null
+        if (entity && entity.trim()) key = (await deps.resolveEntityKey(entity.trim()))?.key ?? null
         const out = await deps.memory().recall({ query, entity: key, kinds, limit })
         if (out.facts.length === 0 && out.artifacts.length === 0) return { note: 'no matching memory yet' }
         return out
