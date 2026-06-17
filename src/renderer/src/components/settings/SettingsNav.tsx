@@ -7,6 +7,7 @@ export type SettingsSection =
   | 'axiforge'
   | 'repos'
   | 'dispatches'
+  | 'notifications'
   | 'about'
 
 /** Which sections show a "configured" status dot. Sections not listed show no dot. */
@@ -25,7 +26,8 @@ const ITEMS: Array<{ key: SettingsSection; no: string; label: string; hasDot: bo
   { key: 'axiforge', no: '04', label: 'AxiForge', hasDot: true },
   { key: 'repos', no: '05', label: 'Report Repos', hasDot: true },
   { key: 'dispatches', no: '06', label: 'Dispatches', hasDot: false },
-  { key: 'about', no: '07', label: 'About', hasDot: false }
+  { key: 'notifications', no: '07', label: 'Notifications', hasDot: false },
+  { key: 'about', no: '08', label: 'About', hasDot: false }
 ]
 
 export default function SettingsNav({

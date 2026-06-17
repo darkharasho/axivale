@@ -93,6 +93,7 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     deleteConversation: vi.fn().mockResolvedValue(undefined),
     setActiveConversation: vi.fn().mockResolvedValue(undefined),
     markConversationSeen: vi.fn().mockResolvedValue(undefined),
+    setBadgeCount: vi.fn().mockResolvedValue(undefined),
     onAgentEvent: vi.fn().mockImplementation(noop),
     onConfirmRequest: vi.fn().mockImplementation(noop),
     onAxibridgeProgress: vi.fn().mockImplementation(noop),

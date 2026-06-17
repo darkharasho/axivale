@@ -286,6 +286,8 @@ export interface OfficerApi {
   deleteConversation(id: string): Promise<void>
   setActiveConversation(id: string): Promise<void>
   markConversationSeen(id: string, count: number): Promise<void>
+  /** Set the app-icon unread badge (gated by the notifyBadge setting in main). */
+  setBadgeCount(count: number): Promise<void>
   onAgentEvent(cb: (event: unknown) => void): () => void
   onConfirmRequest(cb: (req: unknown) => void): () => void
   respondConfirm(id: string, allowed: boolean): void

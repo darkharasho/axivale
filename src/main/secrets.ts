@@ -31,6 +31,9 @@ export type SettingKey =
   | 'axibridgeCacheCapBytes'
   | 'windowBounds'
   | 'wikiIngestedAt'
+  /** 'true'/'false' (default on): desktop notifications + app-icon unread badge. */
+  | 'notifySystem'
+  | 'notifyBadge'
   /** JSON map of Discord guild id -> guild-member role id; anchors the reconciled
    *  roster per server (each connected server has its own roles). */
   | 'discordMemberRoleByGuild'

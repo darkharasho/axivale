@@ -140,6 +140,8 @@ export default function App(): ReactElement {
   // The active id seen by event handlers (avoids stale closures in subscriptions).
   const activeIdRef = useRef<string | null>(null)
   activeIdRef.current = activeId
+  // Whether the AxiVale window currently has focus (see the focus-tracking effect).
+  const windowFocusedRef = useRef(typeof document === 'undefined' || document.hasFocus())
   // Per-conversation debounce handles for save-turns, keyed by conversationId.
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
@@ -280,6 +282,10 @@ export default function App(): ReactElement {
         if (isActive) {
           setRunning(false)
           setBridgeProgress(null)
+          // Finished while the user was in another app/window → flag it unread so
+          // the app-icon badge reflects it until they return (mirrors the
+          // system notification, which also fires only when unfocused).
+          if (!windowFocusedRef.current) setFreshIds((p) => new Set(p).add(convId))
         } else {
           // Background conversation finished — flag it fresh, refresh the list.
           setFreshIds((p) => new Set(p).add(convId))
@@ -305,6 +311,40 @@ export default function App(): ReactElement {
     const el = chatRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [turns])
+
+  // Mirror the unread-conversation count onto the app-icon badge (main gates it
+  // on the notifyBadge setting).
+  useEffect(() => {
+    void window.officer.setBadgeCount(freshIds.size)
+  }, [freshIds])
+
+  // Track window focus so a response that lands while the user is in another app
+  // counts as unread. Returning to AxiVale clears the unread flag on the
+  // conversation currently in view.
+  useEffect(() => {
+    const onFocus = (): void => {
+      windowFocusedRef.current = true
+      const id = activeIdRef.current
+      if (!id) return
+      setFreshIds((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+      const turns = turnsByConvRef.current[id]
+      if (turns) void window.officer.markConversationSeen(id, completedTurnCount(turns))
+    }
+    const onBlur = (): void => {
+      windowFocusedRef.current = false
+    }
+    window.addEventListener('focus', onFocus)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('focus', onFocus)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
 
   // Clear any pending debounced saves on unmount.
   useEffect(() => {

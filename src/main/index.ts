@@ -1,8 +1,9 @@
-import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
+import { app, BrowserWindow, Notification, ipcMain, screen, shell } from 'electron'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { randomUUID } from 'crypto'
+import { execFile } from 'child_process'
 import {
   SettingsStore,
   electronCipher,
@@ -192,6 +193,71 @@ app.whenReady().then(async () => {
   const store = new SettingsStore(join(app.getPath('userData'), 'settings.json'), await electronCipher())
 
   const conversations = new ConversationStore(join(app.getPath('userData'), 'conversations.json'))
+
+  // --- Notifications + app-icon unread badge --------------------------------
+  // A desktop notification fires when a backgrounded turn finishes; the badge
+  // mirrors the count of conversations with unread responses (pushed from the
+  // renderer). Both default on and are gated by the Notifications settings.
+  let unreadBadgeCount = 0
+  // Linux unread badge via the Unity LauncherEntry D-Bus signal. Electron's
+  // app.setBadgeCount only emits this under the Unity desktop, so on KDE Plasma
+  // (and most other DEs) it's a silent no-op — we emit the signal ourselves with
+  // gdbus (ships with glib). KDE matches the badge to the installed desktop file
+  // named after the app (axivale.desktop), so the count lands on its task/launcher.
+  let badgeEmitWarned = false
+  const emitLinuxBadge = (count: number): void => {
+    const desktop = `${app.getName()}.desktop`
+    // KDE keys the badge off the app_uri argument, not the object path; a stable
+    // per-app path keeps repeat signals updating the same entry.
+    let h = 0
+    for (let i = 0; i < desktop.length; i++) h = (h * 31 + desktop.charCodeAt(i)) | 0
+    const objectPath = `/com/canonical/unity/launcherentry/${Math.abs(h)}`
+    const payload = `{'count': <int64 ${count}>, 'count-visible': <${count > 0 ? 'true' : 'false'}>}`
+    execFile(
+      'gdbus',
+      [
+        'emit',
+        '--session',
+        '--object-path',
+        objectPath,
+        '--signal',
+        'com.canonical.Unity.LauncherEntry.Update',
+        `application://${desktop}`,
+        payload
+      ],
+      (err) => {
+        if (err && !badgeEmitWarned) {
+          badgeEmitWarned = true
+          console.warn('[badge] could not emit Unity LauncherEntry signal:', err.message)
+        }
+      }
+    )
+  }
+  const applyBadge = (): void => {
+    const on = store.getSetting('notifyBadge') !== 'false'
+    const count = on ? unreadBadgeCount : 0
+    // macOS dock + Unity launcher.
+    app.setBadgeCount(count)
+    // KDE Plasma / GNOME-with-extension / others that honor the Unity signal.
+    if (process.platform === 'linux') emitLinuxBadge(count)
+  }
+  const notifyTurnDone = (conversationId: string): void => {
+    if (store.getSetting('notifySystem') === 'false') return
+    if (!Notification.isSupported()) return
+    // Only alert when the user isn't already looking at the app.
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()) return
+    const title = conversations.get(conversationId)?.title?.trim() || 'AxiVale'
+    const note = new Notification({ title, body: 'Response ready' })
+    note.on('click', () => {
+      const win = mainWindow
+      if (win && !win.isDestroyed()) {
+        if (win.isMinimized()) win.restore()
+        win.show()
+        win.focus()
+      }
+    })
+    note.show()
+  }
 
   const shares = new ShareStore(join(app.getPath('userData'), 'shares.json'))
 
@@ -463,6 +529,12 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:get', (_event, key: SettingKey) => store.getSetting(key))
   ipcMain.handle('settings:set', (_event, key: SettingKey, value: string) => {
     store.setSetting(key, value)
+    // Reflect a badge toggle immediately using the last count the renderer pushed.
+    if (key === 'notifyBadge') applyBadge()
+  })
+  ipcMain.handle('notifications:set-badge', (_event, count: number) => {
+    unreadBadgeCount = Math.max(0, Math.floor(count) || 0)
+    applyBadge()
   })
   ipcMain.handle('secrets:set', (_event, key: SecretKey, value: string) => {
     store.setSecret(key, value)
@@ -824,6 +896,7 @@ app.whenReady().then(async () => {
       if (!event.sender.isDestroyed()) {
         event.sender.send('agent:event', { ...agentEvent, conversationId })
       }
+      if (agentEvent.kind === 'done' && !agentEvent.error) notifyTurnDone(conversationId)
     }, { forcedSkillId })
   })
 

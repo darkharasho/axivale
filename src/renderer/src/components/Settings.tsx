@@ -6,6 +6,7 @@ import AxiTools from './settings/AxiTools'
 import AxiForge from './settings/AxiForge'
 import ReportRepos from './settings/ReportRepos'
 import Dispatches from './settings/Dispatches'
+import Notifications from './settings/Notifications'
 import About from './settings/About'
 
 type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
@@ -104,6 +105,10 @@ export default function Settings({
   // App / updates
   const [version, setVersion] = useState('')
   const [updateMsg, setUpdateMsg] = useState('')
+
+  // Notifications (default on; stored as 'true'/'false')
+  const [notifySystem, setNotifySystem] = useState(true)
+  const [notifyBadge, setNotifyBadge] = useState(true)
 
   // GW2
   const [gw2Keys, setGw2Keys] = useState<KeyLabel[]>([])
@@ -303,6 +308,8 @@ export default function Settings({
       setLocalEndpoint((await window.officer.getSetting('localEndpoint')) ?? '')
       setLocalModel((await window.officer.getSetting('localModel')) ?? '')
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
+      setNotifySystem((await window.officer.getSetting('notifySystem')) !== 'false')
+      setNotifyBadge((await window.officer.getSetting('notifyBadge')) !== 'false')
       setVersion(await window.officer.appVersion())
       await refreshKeyLists()
       // Re-establish the AxiTools connection on open so the guild/role picker
@@ -395,6 +402,18 @@ export default function Settings({
   async function checkUpdates(): Promise<void> {
     setUpdateMsg('checking…')
     await window.officer.checkUpdates()
+  }
+
+  async function toggleNotifySystem(value: boolean): Promise<void> {
+    setNotifySystem(value)
+    await window.officer.setSetting('notifySystem', value ? 'true' : 'false')
+    onChanged()
+  }
+
+  async function toggleNotifyBadge(value: boolean): Promise<void> {
+    setNotifyBadge(value)
+    await window.officer.setSetting('notifyBadge', value ? 'true' : 'false')
+    onChanged()
   }
 
   async function saveClaude(): Promise<void> {
@@ -658,6 +677,14 @@ export default function Settings({
       )}
       {section === 'dispatches' && (
         <Dispatches shareEntries={shareEntries} onDelete={deleteShare} />
+      )}
+      {section === 'notifications' && (
+        <Notifications
+          system={notifySystem}
+          badge={notifyBadge}
+          onToggleSystem={toggleNotifySystem}
+          onToggleBadge={toggleNotifyBadge}
+        />
       )}
       {section === 'about' && (
         <About version={version} updateMsg={updateMsg} onCheckUpdates={checkUpdates} />

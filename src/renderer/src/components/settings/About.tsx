@@ -9,7 +9,7 @@ export interface AboutProps {
 
 export default function About({ version, updateMsg, onCheckUpdates }: AboutProps): ReactElement {
   return (
-    <Pane no="07" title="About" sub="Version and updates.">
+    <Pane no="08" title="About" sub="Version and updates.">
       <Card title="AxiVale">
         <div className="sactions">
           <div className="countline">

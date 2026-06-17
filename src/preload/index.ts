@@ -82,6 +82,7 @@ contextBridge.exposeInMainWorld('officer', {
   setActiveConversation: (id: string) => ipcRenderer.invoke('conversations:set-active', id),
   markConversationSeen: (id: string, count: number) =>
     ipcRenderer.invoke('conversations:mark-seen', id, count),
+  setBadgeCount: (count: number) => ipcRenderer.invoke('notifications:set-badge', count),
   onAgentEvent: (cb: (event: unknown) => void) => {
     const listener = (_e: unknown, event: unknown): void => cb(event)
     ipcRenderer.on('agent:event', listener)
