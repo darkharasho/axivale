@@ -1,4 +1,4 @@
-import { visit, SKIP } from 'unist-util-visit'
+import { visitParents, SKIP } from 'unist-util-visit-parents'
 import type { Root, Text, Element, ElementContent } from 'hast'
 
 type EntityType = 'skill' | 'trait' | 'item'
@@ -35,16 +35,23 @@ export function rehypeEntityLinks(opts: { dictionary: EntityDictionary }) {
       : null
 
   return (tree: Root): void => {
-    visit(tree, 'text', (node: Text, index, parent) => {
-      if (!parent || typeof index !== 'number') return
-      if (parent.type === 'element' && SKIP_PARENTS.has((parent as Element).tagName)) return
+    visitParents(tree, 'text', (node: Text, ancestors) => {
+      if (ancestors.length === 0) return
 
-      // Skip text nodes that are already inside an axi-entity span (no double-wrap)
-      if (
-        parent.type === 'element' &&
-        Array.isArray((parent as Element).properties?.className) &&
-        ((parent as Element).properties!.className as string[]).includes('axi-entity')
-      ) return
+      // Walk ALL ancestors — skip if any is a skip-zone tag or an axi-entity span (no double-wrap).
+      for (const ancestor of ancestors) {
+        if (ancestor.type !== 'element') continue
+        const el = ancestor as Element
+        if (SKIP_PARENTS.has(el.tagName)) return
+        if (
+          Array.isArray(el.properties?.className) &&
+          (el.properties!.className as string[]).includes('axi-entity')
+        ) return
+      }
+
+      const parent = ancestors[ancestors.length - 1] as Element
+      const index = parent.children.indexOf(node)
+      if (index === -1) return
 
       const out: ElementContent[] = []
       let cursor = 0

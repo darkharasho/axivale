@@ -54,4 +54,21 @@ describe('rehypeEntityLinks — text pass', () => {
     const once = run('<p>Shelter</p>')
     expect(run(once)).toBe(once.replace(/<\/?html>|<\/?head>|<\/?body>/g, ''))
   })
+
+  // Nested skip-zone tests — text nested under a skip ancestor (not just an immediate skip parent)
+  it('skips text inside <pre> (immediate parent skip)', () => {
+    expect(run('<pre>Shelter</pre>')).not.toContain('axi-entity')
+  })
+  it('skips text inside a heading <h2>', () => {
+    expect(run('<h2>Shelter</h2>')).not.toContain('axi-entity')
+  })
+  it('skips text nested via <em> inside <h2>', () => {
+    expect(run('<h2><em>Shelter</em></h2>')).not.toContain('axi-entity')
+  })
+  it('skips text nested via <strong> inside <a>', () => {
+    expect(run('<a href="x"><strong>Shelter</strong></a>')).not.toContain('axi-entity')
+  })
+  it('skips text nested via <code> inside <pre>', () => {
+    expect(run('<pre><code>Shelter</code></pre>')).not.toContain('axi-entity')
+  })
 })
