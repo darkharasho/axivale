@@ -9,7 +9,9 @@ export function useEntityDictionary(): EntityDictionary {
   const [dict, setDict] = useState<EntityDictionary>(EMPTY)
   useEffect(() => {
     let alive = true
-    void window.officer.entityDictionary().then((d) => { if (alive) setDict(d ?? EMPTY) })
+    void window.officer?.entityDictionary?.()
+      ?.then((d) => { if (alive) setDict(d ?? EMPTY) })
+      ?.catch(() => { /* degrade gracefully: keep EMPTY */ })
     return () => { alive = false }
   }, [])
   return dict
