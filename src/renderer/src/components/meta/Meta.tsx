@@ -1,10 +1,10 @@
-import type { ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import type { RendererMetaMode } from '../../../../preload/index.d'
 import { Pane, Card } from '../panelui'
 import ModeSummary from './ModeSummary'
 import PlaybookLauncher from './PlaybookModal'
 import MetaIndexInspector from '../MetaIndexInspector'
-import { META_OVERVIEW } from './MetaNav'
+import { META_OVERVIEW, WIKI_REF } from './MetaNav'
 
 function ago(iso: string | null): string {
   if (!iso) return 'never'
@@ -25,14 +25,65 @@ export interface MetaProps {
   onRefresh: () => void
 }
 
+interface WikiStats {
+  total: number
+  byMode: Record<string, number>
+  lastIndexedAt: string | null
+}
+
+/** Wiki reference corpus view: holistic GW2-wiki coverage with a live fallback. */
+function WikiPanel(): ReactElement {
+  const [stats, setStats] = useState<WikiStats | null>(null)
+  useEffect(() => {
+    void window.officer.wikiIndexStats().then((s) => setStats(s as WikiStats))
+  }, [])
+  const cats = stats ? Object.entries(stats.byMode).sort((a, b) => b[1] - a[1]) : []
+  return (
+    <div className="settings meta-panel">
+      <Pane
+        no="W"
+        title="Wiki"
+        sub="The holistic GW2-wiki reference the assistant searches for game mechanics, legendary crafting, achievements, and masteries."
+      >
+        <div className="meta-pane-status">
+          <span className="meta-fresh">
+            {stats ? `${stats.total} chunks · ${ago(stats.lastIndexedAt)}` : 'loading…'}
+          </span>
+        </div>
+        <Card title="Indexed categories">
+          {cats.length === 0 ? (
+            <div className="panel-empty">No wiki reference indexed yet — the background ingest runs in the background.</div>
+          ) : (
+            <div className="meta-srcs">
+              {cats.map(([cat, count]) => (
+                <span key={cat} className="meta-srcchip ok">
+                  <span className="led" />
+                  {cat} · {count}
+                </span>
+              ))}
+            </div>
+          )}
+        </Card>
+        <Card title="Coverage">
+          <div className="meta-note">
+            Curated high-value pages (legendaries, masteries, mechanics, skills/traits/upgrades) are
+            pre-indexed for instant recall; anything not covered falls back to a live wiki lookup at
+            query time, so the long tail stays answerable.
+          </div>
+        </Card>
+      </Pane>
+    </div>
+  )
+}
+
 export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaProps): ReactElement {
   if (active === META_OVERVIEW) {
     return (
       <div className="settings meta-panel">
         <Pane
           no="00"
-          title="Meta"
-          sub="What AxiVale currently knows about the live meta per game mode. It refreshes automatically from the listed sources in the background and uses this to bias build and comp advice — nothing to edit."
+          title="Sources"
+          sub="The knowledge AxiVale draws on for recall — grouped as Meta (live build/comp meta per game mode), Wiki (holistic GW2-wiki reference), and General (long-form guides). It refreshes automatically in the background; nothing to edit."
         >
           {import.meta.env.DEV && (
             <Card title="Developer">
@@ -49,6 +100,8 @@ export default function Meta({ modes, active, busy, fetching, onRefresh }: MetaP
       </div>
     )
   }
+
+  if (active === WIKI_REF) return <WikiPanel />
 
   const m = modes.find((x) => x.id === active)
   if (!m) {

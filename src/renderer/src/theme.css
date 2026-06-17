@@ -467,6 +467,15 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .snav-item.on .no{color:var(--accent-b)}
 .snav-item .dot{margin-left:auto;font-size:7px;color:var(--green)}
 .snav-item .dot.off{color:var(--faint)}
+/* group sub-headers within the Sources rail (Meta / Wiki / General) */
+.snav-grp{font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent-b);padding:4px 10px;margin:12px 0 3px}
+.snav-grp:first-of-type{margin-top:4px}
+.snav-empty{padding:6px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint)}
+/* grouped source chips inside a mode's Sources card */
+.meta-srcgroup{margin-bottom:12px}
+.meta-srcgroup:last-child{margin-bottom:0}
+.meta-srcgroup-h{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px}
+.meta-note{font-size:12px;line-height:1.55;color:var(--ink-dim)}
 
 /* pane header */
 .spane{padding:22px 0;max-width:620px}

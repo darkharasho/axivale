@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import type { RendererMetaMode } from '../../../../preload/index.d'
 import Meta from './Meta'
-import { META_OVERVIEW } from './MetaNav'
+import { META_OVERVIEW, WIKI_REF } from './MetaNav'
 
 function mode(over: Partial<RendererMetaMode> = {}): RendererMetaMode {
   return {
@@ -32,15 +32,25 @@ beforeEach(() => {
     metaForceRefresh: vi.fn(),
     metaIndexStats: vi.fn().mockResolvedValue({ total: 0, byMode: {}, bySource: {}, lastIndexedAt: null }),
     metaIndexSample: vi.fn().mockResolvedValue([]),
-    metaIndexSearch: vi.fn().mockResolvedValue([])
+    metaIndexSearch: vi.fn().mockResolvedValue([]),
+    wikiIndexStats: vi
+      .fn()
+      .mockResolvedValue({ total: 42, byMode: { legendaries: 12, skills: 30 }, bySource: {}, lastIndexedAt: null })
   }
 })
 
 describe('Meta pane', () => {
   it('shows the overview intro when Overview is active', () => {
     render(<Meta modes={[mode()]} active={META_OVERVIEW} busy={{}} fetching={{}} onRefresh={noop} />)
-    expect(screen.getByText('Meta')).toBeTruthy()
-    expect(screen.getByText(/what AxiVale currently knows/i)).toBeTruthy()
+    expect(screen.getByText('Sources')).toBeTruthy()
+    expect(screen.getByText(/the knowledge AxiVale draws on for recall/i)).toBeTruthy()
+  })
+
+  it('renders the Wiki reference panel with its coverage note', async () => {
+    render(<Meta modes={[mode()]} active={WIKI_REF} busy={{}} fetching={{}} onRefresh={noop} />)
+    expect(screen.getByText('Wiki')).toBeTruthy()
+    expect(screen.getByText(/falls back to a live wiki lookup/i)).toBeTruthy()
+    expect(await screen.findByText(/legendaries · 12/)).toBeTruthy()
   })
 
   it('renders the selected mode with its summary and sources', () => {
