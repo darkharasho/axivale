@@ -23,7 +23,13 @@ const sketchBuild = z.object({
   role: sketchRole,
   count: z.number().optional().describe('How many of this build are in the comp (or per-squad average)'),
   weapons: z.string().optional().describe('Weapon set(s), e.g. "Axe/Shield · Staff"'),
-  note: z.string().optional().describe('One-line role/build note')
+  note: z
+    .string()
+    .optional()
+    .describe(
+      'One-line role/build note. Describe the build qualitatively (role, why it is picked); ' +
+        'do NOT include invented stats (e.g. "% popularity") or URLs a tool did not return.'
+    )
 })
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,7 +62,8 @@ export function buildCompCheckTools(): Array<SdkMcpToolDefinition<any>> {
       'comp_sketch',
       'Render a composition visually instead of as a markdown table. ALWAYS use this to present a comp — a proposed squad, a derived/meta comp, or one you are critiquing. ' +
         'Pass `builds` (one entry per distinct build, with spec name, visual role bucket, optional count, weapons, and a one-line note) and, when you have fixed slots, `subgroups` (each an array of {spec, role}) to draw the squad grid. ' +
-        'Roles are visual buckets: support | damage | utility. Spec names must be real GW2 profession/elite-spec names so the class icons resolve.',
+        'Roles are visual buckets: support | damage | utility. Spec names must be real GW2 profession/elite-spec names so the class icons resolve. ' +
+        'Notes must not contain fabricated stats (e.g. "% popularity") or guessed URLs — only what a tool actually returned.',
       {
         title: z.string().optional().describe('Heading, e.g. "WvW Zerg — 25"'),
         subtitle: z.string().optional().describe('Small heading detail, e.g. "5 parties · 12% support"'),
