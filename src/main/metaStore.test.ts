@@ -77,6 +77,75 @@ it('persists the playbook across reload', () => {
   expect(reloaded.playbook.principles).toMatch(/cleanse/i)
 })
 
+describe('MetaStore playbook principles migration', () => {
+  it('seeds nameless WvW principles (no source attribution) including melee-driven + Down Contribution rules', () => {
+    const store = new MetaStore(tmpFile())
+    const wvw = store.list().find((m) => m.mode === 'WvW')!
+    expect(wvw.playbook.principles).toMatch(/^### WvW comp principles\n/)
+    expect(wvw.playbook.principles).not.toMatch(/per .*comp-maker/i)
+    expect(wvw.playbook.principles).toMatch(/melee-driven/)
+    expect(wvw.playbook.principles).toContain('Down Contribution')
+    expect(wvw.playbook.principles).toMatch(/DPS is NOT the primary damage stat/)
+  })
+
+  it('strips a legacy source attribution from stored principles on load', () => {
+    const p = tmpFile()
+    writeFileSync(p, JSON.stringify({ modes: [{
+      id: 'a', mode: 'WvW',
+      sources: [{ label: 'MB', url: 'https://metabattle.com/wiki/WvW', group: 'meta', status: 'never', fetchedAt: null, error: null }],
+      notes: '',
+      playbook: { principles: '### WvW comp principles (per Veridian [rdux], top comp-maker)\n- At least 1 cleanse support per subgroup is required.\n- The meta is melee-driven: ...', blessed: true },
+      refreshedAt: null, updatedAt: ''
+    }] }))
+    const store = new MetaStore(p)
+    const wvw = store.list().find((m) => m.mode === 'WvW')!
+    expect(wvw.playbook.principles).toContain('### WvW comp principles\n')
+    expect(wvw.playbook.principles).not.toMatch(/veridian/i)
+  })
+
+  it('backfills newer baseline principles into older stored WvW principles', () => {
+    const p = tmpFile()
+    writeFileSync(p, JSON.stringify({ modes: [{
+      id: 'a', mode: 'WvW',
+      sources: [{ label: 'MB', url: 'https://metabattle.com/wiki/WvW', group: 'meta', status: 'never', fetchedAt: null, error: null }],
+      notes: '',
+      playbook: { principles: '### WvW comp principles\n- At least 1 cleanse support per subgroup is required.\n- The meta is iteration-heavy — treat any comp as a baseline to refine, not gospel.', blessed: true },
+      refreshedAt: null, updatedAt: ''
+    }] }))
+    const store = new MetaStore(p)
+    const principles = store.list().find((m) => m.mode === 'WvW')!.playbook.principles
+    expect(principles).toMatch(/melee-driven/)
+    expect(principles).toContain('Down Contribution')
+    // both inserted before the iteration-heavy closer, not after it
+    expect(principles.indexOf('melee-driven')).toBeLessThan(principles.indexOf('iteration-heavy'))
+    expect(principles.indexOf('Down Contribution')).toBeLessThan(principles.indexOf('iteration-heavy'))
+  })
+
+  it('backfills only the missing principle when an older one is already present', () => {
+    const p = tmpFile()
+    writeFileSync(p, JSON.stringify({ modes: [{
+      id: 'a', mode: 'WvW',
+      sources: [{ label: 'MB', url: 'https://metabattle.com/wiki/WvW', group: 'meta', status: 'never', fetchedAt: null, error: null }],
+      notes: '',
+      playbook: { principles: '### WvW comp principles\n- At least 1 cleanse support per subgroup is required.\n- The meta is melee-driven: spike comes from the melee train. Builds with a real ranged spike are rare.\n- The meta is iteration-heavy — treat any comp as a baseline to refine, not gospel.', blessed: true },
+      refreshedAt: null, updatedAt: ''
+    }] }))
+    const principles = new MetaStore(p).list().find((m) => m.mode === 'WvW')!.playbook.principles
+    expect(principles.match(/melee-driven/g)!.length).toBe(1) // not duplicated
+    expect(principles).toContain('Down Contribution') // the one it lacked
+  })
+
+  it('does not duplicate baseline principles if already present (idempotent)', () => {
+    const p = tmpFile()
+    const a = new MetaStore(p)
+    a.flush()
+    const b = new MetaStore(p)
+    const principles = b.list().find((m) => m.mode === 'WvW')!.playbook.principles
+    expect(principles.match(/melee-driven/g)!.length).toBe(1)
+    expect(principles.match(/Down Contribution/g)!.length).toBe(1)
+  })
+})
+
 let dir: string
 let path: string
 beforeEach(() => {
