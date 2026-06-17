@@ -379,7 +379,19 @@ app.whenReady().then(async () => {
     const acctMembers: ResolveMemberLite[] = anns
       .filter((a) => a.memberId.startsWith('acct:'))
       .map((a) => ({ member_id: a.memberId, accounts: [{ account_name: a.memberId.slice(5) }] }))
-    const members = [...mergeManualLinks(raw, rosterLinks.list()), ...acctMembers]
+    const displayById = new Map<string, string>()
+    try {
+      const ov = (await buildAxitools().discordOverview(gid, true)) as {
+        members?: Array<{ id: string; display_name?: string }>
+      }
+      for (const d of ov.members ?? []) if (d.display_name) displayById.set(d.id, d.display_name)
+    } catch {
+      /* best-effort — fall back to existing display_name/account/annotations */
+    }
+    const members = [...mergeManualLinks(raw, rosterLinks.list()), ...acctMembers].map((m) => ({
+      ...m,
+      display_name: displayById.get(m.member_id) ?? m.display_name
+    }))
     const ranked = rankIdentities(name, members, anns, 2)
     if (ranked.length === 0) return null
     if (ranked.length > 1 && ranked[1].score >= ranked[0].score) return null // ambiguous tie
