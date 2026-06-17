@@ -220,6 +220,9 @@ export class BrowserWindowFetcher implements MetaFetcher {
     if (cfg.kind === 'static') return fetchSnowcrowsStatic(url, { crawlDepth: cfg.crawlDepth })
 
     const selector = cfg.selector ?? 'body'
+    // The landing page (level 0) may hold index/tier-list content outside the
+    // per-build node — capture it with landingSelector when configured.
+    const landingSelector = cfg.landingSelector ?? selector
     const depth = cfg.linkSelector ? (cfg.crawlDepth ?? 1) : 0
     try {
       const pages: FetchedPage[] = []
@@ -238,7 +241,7 @@ export class BrowserWindowFetcher implements MetaFetcher {
 
         let extracted: { title: string; text: string; date?: string } | null
         try {
-          extracted = await this.loadChecked(pageUrl, selector)
+          extracted = await this.loadChecked(pageUrl, level === 0 ? landingSelector : selector)
         } catch {
           loadErrors++
           continue // skip a bad page; keep walking
