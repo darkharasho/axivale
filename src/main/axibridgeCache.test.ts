@@ -60,4 +60,15 @@ describe('AxibridgeCache', () => {
     expect(stats.cachedReports).toBe(1)
     expect(stats.lastIndexFetch).toBe(now)
   })
+  it('readMetaStale returns body + fetchedAt past TTL, null when absent', () => {
+    const cache = makeCache()
+    cache.putMeta(repo, 'index', '[{"id":"run-1"}]')
+    const writtenAt = now
+    now += 10 * 60_000 // advance well past the 5-min TTL
+    expect(cache.readMeta(repo, 'index')).toBeNull() // TTL'd out
+    const stale = cache.readMetaStale(repo, 'index')
+    expect(stale?.body).toBe('[{"id":"run-1"}]')
+    expect(stale?.fetchedAt).toBe(writtenAt)
+    expect(cache.readMetaStale(repo, 'rollup')).toBeNull() // never written
+  })
 })
