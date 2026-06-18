@@ -137,6 +137,15 @@ export class AxibridgeCache {
     return this.read(repo, 'meta', name)
   }
 
+  /** Read index/rollup ignoring the TTL — a degraded last resort when the live
+   *  fetch fails. Does not bump lastAccess (a stale read is not a real hit). */
+  readMetaStale(repo: RepoRef, name: 'index' | 'rollup'): { body: string; fetchedAt: number } | null {
+    const path = this.pathFor(repo, 'meta', name)
+    if (!existsSync(path)) return null
+    const entry = this.readLedger().entries[this.key(repo, 'meta', name)]
+    return { body: readFileSync(path, 'utf8'), fetchedAt: entry?.fetchedAt ?? 0 }
+  }
+
   /** LRU eviction over reports only — extracted summaries always survive. */
   private enforceCap(): void {
     const ledger = this.readLedger()

@@ -113,6 +113,11 @@ describe('Gw2Client', () => {
     await expect(client.guildMembers('G-1')).rejects.toThrow(/rate limit/i)
   })
 
+  it('maps a fetch timeout to a clear Gw2Error', async () => {
+    mockFetch.mockRejectedValueOnce(new DOMException('aborted', 'TimeoutError'))
+    await expect(client.guildMembers('G-1')).rejects.toThrow(/did not respond in time/)
+  })
+
   describe('resolveGuildId', () => {
     it('passes a GUID through without calling the API', async () => {
       const guid = '23b352fb-1234-5678-abcd-ef0123456789'

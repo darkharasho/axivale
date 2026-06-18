@@ -1,6 +1,7 @@
 import type { RepoRef } from './axibridgeRepos'
 import { repoKey } from './axibridgeRepos'
 import { parseRollupSourcesFile, type RollupSourcesFile } from '@axiapps/bridge-metrics'
+import { resilientFetch } from './net/resilientFetch'
 
 export type AxibridgeErrorCode = 'not-found' | 'rate-limited' | 'network' | 'schema'
 
@@ -73,7 +74,10 @@ export class AxibridgeClient {
       try {
         // Pages URLs never get the PAT — it is only meaningful to GitHub itself.
         const isPages = this.isPagesUrl(repo, url)
-        resp = await fetch(url, { headers: isPages ? { 'User-Agent': 'AxiVale' } : this.authHeaders() })
+        resp = await resilientFetch(url, {
+          headers: isPages ? { 'User-Agent': 'AxiVale' } : this.authHeaders(),
+          timeoutMs: 10_000
+        })
       } catch {
         lastNetworkError = url
         continue
@@ -174,7 +178,7 @@ export async function downloadReport(
         const headers = client.isPagesUrl(repo, url)
           ? { 'User-Agent': 'AxiVale' }
           : client.authHeaders()
-        const resp = await fetch(url, { headers })
+        const resp = await resilientFetch(url, { headers, timeoutMs: 30_000 })
         if (resp.status === 404) continue
         if (resp.status === 403 || resp.status === 429) {
           throw new AxibridgeError(

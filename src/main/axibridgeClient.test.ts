@@ -113,6 +113,14 @@ describe('AxibridgeClient', () => {
     })
   })
 
+  it('surfaces a connection failure as a network AxibridgeError', async () => {
+    const deadClient = new AxibridgeClient(() => null, {
+      rawBase: (r, branch) => `http://127.0.0.1:1/raw/${r.owner}/${r.repo}/${branch}`,
+      pagesBase: (r) => `http://127.0.0.1:1/pages/${r.owner}/${r.repo}`
+    })
+    await expect(deadClient.fetchIndex(repo)).rejects.toMatchObject({ code: 'network' })
+  })
+
   it('does NOT send Authorization to the Pages URL but DOES send it to raw', async () => {
     // raw rollup.json returns 404, so fetchRollup falls through to the Pages URL.
     // We capture per-path headers to verify PAT isolation.

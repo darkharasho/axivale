@@ -1,3 +1,5 @@
+import { resilientFetch, FetchTimeoutError } from './net/resilientFetch'
+
 export class AxitoolsError extends Error {}
 
 export interface DiscordGuild { id: string; name: string }
@@ -30,18 +32,17 @@ export class AxitoolsClient {
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     let resp: Response
     try {
-      resp = await fetch(`${this.baseUrl}${path}`, {
+      resp = await resilientFetch(`${this.baseUrl}${path}`, {
         method,
         headers: {
           Authorization: `Bearer ${this.token}`,
           ...(body !== undefined ? { 'content-type': 'application/json' } : {})
         },
         body: body !== undefined ? JSON.stringify(body) : undefined,
-        // Without a deadline an unreachable/hung host wedges the status check.
-        signal: AbortSignal.timeout(8000)
+        timeoutMs: 8000
       })
     } catch (err) {
-      if (err instanceof Error && err.name === 'TimeoutError') {
+      if (err instanceof FetchTimeoutError) {
         throw new AxitoolsError('The AxiTools bot did not respond in time — is it running?')
       }
       throw new AxitoolsError(

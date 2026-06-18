@@ -1,3 +1,5 @@
+import { resilientFetch, FetchTimeoutError } from './net/resilientFetch'
+
 const BASE = 'https://api.guildwars2.com/v2'
 const REQUIRED_PERMISSIONS = ['account', 'guilds'] as const
 
@@ -37,10 +39,14 @@ export class Gw2Client {
   private async get<T>(path: string): Promise<T> {
     let resp: Response
     try {
-      resp = await fetch(`${BASE}${path}`, {
-        headers: { Authorization: `Bearer ${this.apiKey}` }
+      resp = await resilientFetch(`${BASE}${path}`, {
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+        timeoutMs: 10_000
       })
-    } catch {
+    } catch (err) {
+      if (err instanceof FetchTimeoutError) {
+        throw new Gw2Error('The GW2 API did not respond in time — try again in a moment.')
+      }
       throw new Gw2Error('Could not reach the GW2 API — check your network connection.')
     }
     if (resp.status === 429) {

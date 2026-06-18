@@ -48,13 +48,24 @@ export class AxibridgeService {
     return repos
   }
 
-  /** index.json per repo, cache-first (5 min TTL). Errors isolated per repo. */
-  private async indexFor(repo: RepoRef): Promise<ReportIndexEntry[]> {
+  /** index.json per repo, cache-first (5 min TTL). On live failure, falls back to
+   *  the past-TTL copy tagged stale. Errors isolated per repo by callers. */
+  private async indexFor(
+    repo: RepoRef
+  ): Promise<{ entries: ReportIndexEntry[]; stale: boolean; fetchedAt: number | null }> {
     const cached = this.deps.cache.readMeta(repo, 'index')
-    if (cached) return JSON.parse(cached) as ReportIndexEntry[]
-    const entries = await this.deps.client.fetchIndex(repo)
-    this.deps.cache.putMeta(repo, 'index', JSON.stringify(entries))
-    return entries
+    if (cached) return { entries: JSON.parse(cached) as ReportIndexEntry[], stale: false, fetchedAt: null }
+    try {
+      const entries = await this.deps.client.fetchIndex(repo)
+      this.deps.cache.putMeta(repo, 'index', JSON.stringify(entries))
+      return { entries, stale: false, fetchedAt: null }
+    } catch (err) {
+      const stale = this.deps.cache.readMetaStale(repo, 'index')
+      if (stale) {
+        return { entries: JSON.parse(stale.body) as ReportIndexEntry[], stale: true, fetchedAt: stale.fetchedAt }
+      }
+      throw err
+    }
   }
 
   async reposStatus(): Promise<{
@@ -64,7 +75,7 @@ export class AxibridgeService {
     for (const repo of this.deps.repos()) {
       const stats = this.deps.cache.repoStats(repo)
       try {
-        const entries = await this.indexFor(repo)
+        const { entries } = await this.indexFor(repo)
         const dates = entries.map((e) => e.dateStart).filter((d): d is string => !!d).sort()
         out.push({
           repo: repoKey(repo), runs: entries.length,
@@ -82,13 +93,18 @@ export class AxibridgeService {
     return { repos: out }
   }
 
-  async runsList(filter: DateRange & { repo?: string }): Promise<{ runs: RunListEntry[]; errors: string[] }> {
+  async runsList(
+    filter: DateRange & { repo?: string }
+  ): Promise<{ runs: RunListEntry[]; errors: string[]; staleRepos: string[] }> {
     const repos = this.requireRepos().filter((r) => !filter.repo || repoKey(r) === filter.repo)
     const runs: RunListEntry[] = []
     const errors: string[] = []
+    const staleRepos: string[] = []
     for (const repo of repos) {
       try {
-        for (const entry of await this.indexFor(repo)) {
+        const { entries, stale } = await this.indexFor(repo)
+        if (stale) staleRepos.push(repoKey(repo))
+        for (const entry of entries) {
           if (inRange(entry, filter)) runs.push({ ...entry, repo: repoKey(repo) })
         }
       } catch (err) {
@@ -102,7 +118,7 @@ export class AxibridgeService {
       if (da !== db) return db.localeCompare(da)
       return String(b.id ?? '').localeCompare(String(a.id ?? ''))
     })
-    return { runs, errors }
+    return { runs, errors, staleRepos }
   }
 
   /** Download any uncached reports (with progress), then summarize via the worker. */
@@ -151,29 +167,43 @@ export class AxibridgeService {
   }
 
   /** Rollup-backed: published rollup.json when present, else computed locally. */
-  private async rollupFor(repo: RepoRef): Promise<{ rollup: RollupData; source: 'published' | 'computed-locally' }> {
+  private async rollupFor(
+    repo: RepoRef
+  ): Promise<{ rollup: RollupData; source: 'published' | 'computed-locally'; stale: boolean; fetchedAt: number | null }> {
     const cached = this.deps.cache.readMeta(repo, 'rollup')
-    if (cached) return JSON.parse(cached) as { rollup: RollupData; source: 'published' | 'computed-locally' }
-    const published = await this.deps.client.fetchRollup(repo)
-    let result: { rollup: RollupData; source: 'published' | 'computed-locally' }
-    if (published) {
-      result = { rollup: published.rollup, source: 'published' }
-    } else {
-      // Older repo without rollup.json — build it from full reports via bridge-metrics.
-      const entries = await this.indexFor(repo)
-      const sources: RollupReportPayload[] = []
-      for (const entry of entries) {
-        let body = this.deps.cache.readReport(repo, entry.id)
-        if (!body) {
-          body = JSON.stringify(await this.deps.client.fetchReport(repo, entry.id))
-          this.deps.cache.putReport(repo, entry.id, body)
-        }
-        sources.push(extractRollupSource(JSON.parse(body) as RollupReportPayload))
-      }
-      result = { rollup: buildRollupData(sources), source: 'computed-locally' }
+    if (cached) {
+      const parsed = JSON.parse(cached) as { rollup: RollupData; source: 'published' | 'computed-locally' }
+      return { ...parsed, stale: false, fetchedAt: null }
     }
-    this.deps.cache.putMeta(repo, 'rollup', JSON.stringify(result))
-    return result
+    try {
+      const published = await this.deps.client.fetchRollup(repo)
+      let result: { rollup: RollupData; source: 'published' | 'computed-locally' }
+      if (published) {
+        result = { rollup: published.rollup, source: 'published' }
+      } else {
+        // Older repo without rollup.json — build it from full reports via bridge-metrics.
+        const { entries } = await this.indexFor(repo)
+        const sources: RollupReportPayload[] = []
+        for (const entry of entries) {
+          let body = this.deps.cache.readReport(repo, entry.id)
+          if (!body) {
+            body = JSON.stringify(await this.deps.client.fetchReport(repo, entry.id))
+            this.deps.cache.putReport(repo, entry.id, body)
+          }
+          sources.push(extractRollupSource(JSON.parse(body) as RollupReportPayload))
+        }
+        result = { rollup: buildRollupData(sources), source: 'computed-locally' }
+      }
+      this.deps.cache.putMeta(repo, 'rollup', JSON.stringify(result))
+      return { ...result, stale: false, fetchedAt: null }
+    } catch (err) {
+      const stale = this.deps.cache.readMetaStale(repo, 'rollup')
+      if (stale) {
+        const parsed = JSON.parse(stale.body) as { rollup: RollupData; source: 'published' | 'computed-locally' }
+        return { ...parsed, stale: true, fetchedAt: stale.fetchedAt }
+      }
+      throw err
+    }
   }
 
   async attendance(args: DateRange) {

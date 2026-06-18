@@ -149,4 +149,10 @@ describe('AxitoolsClient', () => {
     await expect(client.listGuilds()).rejects.toThrow(AxitoolsError)
     await expect(client.listGuilds()).rejects.toThrow(/AxiTools bot.*reachable/i)
   })
+
+  it('maps a fetch timeout to the bot-not-responding message', async () => {
+    mockFetch.mockRejectedValueOnce(new DOMException('aborted', 'TimeoutError'))
+    const client = new AxitoolsClient('http://127.0.0.1:9', 'TOK')
+    await expect(client.listGuilds()).rejects.toThrow(/did not respond in time/)
+  })
 })
