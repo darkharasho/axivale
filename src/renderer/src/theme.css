@@ -97,6 +97,8 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .prose p{margin-bottom:10px}
 .prose p:last-child{margin-bottom:0}
 .prose > p:first-child::first-letter{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;float:left;line-height:.82;padding:4px 8px 0 0;color:var(--accent-b)}
+/* short replies: no drop-cap (it overhangs a single line); keep body inline */
+.prose.nocap > p:first-child::first-letter{font:inherit;float:none;line-height:inherit;padding:0;color:inherit}
 /* markdown elements, set in gazette style */
 .prose strong{font-weight:600;color:var(--ink)}
 .prose h1,.prose h2,.prose h3,.prose h4{font-family:'Playfair Display',serif;font-weight:700;line-height:1.3;margin:14px 0 6px;text-align:left}

@@ -93,6 +93,11 @@ export default function Article({
   // invent these — see normalizeEntityMarkers).
   const { headline, rest: rawRest } = splitHeadline(normalizeEntityMarkers(turn.agentText))
   const rest = stripRawJson(rawRest)
+  // The drop-cap floats ~2 lines tall; on a one-line reply it overhangs the
+  // single short line (and shoves the endmark down beside it). Only enable it
+  // when the body is long enough to wrap text beside the cap, or spans
+  // multiple blocks/paragraphs that flow under it.
+  const dropCap = rest.replace(/\s+/g, ' ').trim().length > 180 || /\n\s*\n/.test(rest)
   const thinking = !turn.done && turn.agentText.trim() === ''
   const streaming = !turn.done && turn.agentText.trim() !== ''
   const articleRef = useRef<HTMLDivElement>(null)
@@ -193,7 +198,7 @@ export default function Article({
               By <b>AxiVale</b> · filed {turn.filedAt} · {turn.tools.length} action
               {turn.tools.length === 1 ? '' : 's'} taken
             </div>
-            <div className="prose">
+            <div className={dropCap ? 'prose' : 'prose nocap'}>
               {/* Inline figures (charts, build/comp cards) render ONLY where the
                   model writes {{figure}}, in order. Unmarked tool displays are
                   not dumped here — they live in the Actions rail. Tool data
