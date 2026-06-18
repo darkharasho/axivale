@@ -138,6 +138,8 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     setActiveKey: vi.fn().mockResolvedValue(undefined),
     axitools: vi.fn().mockResolvedValue(undefined),
     localStatus: vi.fn().mockResolvedValue({ ok: false }),
+    codexAuthStatus: vi.fn().mockResolvedValue({ signedIn: false }),
+    antigravityAuthStatus: vi.fn().mockResolvedValue({ signedIn: false }),
     providerStatus: vi.fn().mockResolvedValue({ provider: 'claude', ready: false, note: null }),
     appVersion: vi.fn().mockResolvedValue('0.0.0'),
     checkUpdates: vi.fn().mockResolvedValue(undefined),

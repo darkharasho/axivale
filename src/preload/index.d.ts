@@ -368,8 +368,10 @@ export interface OfficerApi {
   /** Whitelisted AxitoolsClient call on the connected guild (see PANEL_METHODS in main). */
   axitools(method: string, ...args: unknown[]): Promise<unknown>
   localStatus(): Promise<{ ok: boolean; models?: string[]; error?: string }>
+  codexAuthStatus(): Promise<{ signedIn: boolean }>
+  antigravityAuthStatus(): Promise<{ signedIn: boolean }>
   providerStatus(): Promise<{
-    provider: 'claude' | 'gemini' | 'openai' | 'local'
+    provider: 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
     ready: boolean
     note: string | null
   }>

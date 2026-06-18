@@ -9,15 +9,8 @@ import Dispatches from './settings/Dispatches'
 import Notifications from './settings/Notifications'
 import About from './settings/About'
 
-type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
+type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
 type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'
-
-const PROVIDERS: Array<{ value: ProviderName; label: string }> = [
-  { value: 'claude', label: 'Claude' },
-  { value: 'gemini', label: 'Gemini' },
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'local', label: 'Local' }
-]
 
 // Verified against provider docs at implementation time (June 2026).
 const GEMINI_MODELS = [
@@ -30,10 +23,22 @@ const OPENAI_MODELS = [
   { value: 'gpt-5.4', label: 'GPT-5.4' },
   { value: 'gpt-5.4-mini', label: 'GPT-5.4 mini' }
 ]
+const CODEX_MODELS = [
+  { value: '', label: 'Default' },
+  { value: 'gpt-5.4-codex', label: 'GPT-5.4 Codex' },
+  { value: 'gpt-5.4', label: 'GPT-5.4' }
+]
+const ANTIGRAVITY_MODELS = [
+  { value: '', label: 'Default' },
+  { value: 'gemini-3-flash', label: 'Gemini 3 Flash' },
+  { value: 'gemini-3-pro', label: 'Gemini 3 Pro' }
+]
 const MODEL_SETTING: Record<ProviderName, string> = {
   claude: 'model',
   gemini: 'geminiModel',
   openai: 'openaiModel',
+  codex: 'codexModel',
+  antigravity: 'antigravityModel',
   local: 'localModel'
 }
 
@@ -76,6 +81,10 @@ export default function Settings({
   const [provider, setProvider] = useState<ProviderName>('claude')
   const [geminiModel, setGeminiModel] = useState('')
   const [openaiModel, setOpenaiModel] = useState('')
+  const [codexModel, setCodexModel] = useState('')
+  const [codexSignedIn, setCodexSignedIn] = useState(false)
+  const [antigravityModel, setAntigravityModel] = useState('')
+  const [antigravitySignedIn, setAntigravitySignedIn] = useState(false)
   const [customModel, setCustomModel] = useState('')
 
   // Gemini / OpenAI keyrings
@@ -306,6 +315,10 @@ export default function Settings({
       setProvider(((await window.officer.getSetting('provider')) as ProviderName) ?? 'claude')
       setGeminiModel((await window.officer.getSetting('geminiModel')) ?? '')
       setOpenaiModel((await window.officer.getSetting('openaiModel')) ?? '')
+      setCodexModel((await window.officer.getSetting('codexModel')) ?? '')
+      setCodexSignedIn((await window.officer.codexAuthStatus()).signedIn)
+      setAntigravityModel((await window.officer.getSetting('antigravityModel')) ?? '')
+      setAntigravitySignedIn((await window.officer.antigravityAuthStatus()).signedIn)
       setLocalEndpoint((await window.officer.getSetting('localEndpoint')) ?? '')
       setLocalModel((await window.officer.getSetting('localModel')) ?? '')
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
@@ -440,6 +453,8 @@ export default function Settings({
   async function pickProviderModel(p: ProviderName, value: string): Promise<void> {
     if (p === 'gemini') setGeminiModel(value)
     else if (p === 'openai') setOpenaiModel(value)
+    else if (p === 'codex') setCodexModel(value)
+    else if (p === 'antigravity') setAntigravityModel(value)
     else if (p === 'local') setLocalModel(value)
     else setModel(value)
     await window.officer.setSetting(MODEL_SETTING[p], value)
@@ -611,6 +626,12 @@ export default function Settings({
           onRemoveLlmKey={removeLlmKey}
           geminiModels={GEMINI_MODELS}
           openaiModels={OPENAI_MODELS}
+          codexModel={codexModel}
+          codexModels={CODEX_MODELS}
+          codexSignedIn={codexSignedIn}
+          antigravityModel={antigravityModel}
+          antigravityModels={ANTIGRAVITY_MODELS}
+          antigravitySignedIn={antigravitySignedIn}
           localEndpoint={localEndpoint}
           localModel={localModel}
           localModels={localModels}

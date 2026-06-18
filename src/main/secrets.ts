@@ -23,6 +23,8 @@ export type SettingKey =
   | 'localEndpoint'
   | 'geminiModel'
   | 'openaiModel'
+  | 'codexModel'
+  | 'antigravityModel'
   | 'localModel'
   | 'geminiActiveKey'
   | 'openaiActiveKey'

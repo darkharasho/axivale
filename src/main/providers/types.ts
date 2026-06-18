@@ -58,7 +58,7 @@ export type AgentEvent =
 
 export const MCP_PREFIX = 'mcp__officer__'
 
-export type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
+export type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
 
 /**
  * One tool invocation within a turn. Duplicated from
@@ -94,6 +94,10 @@ export interface Turn {
 export interface SessionState {
   /** Claude resumes via this id. */
   claudeSessionId?: string
+  /** Codex resumes via this thread id. */
+  codexThreadId?: string
+  /** Gemini CLI (Antigravity) resumes via this session UUID + stable workspace. */
+  geminiCliSessionId?: string
   /** OpenAI/Gemini replay this message history. */
   history?: unknown[]
 }

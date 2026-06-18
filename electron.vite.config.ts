@@ -41,7 +41,10 @@ export default defineConfig({
         // worker `.js` loads as ESM under worker_threads.
         input: {
           index: 'src/main/index.ts',
-          axibridgeWorker: 'src/main/axibridgeWorker.ts'
+          axibridgeWorker: 'src/main/axibridgeWorker.ts',
+          // Standalone stdio MCP server Codex spawns; must compile to its own
+          // sibling file so CodexAdapter can point Codex at it on disk.
+          codexOfficerServer: 'src/main/providers/codexOfficerServer.ts'
         },
         output: { entryFileNames: '[name].js' }
       }
