@@ -11,6 +11,8 @@
     "build:viewer": "vite build --config vite.viewer.config.ts",
     "start": "electron-vite preview",
     "test": "vitest run",
+    "eval": "EVAL_LIVE=1 vitest run src/main/meta/*.eval.test.ts",
+    "eval:record": "EVAL_RECORD=1 vitest run src/main/meta/*.eval.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "icons": "node scripts/gen-class-icons.cjs",
     "icons:svg": "node scripts/gen-class-icons-svg.cjs",
