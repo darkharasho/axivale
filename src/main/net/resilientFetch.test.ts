@@ -49,4 +49,14 @@ describe('resilientFetch', () => {
     await expect(resilientFetch('https://x/y', { retries: 2, sleep: noSleep })).rejects.toThrow('network')
     expect(mockFetch).toHaveBeenCalledTimes(3)
   })
+
+  it('does not retry when the caller-supplied signal is aborted', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    mockFetch.mockRejectedValueOnce(new DOMException('aborted', 'AbortError'))
+    await expect(
+      resilientFetch('https://x/y', { signal: controller.signal, retries: 3, sleep: noSleep })
+    ).rejects.toThrow()
+    expect(mockFetch).toHaveBeenCalledTimes(1) // caller-abort short-circuits retries
+  })
 })
