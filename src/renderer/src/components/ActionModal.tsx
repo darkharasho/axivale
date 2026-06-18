@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactElement } from 'react'
 import { X } from 'lucide-react'
 import type { ToolCall } from '../state'
-import { couponLabel, humanValue, prettyKey, renderCouponBody } from './ToolCoupon'
+import { couponLabel, humanValue, linkify, prettyKey, renderCouponBody } from './ToolCoupon'
 
 /** Split a coupon label ("GW2 / BUILD FROM URL") into an eyebrow section and a
  *  headline. Long words are title-cased; short all-caps tokens (GW2, API, WVW,
@@ -72,7 +72,7 @@ export default function ActionModal({
               {inputs.map(([k, v]) => (
                 <div className="kv" key={k}>
                   <span className="k">{prettyKey(k)}</span>
-                  <span className="v">{humanValue(v)}</span>
+                  <span className="v">{linkify(humanValue(v))}</span>
                 </div>
               ))}
             </div>

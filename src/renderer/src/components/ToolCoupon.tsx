@@ -1,5 +1,5 @@
 import { Check, X } from 'lucide-react'
-import { useState, type MouseEvent, type ReactElement } from 'react'
+import { useState, type MouseEvent, type ReactElement, type ReactNode } from 'react'
 import type { ToolCall } from '../state'
 import RichDisplay from './rich/RichDisplay'
 
@@ -93,8 +93,23 @@ function cell(v: unknown): string {
   return String(v)
 }
 
-function isUrl(s: string): boolean {
-  return /^https?:\/\/\S+$/i.test(s.trim())
+const URL_RE = /(https?:\/\/[^\s<>"')\]]+)/g
+
+/** Render a string with any embedded URLs as real links that open in the OS
+ *  browser (routed via the main process's window-open handler). */
+export function linkify(text: string): ReactNode {
+  if (!text) return text
+  const parts = text.split(URL_RE)
+  if (parts.length === 1) return text
+  return parts.map((part, i) =>
+    /^https?:\/\//i.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer">
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  )
 }
 
 /** Scannable data table for an array-of-objects tool result: each cell stays on
@@ -146,13 +161,7 @@ function DataTable({
                       onMouseMove={move}
                       onMouseLeave={() => setTip(null)}
                     >
-                      {isUrl(val) ? (
-                        <a href={val} target="_blank" rel="noopener noreferrer">
-                          {val}
-                        </a>
-                      ) : (
-                        val
-                      )}
+                      {linkify(val)}
                     </td>
                   )
                 })}
@@ -202,7 +211,7 @@ export function renderBody(tool: ToolCall): ReactElement {
         {entries.map(([k, v]) => (
           <div className="kv" key={k}>
             <span className="k">{prettyKey(k)}</span>
-            <span className="v">{humanValue(v)}</span>
+            <span className="v">{linkify(humanValue(v))}</span>
           </div>
         ))}
       </div>
@@ -210,12 +219,14 @@ export function renderBody(tool: ToolCall): ReactElement {
   }
   // Array of scalars → reads as a list of names/ids.
   if (Array.isArray(parsed)) {
-    return <div className="copy">{parsed.length === 0 ? 'Nothing on file.' : humanValue(parsed)}</div>
+    return (
+      <div className="copy">{parsed.length === 0 ? 'Nothing on file.' : linkify(humanValue(parsed))}</div>
+    )
   }
   if (parsed !== undefined) {
-    return <div className="copy">{String(parsed)}</div>
+    return <div className="copy">{linkify(String(parsed))}</div>
   }
-  return <div className="copy">{text}</div>
+  return <div className="copy">{linkify(text)}</div>
 }
 
 export function renderCouponBody(tool: ToolCall): ReactElement {
