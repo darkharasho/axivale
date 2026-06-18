@@ -44,7 +44,7 @@ import { staleSinceIso, relativeAge, foldStale, emptyStaleAgg } from './axibridg
 
 describe('staleSinceIso', () => {
   it('converts epoch ms to ISO, guards null and <= 0', () => {
-    expect(staleSinceIso(1_750_000_000_000)).toBe('2025-06-15T16:26:40.000Z')
+    expect(staleSinceIso(1_750_000_000_000)).toBe('2025-06-15T15:06:40.000Z')
     expect(staleSinceIso(null)).toBeNull()
     expect(staleSinceIso(0)).toBeNull()
     expect(staleSinceIso(-5)).toBeNull()
@@ -185,7 +185,7 @@ git commit -m "feat(axibridge): add stale-age helpers (ISO + relative + fold)"
 
     const out = await svc.attendance({})
     expect(out.stale).toBe(true)
-    expect(out.staleSince).toBe('2025-06-15T16:26:40.000Z')
+    expect(out.staleSince).toBe('2025-06-15T15:06:40.000Z')
   })
 
   it('runsList reports stale + staleSince from a stale index', async () => {
@@ -200,7 +200,7 @@ git commit -m "feat(axibridge): add stale-age helpers (ISO + relative + fold)"
 
     const out = await svc.runsList({})
     expect(out.stale).toBe(true)
-    expect(out.staleSince).toBe('2025-06-15T16:26:40.000Z')
+    expect(out.staleSince).toBe('2025-06-15T15:06:40.000Z')
     expect(out.staleRepos).toEqual(['o/r'])
   })
 ```
@@ -497,14 +497,14 @@ git commit -m "feat(rich): stale badge on table/chart cards"
   it('attendance surfaces stale in value and display when the service reports stale', async () => {
     fakeService.attendance.mockResolvedValueOnce({
       attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }],
-      rollupSource: 'published', range: {}, stale: true, staleSince: '2025-06-15T16:26:40.000Z'
+      rollupSource: 'published', range: {}, stale: true, staleSince: '2025-06-15T15:06:40.000Z'
     })
     const res = (await byName('axibridge_attendance').handler({}, {})) as never as {
       content: Array<{ text: string }>
       display?: { kind: string; data: { stale?: boolean; staleAge?: string } }
     }
     expect(parse(res).stale).toBe(true)
-    expect(parse(res).staleSince).toBe('2025-06-15T16:26:40.000Z')
+    expect(parse(res).staleSince).toBe('2025-06-15T15:06:40.000Z')
     expect(res.display?.data.stale).toBe(true)
     expect(typeof res.display?.data.staleAge).toBe('string') // e.g. "Nd ago"
   })
@@ -519,7 +519,7 @@ git commit -m "feat(rich): stale badge on table/chart cards"
 
   it('runs_list passes stale + staleRepos into value', async () => {
     fakeService.runsList.mockResolvedValueOnce({
-      runs: [], errors: [], staleRepos: ['o/a'], stale: true, staleSince: '2025-06-15T16:26:40.000Z'
+      runs: [], errors: [], staleRepos: ['o/a'], stale: true, staleSince: '2025-06-15T15:06:40.000Z'
     })
     const res = (await byName('axibridge_runs_list').handler({}, {})) as never as { content: Array<{ text: string }> }
     expect(parse(res).stale).toBe(true)
