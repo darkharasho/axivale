@@ -1,5 +1,5 @@
 import { Check, X } from 'lucide-react'
-import type { ReactElement } from 'react'
+import { useState, type MouseEvent, type ReactElement } from 'react'
 import type { ToolCall } from '../state'
 import RichDisplay from './rich/RichDisplay'
 
@@ -93,6 +93,84 @@ function cell(v: unknown): string {
   return String(v)
 }
 
+function isUrl(s: string): boolean {
+  return /^https?:\/\/\S+$/i.test(s.trim())
+}
+
+/** Scannable data table for an array-of-objects tool result: each cell stays on
+ *  one line and ellipsizes; a custom hover tip reveals the full contents of a
+ *  truncated cell, and URL cells render as real (externally-opening) links. */
+function DataTable({
+  cols,
+  rows,
+  extra
+}: {
+  cols: string[]
+  rows: Record<string, unknown>[]
+  extra: number
+}): ReactElement {
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null)
+
+  // Only tip when the cell is actually clipped (scrollWidth > clientWidth).
+  function show(e: MouseEvent<HTMLTableCellElement>, text: string): void {
+    const el = e.currentTarget
+    setTip(el.scrollWidth > el.clientWidth ? { x: e.clientX, y: e.clientY, text } : null)
+  }
+  function move(e: MouseEvent<HTMLTableCellElement>): void {
+    setTip((t) => (t ? { ...t, x: e.clientX, y: e.clientY } : null))
+  }
+
+  const tipLeft = tip ? Math.min(tip.x + 14, window.innerWidth - 540) : 0
+
+  return (
+    <>
+      <div className="dtable" onMouseLeave={() => setTip(null)}>
+        <table>
+          <thead>
+            <tr>
+              {cols.map((k) => (
+                <th key={k}>{k}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={i}>
+                {cols.map((k, j) => {
+                  const val = cell(row[k])
+                  return (
+                    <td
+                      key={k}
+                      className={j === 0 ? 'nm2' : undefined}
+                      onMouseEnter={(e) => show(e, val)}
+                      onMouseMove={move}
+                      onMouseLeave={() => setTip(null)}
+                    >
+                      {isUrl(val) ? (
+                        <a href={val} target="_blank" rel="noopener noreferrer">
+                          {val}
+                        </a>
+                      ) : (
+                        val
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {extra > 0 && <div className="more">+{extra} more</div>}
+      {tip && (
+        <div className="cell-tip" style={{ left: tipLeft, top: tip.y + 18 }}>
+          {tip.text}
+        </div>
+      )}
+    </>
+  )
+}
+
 export function renderBody(tool: ToolCall): ReactElement {
   const text = tool.resultText ?? ''
   if (tool.isError) {
@@ -114,38 +192,7 @@ export function renderBody(tool: ToolCall): ReactElement {
     }
     const cols = keys.slice(0, 5)
     const shown = rows.slice(0, 12)
-    const extra = rows.length - shown.length
-    return (
-      <>
-        <div className="dtable">
-          <table>
-            <thead>
-              <tr>
-                {cols.map((k) => (
-                  <th key={k}>{k}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((row, i) => (
-                <tr key={i}>
-                  {cols.map((k, j) => {
-                    const val = cell(row[k])
-                    // title = full value, since the cell ellipsizes to one line
-                    return (
-                      <td key={k} className={j === 0 ? 'nm2' : undefined} title={val}>
-                        {val}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {extra > 0 && <div className="more">+{extra} more</div>}
-      </>
-    )
+    return <DataTable cols={cols} rows={shown} extra={rows.length - shown.length} />
   }
   // Plain object → classified-ad manifest rows, not JSON.
   if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && parsed !== undefined) {

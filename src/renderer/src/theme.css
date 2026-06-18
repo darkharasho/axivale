@@ -163,7 +163,13 @@ td.nm2{color:var(--ink)}
 .dtable{margin-top:10px;border:1px solid var(--line);background:rgba(0,0,0,.14);overflow-x:auto}
 .dtable table{width:max-content;min-width:100%;margin:0;border-collapse:collapse}
 .dtable th{background:rgba(0,0,0,.28);font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;text-align:left;white-space:nowrap;padding:9px 14px;border-bottom:1px solid var(--rule)}
-.dtable td{font-size:12.5px;color:var(--ink-dim);white-space:nowrap;max-width:280px;overflow:hidden;text-overflow:ellipsis;padding:7px 14px;border-bottom:1px dotted var(--line)}
+.dtable td{font-size:12.5px;color:var(--ink-dim);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;padding:7px 14px;border-bottom:1px dotted var(--line)}
+.dtable td a{color:var(--accent-b);text-decoration:underline dotted;text-underline-offset:2px}
+.dtable td a:hover{color:var(--ink)}
+/* custom hover tooltip — full contents of a truncated cell, as a small clipping
+   (fixed so the table's overflow never clips it; pointer-events:none so it
+   never eats the click that opens a link) */
+.cell-tip{position:fixed;z-index:1200;max-width:520px;pointer-events:none;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.45);padding:7px 11px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.5;color:var(--ink-dim);white-space:normal;overflow-wrap:anywhere}
 .dtable tbody tr:nth-child(even){background:rgba(255,255,255,.018)}
 .dtable tbody tr:hover{background:rgba(228,227,220,.05)}
 .dtable tbody tr:last-child td{border-bottom:none}
@@ -870,7 +876,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 
 /* ---- Action modal — a filed-dispatch dossier (opened from a notice card) ---- */
 .action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
-.action-modal{position:relative;display:flex;flex-direction:column;max-height:86vh;width:min(680px,92vw);background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.action-modal{position:relative;display:flex;flex-direction:column;width:min(1080px,94vw);min-height:360px;max-height:90vh;background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
 /* inner hairline mat, the same "matted clipping" device as the share dialog */
 .action-modal::before{content:"";position:absolute;inset:5px;border:1px solid var(--line);pointer-events:none}
 .action-modal__x{position:absolute;top:10px;right:10px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;line-height:1;padding:0;z-index:2}
@@ -887,7 +893,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .action-modal__rule{border:none;border-top:3px double var(--rule2);margin:16px 24px 0}
 .action-modal__filed{padding:14px 24px 0}
 .action-modal__filed-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
-.action-modal__body{padding:16px 24px;overflow:auto}
+.action-modal__body{flex:1;min-height:0;padding:16px 24px;overflow:auto}
 .action-modal__foot{display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px dashed var(--rule);margin-top:auto}
 .action-modal__foot .right{margin-left:auto}
 .action-raw{margin:10px 24px 14px;max-height:280px;overflow:auto;background:var(--bg);border:1px solid var(--rule);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
