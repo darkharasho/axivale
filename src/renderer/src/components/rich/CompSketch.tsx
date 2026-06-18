@@ -1,21 +1,30 @@
 import type { ReactElement } from 'react'
 import type { DisplayPayload } from '../../state'
-import { classIconUrl } from '../panels/classIcons'
+import { classIconSvg } from '../panels/classIconSvg'
 
 type CompSketchSpec = Extract<DisplayPayload, { kind: 'comp-sketch' }>['data']
 
-/** Class icon as <img>, or a neutral placeholder when the spec name doesn't
- *  resolve (e.g. a typo or a spec we have no icon for). */
+/** Class icon as inline vector SVG (full color + black outline, crisp at any
+ *  size), or a neutral placeholder when the spec name doesn't resolve (e.g. a
+ *  typo or a spec we have no icon for). */
 function Icon({ spec, className }: { spec: string; className?: string }): ReactElement {
-  const url = classIconUrl(spec)
+  const svg = classIconSvg(spec)
   const cls = `cs-icon ${className ?? ''}`.trim()
-  if (!url) return <span className={`${cls} cs-icon--missing`} aria-hidden="true" />
-  return <img className={cls} src={url} alt={spec} />
+  if (!svg) return <span className={`${cls} cs-icon--missing`} aria-hidden="true" />
+  return (
+    <span
+      className={cls}
+      role="img"
+      aria-label={spec}
+      title={spec}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
 }
 
 /**
- * Visual composition: an optional squad grid (icon tiles, subgroups as columns)
- * over a per-build detail list. Driven by the `comp-sketch` display the
+ * Visual composition: an optional squad grid (icon tiles, one subgroup/party per
+ * row) over a per-build detail list. Driven by the `comp-sketch` display the
  * comp_sketch tool emits, so the agent never has to render a comp as a table.
  */
 export default function CompSketch({ spec }: { spec: CompSketchSpec }): ReactElement {
@@ -31,8 +40,8 @@ export default function CompSketch({ spec }: { spec: CompSketchSpec }): ReactEle
       {subgroups && subgroups.length > 0 && (
         <div className="cs-grid">
           {subgroups.map((party, i) => (
-            <div className="cs-col" key={i}>
-              <div className="cs-col-h">{i + 1}</div>
+            <div className="cs-row" key={i}>
+              <div className="cs-row-h">{i + 1}</div>
               {party.map((slot, j) => (
                 <div className={`cs-tile cs-role--${slot.role}`} key={j} title={`${slot.spec} · ${slot.role}`}>
                   <Icon spec={slot.spec} />
