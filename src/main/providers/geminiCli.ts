@@ -1,15 +1,11 @@
 import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
 import { randomUUID, randomBytes } from 'node:crypto'
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { AgentEvent, ProviderAdapter, ProviderConfig, SessionState, TurnInput } from './types'
-import { EventQueue, OFFICER_SERVER, startOfficerBridge } from './officerBridge'
+import { EventQueue, OFFICER_SERVER_PATH, startOfficerBridge } from './officerBridge'
 import { translateGeminiEvent, type GeminiStreamEvent } from './geminiEvents'
-
-/** Path to the officer MCP proxy (shared, provider-agnostic). */
-const OFFICER_SERVER_PATH = fileURLToPath(OFFICER_SERVER)
 
 /**
  * Gemini's built-in mutating tools. The CLI runs in YOLO mode (auto-approve) so

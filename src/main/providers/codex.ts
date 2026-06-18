@@ -1,65 +1,102 @@
+import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { fileURLToPath } from 'node:url'
-import { mkdtempSync, writeFileSync, chmodSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { Codex } from '@openai/codex-sdk'
+import { join, dirname, delimiter } from 'node:path'
 import type { AgentEvent, ProviderAdapter, ProviderConfig, SessionState, TurnInput } from './types'
-import { EventQueue, OFFICER_SERVER, startOfficerBridge } from './officerBridge'
+import { EventQueue, OFFICER_SERVER_PATH, startOfficerBridge, unpacked } from './officerBridge'
 import { translateCodexEvent, type CodexThreadEvent } from './codexEvents'
 
 const requireModule = createRequire(import.meta.url)
 
-/** Path to the officer MCP proxy (shared, provider-agnostic). */
-const OFFICER_SERVER_PATH = fileURLToPath(OFFICER_SERVER)
+/** Platform package that ships the codex binary, by Rust target triple. */
+const PLATFORM_PACKAGE: Record<string, string> = {
+  'x86_64-unknown-linux-musl': '@openai/codex-linux-x64',
+  'aarch64-unknown-linux-musl': '@openai/codex-linux-arm64',
+  'x86_64-apple-darwin': '@openai/codex-darwin-x64',
+  'aarch64-apple-darwin': '@openai/codex-darwin-arm64',
+  'x86_64-pc-windows-msvc': '@openai/codex-win32-x64',
+  'aarch64-pc-windows-msvc': '@openai/codex-win32-arm64'
+}
 
-/**
- * Resolves the `@openai/codex` JS launcher (`bin/codex.js`), which in turn
- * finds and execs the right platform binary. The bypass wrapper runs it through
- * node so we never hard-code a platform path.
- */
-function resolveCodexLauncher(): string {
-  return requireModule.resolve('@openai/codex/bin/codex.js')
+function targetTriple(): string {
+  const { platform, arch } = process
+  if (platform === 'linux' || platform === 'android')
+    return arch === 'arm64' ? 'aarch64-unknown-linux-musl' : 'x86_64-unknown-linux-musl'
+  if (platform === 'darwin')
+    return arch === 'arm64' ? 'aarch64-apple-darwin' : 'x86_64-apple-darwin'
+  if (platform === 'win32')
+    return arch === 'arm64' ? 'aarch64-pc-windows-msvc' : 'x86_64-pc-windows-msvc'
+  throw new Error(`Codex: unsupported platform ${platform} (${arch})`)
 }
 
 /**
- * Writes the bypass wrapper to a temp file and returns its path. The wrapper
- * injects `--dangerously-bypass-approvals-and-sandbox` right after the `exec`
- * subcommand — the only way Codex executes MCP tool calls non-interactively
- * (openai/codex#24135). @openai/codex-sdk exposes no raw-flag passthrough, so we
- * substitute the binary via codexPathOverride.
+ * Locates the codex CLI binary shipped by the @openai/codex-<platform> package,
+ * plus any helper dirs it wants on PATH. Mirrors @openai/codex-sdk's
+ * findCodexPath, but resolved here so we can spawn the binary OURSELVES with the
+ * bypass flag (the SDK exposes no raw-flag passthrough, and its no-shell spawn
+ * of a wrapper script can't run on Windows). Paths are asar-unpacked for
+ * packaged builds.
  */
-function writeBypassWrapper(dir: string, launcher: string): string {
-  const isWin = process.platform === 'win32'
-  const jsPath = join(dir, 'codex-bypass.mjs')
-  const js = `#!/usr/bin/env node
-import { spawn } from 'node:child_process'
-const launcher = ${JSON.stringify(launcher)}
-const out = []
-let injected = false
-for (const a of process.argv.slice(2)) {
-  out.push(a)
-  if (!injected && a === 'exec') { out.push('--dangerously-bypass-approvals-and-sandbox'); injected = true }
-}
-const child = spawn(process.execPath, [launcher, ...out], { stdio: 'inherit' })
-child.on('exit', (code) => process.exit(code ?? 0))
-`
-  writeFileSync(jsPath, js, { mode: 0o755 })
-  if (!isWin) {
-    chmodSync(jsPath, 0o755)
-    return jsPath
+function resolveCodexBinary(): { bin: string; pathDirs: string[] } {
+  const triple = targetTriple()
+  const pkg = PLATFORM_PACKAGE[triple]
+  const codexPkgJson = requireModule.resolve('@openai/codex/package.json')
+  const platPkgJson = createRequire(codexPkgJson).resolve(`${pkg}/package.json`)
+  const vendor = join(dirname(platPkgJson), 'vendor', triple)
+  const binName = process.platform === 'win32' ? 'codex.exe' : 'codex'
+
+  // Current layout: vendor/<triple>/bin/codex + codex-path/. Legacy fallback:
+  // vendor/<triple>/codex/codex + path/.
+  const primary = unpacked(join(vendor, 'bin', binName))
+  if (existsSync(primary)) {
+    const pd = unpacked(join(vendor, 'codex-path'))
+    return { bin: primary, pathDirs: existsSync(pd) ? [pd] : [] }
   }
-  // Windows can't shebang-exec a .mjs; wrap it in a .cmd that calls node.
-  const cmdPath = join(dir, 'codex-bypass.cmd')
-  writeFileSync(cmdPath, `@echo off\r\nnode "${jsPath}" %*\r\n`)
-  return cmdPath
+  const legacy = unpacked(join(vendor, 'codex', binName))
+  if (existsSync(legacy)) {
+    const pd = unpacked(join(vendor, 'path'))
+    return { bin: legacy, pathDirs: existsSync(pd) ? [pd] : [] }
+  }
+  throw new Error(`Codex: binary not found for ${triple} (looked in ${vendor})`)
 }
 
+/** Serialize a nested config object into codex `-c key.path=value` overrides
+ *  (subset of the SDK's serializer; strings via JSON.stringify give valid TOML
+ *  basic strings, incl. escaped Windows backslashes). */
+function configOverrides(obj: Record<string, unknown>): string[] {
+  const out: string[] = []
+  const walk = (val: unknown, prefix: string): void => {
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      for (const [k, child] of Object.entries(val as Record<string, unknown>)) {
+        if (child === undefined) continue
+        walk(child, prefix ? `${prefix}.${k}` : k)
+      }
+      return
+    }
+    out.push(`${prefix}=${toToml(val)}`)
+  }
+  walk(obj, '')
+  return out
+}
+
+function toToml(v: unknown): string {
+  if (typeof v === 'string') return JSON.stringify(v)
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v)
+  if (Array.isArray(v)) return `[${v.map(toToml).join(', ')}]`
+  throw new Error(`Codex: unserializable config value ${String(v)}`)
+}
+
+const CODEX_BINARY = resolveCodexBinary()
+
 /**
- * Drives the ChatGPT subscription via @openai/codex-sdk (no API key — uses the
- * machine's `codex login`). The officer tools are exposed to Codex as an MCP
- * server (codexOfficerServer) that proxies every call back here over a local
- * socket, where they run with the confirm gate + display capture.
+ * Drives the ChatGPT subscription by spawning `codex exec` directly (no API key
+ * — uses the machine's `codex login`). We control the args, so we inject
+ * `--dangerously-bypass-approvals-and-sandbox` (the only way Codex runs MCP tool
+ * calls non-interactively — openai/codex#24135; config auto-approval does not
+ * work). Officer tools reach Codex via an MCP server (codexOfficerServer) that
+ * proxies every call back here over a local socket, preserving the confirm gate
+ * + display capture. Built-in shell/web tools are disabled for containment.
  */
 export class CodexAdapter implements ProviderAdapter {
   private threadId: string | null = null
@@ -86,69 +123,105 @@ export class CodexAdapter implements ProviderAdapter {
         ? `\\\\.\\pipe\\axivale-codex-${requireModule('node:crypto').randomBytes(8).toString('hex')}`
         : join(tmp, 'officer.sock')
 
-    // The officer proxy connects to this bridge and RPCs tool calls back here.
     const bridge = await startOfficerBridge(input, queue, socketPath)
-    const token = bridge.token
-
-    const wrapper = writeBypassWrapper(tmp, resolveCodexLauncher())
     const { model } = this.config()
 
-    const codex = new Codex({
-      codexPathOverride: wrapper,
-      // env REPLACES the CLI's environment, so spread process.env.
-      env: { ...process.env } as Record<string, string>,
-      config: {
-        // Officer tools only — disable Codex's own coding tools since the
-        // sandbox is bypassed (see wrapper). Containment is by tool-removal +
-        // read-only cwd + system prompt, not by Codex's sandbox.
-        features: { shell_tool: false },
-        web_search: 'disabled',
-        mcp_servers: {
-          officer: {
-            command: process.execPath,
-            args: [OFFICER_SERVER_PATH, socketPath, token],
-            // Spawn Electron's bundled node as a plain node for the proxy.
-            env: { ELECTRON_RUN_AS_NODE: '1' }
-          }
+    const overrides = configOverrides({
+      // Officer tools only — disable Codex's own coding/web tools (the bypass
+      // flag turns the sandbox off, so containment is by tool-removal + the
+      // empty temp cwd, not by the sandbox).
+      features: { shell_tool: false },
+      web_search: 'disabled',
+      mcp_servers: {
+        officer: {
+          command: process.execPath,
+          args: [OFFICER_SERVER_PATH, socketPath, bridge.token],
+          // Spawn Electron's bundled node as a plain node for the proxy.
+          env: { ELECTRON_RUN_AS_NODE: '1' }
         }
       }
     })
 
-    const thread = this.threadId
-      ? codex.resumeThread(this.threadId, threadOpts(tmp, model))
-      : codex.startThread(threadOpts(tmp, model))
+    const args = [
+      'exec',
+      '--experimental-json',
+      '--dangerously-bypass-approvals-and-sandbox',
+      '--skip-git-repo-check',
+      '--cd',
+      tmp,
+      ...overrides.flatMap((o) => ['-c', o]),
+      ...(model ? ['--model', model] : []),
+      ...(this.threadId ? ['resume', this.threadId] : [])
+    ]
 
-    // First turn carries the system prompt as a preamble (Codex has no separate
-    // system-prompt channel via the SDK); resumed threads already have it.
-    const prompt = this.threadId
-      ? input.prompt
-      : `${input.systemPrompt}\n\n---\n\n${input.prompt}`
+    const env: Record<string, string> = {}
+    for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v
+    if (CODEX_BINARY.pathDirs.length) {
+      const key = process.platform === 'win32' ? 'Path' : 'PATH'
+      env[key] = [...CODEX_BINARY.pathDirs, env[key] ?? ''].filter(Boolean).join(delimiter)
+    }
 
-    // Pump Codex events into the shared queue; tool events arrive via the bridge.
-    const pump = (async () => {
+    // First turn carries the system prompt as a preamble (the prompt is fed on
+    // stdin); resumed threads already have it in their history.
+    const prompt = this.threadId ? input.prompt : `${input.systemPrompt}\n\n---\n\n${input.prompt}`
+
+    const child = spawn(CODEX_BINARY.bin, args, { env, signal: input.signal })
+    child.stdin.write(prompt)
+    child.stdin.end()
+
+    let sawDone = false
+    let stderr = ''
+    let buf = ''
+    const handleLine = (line: string): void => {
+      if (!line.trim()) return
+      let ev: CodexThreadEvent
       try {
-        const { events } = await thread.runStreamed(prompt, { signal: input.signal })
-        for await (const ev of events as AsyncGenerator<CodexThreadEvent>) {
-          if (ev.type === 'thread.started') this.threadId = (ev as { thread_id: string }).thread_id
-          for (const e of translateCodexEvent(ev)) {
-            queue.push(e.kind === 'done' ? { ...e, sessionId: this.threadId } : e)
-          }
-        }
-      } catch (err) {
+        ev = JSON.parse(line)
+      } catch {
+        return
+      }
+      if (ev.type === 'thread.started') this.threadId = (ev as { thread_id: string }).thread_id
+      for (const e of translateCodexEvent(ev)) {
+        if (e.kind === 'done') sawDone = true
+        queue.push(e.kind === 'done' ? { ...e, sessionId: this.threadId } : e)
+      }
+    }
+
+    child.stdout.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => {
+      buf += chunk
+      let nl: number
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        handleLine(buf.slice(0, nl))
+        buf = buf.slice(nl + 1)
+      }
+    })
+    child.stderr.setEncoding('utf8')
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk
+    })
+
+    child.on('close', (code) => {
+      if (buf.trim()) handleLine(buf)
+      if (!sawDone) {
         queue.push({
           kind: 'done',
           sessionId: this.threadId,
-          error: input.signal.aborted ? null : err instanceof Error ? err.message : String(err)
+          error: input.signal.aborted
+            ? null
+            : `Codex CLI exited (${code}). ${stderr.split('\n').filter(Boolean).slice(-3).join(' ')}`.trim()
         })
-      } finally {
-        queue.close()
       }
-    })()
+      queue.close()
+    })
+    child.on('error', (err) => {
+      queue.push({ kind: 'done', sessionId: this.threadId, error: err.message })
+      queue.close()
+    })
 
     try {
       yield* queue.drain()
     } finally {
-      await pump.catch(() => {})
       bridge.close()
       try {
         rmSync(tmp, { recursive: true, force: true })
@@ -156,16 +229,5 @@ export class CodexAdapter implements ProviderAdapter {
         // best-effort temp cleanup
       }
     }
-  }
-}
-
-function threadOpts(cwd: string, model: string | null): Record<string, unknown> {
-  return {
-    sandboxMode: 'read-only',
-    approvalPolicy: 'never',
-    skipGitRepoCheck: true,
-    webSearchEnabled: false,
-    workingDirectory: cwd,
-    ...(model ? { model } : {})
   }
 }
