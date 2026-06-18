@@ -117,26 +117,32 @@ export function renderBody(tool: ToolCall): ReactElement {
     const extra = rows.length - shown.length
     return (
       <>
-        <table>
-          <thead>
-            <tr>
-              {cols.map((k) => (
-                <th key={k}>{k}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((row, i) => (
-              <tr key={i}>
-                {cols.map((k, j) => (
-                  <td key={k} className={j === 0 ? 'nm2' : undefined}>
-                    {cell(row[k])}
-                  </td>
+        <div className="dtable">
+          <table>
+            <thead>
+              <tr>
+                {cols.map((k) => (
+                  <th key={k}>{k}</th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {shown.map((row, i) => (
+                <tr key={i}>
+                  {cols.map((k, j) => {
+                    const val = cell(row[k])
+                    // title = full value, since the cell ellipsizes to one line
+                    return (
+                      <td key={k} className={j === 0 ? 'nm2' : undefined} title={val}>
+                        {val}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {extra > 0 && <div className="more">+{extra} more</div>}
       </>
     )
