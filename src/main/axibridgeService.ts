@@ -1,6 +1,7 @@
 import type { RepoRef } from './axibridgeRepos'
 import { repoKey } from './axibridgeRepos'
 import { localRunDate } from './axibridgeRunDate'
+import { staleSinceIso, foldStale, emptyStaleAgg } from './axibridgeStale'
 import type { AxibridgeClient, ReportIndexEntry, DownloadProgress } from './axibridgeClient'
 import { AxibridgeCache } from './axibridgeCache'
 import type { SummaryJob, SummaryJobResult } from './axibridgeSummarize'
@@ -69,24 +70,26 @@ export class AxibridgeService {
   }
 
   async reposStatus(): Promise<{
-    repos: Array<{ repo: string; runs: number; firstRun: string | null; lastRun: string | null; cachedReports: number; lastIndexFetch: number | null; error: string | null }>
+    repos: Array<{ repo: string; runs: number; firstRun: string | null; lastRun: string | null; cachedReports: number; lastIndexFetch: number | null; error: string | null; stale: boolean; staleSince: string | null }>
   }> {
     const out = []
     for (const repo of this.deps.repos()) {
       const stats = this.deps.cache.repoStats(repo)
       try {
-        const { entries } = await this.indexFor(repo)
+        const { entries, stale, fetchedAt } = await this.indexFor(repo)
         const dates = entries.map((e) => e.dateStart).filter((d): d is string => !!d).sort()
         out.push({
           repo: repoKey(repo), runs: entries.length,
           firstRun: dates[0] ?? null, lastRun: dates[dates.length - 1] ?? null,
-          cachedReports: stats.cachedReports, lastIndexFetch: stats.lastIndexFetch, error: null
+          cachedReports: stats.cachedReports, lastIndexFetch: stats.lastIndexFetch, error: null,
+          stale, staleSince: staleSinceIso(fetchedAt)
         })
       } catch (err) {
         out.push({
           repo: repoKey(repo), runs: 0, firstRun: null, lastRun: null,
           cachedReports: stats.cachedReports, lastIndexFetch: stats.lastIndexFetch,
-          error: err instanceof Error ? err.message : String(err)
+          error: err instanceof Error ? err.message : String(err),
+          stale: false, staleSince: null
         })
       }
     }
@@ -95,15 +98,17 @@ export class AxibridgeService {
 
   async runsList(
     filter: DateRange & { repo?: string }
-  ): Promise<{ runs: RunListEntry[]; errors: string[]; staleRepos: string[] }> {
+  ): Promise<{ runs: RunListEntry[]; errors: string[]; staleRepos: string[]; stale: boolean; staleSince: string | null }> {
     const repos = this.requireRepos().filter((r) => !filter.repo || repoKey(r) === filter.repo)
     const runs: RunListEntry[] = []
     const errors: string[] = []
     const staleRepos: string[] = []
+    let agg = emptyStaleAgg
     for (const repo of repos) {
       try {
-        const { entries, stale } = await this.indexFor(repo)
+        const { entries, stale, fetchedAt } = await this.indexFor(repo)
         if (stale) staleRepos.push(repoKey(repo))
+        agg = foldStale(agg, stale, fetchedAt)
         for (const entry of entries) {
           if (inRange(entry, filter)) runs.push({ ...entry, repo: repoKey(repo) })
         }
@@ -118,7 +123,7 @@ export class AxibridgeService {
       if (da !== db) return db.localeCompare(da)
       return String(b.id ?? '').localeCompare(String(a.id ?? ''))
     })
-    return { runs, errors, staleRepos }
+    return { runs, errors, staleRepos, stale: agg.stale, staleSince: staleSinceIso(agg.oldest) }
   }
 
   /** Download any uncached reports (with progress), then summarize via the worker. */
@@ -161,9 +166,9 @@ export class AxibridgeService {
   }
 
   async playerStats(args: DateRange & { accounts?: string[] }) {
-    const { runs, errors } = await this.runsList(args)
+    const { runs, errors, stale, staleSince } = await this.runsList(args)
     const { summaries, skippedRuns } = await this.summariesFor(runs)
-    return { players: aggregatePlayers(summaries, args.accounts), runsConsidered: summaries.length, skippedRuns, errors }
+    return { players: aggregatePlayers(summaries, args.accounts), runsConsidered: summaries.length, skippedRuns, errors, stale, staleSince }
   }
 
   /** Rollup-backed: published rollup.json when present, else computed locally. */
@@ -211,16 +216,18 @@ export class AxibridgeService {
     if (!args.from && !args.to) {
       const rows: RollupData['playerRows'] = []
       let rollupSource: 'published' | 'computed-locally' = 'published'
+      let agg = emptyStaleAgg
       for (const repo of this.requireRepos()) {
-        const { rollup, source } = await this.rollupFor(repo)
+        const { rollup, source, stale, fetchedAt } = await this.rollupFor(repo)
         if (source === 'computed-locally') rollupSource = source
+        agg = foldStale(agg, stale, fetchedAt)
         rows.push(...rollup.playerRows)
       }
-      return { attendance: rows, rollupSource, range: args }
+      return { attendance: rows, rollupSource, range: args, stale: agg.stale, staleSince: staleSinceIso(agg.oldest) }
     }
     // Date range → reaggregate from the per-run summaries that fall in range. The
     // rollup is whole-history only, so date filtering must come from the summaries.
-    const { runs, errors } = await this.runsList(args)
+    const { runs, errors, stale, staleSince } = await this.runsList(args)
     const { summaries, skippedRuns } = await this.summariesFor(runs)
     const rows = aggregatePlayers(summaries).map((p) => {
       const profession =
@@ -240,19 +247,23 @@ export class AxibridgeService {
       range: args,
       runsConsidered: summaries.length,
       skippedRuns,
-      errors
+      errors,
+      stale,
+      staleSince
     }
   }
 
   async commanderStats(args: DateRange) {
     const rows: RollupData['commanderRows'] = []
     let rollupSource: 'published' | 'computed-locally' = 'published'
+    let agg = emptyStaleAgg
     for (const repo of this.requireRepos()) {
-      const { rollup, source } = await this.rollupFor(repo)
+      const { rollup, source, stale, fetchedAt } = await this.rollupFor(repo)
       if (source === 'computed-locally') rollupSource = source
+      agg = foldStale(agg, stale, fetchedAt)
       rows.push(...rollup.commanderRows)
     }
-    return { commanders: rows, rollupSource, range: args }
+    return { commanders: rows, rollupSource, range: args, stale: agg.stale, staleSince: staleSinceIso(agg.oldest) }
   }
 
   /** a/b are run ids or date ranges "YYYY-MM-DD..YYYY-MM-DD". */
