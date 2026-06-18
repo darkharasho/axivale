@@ -71,7 +71,7 @@ export function humanValue(v: unknown): string {
   return String(v)
 }
 
-function prettyKey(key: string): string {
+export function prettyKey(key: string): string {
   return key
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/[_-]+/g, ' ')

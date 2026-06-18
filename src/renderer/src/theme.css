@@ -852,17 +852,29 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* skill badge on a user message */
 .msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:1px solid rgba(224,90,80,.45);padding:1px 6px;letter-spacing:.12em}
 
-/* ---- Action modal (opened by clicking a notice card) ---- */
-.action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
-.action-modal{position:relative;display:flex;flex-direction:column;max-height:86vh;width:min(900px,92vw);background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
-.action-modal__head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--rule);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
-.action-modal__head .nm{color:var(--ink)}
-.action-modal__x{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:none;border:none;color:var(--ink-dim);cursor:pointer;font-size:14px;line-height:1;padding:0}
+/* ---- Action modal — a filed-dispatch dossier (opened from a notice card) ---- */
+.action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
+.action-modal{position:relative;display:flex;flex-direction:column;max-height:86vh;width:min(680px,92vw);background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+/* inner hairline mat, the same "matted clipping" device as the share dialog */
+.action-modal::before{content:"";position:absolute;inset:5px;border:1px solid var(--line);pointer-events:none}
+.action-modal__x{position:absolute;top:10px;right:10px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;line-height:1;padding:0;z-index:2}
 .action-modal__x:hover{color:var(--accent-b)}
-.action-modal__inputs{padding:8px 18px;border-bottom:1px dotted var(--line);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;color:var(--faint);word-break:break-word}
-.action-modal__body{padding:16px 18px;overflow:auto}
-.action-modal__raw{padding:0 18px 16px}
-.action-raw{margin-top:8px;max-height:280px;overflow:auto;background:var(--bg);border:1px solid var(--rule);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
+.action-modal__head{padding:20px 24px 0}
+.action-modal__kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent-b);margin-bottom:8px}
+.action-modal__headrow{display:flex;align-items:flex-start;gap:16px;padding-right:28px}
+.action-modal__title{font-family:'Playfair Display',serif;font-weight:700;font-size:25px;line-height:1.12;color:var(--ink);margin:0;flex:1;min-width:0}
+/* status as a rubber stamp, cocked a few degrees like an inked seal */
+.action-modal__stamp{flex:none;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;border:1.5px solid;padding:5px 12px;transform:rotate(-3deg);margin-top:3px;white-space:nowrap}
+.action-modal__stamp.ok{color:var(--green);border-color:rgba(111,174,111,.6)}
+.action-modal__stamp.fail{color:var(--accent-b);border-color:var(--accent-b)}
+.action-modal__stamp.work{color:var(--faint);border-color:var(--rule2)}
+.action-modal__rule{border:none;border-top:3px double var(--rule2);margin:16px 24px 0}
+.action-modal__filed{padding:14px 24px 0}
+.action-modal__filed-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+.action-modal__body{padding:16px 24px;overflow:auto}
+.action-modal__foot{display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px dashed var(--rule);margin-top:auto}
+.action-modal__foot .right{margin-left:auto}
+.action-raw{margin:10px 24px 14px;max-height:280px;overflow:auto;background:var(--bg);border:1px solid var(--rule);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
 
 /* ---- Comp sketch (rich comp display: grid + per-build list) ---- */
 .comp-sketch {

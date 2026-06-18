@@ -38,14 +38,16 @@ describe('ActionModal', () => {
     expect(screen.getByText('{"raw":"payload"}')).toBeTruthy()
   })
 
-  it('closes on backdrop click and ✕ but not on panel click', () => {
+  it('closes on the ✕, the footer button, and the backdrop — but not on panel click', () => {
     const onClose = vi.fn()
     const { container } = render(<ActionModal tool={tableTool} onClose={onClose} />)
     fireEvent.click(container.querySelector('.action-modal')!)
     expect(onClose).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    fireEvent.click(container.querySelector('.action-modal__x')!)
     expect(onClose).toHaveBeenCalledTimes(1)
-    fireEvent.click(container.querySelector('.action-overlay')!)
+    fireEvent.click(container.querySelector('.action-modal__foot .right')!)
     expect(onClose).toHaveBeenCalledTimes(2)
+    fireEvent.click(container.querySelector('.action-overlay')!)
+    expect(onClose).toHaveBeenCalledTimes(3)
   })
 })
