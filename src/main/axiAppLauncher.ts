@@ -178,12 +178,24 @@ export class AxiAppLauncher {
     // `npm run dev:headless` in the sibling checkout — a lean APP_PROFILE=dev
     // electron --headless (no build:site / vite / electronmon), so an on-demand
     // launch comes up in ~1s instead of the full windowed dev chain. On Windows
-    // npm is npm.cmd, which needs a shell. The sibling script owns its env.
+    // npm is npm.cmd, which needs a shell.
+    //
+    // Strip the parent dev env (same as spawnHeadless): AxiVale's main can carry
+    // a NODE_OPTIONS / ELECTRON_RUN_AS_NODE that would break the child Electron's
+    // bootstrap — it would never bind the local API, surfacing only as the
+    // waitForHealth timeout ("AxiForge … did not come up in time"). PATH and the
+    // rest are kept so npm still resolves; the npm script sets APP_PROFILE=dev.
+    const env = { ...process.env }
+    delete env.VITE_DEV_SERVER_URL
+    delete env.ELECTRON_RUN_AS_NODE
+    delete env.ELECTRON_NO_ATTACH_CONSOLE
+    delete env.NODE_OPTIONS
+
     const child = this.io.spawn('npm', ['run', 'dev:headless'], {
       detached: true,
       stdio: 'ignore',
       cwd,
-      env: process.env,
+      env,
       shell: this.io.platform === 'win32'
     })
     child.on('error', (err) =>

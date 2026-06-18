@@ -52,6 +52,11 @@ export default defineConfig({
   },
   preload: { plugins: [externalizeDepsPlugin()] },
   renderer: {
+    // Off Vite's default 5173 so AxiVale's dev server doesn't collide with the
+    // sibling AxiForge repo's windowed dev (its `npm run dev` hardcodes vite on
+    // 5173). electron-vite syncs VITE_DEV_SERVER_URL to whatever we pick here,
+    // so the two can run side by side. strictPort:false → bump if 5273 is taken.
+    server: { port: 5273, strictPort: false },
     plugins: [react()],
     optimizeDeps: {
       // Optimize forge-render (bundles its CJS dep gw2-data/engine to ESM) and
