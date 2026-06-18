@@ -3,12 +3,12 @@ import { buildAxibridgeTools } from './axibridge'
 import type { JqEngine } from '../jqEngine'
 
 const fakeService = {
-  reposStatus: vi.fn(async () => ({ repos: [{ repo: 'o/a', runs: 2, firstRun: '2026-06-01', lastRun: '2026-06-08', cachedReports: 1, lastIndexFetch: 1, error: null }] })),
-  runsList: vi.fn(async () => ({ runs: [{ id: 'r1', title: 'Run 1', repo: 'o/a', commanders: ['C.1'], dateStart: '2026-06-01T19:00:00Z', dateEnd: '2026-06-01T21:00:00Z' }], errors: [] })),
+  reposStatus: vi.fn(async () => ({ repos: [{ repo: 'o/a', runs: 2, firstRun: '2026-06-01', lastRun: '2026-06-08', cachedReports: 1, lastIndexFetch: 1, error: null, stale: false, staleSince: null }] })),
+  runsList: vi.fn(async () => ({ runs: [{ id: 'r1', title: 'Run 1', repo: 'o/a', commanders: ['C.1'], dateStart: '2026-06-01T19:00:00Z', dateEnd: '2026-06-01T21:00:00Z' }], errors: [], staleRepos: [], stale: false, staleSince: null })),
   runSummary: vi.fn(async () => ({ summary: { id: 'r1', title: 'Run 1', fights: 2, wins: 1, losses: 1, squadDeaths: 3, squadDowns: 5, enemyDeaths: 8, enemyDowns: 12, avgSquadSize: 25, avgEnemies: 30, commanders: ['C.1'], dateStart: '2026-06-01T19:00:00Z', dateEnd: null, players: [], warnings: [] }, skippedRuns: [] })),
-  playerStats: vi.fn(async () => ({ players: [{ account: 'P.1', runsJoined: 2, dps: 1200, damage: 100, combatTimeMs: 1, squadTimeMs: 2, professionTimeMs: { Scourge: 1 }, downContribution: 1, kills: 1, strips: 1, cleanses: 1, resurrects: 0, healing: 0, barrier: 0, damageTaken: 1, downs: 0, deaths: 0, lastSeen: '2026-06-08' }], runsConsidered: 2, skippedRuns: [], errors: [] })),
-  attendance: vi.fn(async () => ({ attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }], rollupSource: 'published', range: {} })),
-  commanderStats: vi.fn(async () => ({ commanders: [{ account: 'C.1', characterNames: [], profession: 'Firebrand', runs: 2, fightsLed: 4, kills: 10, downs: 14, commanderDeaths: 0, alliesDead: 2, wins: 2, losses: 2, kdr: 5, lastSeenTs: 1 }], rollupSource: 'published', range: {} })),
+  playerStats: vi.fn(async () => ({ players: [{ account: 'P.1', runsJoined: 2, dps: 1200, damage: 100, combatTimeMs: 1, squadTimeMs: 2, professionTimeMs: { Scourge: 1 }, downContribution: 1, kills: 1, strips: 1, cleanses: 1, resurrects: 0, healing: 0, barrier: 0, damageTaken: 1, downs: 0, deaths: 0, lastSeen: '2026-06-08' }], runsConsidered: 2, skippedRuns: [], errors: [], stale: false, staleSince: null })),
+  attendance: vi.fn(async () => ({ attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null })),
+  commanderStats: vi.fn(async () => ({ commanders: [{ account: 'C.1', characterNames: [], profession: 'Firebrand', runs: 2, fightsLed: 4, kills: 10, downs: 14, commanderDeaths: 0, alliesDead: 2, wins: 2, losses: 2, kdr: 5, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null })),
   compare: vi.fn(async () => ({ a: 'r1', b: 'r2', runsA: 1, runsB: 1, comparison: { metrics: [{ metric: 'squadDeaths', a: 3, b: 1, delta: -2, deltaPct: -2 / 3 }] } }))
 }
 
@@ -63,6 +63,38 @@ describe('axibridge tools', () => {
     const res = (await byName('axibridge_run_summary').handler({ run_id: 'zzz' }, {})) as never as { isError?: boolean; content: Array<{ text: string }> }
     expect(res.isError).toBe(true)
     expect(res.content[0].text).toContain('zzz')
+  })
+
+  it('attendance surfaces stale in value and display when the service reports stale', async () => {
+    fakeService.attendance.mockResolvedValueOnce({
+      attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }],
+      rollupSource: 'published', range: {}, stale: true, staleSince: '2025-06-15T15:06:40.000Z'
+    })
+    const res = (await byName('axibridge_attendance').handler({}, {})) as never as {
+      content: Array<{ text: string }>
+      display?: { kind: string; data: { stale?: boolean; staleAge?: string } }
+    }
+    expect(parse(res).stale).toBe(true)
+    expect(parse(res).staleSince).toBe('2025-06-15T15:06:40.000Z')
+    expect(res.display?.data.stale).toBe(true)
+    expect(typeof res.display?.data.staleAge).toBe('string') // e.g. "Nd ago"
+  })
+
+  it('attendance omits stale markers when fresh', async () => {
+    const res = (await byName('axibridge_attendance').handler({}, {})) as never as {
+      content: Array<{ text: string }>; display?: { data: { stale?: boolean } }
+    }
+    expect(parse(res).stale).toBe(false)
+    expect(res.display?.data.stale).toBeUndefined()
+  })
+
+  it('runs_list passes stale + staleRepos into value', async () => {
+    fakeService.runsList.mockResolvedValueOnce({
+      runs: [], errors: [], staleRepos: ['o/a'], stale: true, staleSince: '2025-06-15T15:06:40.000Z'
+    })
+    const res = (await byName('axibridge_runs_list').handler({}, {})) as never as { content: Array<{ text: string }> }
+    expect(parse(res).stale).toBe(true)
+    expect(parse(res).staleRepos).toEqual(['o/a'])
   })
 })
 
