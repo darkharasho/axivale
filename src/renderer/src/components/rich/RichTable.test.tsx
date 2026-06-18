@@ -47,7 +47,6 @@ describe('RichTable', () => {
     expect(getByText('cached · 3h ago · source unreachable')).toBeTruthy()
     const { container: c2 } = render(<RichTable spec={spec} />)
     expect(c2.querySelector('.rich-stale-badge')).toBeNull() // no badge when fresh
-    expect(queryByText).toBeTruthy()
   })
 
   it('renders the badge even when the table has no title', () => {

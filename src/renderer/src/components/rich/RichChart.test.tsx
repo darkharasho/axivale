@@ -42,4 +42,9 @@ describe('RichChart', () => {
     const { getByText } = render(<RichChart spec={{ ...base, stale: true, staleAge: '2d ago' }} />)
     expect(getByText('cached · 2d ago · source unreachable')).toBeTruthy()
   })
+
+  it('renders no stale badge when fresh', () => {
+    const { container } = render(<RichChart spec={spec} />)
+    expect(container.querySelector('.rich-stale-badge')).toBeNull()
+  })
 })
