@@ -1,6 +1,6 @@
-import { useState, type ReactElement } from 'react'
+import { useState, type KeyboardEvent, type ReactElement } from 'react'
 import type { ToolCall, Turn } from '../state'
-import { couponLabel, humanInput, renderCouponBody } from './ToolCoupon'
+import { couponLabel, humanInput } from './ToolCoupon'
 import ActionModal from './ActionModal'
 
 export interface RailsProps {
@@ -18,6 +18,9 @@ interface Notice {
 
 const FEED_CAP = 20
 
+// The whole card is the hit target: a click (or Enter/Space) opens the roomy
+// ActionModal, where a result actually has room to breathe — the rail is too
+// narrow to read a table in. No tiny separate button to aim at.
 function NoticeCard({
   notice,
   onExpand
@@ -25,46 +28,46 @@ function NoticeCard({
   notice: Notice
   onExpand: (tool: ToolCall) => void
 }): ReactElement {
-  const [open, setOpen] = useState(false)
   const { tool, seq, filedAt, current } = notice
   const working = tool.resultText === undefined && !tool.isError
-  let status: ReactElement
-  if (working) {
-    status = <span className="st work">… working</span>
-  } else if (tool.isError) {
-    status = <span className="st fail">✗ failed</span>
-  } else {
-    status = <span className="st">✓ filed</span>
-  }
+  const state = working ? 'work' : tool.isError ? 'fail' : 'ok'
+  const stateLabel = working ? 'working' : tool.isError ? 'failed' : 'filed'
   const gist = humanInput(tool.input, 60)
+
+  function open(): void {
+    onExpand(tool)
+  }
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>): void {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      open()
+    }
+  }
+
   return (
     <div
       className={`ncard${current ? '' : ' dim'}`}
-      onClick={() => setOpen((o) => !o)}
+      onClick={open}
+      onKeyDown={onKeyDown}
       role="button"
-      aria-expanded={open}
+      tabIndex={0}
+      aria-label={`Open ${couponLabel(tool.name)} — ${stateLabel}`}
     >
       <div className="th">
+        <span className={`led ${state}`} aria-hidden="true" />
         <span className="nm">{couponLabel(tool.name)}</span>
-        {status}
-        <button
-          className="expand"
-          aria-label="Expand action"
-          title="Expand"
-          onClick={(e) => {
-            e.stopPropagation()
-            onExpand(tool)
-          }}
-        >
-          ⤢
-        </button>
       </div>
       <div className="tb">
         {gist !== '' && <div className="gist">{gist}</div>}
-        <div className="tm">
-          № {seq} · {filedAt}
+        <div className="foot">
+          <span className="tm">
+            № {seq} · {filedAt}
+            {state !== 'ok' ? ` · ${stateLabel}` : ''}
+          </span>
+          <span className="open" aria-hidden="true">
+            open ⤢
+          </span>
         </div>
-        {open && !working && <div className="nx">{renderCouponBody(tool)}</div>}
       </div>
     </div>
   )

@@ -19,7 +19,9 @@ function turnWith(tool: ToolCall): Turn {
 describe('RightRail notice cards', () => {
   // An expanded notice renders the tool's actual rich card (table/chart) so the
   // heavy data lives in the Actions rail instead of the article body.
-  it('renders the rich table card in the rail when a result has a display', () => {
+  // Clicking a card opens the roomy ActionModal, which renders the tool's
+  // actual rich card (table/chart) — the rail is too narrow to read one in.
+  it('opens the modal with the rich table card when a result has a display', () => {
     const tool: ToolCall = {
       id: 't1',
       name: 'gw2_api',
@@ -35,10 +37,11 @@ describe('RightRail notice cards', () => {
       <RightRail memberCount={null} buildsCount={null} turns={[turnWith(tool)]} />
     )
     fireEvent.click(container.querySelector('.ncard')!)
+    expect(container.querySelector('.action-modal')).toBeTruthy()
     expect(container.querySelector('.richtable')).toBeTruthy()
   })
 
-  it('renders the rich chart card in the rail when a result has a chart display', () => {
+  it('opens the modal with the rich chart card when a result has a chart display', () => {
     const tool: ToolCall = {
       id: 't2',
       name: 'gw2_api',
@@ -75,11 +78,12 @@ describe('RightRail notice cards', () => {
       <RightRail memberCount={null} buildsCount={null} turns={[turnWith(tool)]} />
     )
     fireEvent.click(container.querySelector('.ncard')!)
+    expect(container.querySelector('.action-modal')).toBeTruthy()
     expect(container.querySelector('.manifest')).toBeTruthy()
     expect(container.querySelector('.rich')).toBeNull()
   })
 
-  it('the expand button opens the modal without toggling the inline peek', () => {
+  it('the whole card is the trigger — no separate expand button, no inline peek', () => {
     const tool: ToolCall = {
       id: 'tx',
       name: 'axibridge_player_stats',
@@ -94,10 +98,27 @@ describe('RightRail notice cards', () => {
     const { container } = render(
       <RightRail memberCount={null} buildsCount={null} turns={[turnWith(tool)]} />
     )
-    fireEvent.click(container.querySelector('.ncard .expand')!)
-    // modal opened
+    // the old tiny expand button is gone; the card itself opens the modal
+    expect(container.querySelector('.ncard .expand')).toBeNull()
+    expect(container.querySelector('.action-modal')).toBeNull()
+    fireEvent.click(container.querySelector('.ncard')!)
     expect(container.querySelector('.action-modal')).toBeTruthy()
-    // inline peek did NOT open (no .nx body inside the card)
+    // results live in the modal, never inline in the rail
     expect(container.querySelector('.ncard .nx')).toBeNull()
+  })
+
+  it('opens the modal on keyboard activation (Enter)', () => {
+    const tool: ToolCall = {
+      id: 'tk',
+      name: 'gw2_api',
+      input: {},
+      resultText: '{"ok":true}',
+      isError: false
+    }
+    const { container } = render(
+      <RightRail memberCount={null} buildsCount={null} turns={[turnWith(tool)]} />
+    )
+    fireEvent.keyDown(container.querySelector('.ncard')!, { key: 'Enter' })
+    expect(container.querySelector('.action-modal')).toBeTruthy()
   })
 })
