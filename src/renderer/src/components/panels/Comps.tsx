@@ -114,7 +114,9 @@ function PresetCard({
                 <span className="cqty">×{c.required}</span>
                 <span className="cclass">{c.name}</span>
                 {got !== null && (
-                  <span className="csign">
+                  <span
+                    className={`csign ${got >= c.required ? 'full' : got > 0 ? 'partial' : 'empty'}`}
+                  >
                     <span className="csignnum">
                       {got}/{c.required} signed
                     </span>

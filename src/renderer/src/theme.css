@@ -172,6 +172,20 @@ td.nm2{color:var(--ink)}
 .richchart .recharts-text{fill:var(--faint)}
 /* Rich figures embedded in the main article column (charts/tables/cards). */
 .post-figure{margin:16px 0;padding:14px 16px;border:1px solid var(--line);background:rgba(0,0,0,.12);overflow-x:auto}
+/* A figure that already wraps a self-framed block — the comp sketch, a forge
+   card, or a rich table (its <table> inherits the boxed .prose table frame) —
+   would double up two outlines: the figure mat plus the inner border. Drop the
+   mat there so only the inner frame shows. Charts keep the mat; they carry no
+   border of their own. The rich root's own top margin goes too, so the block
+   sits flush; the caption stays, nudged off the right edge. */
+.post-figure:has(> .comp-sketch),
+.post-figure:has(> .forgecard),
+.post-figure:has(> .richtable){border:none;background:none;padding:0}
+.post-figure > .rich{margin-top:0}
+.post-figure:has(> .richtable) table{margin:0}
+.post-figure:has(> .comp-sketch) figcaption,
+.post-figure:has(> .forgecard) figcaption,
+.post-figure:has(> .richtable) figcaption{margin-right:2px}
 .post-figure figcaption{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-top:8px;text-align:right}
 /* AxiForge cards keep their own design system inside the coupon */
 .forgecard{font-family:system-ui,sans-serif;text-align:left;hyphens:none}
@@ -388,7 +402,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .bheadtext{min-width:0}
 .bkick{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
 .bname{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;line-height:1.2}
-.bbody{padding:0 14px 11px;font-size:13px;line-height:1.55;color:var(--ink-dim)}
+.bbody{flex:1;padding:0 14px 11px;font-size:13px;line-height:1.55;color:var(--ink-dim)}
 .bnone{color:var(--faint)}
 .bcode{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px dashed var(--rule);background:rgba(0,0,0,.28)}
 .bcodeval{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-dim);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -397,7 +411,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .clipbtn.done{color:var(--green);border-color:var(--green)}
 .bfoot{display:flex;align-items:center;padding:9px 14px;border-top:1px dotted var(--rule)}
 .bfoot .rowbtn{margin-left:0}
-.bfiled{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.bfiled{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
 .bform{margin-top:8px}
 .specfield{position:relative;display:flex;align-items:center;gap:8px}
 .specfield .sinput{flex:1}
@@ -419,6 +433,14 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .csignnum{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .cfill{width:54px;height:5px;background:rgba(0,0,0,.4);border:1px solid var(--line)}
 .cfillbar{display:block;height:100%;background:var(--green)}
+/* Encode signup coverage in colour — this panel's job is spotting gaps:
+   full=green (the default bar), partial=amber, empty=red cue. At 0% the bar
+   has no width, so the empty state recolours the track + count instead. */
+.csign.partial .cfillbar{background:var(--amber)}
+.csign.partial .csignnum{color:var(--amber)}
+.csign.empty .cfill{border-color:rgba(224,90,80,.5)}
+.csign.empty .csignnum{color:var(--accent-b)}
+.csign.full .csignnum{color:var(--green)}
 .cfoot{display:flex;align-items:center;padding:9px 14px;border-top:1px dotted var(--rule)}
 .cfoot .rowbtn:first-child{margin-left:0}
 /* comps — preset editor */
