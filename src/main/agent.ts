@@ -137,6 +137,7 @@ Rules:
   trends over time and tables for rosters and per-player breakdowns. Raw
   report JSON is never available to you; work only with the aggregates the
   tools return.
+  When an AxiBridge tool result includes "stale": true, its figures are cached from "staleSince" because the live source was unreachable — tell the reader plainly (e.g. "these numbers are cached from ~3h ago; the live source was down"), don't present them as current.
 - Durable memory (remember / recall tools): when the user states a STANDING fact
   in passing — a person's main/role/build preference ("break always runs warrior"),
   a schedule, a guild convention, or a recurring do/don't — proactively call the
