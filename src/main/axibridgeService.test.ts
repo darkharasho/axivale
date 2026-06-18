@@ -105,6 +105,24 @@ describe('AxibridgeService', () => {
     expect(staleRepos).toEqual(['o/r'])
   })
 
+  it('serves stale rollup when the live rollup fetch fails', async () => {
+    const repo = { owner: 'o', repo: 'r' }
+    const body = JSON.stringify({ rollup: { playerRows: [] }, source: 'published' })
+    const cache = {
+      readMeta: vi.fn().mockReturnValue(null),
+      putMeta: vi.fn(),
+      readMetaStale: vi.fn().mockReturnValue({ body, fetchedAt: 2_000 })
+    }
+    const client = { fetchRollup: vi.fn().mockRejectedValue(new Error('GitHub down')) }
+    const svc = new AxibridgeService({ cache, client, repos: () => [repo] } as any)
+
+    // rollupFor is private; exercise it via the no-range attendance path.
+    const out = await (svc as any).rollupFor(repo)
+    expect(out.stale).toBe(true)
+    expect(out.fetchedAt).toBe(2_000)
+    expect(out.source).toBe('published')
+  })
+
   it('rethrows when live fails and no stale copy exists', async () => {
     const repo = { owner: 'o', repo: 'r' }
     const cache = {

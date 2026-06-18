@@ -167,29 +167,43 @@ export class AxibridgeService {
   }
 
   /** Rollup-backed: published rollup.json when present, else computed locally. */
-  private async rollupFor(repo: RepoRef): Promise<{ rollup: RollupData; source: 'published' | 'computed-locally' }> {
+  private async rollupFor(
+    repo: RepoRef
+  ): Promise<{ rollup: RollupData; source: 'published' | 'computed-locally'; stale: boolean; fetchedAt: number | null }> {
     const cached = this.deps.cache.readMeta(repo, 'rollup')
-    if (cached) return JSON.parse(cached) as { rollup: RollupData; source: 'published' | 'computed-locally' }
-    const published = await this.deps.client.fetchRollup(repo)
-    let result: { rollup: RollupData; source: 'published' | 'computed-locally' }
-    if (published) {
-      result = { rollup: published.rollup, source: 'published' }
-    } else {
-      // Older repo without rollup.json — build it from full reports via bridge-metrics.
-      const { entries } = await this.indexFor(repo)
-      const sources: RollupReportPayload[] = []
-      for (const entry of entries) {
-        let body = this.deps.cache.readReport(repo, entry.id)
-        if (!body) {
-          body = JSON.stringify(await this.deps.client.fetchReport(repo, entry.id))
-          this.deps.cache.putReport(repo, entry.id, body)
-        }
-        sources.push(extractRollupSource(JSON.parse(body) as RollupReportPayload))
-      }
-      result = { rollup: buildRollupData(sources), source: 'computed-locally' }
+    if (cached) {
+      const parsed = JSON.parse(cached) as { rollup: RollupData; source: 'published' | 'computed-locally' }
+      return { ...parsed, stale: false, fetchedAt: null }
     }
-    this.deps.cache.putMeta(repo, 'rollup', JSON.stringify(result))
-    return result
+    try {
+      const published = await this.deps.client.fetchRollup(repo)
+      let result: { rollup: RollupData; source: 'published' | 'computed-locally' }
+      if (published) {
+        result = { rollup: published.rollup, source: 'published' }
+      } else {
+        // Older repo without rollup.json — build it from full reports via bridge-metrics.
+        const { entries } = await this.indexFor(repo)
+        const sources: RollupReportPayload[] = []
+        for (const entry of entries) {
+          let body = this.deps.cache.readReport(repo, entry.id)
+          if (!body) {
+            body = JSON.stringify(await this.deps.client.fetchReport(repo, entry.id))
+            this.deps.cache.putReport(repo, entry.id, body)
+          }
+          sources.push(extractRollupSource(JSON.parse(body) as RollupReportPayload))
+        }
+        result = { rollup: buildRollupData(sources), source: 'computed-locally' }
+      }
+      this.deps.cache.putMeta(repo, 'rollup', JSON.stringify(result))
+      return { ...result, stale: false, fetchedAt: null }
+    } catch (err) {
+      const stale = this.deps.cache.readMetaStale(repo, 'rollup')
+      if (stale) {
+        const parsed = JSON.parse(stale.body) as { rollup: RollupData; source: 'published' | 'computed-locally' }
+        return { ...parsed, stale: true, fetchedAt: stale.fetchedAt }
+      }
+      throw err
+    }
   }
 
   async attendance(args: DateRange) {
