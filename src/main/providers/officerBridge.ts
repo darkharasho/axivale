@@ -1,13 +1,27 @@
 import net from 'node:net'
+import { fileURLToPath } from 'node:url'
+import { sep } from 'node:path'
 import type { AgentEvent, TurnInput } from './types'
 import { toToolSpecs, gateAndRunTool } from './toolSchema'
 
 /**
- * Path to the officer MCP proxy, emitted as a sibling build entry. The proxy is
- * provider-agnostic (named codexOfficerServer for historical reasons); both the
- * Codex and Gemini-CLI adapters spawn it and point it at a bridge socket.
+ * Rewrite an app.asar path to its app.asar.unpacked twin. In a packaged build,
+ * `import.meta.url` / require.resolve point inside app.asar, but files we need to
+ * spawn (the officer proxy, the codex binary) are asar-unpacked to disk. A child
+ * `node`/binary can't read from app.asar, so paths handed to spawn must be
+ * rewritten. No-op in dev (no "app.asar" segment). Mirrors claude.ts.
  */
-export const OFFICER_SERVER = new URL('./codexOfficerServer.js', import.meta.url)
+export function unpacked(p: string): string {
+  return p.replace(`app.asar${sep}`, `app.asar.unpacked${sep}`)
+}
+
+/**
+ * On-disk path to the officer MCP proxy, emitted as a sibling build entry. The
+ * proxy is provider-agnostic (named codexOfficerServer for historical reasons);
+ * both the Codex and Gemini-CLI adapters spawn it and point it at a bridge
+ * socket. Unpacked so the spawned node can read it in a packaged app.
+ */
+export const OFFICER_SERVER_PATH = unpacked(fileURLToPath(new URL('./codexOfficerServer.js', import.meta.url)))
 
 /**
  * Minimal async queue merging two event producers — the provider's own event
