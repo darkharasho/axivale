@@ -11,7 +11,28 @@ permissions:
   contents: write
 
 jobs:
+  # Gate the publish on the same checks CI runs: a red tag must not ship to the
+  # in-app auto-updater. Runs once on Linux; the platform builds wait on it.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: axivale
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: axivale/package-lock.json
+      - run: npm ci
+        working-directory: axivale
+      - run: npm run typecheck
+        working-directory: axivale
+      - run: npx vitest run --maxWorkers=2
+        working-directory: axivale
+
   release:
+    needs: test
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
