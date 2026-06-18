@@ -88,4 +88,9 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/\[\[item:/)
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/canonical in-game name/i)
   })
+
+  it('instructs the agent to surface stale AxiBridge data', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/stale/i)
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/cached/i)
+  })
 })

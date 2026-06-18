@@ -5,6 +5,7 @@ import type { AxibridgeService } from '../axibridgeService'
 import { localRunDate } from '../axibridgeRunDate'
 import { runAxibridgeQuery } from '../axibridgeQuery'
 import { jqEngine, type JqEngine } from '../jqEngine'
+import { relativeAge } from '../axibridgeStale'
 
 const chartSpecSchema = z.object({
   type: z.enum(['line', 'bar', 'area']),
@@ -15,6 +16,11 @@ const chartSpecSchema = z.object({
 })
 
 const msToHours = (ms: number): number => Math.round((ms / 3_600_000) * 10) / 10
+
+/** Optional table/chart display markers for a stale result (omitted when fresh). */
+function staleDisplay(stale: boolean, staleSince: string | null): { stale: true; staleAge: string } | Record<string, never> {
+  return stale ? { stale: true, staleAge: relativeAge(staleSince) ?? 'unknown age' } : {}
+}
 
 /**
  * AxiBridge analytics tools. All read-only: they fetch published WvW report
@@ -49,6 +55,7 @@ export function buildAxibridgeTools(
                 { key: 'firstRun', label: 'First run' },
                 { key: 'lastRun', label: 'Last run' },
                 { key: 'cachedReports', label: 'Cached' },
+                { key: 'stale', label: 'Live?' },
                 { key: 'error', label: 'Error' }
               ],
               rows: status.repos.map((r) => ({
@@ -57,6 +64,7 @@ export function buildAxibridgeTools(
                 firstRun: r.firstRun ?? '—',
                 lastRun: r.lastRun ?? '—',
                 cachedReports: r.cachedReports,
+                stale: r.stale ? `cached · ${relativeAge(r.staleSince) ?? 'unknown age'}` : 'live',
                 error: r.error ?? ''
               }))
             }
@@ -85,7 +93,7 @@ export function buildAxibridgeTools(
         // No inline figure: a run listing is reference data / an action, not a
         // graph. It stays a compact action card in the rail; the model
         // summarizes (count, range, the few that matter) in prose.
-        return { value: { count: rows.length, runs: rows, errors: result.errors } }
+        return { value: { count: rows.length, runs: rows, errors: result.errors, staleRepos: result.staleRepos, stale: result.stale, staleSince: result.staleSince } }
       })
     ),
     tool(
@@ -173,7 +181,7 @@ export function buildAxibridgeTools(
           lastSeen: p.lastSeen ?? '—'
         }))
         return {
-          value: { players: rows, runsConsidered: result.runsConsidered, skippedRuns: result.skippedRuns, errors: result.errors },
+          value: { players: rows, runsConsidered: result.runsConsidered, skippedRuns: result.skippedRuns, errors: result.errors, stale: result.stale, staleSince: result.staleSince },
           display: {
             kind: 'table',
             data: {
@@ -188,7 +196,8 @@ export function buildAxibridgeTools(
                 { key: 'deaths', label: 'Deaths' },
                 { key: 'combatHours', label: 'Combat h' }
               ],
-              rows
+              rows,
+              ...staleDisplay(result.stale, result.staleSince)
             }
           }
         }
@@ -215,6 +224,8 @@ export function buildAxibridgeTools(
           value: {
             attendance: rows,
             rollupSource: result.rollupSource,
+            stale: result.stale,
+            staleSince: result.staleSince,
             ...('range' in result ? { range: result.range } : {}),
             ...('runsConsidered' in result ? { runsConsidered: result.runsConsidered } : {}),
             ...('skippedRuns' in result && result.skippedRuns?.length
@@ -233,7 +244,8 @@ export function buildAxibridgeTools(
                 { key: 'squadHours', label: 'Squad h' },
                 { key: 'lastSeen', label: 'Last seen' }
               ],
-              rows
+              rows,
+              ...staleDisplay(result.stale, result.staleSince)
             }
           }
         }
@@ -286,7 +298,7 @@ export function buildAxibridgeTools(
           deaths: c.commanderDeaths
         }))
         return {
-          value: { commanders: rows, rollupSource: result.rollupSource },
+          value: { commanders: rows, rollupSource: result.rollupSource, stale: result.stale, staleSince: result.staleSince },
           display: {
             kind: 'table',
             data: {
@@ -299,7 +311,8 @@ export function buildAxibridgeTools(
                 { key: 'kdr', label: 'KDR' },
                 { key: 'deaths', label: 'Deaths' }
               ],
-              rows
+              rows,
+              ...staleDisplay(result.stale, result.staleSince)
             }
           }
         }

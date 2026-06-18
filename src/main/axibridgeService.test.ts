@@ -138,4 +138,36 @@ describe('AxibridgeService', () => {
     expect(runs).toEqual([])
     expect(errors[0]).toMatch(/GitHub down/) // error isolated per repo, not thrown
   })
+
+  it('attendance (no range) reports stale + oldest staleSince when a repo serves cached rollup', async () => {
+    const repo = { owner: 'o', repo: 'r' }
+    const rollupBody = JSON.stringify({ rollup: { playerRows: [{ account: 'P.1', runs: 1, combatTimeMs: 1, squadTimeMs: 1 }], commanderRows: [] }, source: 'published' })
+    const cache = {
+      readMeta: vi.fn().mockReturnValue(null),
+      putMeta: vi.fn(),
+      readMetaStale: vi.fn().mockReturnValue({ body: rollupBody, fetchedAt: 1_750_000_000_000 })
+    }
+    const client = { fetchRollup: vi.fn().mockRejectedValue(new Error('down')) }
+    const svc = new AxibridgeService({ cache, client, repos: () => [repo] } as never)
+
+    const out = await svc.attendance({})
+    expect(out.stale).toBe(true)
+    expect(out.staleSince).toBe('2025-06-15T15:06:40.000Z')
+  })
+
+  it('runsList reports stale + staleSince from a stale index', async () => {
+    const repo = { owner: 'o', repo: 'r' }
+    const cache = {
+      readMeta: vi.fn().mockReturnValue(null),
+      putMeta: vi.fn(),
+      readMetaStale: vi.fn().mockReturnValue({ body: JSON.stringify([{ id: 'r1', dateStart: '2026-06-01' }]), fetchedAt: 1_750_000_000_000 })
+    }
+    const client = { fetchIndex: vi.fn().mockRejectedValue(new Error('down')) }
+    const svc = new AxibridgeService({ cache, client, repos: () => [repo] } as never)
+
+    const out = await svc.runsList({})
+    expect(out.stale).toBe(true)
+    expect(out.staleSince).toBe('2025-06-15T15:06:40.000Z')
+    expect(out.staleRepos).toEqual(['o/r'])
+  })
 })

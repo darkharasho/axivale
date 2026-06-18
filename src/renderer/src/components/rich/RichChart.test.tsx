@@ -36,4 +36,15 @@ describe('RichChart', () => {
     )
     expect(container.querySelectorAll('.recharts-line')).toHaveLength(2)
   })
+
+  it('renders a stale badge when stale', () => {
+    const base = { type: 'line' as const, title: 'DPS', xKey: 'run', series: [{ key: 'dps', label: 'DPS' }], rows: [{ run: 'r1', dps: 5 }] }
+    const { getByText } = render(<RichChart spec={{ ...base, stale: true, staleAge: '2d ago' }} />)
+    expect(getByText('cached · 2d ago · source unreachable')).toBeTruthy()
+  })
+
+  it('renders no stale badge when fresh', () => {
+    const { container } = render(<RichChart spec={spec} />)
+    expect(container.querySelector('.rich-stale-badge')).toBeNull()
+  })
 })
