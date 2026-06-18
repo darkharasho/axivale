@@ -6,6 +6,7 @@ import {
   type FormEvent,
   type ReactElement
 } from 'react'
+import { Check, ChevronDown, ChevronRight } from 'lucide-react'
 import {
   axi,
   ClassIcon,
@@ -92,7 +93,13 @@ function BuildCard({
       <div className="bcode">
         <span className="bcodeval">{build.chat_code}</span>
         <button className={`clipbtn${clipped ? ' done' : ''}`} onClick={clip}>
-          {clipped ? '✓ clipped' : 'Clip code'}
+          {clipped ? (
+            <>
+              <Check size={11} /> clipped
+            </>
+          ) : (
+            'Clip code'
+          )}
         </button>
       </div>
       <div className="bfoot">
@@ -248,7 +255,9 @@ export default function Builds(): ReactElement {
           className="deskset-head"
           onClick={() => setSettingsOpen((o) => !o)}
         >
-          <span className="deskset-tog">{settingsOpen ? '▾' : '▸'}</span>
+          <span className="deskset-tog">
+            {settingsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </span>
           <span className="deskset-lbl">Desk Settings</span>
         </button>
         {settingsOpen && (

@@ -1,3 +1,4 @@
+import { Circle } from 'lucide-react'
 import type { ReactElement } from 'react'
 
 export type SettingsSection =
@@ -52,7 +53,7 @@ export default function SettingsNav({
           {it.label}
           {it.hasDot && (
             <span className={`dot${status[it.key as keyof SettingsNavStatus] ? '' : ' off'}`}>
-              ●
+              <Circle size={8} fill="currentColor" strokeWidth={0} />
             </span>
           )}
         </button>

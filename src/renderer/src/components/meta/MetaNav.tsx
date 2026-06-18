@@ -1,3 +1,4 @@
+import { Circle } from 'lucide-react'
 import type { ReactElement } from 'react'
 import type { RendererMetaMode } from '../../../../preload/index.d'
 
@@ -38,7 +39,9 @@ export default function MetaNav({
       {busy[m.id] ? (
         <span className="meta-spin" />
       ) : (
-        <span className={`dot${m.refreshedAt ? '' : ' off'}`}>●</span>
+        <span className={`dot${m.refreshedAt ? '' : ' off'}`}>
+          <Circle size={8} fill="currentColor" strokeWidth={0} />
+        </span>
       )}
     </button>
   )

@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import type { DisplayPayload } from '../../state'
 
 type TableSpec = Extract<DisplayPayload, { kind: 'table' }>['data']
@@ -45,7 +46,11 @@ export default function RichTable({ spec }: { spec: TableSpec }): ReactElement {
             {spec.columns.map((c) => (
               <th key={c.key} onClick={() => onSort(c.key)}>
                 {c.label}
-                {sortKey === c.key && <span className="arr">{dir === 1 ? '▲' : '▼'}</span>}
+                {sortKey === c.key && (
+                  <span className="arr">
+                    {dir === 1 ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  </span>
+                )}
               </th>
             ))}
           </tr>

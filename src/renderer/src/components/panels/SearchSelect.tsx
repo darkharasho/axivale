@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
+import { ChevronDown } from 'lucide-react'
 
 export interface SearchSelectOption {
   value: string
@@ -107,7 +108,7 @@ export function SearchSelect({
           {current && <Lead o={current} />}
           {current ? current.label : placeholder}
         </span>
-        <span className="caret">▾</span>
+        <span className="caret"><ChevronDown size={13} /></span>
       </button>
       {open && (
         <div className="ssel-menu">

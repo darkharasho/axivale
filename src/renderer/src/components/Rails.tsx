@@ -1,3 +1,4 @@
+import { Maximize2 } from 'lucide-react'
 import { useState, type KeyboardEvent, type ReactElement } from 'react'
 import type { ToolCall, Turn } from '../state'
 import { couponLabel, humanInput } from './ToolCoupon'
@@ -65,7 +66,7 @@ function NoticeCard({
             {state !== 'ok' ? ` · ${stateLabel}` : ''}
           </span>
           <span className="open" aria-hidden="true">
-            open ⤢
+            open <Maximize2 size={11} />
           </span>
         </div>
       </div>

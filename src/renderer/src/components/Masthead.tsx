@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { ChevronDown, Circle, Minus, Square, Star, X } from 'lucide-react'
 
 export type Section = 'dispatches' | 'operations' | 'roster' | 'skills' | 'meta' | 'settings'
 
@@ -102,7 +103,7 @@ function EarSwitcher({
     <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
       <button className="earsw-btn" onClick={() => void toggle()}>
         {display}
-        <span className="earsw-caret">▾</span>
+        <span className="earsw-caret"><ChevronDown size={11} /></span>
       </button>
       {open && (
         <div className={`earsw-menu ${align}`}>
@@ -116,7 +117,11 @@ function EarSwitcher({
                 onClick={() => void pick(k.label)}
               >
                 {k.label}
-                {k.active && <span className="dot">●</span>}
+                {k.active && (
+                  <span className="dot">
+                    <Circle size={8} fill="currentColor" strokeWidth={0} />
+                  </span>
+                )}
               </button>
             ))
           )}
@@ -195,7 +200,7 @@ export function Gw2GuildSwitcher({ onSwitched }: { onSwitched: () => void }): Re
     <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
       <button className="earsw-btn" onClick={() => void toggle()}>
         {display}
-        <span className="earsw-caret">▾</span>
+        <span className="earsw-caret"><ChevronDown size={11} /></span>
       </button>
       {open && (
         <div className="earsw-menu left">
@@ -214,8 +219,12 @@ export function Gw2GuildSwitcher({ onSwitched }: { onSwitched: () => void }): Re
               >
                 {g.name}
                 {g.tag ? ` [${g.tag}]` : ''}
-                {g.leader ? ' ★' : ''}
-                {g.id === currentId && <span className="dot">●</span>}
+                {g.leader ? <Star size={11} fill="currentColor" /> : ''}
+                {g.id === currentId && (
+                  <span className="dot">
+                    <Circle size={8} fill="currentColor" strokeWidth={0} />
+                  </span>
+                )}
               </button>
             ))
           )}
@@ -253,20 +262,20 @@ export default function Masthead(props: MastheadProps): ReactElement {
         <span className="r">Final Edition · Free to Members</span>
         <span className="winctl">
           <button title="Minimize" onClick={() => window.officer.windowControl('minimize')}>
-            —
+            <Minus size={13} />
           </button>
           <button
             title="Maximize"
             onClick={() => window.officer.windowControl('maximize-toggle')}
           >
-            □
+            <Square size={13} />
           </button>
           <button
             className="close"
             title="Close"
             onClick={() => window.officer.windowControl('close')}
           >
-            ✕
+            <X size={13} />
           </button>
         </span>
       </div>
@@ -275,9 +284,13 @@ export default function Masthead(props: MastheadProps): ReactElement {
           <div>
             <b>AxiTools</b>{' '}
             {axiConnected ? (
-              <span className="lit">● connected</span>
+              <span className="lit">
+                <Circle size={8} fill="currentColor" strokeWidth={0} /> connected
+              </span>
             ) : (
-              <span className="off-air">● offline</span>
+              <span className="off-air">
+                <Circle size={8} fill="currentColor" strokeWidth={0} /> offline
+              </span>
             )}
           </div>
           <div>

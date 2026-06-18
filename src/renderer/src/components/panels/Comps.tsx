@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactElement } from 'react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import {
   axi,
   ClassIcon,
@@ -337,7 +338,9 @@ export default function Comps(): ReactElement {
           className="deskset-head"
           onClick={() => setSettingsOpen((o) => !o)}
         >
-          <span className="deskset-tog">{settingsOpen ? '▾' : '▸'}</span>
+          <span className="deskset-tog">
+            {settingsOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </span>
           <span className="deskset-lbl">Desk Settings</span>
         </button>
         {settingsOpen && (

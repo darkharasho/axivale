@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactElement } from 'react'
+import { Circle } from 'lucide-react'
 import {
   axi,
   ChannelTag,
@@ -241,9 +242,13 @@ export default function Bureau(): ReactElement {
                   <td className="mono"><ChannelTag ov={ov} id={s.discord_channel_id} /></td>
                   <td className="mono">
                     {s.is_live ? (
-                      <span className="lit">● live</span>
+                      <span className="lit">
+                        <Circle size={8} fill="currentColor" strokeWidth={0} /> live
+                      </span>
                     ) : (
-                      <span className="off-air">● off-air</span>
+                      <span className="off-air">
+                        <Circle size={8} fill="currentColor" strokeWidth={0} /> off-air
+                      </span>
                     )}
                   </td>
                   <td className="act">

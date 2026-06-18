@@ -1,5 +1,6 @@
 // src/renderer/src/components/ActionModal.tsx
 import { useEffect, useState, type ReactElement } from 'react'
+import { X } from 'lucide-react'
 import type { ToolCall } from '../state'
 import { couponLabel, humanValue, prettyKey, renderCouponBody } from './ToolCoupon'
 
@@ -53,7 +54,7 @@ export default function ActionModal({
     <div className="action-overlay" onClick={onClose}>
       <div className="action-modal" onClick={(e) => e.stopPropagation()}>
         <button className="action-modal__x" aria-label="Close" onClick={onClose}>
-          ✕
+          <X size={13} />
         </button>
         <div className="action-modal__head">
           <div className="action-modal__kick">{section ? `${section} · Action` : 'Action'}</div>

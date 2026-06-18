@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronRight, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type {
   RendererMetaIndexStats,
@@ -125,7 +126,10 @@ export default function MetaIndexInspector(): ReactElement {
     return (
       <div className="mi-hit" key={key}>
         <button type="button" className="mi-hit-head" onClick={() => toggleRow(key)}>
-          <span className="mi-caret">{isOpen ? '▾' : '▸'}</span> {head}
+          <span className="mi-caret">
+            {isOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          </span>{' '}
+          {head}
         </button>
         <div className={isOpen ? 'mi-full' : 'mi-snip'}>{isOpen ? (full ?? snippet) : snippet}</div>
       </div>
@@ -172,7 +176,7 @@ export default function MetaIndexInspector(): ReactElement {
             </button>
           </div>
           <button className="action-modal__x" aria-label="Close" onClick={() => setOpen(false)}>
-            ✕
+            <X size={13} />
           </button>
         </div>
         <div className="mi-modal__body">
@@ -213,7 +217,7 @@ export default function MetaIndexInspector(): ReactElement {
                 className={`mi-pick${modeOpen ? ' open' : ''}`}
                 onClick={() => setModeOpen((o) => !o)}
               >
-                {mode || allLabel} <span className="mi-caret">▾</span>
+                {mode || allLabel} <span className="mi-caret"><ChevronDown size={11} /></span>
               </button>
               {modeOpen && (
                 <div className="mi-menu">

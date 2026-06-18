@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { Check, Download } from 'lucide-react'
 import { Pane, Card, Field, Segmented, Keyring, type KeyLabel } from '../panelui'
 
 export type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
@@ -349,18 +350,25 @@ export default function Intelligence(p: IntelligenceProps): ReactElement {
                           }
                         >
                           {m}{' '}
-                          {isPulling
-                            ? `· ${p.ollamaPct ?? 0}%`
-                            : installed
-                              ? '· ✓'
-                              : '· ↓'}
+                          {isPulling ? (
+                            `· ${p.ollamaPct ?? 0}%`
+                          ) : installed ? (
+                            <>
+                              · <Check size={11} />
+                            </>
+                          ) : (
+                            <>
+                              · <Download size={11} />
+                            </>
+                          )}
                         </button>
                       )
                     })}
                   </div>
                   {p.ollamaErr && <div className="sstatus err">{p.ollamaErr}</div>}
                   <p className="shelp">
-                    ✓ installed models are ready. Click a ↓ model to download it. The accented
+                    <Check size={11} className="ic-inline" /> installed models are ready. Click a{' '}
+                    <Download size={11} className="ic-inline" /> model to download it. The accented
                     chip is active.
                   </p>
                 </Card>

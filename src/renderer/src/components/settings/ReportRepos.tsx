@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { Check, X } from 'lucide-react'
 import { Pane, Card, Field, Keyring, type KeyLabel } from '../panelui'
 
 export interface BridgeRepo {
@@ -63,7 +64,7 @@ export default function ReportRepos(p: ReportReposProps): ReactElement {
                     title={`Unlink ${r.owner}/${r.repo}`}
                     onClick={() => p.onRemoveRepo(r.owner, r.repo)}
                   >
-                    ✕
+                    <X size={13} />
                   </span>
                 </div>
               )
@@ -116,7 +117,13 @@ export default function ReportRepos(p: ReportReposProps): ReactElement {
           <div className="sstatus ok">
             Enter code <b>{p.ghUserCode}</b>{' '}
             <button className="sbtn ghost" type="button" onClick={p.onCopyCode}>
-              {p.ghCodeCopied ? 'copied ✓' : 'copy'}
+              {p.ghCodeCopied ? (
+                <>
+                  copied <Check size={11} />
+                </>
+              ) : (
+                'copy'
+              )}
             </button>{' '}
             at github.com/login/device (opened in your browser).
           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { Hash } from 'lucide-react'
+import { Hash, X } from 'lucide-react'
 import { classIconUrl } from './classIcons'
 import { classIconSvg } from './classIconSvg'
 
@@ -58,7 +58,13 @@ export function ZapButton({
         }
       }}
     >
-      {armed ? 'confirm ✕' : '✕'}
+      {armed ? (
+        <>
+          confirm <X size={11} />
+        </>
+      ) : (
+        <X size={11} />
+      )}
     </button>
   )
 }

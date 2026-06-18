@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { PROFESSIONS } from './classes'
 import { ClassIcon } from './shared'
 
@@ -39,7 +40,7 @@ export function ClassPicker({
         ) : (
           <span className="ph">{placeholder}</span>
         )}
-        <span className="caret">▾</span>
+        <span className="caret"><ChevronDown size={13} /></span>
       </button>
       {open && (
         <div className="clspick-menu">

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
+import { X } from 'lucide-react'
 
 type UpdateStatus =
   | { state: 'checking' }
@@ -30,7 +31,7 @@ export default function UpdateBanner(): ReactElement | null {
         Restart &amp; update
       </button>
       <button className="ub-dismiss" title="Dismiss" onClick={() => setStatus(null)}>
-        ✕
+        <X size={13} />
       </button>
     </div>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { X } from 'lucide-react'
 import type { RendererMetaMode } from '../../../../preload/index.d'
 import { Card, Field } from '../panelui'
 
@@ -62,7 +63,7 @@ function PlaybookModal({
         <div className="action-modal__head">
           <span className="nm">Comp Playbook — {mode.mode}</span>
           <button className="action-modal__x" onClick={onClose} aria-label="Close">
-            ✕
+            <X size={13} />
           </button>
         </div>
         <div className="action-modal__body meta-playbook">

@@ -1,3 +1,4 @@
+import { Check, X } from 'lucide-react'
 import type { ReactElement } from 'react'
 import type { ToolCall } from '../state'
 import RichDisplay from './rich/RichDisplay'
@@ -178,9 +179,17 @@ export default function ToolCoupon({ tool }: { tool: ToolCall }): ReactElement {
   if (working) {
     status = <span className="st work">… working</span>
   } else if (tool.isError) {
-    status = <span className="st fail">✗ failed</span>
+    status = (
+      <span className="st fail">
+        <X size={11} /> failed
+      </span>
+    )
   } else {
-    status = <span className="st">✓ filed</span>
+    status = (
+      <span className="st">
+        <Check size={11} /> filed
+      </span>
+    )
   }
   const hasInput = tool.input && Object.keys(tool.input).length > 0
   return (

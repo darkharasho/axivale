@@ -1,3 +1,4 @@
+import { X } from 'lucide-react'
 import type { ReactElement, ReactNode } from 'react'
 
 export interface KeyLabel {
@@ -130,7 +131,7 @@ export function Keyring({
               onRemove(k.label)
             }}
           >
-            ✕
+            <X size={13} />
           </span>
         </button>
       ))}

@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactElement, type KeyboardEvent } from 'react'
+import { useMemo, useState, type ReactElement, type ReactNode, type KeyboardEvent } from 'react'
+import { Check, X } from 'lucide-react'
 import type { RendererReconciledMember } from '../../../../preload/index.d'
 import { Offline } from './shared'
 import { SearchSelect } from './SearchSelect'
@@ -34,7 +35,9 @@ function ChipInput({
       {values.map((v) => (
         <span key={v} className="rst-chip">
           {v}
-          <b onClick={() => onChange(values.filter((x) => x !== v))}>✕</b>
+          <b onClick={() => onChange(values.filter((x) => x !== v))}>
+            <X size={11} />
+          </b>
         </span>
       ))}
       <input
@@ -49,7 +52,7 @@ function ChipInput({
   )
 }
 
-function Badge({ tone, text }: { tone: 'ok' | 'warn' | 'dim'; text: string }): ReactElement {
+function Badge({ tone, text }: { tone: 'ok' | 'warn' | 'dim'; text: ReactNode }): ReactElement {
   return (
     <span className={`rst-badge ${tone}`}>
       <span className="d" />
@@ -62,7 +65,14 @@ function badges(m: RendererReconciledMember): ReactElement {
   return (
     <div className="rst-badges">
       {m.inGuild ? (
-        <Badge tone="ok" text="In-game guild ✓" />
+        <Badge
+          tone="ok"
+          text={
+            <>
+              In-game guild <Check size={11} />
+            </>
+          }
+        />
       ) : m.status === 'left-guild' ? (
         <Badge tone="warn" text="Not in in-game guild" />
       ) : (
