@@ -111,7 +111,6 @@ export default function App(): ReactElement {
   // (Skills); stays live across edits so the InputBar picker is always current.
   const skillsCtl = useSkills()
   const skills = skillsCtl.skills
-  const [forcedSkillId, setForcedSkillId] = useState<string | null>(null)
   // Active sub-section of the merged Operations tab (Builds/Comps/Bureau).
   const [operationsSection, setOperationsSection] = useState<OperationsSection>('builds')
   // Roster reconciliation + annotations, shared by RosterNav (rail) and Roster.
@@ -382,12 +381,12 @@ export default function App(): ReactElement {
     setConfirmQueue([])
   }
 
-  function submit(text: string): void {
+  function submit(text: string, skillId: string | null): void {
     if (!activeId) return
     const id = activeId
     setTurnsByConv((prev) => {
       const convTurns = prev[id] ?? []
-      const skillName = forcedSkillId ? skills.find((s) => s.id === forcedSkillId)?.name : undefined
+      const skillName = skillId ? skills.find((s) => s.id === skillId)?.name : undefined
       const turn: Turn = {
         id: nextTurnId(convTurns),
         userText: text,
@@ -405,9 +404,8 @@ export default function App(): ReactElement {
     setRunning(true)
     setBridgeProgress(null)
     void window.officer
-      .sendMessage(id, text, forcedSkillId ?? undefined)
+      .sendMessage(id, text, skillId ?? undefined)
       .catch(() => setRunning(false))
-    setForcedSkillId(null)
   }
 
   function respondConfirm(id: string, allowed: boolean): void {
@@ -558,14 +556,7 @@ export default function App(): ReactElement {
         <div className="bridge-progress">{bridgeProgress}</div>
       )}
       {section === 'dispatches' && (
-        <InputBar
-          disabled={running}
-          onSubmit={submit}
-          onStop={stopTurn}
-          skills={skills}
-          forcedSkillId={forcedSkillId}
-          onForceSkill={setForcedSkillId}
-        />
+        <InputBar disabled={running} onSubmit={submit} onStop={stopTurn} skills={skills} />
       )}
       {confirmQueue.length > 0 && <ConfirmDialog req={confirmQueue[0]} onRespond={respondConfirm} />}
       <ShareDialog state={shareState} onClose={() => setShareState({ status: 'idle' })} />

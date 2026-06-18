@@ -386,7 +386,15 @@ td.nm2{color:var(--ink)}
 .inputbar{padding:16px 30px}
 .inwrap{display:flex;align-items:center;gap:14px;max-width:980px;margin:0 auto}
 .prompt{font-family:'IBM Plex Mono',monospace;color:var(--accent-b);font-size:15px}
-.field{flex:1;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-size:15px;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b)}
+/* the field rides over a mirror that paints the skill-token highlights, so it's
+   transparent-backed and shares the mirror's exact box + typography */
+.field-wrap{position:relative;flex:1;min-width:0;display:flex}
+.field{width:100%;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-size:15px;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b);position:relative;z-index:1}
+.field-mirror{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;white-space:pre;border-bottom:1.5px dashed transparent;padding:7px 2px;font-size:15px;font-family:'Source Serif 4',serif;color:transparent;display:flex;align-items:center}
+/* a recognized /skill reads as a valid token: a faint vermilion wash under the
+   real (visible) glyphs, underlined in the muted focus accent. No horizontal
+   padding — that would shift the mirror out of step with the input. */
+.skill-token{background:rgba(200,66,58,.16);border-radius:2px;box-shadow:inset 0 -1.5px 0 var(--focus);color:transparent}
 .field::placeholder{color:var(--faint)}
 .field:disabled{opacity:.5}
 .filebtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:8px 18px;text-transform:uppercase;font-weight:500;border:1px dashed rgba(255,255,255,.4);outline:3px solid var(--accent);cursor:pointer}
@@ -825,16 +833,19 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .rst-acct-main{border-left:2px solid var(--green)}
 /* when both Set-main and Unlink show, only the first gets the auto margin */
 .rst-main-badge+.rst-unlink,.rst-setmain+.rst-unlink{margin-left:8px}
-/* ---- InputBar skill picker (custom dark dropdown) ---- */
-.skill-pick-wrap{position:relative;display:inline-block;-webkit-app-region:no-drag}
-.skill-pick{background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;cursor:pointer}
-.skill-pick:hover,.skill-pick.open{color:var(--ink);border-color:var(--rule2)}
-.skill-menu{position:absolute;bottom:100%;right:0;margin-bottom:6px;min-width:170px;max-height:240px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);z-index:40}
-.skill-opt{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px dotted var(--line);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);cursor:pointer}
+/* ---- InputBar /skill typeahead ---- */
+/* Opens above the field as you type a "/token"; anchored to the field's left so
+   it reads as a continuation of what's being typed. */
+.skill-typeahead{position:absolute;bottom:100%;left:0;margin-bottom:8px;min-width:240px;max-height:280px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);z-index:40;-webkit-app-region:no-drag}
+.skill-ta-head{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);padding:8px 12px 6px;border-bottom:1px dashed var(--rule)}
+.skill-opt{display:flex;align-items:baseline;gap:12px;width:100%;text-align:left;background:none;border:none;border-bottom:1px dotted var(--line);padding:8px 12px;cursor:pointer}
 .skill-opt:last-child{border-bottom:none}
-.skill-opt:hover{background:rgba(200,66,58,.12);color:var(--ink)}
-.skill-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(200,66,58,.10);border:1px solid var(--accent);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:3px 4px 3px 8px}
-.skill-chip button{background:none;border:none;color:var(--accent-b);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+/* keyboard/mouse highlight share one state so arrowing and hovering match */
+.skill-opt.hi{background:rgba(200,66,58,.12)}
+.skill-opt-nm{font-family:'Source Serif 4',serif;font-size:13px;color:var(--ink-dim)}
+.skill-opt.hi .skill-opt-nm{color:var(--ink)}
+.skill-opt-tk{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint);white-space:nowrap}
+.skill-opt.hi .skill-opt-tk{color:var(--accent-b)}
 /* skill badge on a user message */
 .msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:1px solid rgba(224,90,80,.45);padding:1px 6px;letter-spacing:.12em}
 
