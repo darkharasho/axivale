@@ -2,7 +2,7 @@
 :root{
   --bg:#16171a; --bg2:#1b1c20; --paper:#1f2025; --line:#2e3036; --rule:#3a3d44; --rule2:#46494f;
   --ink:#e4e3dc; --ink-dim:#a6a69e; --faint:#6a6b6e;
-  --accent:#c8423a; --accent-b:#e05a50; --green:#6fae6f;
+  --accent:#c8423a; --accent-b:#e05a50; --green:#6fae6f; --amber:#c9a227;
 }
 html,body,#root{height:100%}
 body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
@@ -632,7 +632,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* ---- Roster (reconciled master/detail) ---- */
 /* rail LED tones (override the green default from .sk2-item .led) */
 .led.g{background:var(--green)}
-.led.a{background:#c9a227}
+.led.a{background:var(--amber)}
 .led.r{background:var(--accent-b)}
 /* status filter chips in the rail */
 .rst-fchips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
@@ -647,7 +647,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .rst-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);padding:4px 9px;color:var(--ink-dim)}
 .rst-badge .d{width:6px;height:6px;border-radius:50%;background:currentColor}
 .rst-badge.ok{border-color:rgba(111,174,111,.45);color:var(--green)}
-.rst-badge.warn{border-color:rgba(201,162,39,.5);color:#c9a227}
+.rst-badge.warn{border-color:rgba(201,162,39,.5);color:var(--amber)}
 .rst-badge.dim{color:var(--faint)}
 /* identity key/value rows */
 .rst-kvs{display:flex;flex-direction:column;gap:2px}
@@ -655,7 +655,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .rst-kv .k{color:var(--faint);width:96px;flex:none}
 .rst-kv .v{color:var(--ink)}
 /* annotation editor */
-.rst-hint{font-size:12px;color:var(--amber,#c9a227);margin:0 0 12px}
+.rst-hint{font-size:12px;color:var(--amber);margin:0 0 12px}
 .rst-fields{border:none;margin:0;padding:0;min-width:0}
 .rst-fields:disabled{opacity:.5}
 .rst-field{margin-bottom:13px}
@@ -729,7 +729,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   --rc: var(--accent-b);
 }
 .cs-role--utility {
-  --rc: #c79a3a;
+  --rc: var(--amber);
 }
 .cs-head {
   display: flex;
@@ -1218,3 +1218,60 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .mem-rollup-list{list-style:none;display:flex;flex-direction:column;gap:5px}
 .mem-rollup-list li{font-size:13px;line-height:1.5;color:var(--ink-dim)}
 .mem-rollup-tags{color:var(--faint)}
+
+/* ───────────────────────── quality floor ─────────────────────────
+   Keyboard focus + reduced motion. Kept at the end so the focus ring
+   wins on equal specificity over the scattered `outline:none` resets. */
+
+/* Visible keyboard focus, set in the gazette's own dashed-rule vocabulary.
+   :focus-visible only — mouse/touch presses stay quiet; the ring is for
+   keyboard and AT users. :where() keeps specificity to the pseudo-class
+   alone so it lands without out-shouting component rules. outline (not
+   box-shadow) so the ring is never clipped by a scroll/overflow ancestor
+   — e.g. an edition row inside the scrolling Editions rail. */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px dashed var(--accent-b);
+  outline-offset: 2px;
+}
+/* On the solid-accent "stamp" buttons the red-on-red ring would vanish;
+   switch it to ink for contrast against the accent fill. */
+.filebtn:focus-visible,
+.btn-stamp:focus-visible,
+.sbtn:focus-visible {
+  outline-color: var(--ink);
+}
+
+/* Honor the OS "reduce motion" request: silence the ambient looping
+   decoration (wire pulse, skeleton sheen, type-bar blink) and settle each
+   element on a sensible resting frame. Progress spinners are left to turn —
+   they report live work, not ambient atmosphere. */
+@media (prefers-reduced-motion: reduce) {
+  .wsig .dot, .wsig .dash { animation: none; opacity: .7 }
+  .wskel .wbar, .axi-ecard__row { animation: none; background-position: 0 0 }
+  .typebar { animation: none }
+  /* drop the tactile button nudge (movement); colour eases below stay */
+  .filebtn:active, .btn-stamp:active, .sbtn:active, .sd-copy:active { transform: none }
+}
+
+/* ──────────────────────── tactile + selection ────────────────────────
+   Two micro-details the print metaphor was missing: a pressed-stamp feel on
+   the action buttons, and a selection wash that belongs to this palette
+   instead of the OS default blue. */
+
+/* Selection reads as ink on a vermilion wash — the masthead's own accent —
+   rather than the system blue that clashes with the warm charcoal page. */
+::selection { background: rgba(200, 66, 58, .30); color: var(--ink) }
+
+/* Ease colour/border on the controls that change on hover or tab-switch, so
+   the nav underline and button fills settle instead of snapping. Movement is
+   confined to the press (transform), which reduced-motion drops above;
+   colour fades are not vestibular triggers and stay on. */
+.filebtn, .btn-stamp, .sbtn, .sd-copy, .mnav a, .mnav button {
+  transition: transform .06s ease, color .12s ease,
+              background-color .12s ease, border-color .12s ease;
+}
+/* Press the stamp: a 1px sink, like inking a date stamp onto the page. */
+.filebtn:active:not(:disabled),
+.btn-stamp:active,
+.sbtn:active:not(:disabled),
+.sd-copy:active { transform: translateY(1px) }
