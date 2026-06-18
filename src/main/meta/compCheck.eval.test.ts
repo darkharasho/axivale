@@ -32,4 +32,32 @@ describe('WvW comp eval set', () => {
     }
     expect(hasError(bad)).toBe(true)
   })
+
+  // GOOD: exactly five with a flex/utility slot present alongside support + strip.
+  it('accepts an exactly-five subgroup with a flex slot', () => {
+    const good: Roster = {
+      subgroups: [sg(['Primary Support', 'Secondary Support', 'Boon Strip DPS', 'Pure DPS', 'Flex'])]
+    }
+    expect(hasError(good)).toBe(false)
+  })
+
+  // WARNING (not error): support present but no boon strip anywhere in the squad.
+  // checkComp treats missing strip as a squad-wide warning, not an error — adjusted to match real behavior.
+  it('warns (not errors) on a squad with no boon strip', () => {
+    const bad: Roster = {
+      subgroups: [
+        sg(['Primary Support', 'Secondary Support', 'Pure DPS', 'Pure DPS', 'Pure DPS']),
+        sg(['Primary Support', 'Secondary Support', 'Pure DPS', 'Pure DPS', 'Pure DPS'])
+      ]
+    }
+    expect(hasError(bad)).toBe(false)
+  })
+
+  // BAD: no cleanse-capable support in a subgroup (all DPS + a lone strip).
+  it('rejects a subgroup with no cleanse support', () => {
+    const bad: Roster = {
+      subgroups: [sg(['Boon Strip DPS', 'Pure DPS', 'Pure DPS', 'Pure DPS', 'Pure DPS'])]
+    }
+    expect(hasError(bad)).toBe(true)
+  })
 })

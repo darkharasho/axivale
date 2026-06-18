@@ -1,0 +1,17 @@
+{
+  "items": {
+    "72698": { "name": "Minstrel's Wreath", "icon": null, "type": "Armor", "details": { "type": "Helm" } },
+    "75200": { "name": "Minstrel's Staff", "icon": null, "type": "Weapon", "details": { "type": "Staff" } },
+    "72339": { "name": "Superior Sigil of Transference", "icon": null, "type": "UpgradeComponent", "details": { "type": "Sigil" } },
+    "24584": { "name": "Superior Sigil of Concentration", "icon": null, "type": "UpgradeComponent", "details": { "type": "Sigil" } },
+    "71457": { "name": "Minstrel's Mace", "icon": null, "type": "Weapon", "details": { "type": "Mace" } },
+    "74748": { "name": "Minstrel's Shield", "icon": null, "type": "Weapon", "details": { "type": "Shield" } },
+    "24607": { "name": "Superior Sigil of Energy", "icon": null, "type": "UpgradeComponent", "details": { "type": "Sigil" } },
+    "24839": { "name": "Superior Rune of the Monk", "icon": null, "type": "UpgradeComponent", "details": { "type": "Rune" } },
+    "86986": { "name": "Mighty +9 Agony Infusion", "icon": null, "type": "UpgradeComponent", "details": { "type": "Infusion" } },
+    "101116": { "name": "Relic of the Defender", "icon": null, "type": "Relic", "details": { "type": "Relic" } }
+  },
+  "itemstats": {
+    "1134": { "name": "Minstrel's" }
+  }
+}
