@@ -3,6 +3,9 @@
   --bg:#16171a; --bg2:#1b1c20; --paper:#1f2025; --line:#2e3036; --rule:#3a3d44; --rule2:#46494f;
   --ink:#e4e3dc; --ink-dim:#a6a69e; --faint:#6a6b6e;
   --accent:#c8423a; --accent-b:#e05a50; --green:#6fae6f; --amber:#c9a227;
+  /* muted accent for focus rings + input focus borders — the brand red held
+     back so an active field reads as "ready," not alarmed */
+  --focus:rgba(224,90,80,.55);
 }
 html,body,#root{height:100%}
 body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
@@ -420,7 +423,7 @@ td.nm2{color:var(--ink)}
 .roster-filters{display:flex;align-items:stretch;gap:10px;margin:8px 0 16px}
 .rfilter-search{flex:1;border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
 .rfilter-search::placeholder{color:var(--faint)}
-.rfilter-search:focus{border-color:var(--accent-b)}
+.rfilter-search:focus{border-color:var(--focus)}
 .roster-filters .sbtn{flex:0 0 auto}
 /* custom searchable dropdown */
 .ssel{position:relative;flex:0 0 auto;min-width:190px}
@@ -637,10 +640,10 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sfield:last-child{margin-bottom:0}
 .sfield .slabel{margin-bottom:6px}
 .sfield-input{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none}
-.sfield-input:focus{border-color:var(--accent-b)}
+.sfield-input:focus{border-color:var(--focus)}
 .sfield-input::placeholder{color:var(--faint)}
 .sfield-area{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none;line-height:1.5;min-height:84px;resize:vertical}
-.sfield-area:focus{border-color:var(--accent-b)}
+.sfield-area:focus{border-color:var(--focus)}
 
 /* segmented toggle */
 .sseg{display:inline-flex;border:1px solid var(--rule2);margin-bottom:22px}
@@ -723,7 +726,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sk2-new{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);background:rgba(0,0,0,.2);border:1px solid var(--line);padding:5px 10px;cursor:pointer}
 .sk2-new:hover{color:var(--ink);border-color:var(--rule2)}
 .sk2-search{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:7px 10px;margin-bottom:10px;outline:none}
-.sk2-search:focus{border-color:var(--accent-b)}
+.sk2-search:focus{border-color:var(--focus)}
 .sk2-search::placeholder{color:var(--faint)}
 .sk2-items{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1}
 .sk2-item{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;cursor:pointer;border-left:2px solid transparent}
@@ -742,7 +745,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sk2-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
 .sk2-head-txt{flex:1;min-width:0}
 .sk2-name-in{width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid var(--line);color:var(--ink);font-family:'Playfair Display',serif;font-weight:700;font-size:24px;padding:0 0 6px;outline:none}
-.sk2-name-in:focus{border-color:var(--accent-b)}
+.sk2-name-in:focus{border-color:var(--focus)}
 .sk2-name-in::placeholder{color:var(--faint)}
 .sk2-when-in{width:100%;box-sizing:border-box;background:none;border:none;color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.03em;padding:9px 0 0;outline:none}
 .sk2-when-in::placeholder{color:var(--faint)}
@@ -795,9 +798,9 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .rst-field{margin-bottom:13px}
 .rst-label{display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px}
 .rst-input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid var(--rule);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 11px;outline:none}
-.rst-input:focus{border-color:var(--accent-b)}
+.rst-input:focus{border-color:var(--focus)}
 .rst-area{width:100%;box-sizing:border-box;min-height:64px;background:rgba(0,0,0,.25);border:1px solid var(--rule);color:var(--ink);font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;padding:9px 11px;outline:none;resize:vertical}
-.rst-area:focus{border-color:var(--accent-b)}
+.rst-area:focus{border-color:var(--focus)}
 /* chip inputs (aliases / tags) */
 .rst-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:6px 8px}
 .rst-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(200,66,58,.10);border:1px solid var(--accent);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 4px 3px 9px}
@@ -1315,7 +1318,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .mem-filters{display:flex;align-items:center;gap:10px;margin-bottom:18px}
 .mem-search{flex:1;border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
 .mem-search::placeholder{color:var(--faint)}
-.mem-search:focus{border-color:var(--accent-b)}
+.mem-search:focus{border-color:var(--focus)}
 .mem-arch-toggle{flex:0 0 auto}
 /* Kind filter chips: meta-srcchip is unstyled-background on a <button> (defaults to
    white); make them transparent like the rest of the dark theme + a real selected state. */
@@ -1343,7 +1346,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* Add-fact form */
 .mem-add-form{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--rule)}
 .mem-add-input{width:100%;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--ink);font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;padding:8px 11px;resize:vertical;outline:none}
-.mem-add-input:focus{border-color:var(--accent-b)}
+.mem-add-input:focus{border-color:var(--focus)}
 .mem-add-input::placeholder{color:var(--faint)}
 
 /* Roster rollup — What AxiVale knows */
@@ -1364,7 +1367,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
    box-shadow) so the ring is never clipped by a scroll/overflow ancestor
    — e.g. an edition row inside the scrolling Editions rail. */
 :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
-  outline: 2px dashed var(--accent-b);
+  outline: 2px dashed var(--focus);
   outline-offset: 2px;
 }
 /* On the solid-accent "stamp" buttons the red-on-red ring would vanish;
