@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -87,5 +87,37 @@ describe('AxibridgeService', () => {
     })
     const status = await svc.reposStatus()
     expect(status.repos[0].error).toContain('o/a')
+  })
+
+  it('serves stale index when the live fetch fails and flags the repo', async () => {
+    const repo = { owner: 'o', repo: 'r' }
+    const cache = {
+      readMeta: vi.fn().mockReturnValue(null), // TTL expired
+      putMeta: vi.fn(),
+      readMetaStale: vi.fn().mockReturnValue({ body: JSON.stringify([{ id: 'run-1', dateStart: '2026-06-01' }]), fetchedAt: 1_000 }),
+      repoStats: vi.fn().mockReturnValue({ cachedReports: 1, lastIndexFetch: 1_000, cacheBytes: 0 })
+    }
+    const client = { fetchIndex: vi.fn().mockRejectedValue(new Error('GitHub down')) }
+    const svc = new AxibridgeService({ cache, client, repos: () => [repo] } as any)
+
+    const { runs, staleRepos } = await svc.runsList({})
+    expect(runs.map((r) => r.id)).toEqual(['run-1'])
+    expect(staleRepos).toEqual(['o/r'])
+  })
+
+  it('rethrows when live fails and no stale copy exists', async () => {
+    const repo = { owner: 'o', repo: 'r' }
+    const cache = {
+      readMeta: vi.fn().mockReturnValue(null),
+      putMeta: vi.fn(),
+      readMetaStale: vi.fn().mockReturnValue(null),
+      repoStats: vi.fn().mockReturnValue({ cachedReports: 0, lastIndexFetch: null, cacheBytes: 0 })
+    }
+    const client = { fetchIndex: vi.fn().mockRejectedValue(new Error('GitHub down')) }
+    const svc = new AxibridgeService({ cache, client, repos: () => [repo] } as any)
+
+    const { runs, errors } = await svc.runsList({})
+    expect(runs).toEqual([])
+    expect(errors[0]).toMatch(/GitHub down/) // error isolated per repo, not thrown
   })
 })
