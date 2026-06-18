@@ -36,7 +36,7 @@ export function resolveLiveConfig(env: NodeJS.ProcessEnv = process.env): LiveCon
   const s = appSettings(env)
   return {
     provider: env.EVAL_PROVIDER ?? s.provider ?? 'claude',
-    model: env.EVAL_MODEL ?? s.claudeModel ?? 'claude-sonnet-4-6',
+    model: env.EVAL_MODEL ?? s.model ?? 'claude-sonnet-4-6',
     oauthToken: env.CLAUDE_CODE_OAUTH_TOKEN ?? null
   }
 }

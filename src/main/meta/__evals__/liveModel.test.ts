@@ -16,7 +16,7 @@ afterEach(() => {
 
 describe('resolveLiveConfig', () => {
   it('reads provider/model from app settings.json', () => {
-    writeFileSync(SETTINGS, JSON.stringify({ settings: { provider: 'claude', claudeModel: 'claude-opus-4-8' } }))
+    writeFileSync(SETTINGS, JSON.stringify({ settings: { provider: 'claude', model: 'claude-opus-4-8' } }))
     process.env.AXIVALE_SETTINGS = SETTINGS
     const cfg = resolveLiveConfig()
     expect(cfg.provider).toBe('claude')
@@ -31,7 +31,7 @@ describe('resolveLiveConfig', () => {
   })
 
   it('env vars override settings; token comes from env', () => {
-    writeFileSync(SETTINGS, JSON.stringify({ settings: { provider: 'claude', claudeModel: 'claude-sonnet-4-6' } }))
+    writeFileSync(SETTINGS, JSON.stringify({ settings: { provider: 'claude', model: 'claude-sonnet-4-6' } }))
     process.env.AXIVALE_SETTINGS = SETTINGS
     process.env.EVAL_MODEL = 'claude-haiku-4-5-20251001'
     process.env.CLAUDE_CODE_OAUTH_TOKEN = 'tok-123'
