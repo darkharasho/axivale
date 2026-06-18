@@ -96,7 +96,11 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .lede{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1.3;margin-bottom:4px;padding-right:28px}
 .byline{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
 .byline b{color:var(--ink-dim);font-weight:500}
-.prose{font-size:15px;line-height:1.65;text-align:justify;hyphens:auto}
+/* Ragged-right, not justified: on screen (no real hyphenation engine) justify
+   stretches word-spacing into rivers, badly so around long URLs and inline
+   tokens. text-wrap:pretty tidies the rag; long links break instead of forcing
+   a sparse line. */
+.prose{font-size:15px;line-height:1.65;text-align:left;text-wrap:pretty;overflow-wrap:break-word}
 .prose p{margin-bottom:10px}
 .prose p:last-child{margin-bottom:0}
 .prose > p:first-child::first-letter{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;float:left;line-height:.82;padding:4px 8px 0 0;color:var(--accent-b)}
