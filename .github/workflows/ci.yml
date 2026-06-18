@@ -25,3 +25,36 @@ jobs:
         working-directory: axivale
       - run: npm run build
         working-directory: axivale
+
+  # Build the packaged Windows app (unpacked, no installer/signing) so packaging
+  # regressions surface in CI — notably that the codex binary + officer MCP proxy
+  # get asar-unpacked where the Codex provider's runtime resolution expects them.
+  # Does not exercise the ChatGPT login (no creds in CI); it validates packaging.
+  windows-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: axivale
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: axivale/package-lock.json
+      - run: npm ci
+        working-directory: axivale
+      - run: npm run build
+        working-directory: axivale
+      - run: npx electron-builder --win --dir
+        working-directory: axivale
+      - name: Verify codex binary + officer proxy are asar-unpacked
+        working-directory: axivale
+        shell: pwsh
+        run: |
+          $unpacked = "release/win-unpacked/resources/app.asar.unpacked"
+          if (-not (Test-Path "$unpacked/out/main/codexOfficerServer.js")) {
+            throw "officer MCP proxy was not asar-unpacked"
+          }
+          $codex = Get-ChildItem -Recurse -Path $unpacked -Filter codex.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $codex) { throw "codex.exe was not asar-unpacked" }
+          Write-Host "OK: officer proxy + codex.exe unpacked ($($codex.FullName))"
