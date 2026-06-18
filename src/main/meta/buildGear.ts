@@ -72,6 +72,7 @@ export function parseMetabattleSlots(html: string): MetabattleSlot[] {
 export interface BuildGear {
   weapons: GearWeapon[]
   rune: { name: string; icon: string | null; count: number } | null
+  relic: { name: string; icon: string | null } | null
   sigils: Array<{ name: string; icon: string | null }>
   stats: string | null
   infusions: Array<{ name: string; icon: string | null }>
@@ -179,6 +180,7 @@ async function assembleMetabattleGear(
   const allSigils: Array<{ name: string; icon: string | null }> = []
   const infusions: Array<{ name: string; icon: string | null }> = []
   const runeCounts = new Map<string, { icon: string | null; count: number }>()
+  let relic: { name: string; icon: string | null } | null = null
 
   // Dominant stat prefix across every piece that carries one (armor, trinkets, weapons).
   const statCounts = new Map<string, number>()
@@ -222,9 +224,11 @@ async function assembleMetabattleGear(
     } else if (s.kind === 'infusion') {
       const ni = nameIcon(s.id)
       if (ni) infusions.push(ni)
+    } else if (s.kind === 'relic') {
+      relic ??= nameIcon(s.id)
     }
-    // 'gear' (armor/trinket) contributes only its stat (handled above); 'relic' and
-    // stray 'sigil' slots are not rendered by the card, so they're skipped here.
+    // 'gear' (armor/trinket) contributes only its stat (handled above); stray
+    // 'sigil' slots are not rendered by the card, so they're skipped here.
   }
 
   const dominant = <T>(m: Map<T, number>): T | null =>
@@ -237,7 +241,7 @@ async function assembleMetabattleGear(
   if (weapons.length === 0 && !rune && statCounts.size === 0) return null
   const firstSet = weapons.slice(0, 2).map((w) => w.type)
   const weaponSkills = await resolveWeaponSkills(profession, firstSet, fetchImpl)
-  return { weapons, rune, sigils: allSigils, stats: dominant(statCounts), infusions, weaponSkills }
+  return { weapons, rune, relic, sigils: allSigils, stats: dominant(statCounts), infusions, weaponSkills }
 }
 
 export async function scrapeBuildGear(
@@ -301,5 +305,6 @@ export async function scrapeBuildGear(
   // First weapon set = first 1-2 weapons; resolve their skills for the card's top row.
   const firstSet = weapons.slice(0, 2).map((w) => w.type)
   const weaponSkills = await resolveWeaponSkills(profession, firstSet, fetchImpl)
-  return { weapons, rune, sigils: allSigils, stats: dominant(statCounts), infusions, weaponSkills }
+  // Snowcrows GW2-Armory embeds don't carry the relic, so it stays null here.
+  return { weapons, rune, relic: null, sigils: allSigils, stats: dominant(statCounts), infusions, weaponSkills }
 }

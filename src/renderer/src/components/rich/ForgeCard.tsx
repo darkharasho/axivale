@@ -101,13 +101,9 @@ export default function ForgeCard({ display }: { display: CardDisplay }): ReactE
         linkUrl: sourceUrl,
         linkBadge: sourceUrl ? { label: sourceLabel(sourceUrl), tooltip: `Source: ${sourceUrl}` } : null
       })
-      // The source badge is a plain label in forge-render; make it open the source
-      // page too (window.open https is routed to the OS browser by the main process).
-      const badge = sourceUrl && host.querySelector<HTMLElement>('.mini-card__link-badge')
-      if (badge) {
-        badge.style.cursor = 'pointer'
-        badge.addEventListener('click', () => window.open(sourceUrl, '_blank', 'noopener'))
-      }
+      // forge-render >=0.1.7 renders the source badge as a native <a href> when a
+      // linkUrl is supplied, so no host-side click handler is needed (the main
+      // process routes the https target to the OS browser).
     } else {
       host.innerHTML = renderCompCard(display.data.comp, display.data.builds, catalog)
     }

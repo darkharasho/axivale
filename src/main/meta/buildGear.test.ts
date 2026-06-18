@@ -96,6 +96,7 @@ describe('scrapeBuildGear', () => {
       { type: 'Shield', name: 'Shield', icon: 'i-shield', sigils: [] }
     ])
     expect(gear!.rune).toEqual({ name: 'Rune of the Monk', icon: 'i-rune', count: 6 })
+    expect(gear!.relic).toEqual({ name: 'Relic of the Monk', icon: 'i-relic' })
     expect(gear!.stats).toBe("Minstrel's")
     expect(gear!.infusions).toEqual([{ name: 'Healing Infusion', icon: 'i-inf' }])
     expect(gear!.weaponSkills).toEqual([{ id: 9, name: 'Wave of Wrath', icon: 'i-skill' }])

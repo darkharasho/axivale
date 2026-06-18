@@ -14,7 +14,7 @@ import { rehypeClassIcons } from '../renderer/src/components/rehypeClassIcons'
 import { rehypeEntityLinks } from '../renderer/src/components/rehypeEntityLinks'
 import { renderExtLink } from '../renderer/src/components/emojiIcons'
 import { renderRichSpan } from '../renderer/src/components/richSpan'
-import { splitHeadline, stripMarkdown } from '../renderer/src/components/headline'
+import { splitHeadline } from '../renderer/src/components/headline'
 import { stripRawJson } from '../renderer/src/components/sanitizeProse'
 import { couponLabel } from '../renderer/src/components/ToolCoupon'
 import RichDisplay from '../renderer/src/components/rich/RichDisplay'
@@ -100,7 +100,21 @@ function ArticleView({
         </blockquote>
       )}
       <div className="sv-kicker">{kicker}</div>
-      <h2 className="sv-headline">{stripMarkdown(headline)}</h2>
+      <h2 className="sv-headline">
+        {/* Headline is display type: render inline markdown so links (and emoji)
+            resolve like the body, but unwrap block/emphasis so it stays a clean
+            single line — no bold/heading styling, no literal [text](url) syntax.
+            Mirrors the app's Article.tsx lede. */}
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeEmojiIcons, rehypeClassIcons, entityPlugin]}
+          disallowedElements={['em', 'strong', 'code', 'del', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']}
+          unwrapDisallowed
+          components={{ p: ({ children }) => <>{children}</>, span: renderRichSpan, a: renderExtLink }}
+        >
+          {headline}
+        </ReactMarkdown>
+      </h2>
       <div className="sv-byline">
         By <b>AxiVale</b> · Filed {turn.filedAt}
         {actions > 0 && <> · {actions} action{actions === 1 ? '' : 's'} taken</>}
