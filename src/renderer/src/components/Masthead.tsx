@@ -2,6 +2,17 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 
 export type Section = 'dispatches' | 'operations' | 'roster' | 'skills' | 'meta' | 'settings'
 
+export type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
+
+const PROVIDER_LABELS: Record<ProviderName, string> = {
+  claude: 'Claude',
+  gemini: 'Gemini',
+  openai: 'OpenAI',
+  codex: 'ChatGPT',
+  antigravity: 'Gemini (Antigravity)',
+  local: 'Local'
+}
+
 /** 0 has no Roman numeral, so keep it literal; otherwise standard Roman. */
 function toRoman(n: number): string {
   if (n <= 0) return '0'
@@ -32,7 +43,8 @@ export interface MastheadProps {
   guildName: string | null
   guildTag: string | null
   memberCount: number | null
-  claudeTokenSaved: boolean
+  provider: ProviderName
+  providerReady: boolean
   section: Section
   onSection: (s: Section) => void
   onSwitched: () => void
@@ -221,7 +233,8 @@ export default function Masthead(props: MastheadProps): ReactElement {
     guildName,
     guildTag,
     memberCount,
-    claudeTokenSaved,
+    provider,
+    providerReady,
     section,
     onSection,
     onSwitched
@@ -294,7 +307,8 @@ export default function Masthead(props: MastheadProps): ReactElement {
             {guildDetail}
           </div>
           <div>
-            <b>Claude</b> {claudeTokenSaved ? 'token saved' : 'system login'}
+            <b>{PROVIDER_LABELS[provider] ?? 'Claude'}</b>{' '}
+            {providerReady ? 'connected' : 'not configured'}
           </div>
         </div>
       </div>
