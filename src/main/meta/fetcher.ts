@@ -11,6 +11,7 @@
 import { BrowserWindow, session } from 'electron'
 import { configForUrl, type SourceConfig } from './sources'
 import { fetchSnowcrowsStatic } from './snowcrows'
+import { resilientFetch } from '../net/resilientFetch'
 import { extractPublishDate, newestDate } from './publishDate'
 
 export interface FetchedPage {
@@ -84,7 +85,7 @@ export async function fetchWiki(url: string, cfg: SourceConfig): Promise<FetchRe
   }
   const api = `${cfg.wikiApi}?action=parse&prop=wikitext&format=json&formatversion=2&page=${encodeURIComponent(title)}`
   try {
-    const res = await fetch(api, { headers: { 'User-Agent': 'AxiVale' } })
+    const res = await resilientFetch(api, { headers: { 'User-Agent': 'AxiVale' }, timeoutMs: 10_000 })
     if (!res.ok) return { ok: false, error: `wiki ${res.status}` }
     const data = (await res.json()) as { parse?: { wikitext?: string } }
     const text = data?.parse?.wikitext
