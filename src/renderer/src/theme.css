@@ -187,12 +187,124 @@ td.nm2{color:var(--ink)}
 .post-figure:has(> .forgecard) figcaption,
 .post-figure:has(> .richtable) figcaption{margin-right:2px}
 .post-figure figcaption{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-top:8px;text-align:right}
-/* AxiForge cards keep their own design system inside the coupon */
-.forgecard{font-family:system-ui,sans-serif;text-align:left;hyphens:none}
-/* forge-render ships `.mini-card{cursor:grab}` for AxiForge's drag-to-reorder; our
-   cards aren't draggable. Two classes tie its specificity and its CSS loads later,
-   so qualify with both wrapper classes to win the cascade regardless of load order. */
-.forge-render.forgecard .mini-card{cursor:default}
+/* ─────────────────────── AxiForge cards, reskinned ───────────────────────
+   The @axiapps/forge-render package ships its own dark design system (rounded
+   corners, gold/purple accents, sans-serif) scoped under .forge-render. Here we
+   bring its build- and comp-cards into the gazette: square frames, dashed
+   rules, serif/mono type, the vermilion + amber palette — without touching the
+   package, so all its behaviour (rune/relic hovers, chat-copy, source links)
+   stays intact. Every selector qualifies with BOTH wrapper classes
+   (.forge-render.forgecard = 3 classes once the element is named) so it wins
+   over the package's 2-class rules regardless of load order. */
+.forgecard{font-family:'Source Serif 4',serif;text-align:left;hyphens:none}
+
+/* Card shell: square, matted like the other gazette cards. The left edge keeps
+   forge's profession colour — we set only the other three borders so the
+   .lib-prof--* accent survives. */
+.forge-render.forgecard .mini-card{
+  background:rgba(0,0,0,.16);border-radius:0;cursor:default;gap:13px;
+  border-top:1.5px dashed var(--rule2);border-right:1.5px dashed var(--rule2);
+  border-bottom:1.5px dashed var(--rule2)}
+.forge-render.forgecard .mini-card:hover{background:rgba(0,0,0,.22)}
+.forge-render.forgecard .mini-card__icon{
+  border-radius:0;background:var(--bg2);border:1px solid var(--rule);margin-top:1px}
+
+/* Title in the display serif; the open-in-new arrow picks up the accent. */
+.forge-render.forgecard .mini-card__name{
+  font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ink)}
+.forge-render.forgecard a.mini-card__name:hover,
+.forge-render.forgecard button.mini-card__name:hover{color:var(--accent-b)}
+.forge-render.forgecard .mini-card__name-arrow{color:var(--accent-b)}
+
+/* Field labels (Specs / Weap / Stats / Rune / Relic) → mono kicker. */
+.forge-render.forgecard .mini-card__detail-label{
+  font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;
+  color:var(--faint);min-width:50px}
+
+/* Tag + mode pills → dashed mono chips, like .spill. */
+.forge-render.forgecard .mini-card__tag,
+.forge-render.forgecard .mini-card__mode{
+  font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;font-weight:400;
+  color:var(--faint);background:rgba(0,0,0,.22);border:1px dashed var(--rule2);
+  border-radius:0;padding:2px 7px}
+
+/* Source badge (MetaBattle/Snowcrows/…) → accent reference stamp. */
+.forge-render.forgecard .mini-card__link-badge{
+  font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent-b);background:none;border:1px dashed rgba(224,90,80,.4);border-radius:0;padding:2px 7px}
+.forge-render.forgecard a.mini-card__link-badge:hover{color:var(--ink);background:rgba(200,66,58,.1)}
+
+/* Role badge → mono outline pill; collapse forge's six tints onto the gazette's
+   three signals: support=green, dps=vermilion, hybrid=amber, unknown=faint. */
+.forge-render.forgecard .role-badge{
+  font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.12em;font-weight:400;
+  border-radius:0;border:1px solid;padding:2px 7px;background:none}
+.forge-render.forgecard .role-badge--heal-support,
+.forge-render.forgecard .role-badge--boon-support{color:var(--green);border-color:rgba(111,174,111,.45)}
+.forge-render.forgecard .role-badge--power-dps,
+.forge-render.forgecard .role-badge--condi-dps{color:var(--accent-b);border-color:rgba(224,90,80,.45)}
+.forge-render.forgecard .role-badge--hybrid{color:var(--amber);border-color:rgba(201,162,39,.5)}
+.forge-render.forgecard .role-badge--unknown{color:var(--faint);border-color:var(--rule2)}
+
+/* Spec pips → square hairline tiles; elite reads in amber, the gazette's
+   utility/warning gold. */
+.forge-render.forgecard .mini-card__spec-pip{
+  border-radius:0;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--faint)}
+.forge-render.forgecard .mini-card__spec-pip--elite{
+  background:rgba(201,162,39,.12);border-color:rgba(201,162,39,.4);color:var(--amber)}
+.forge-render.forgecard .mini-card__spec-name{color:var(--ink-dim)}
+.forge-render.forgecard .mini-card__spec-name--elite{color:var(--amber)}
+.forge-render.forgecard .mini-card__trait-icon{border-radius:0;border-color:var(--rule)}
+
+/* Gear text + glyph chips: values in ink, the ◆/ᚱ/⬡ markers in accent. */
+.forge-render.forgecard .mini-card__weap-name{color:var(--ink-dim)}
+.forge-render.forgecard .mini-card__weap-sep,
+.forge-render.forgecard .mini-card__weap-div,
+.forge-render.forgecard .mini-card__sep{color:var(--rule)}
+.forge-render.forgecard .mini-card__stat{color:var(--ink)}
+.forge-render.forgecard .mini-card__equip,
+.forge-render.forgecard .mini-card__relic{color:var(--ink-dim)}
+.forge-render.forgecard .mini-card__gear-icon{border-radius:0;background:none;color:var(--accent-b)}
+.forge-render.forgecard .mini-card__gear-img{border-radius:0}
+
+/* Skill row → square hairline icons, mono caption. */
+.forge-render.forgecard .mini-card__skill-icon{border-radius:0;border-color:var(--rule)}
+.forge-render.forgecard .mini-card__skill-name{
+  font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--faint)}
+.forge-render.forgecard .mini-card__skill-div{background:var(--rule)}
+
+/* Chat-code bar → the gazette .bcode treatment. */
+.forge-render.forgecard .mini-card__chatbar{
+  background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:0;padding:8px 11px}
+.forge-render.forgecard .mini-card__chatcode{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim)}
+.forge-render.forgecard .mini-card__chatcopy{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;
+  color:var(--faint);background:none;border:1px dashed var(--rule);border-radius:0;padding:4px 10px}
+.forge-render.forgecard .mini-card__chatcopy:hover{color:var(--ink);border-color:var(--rule2)}
+
+/* Comp card — same vocabulary as the build card. */
+.forge-render.forgecard .comp-card__name{
+  font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ink)}
+.forge-render.forgecard .comp-card__tag{
+  font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--faint);border:1px dashed var(--rule2);border-radius:0}
+.forge-render.forgecard .comp-line__label,
+.forge-render.forgecard .comp-line__num,
+.forge-render.forgecard .comp-line__count{font-family:'IBM Plex Mono',monospace;color:var(--faint)}
+.forge-render.forgecard .comp-slot{
+  border-radius:0;background:var(--bg2);border:1px solid var(--rule)}
+.forge-render.forgecard .comp-slot__tag-text{
+  font-family:'IBM Plex Mono',monospace;color:var(--faint)}
+
+/* Rune/relic hover tooltip → paper clipping, square, in palette. */
+.forge-render .hover-preview{
+  border-radius:0;border:1px solid var(--rule);background:var(--paper);
+  box-shadow:0 16px 44px rgba(0,0,0,.6)}
+.forge-render .hover-preview__icon{border-radius:0;border-color:var(--rule)}
+.forge-render .hover-preview__title{font-family:'Playfair Display',serif;color:var(--ink)}
+.forge-render .hover-preview__meta{font-family:'IBM Plex Mono',monospace;color:var(--faint)}
+.forge-render .hover-preview__bonus--active{color:var(--green)}
 /* thinking — story coming in over the wire */
 .wire{padding:2px 0 6px}
 .wline{display:flex;align-items:center;gap:12px;margin-bottom:14px}
