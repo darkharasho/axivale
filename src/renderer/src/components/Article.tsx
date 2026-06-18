@@ -11,7 +11,7 @@ import { rehypeEntityLinks } from './rehypeEntityLinks'
 import { createEntityHover } from './entityHover'
 import { useEntityDictionary } from './useEntityDictionary'
 import { splitHeadline } from './headline'
-import { stripRawJson } from './sanitizeProse'
+import { stripRawJson, normalizeEntityMarkers } from './sanitizeProse'
 import { couponLabel } from './ToolCoupon'
 import RichDisplay from './rich/RichDisplay'
 import WireThinking from './WireThinking'
@@ -88,7 +88,10 @@ export default function Article({
   conversationId: string | null
   onShare?: (conversationId: string, turnId: number) => void
 }): ReactElement {
-  const { headline, rest: rawRest } = splitHeadline(turn.agentText)
+  // Normalize entity markers before splitting so both the headline and body
+  // drop any unsupported [[spec:…]]/[[boon:…]] brackets (models, esp. Gemini,
+  // invent these — see normalizeEntityMarkers).
+  const { headline, rest: rawRest } = splitHeadline(normalizeEntityMarkers(turn.agentText))
   const rest = stripRawJson(rawRest)
   const thinking = !turn.done && turn.agentText.trim() === ''
   const streaming = !turn.done && turn.agentText.trim() !== ''

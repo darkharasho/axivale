@@ -1,5 +1,34 @@
 import { describe, it, expect } from 'vitest'
-import { stripRawJson } from './sanitizeProse'
+import { stripRawJson, normalizeEntityMarkers } from './sanitizeProse'
+
+describe('normalizeEntityMarkers', () => {
+  it('strips an unsupported [[spec:Name]] marker down to the bare name (keeps the auto class icon working)', () => {
+    expect(normalizeEntityMarkers('[[spec:Firebrand]] maintains stability.')).toBe(
+      'Firebrand maintains stability.'
+    )
+  })
+
+  it('strips [[boon:Name]] to clean text', () => {
+    expect(normalizeEntityMarkers('Generates [[boon:Quickness]] and [[boon:Alacrity]].')).toBe(
+      'Generates Quickness and Alacrity.'
+    )
+  })
+
+  it('leaves supported skill/trait/item markers intact for the entity linker', () => {
+    const md = 'Uses [[skill:Well of Corruption]], [[trait:Spiteful Spirit]], and [[item:Rune of the Monk]].'
+    expect(normalizeEntityMarkers(md)).toBe(md)
+  })
+
+  it('handles a mix in one line', () => {
+    expect(
+      normalizeEntityMarkers('[[spec:Harbinger]] casts [[skill:Well of Corruption]] for [[boon:Quickness]].')
+    ).toBe('Harbinger casts [[skill:Well of Corruption]] for Quickness.')
+  })
+
+  it('is a no-op on empty input', () => {
+    expect(normalizeEntityMarkers('')).toBe('')
+  })
+})
 
 describe('stripRawJson', () => {
   it('removes a ```json fenced block', () => {
