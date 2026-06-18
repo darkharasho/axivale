@@ -3,12 +3,12 @@ import { buildAxibridgeTools } from './axibridge'
 import type { JqEngine } from '../jqEngine'
 
 const fakeService = {
-  reposStatus: vi.fn(async () => ({ repos: [{ repo: 'o/a', runs: 2, firstRun: '2026-06-01', lastRun: '2026-06-08', cachedReports: 1, lastIndexFetch: 1, error: null, stale: false, staleSince: null }] })),
-  runsList: vi.fn(async () => ({ runs: [{ id: 'r1', title: 'Run 1', repo: 'o/a', commanders: ['C.1'], dateStart: '2026-06-01T19:00:00Z', dateEnd: '2026-06-01T21:00:00Z' }], errors: [], staleRepos: [], stale: false, staleSince: null })),
+  reposStatus: vi.fn(async () => ({ repos: [{ repo: 'o/a', runs: 2, firstRun: '2026-06-01', lastRun: '2026-06-08', cachedReports: 1, lastIndexFetch: 1, error: null, stale: false, staleSince: null as string | null }] })),
+  runsList: vi.fn(async () => ({ runs: [{ id: 'r1', title: 'Run 1', repo: 'o/a', commanders: ['C.1'], dateStart: '2026-06-01T19:00:00Z', dateEnd: '2026-06-01T21:00:00Z' }], errors: [], staleRepos: [] as string[], stale: false, staleSince: null as string | null })),
   runSummary: vi.fn(async () => ({ summary: { id: 'r1', title: 'Run 1', fights: 2, wins: 1, losses: 1, squadDeaths: 3, squadDowns: 5, enemyDeaths: 8, enemyDowns: 12, avgSquadSize: 25, avgEnemies: 30, commanders: ['C.1'], dateStart: '2026-06-01T19:00:00Z', dateEnd: null, players: [], warnings: [] }, skippedRuns: [] })),
-  playerStats: vi.fn(async () => ({ players: [{ account: 'P.1', runsJoined: 2, dps: 1200, damage: 100, combatTimeMs: 1, squadTimeMs: 2, professionTimeMs: { Scourge: 1 }, downContribution: 1, kills: 1, strips: 1, cleanses: 1, resurrects: 0, healing: 0, barrier: 0, damageTaken: 1, downs: 0, deaths: 0, lastSeen: '2026-06-08' }], runsConsidered: 2, skippedRuns: [], errors: [], stale: false, staleSince: null })),
-  attendance: vi.fn(async () => ({ attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null })),
-  commanderStats: vi.fn(async () => ({ commanders: [{ account: 'C.1', characterNames: [], profession: 'Firebrand', runs: 2, fightsLed: 4, kills: 10, downs: 14, commanderDeaths: 0, alliesDead: 2, wins: 2, losses: 2, kdr: 5, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null })),
+  playerStats: vi.fn(async () => ({ players: [{ account: 'P.1', runsJoined: 2, dps: 1200, damage: 100, combatTimeMs: 1, squadTimeMs: 2, professionTimeMs: { Scourge: 1 }, downContribution: 1, kills: 1, strips: 1, cleanses: 1, resurrects: 0, healing: 0, barrier: 0, damageTaken: 1, downs: 0, deaths: 0, lastSeen: '2026-06-08' }], runsConsidered: 2, skippedRuns: [], errors: [], stale: false, staleSince: null as string | null })),
+  attendance: vi.fn(async () => ({ attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null as string | null })),
+  commanderStats: vi.fn(async () => ({ commanders: [{ account: 'C.1', characterNames: [], profession: 'Firebrand', runs: 2, fightsLed: 4, kills: 10, downs: 14, commanderDeaths: 0, alliesDead: 2, wins: 2, losses: 2, kdr: 5, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null as string | null })),
   compare: vi.fn(async () => ({ a: 'r1', b: 'r2', runsA: 1, runsB: 1, comparison: { metrics: [{ metric: 'squadDeaths', a: 3, b: 1, delta: -2, deltaPct: -2 / 3 }] } }))
 }
 
