@@ -507,16 +507,21 @@ app.whenReady().then(async () => {
     claude: 'model',
     gemini: 'geminiModel',
     openai: 'openaiModel',
+    codex: 'codexModel',
+    antigravity: 'antigravityModel',
     local: 'localModel'
   }
   const providerConfig = (): ProviderConfig => {
     const raw = store.getSetting('provider')
     const provider: ProviderName =
-      raw === 'gemini' || raw === 'openai' || raw === 'local' ? raw : 'claude'
+      raw === 'gemini' || raw === 'openai' || raw === 'codex' || raw === 'antigravity' || raw === 'local'
+        ? raw
+        : 'claude'
     return {
       provider,
       model: store.getSetting(PROVIDER_MODEL_SETTING[provider]),
       oauthToken: store.getSecret('claudeOauthToken'),
+      // Codex authenticates via the machine's `codex login`, not a stored key.
       apiKey:
         provider === 'gemini' || provider === 'openai' ? store.getActiveKey(provider) : null,
       endpoint: store.getSetting('localEndpoint')
@@ -619,6 +624,25 @@ app.whenReady().then(async () => {
     store.setSecret(key, value)
   })
   ipcMain.handle('secrets:has', (_event, key: SecretKey) => store.getSecret(key) !== null)
+
+  // Codex (ChatGPT provider) authenticates via the machine's `codex login`,
+  // which writes ~/.codex/auth.json. Surface its presence so the settings UI
+  // can show "signed in" vs prompt the user to run `codex login`.
+  ipcMain.handle('codex:auth-status', async () => {
+    const { existsSync } = await import('node:fs')
+    const { homedir } = await import('node:os')
+    const { join } = await import('node:path')
+    return { signedIn: existsSync(join(homedir(), '.codex', 'auth.json')) }
+  })
+
+  // Antigravity (Gemini CLI provider) authenticates via the machine's Google /
+  // Antigravity OAuth, which writes ~/.gemini/oauth_creds.json.
+  ipcMain.handle('antigravity:auth-status', async () => {
+    const { existsSync } = await import('node:fs')
+    const { homedir } = await import('node:os')
+    const { join } = await import('node:path')
+    return { signedIn: existsSync(join(homedir(), '.gemini', 'oauth_creds.json')) }
+  })
 
   // Keyrings: the renderer only ever sees labels, never key material.
   ipcMain.handle('keys:list', (_event, service: KeyService) => store.listKeyLabels(service))
@@ -923,6 +947,18 @@ app.whenReady().then(async () => {
           provider: cfg.provider,
           ready: true,
           note: 'Local models are slower and less reliable on multi-step tasks.'
+        }
+      case 'codex':
+        return {
+          provider: cfg.provider,
+          ready: true,
+          note: "Using this machine's ChatGPT login — run `codex login` in a terminal if dispatches fail."
+        }
+      case 'antigravity':
+        return {
+          provider: cfg.provider,
+          ready: true,
+          note: "Using this machine's Antigravity/Google login — run `gemini` and sign in if dispatches fail."
         }
       default:
         return {

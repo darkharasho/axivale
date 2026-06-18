@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { Pane, Card, Field, Segmented, Keyring, type KeyLabel } from '../panelui'
 
-export type ProviderName = 'claude' | 'gemini' | 'openai' | 'local'
+export type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
 
 export interface IntelligenceProps {
   provider: ProviderName
@@ -30,6 +30,14 @@ export interface IntelligenceProps {
   onRemoveLlmKey: (service: 'gemini' | 'openai', label: string) => void
   geminiModels: Array<{ value: string; label: string }>
   openaiModels: Array<{ value: string; label: string }>
+  // codex (ChatGPT subscription login — no key)
+  codexModel: string
+  codexModels: Array<{ value: string; label: string }>
+  codexSignedIn: boolean
+  // antigravity (Gemini CLI subscription login — no key)
+  antigravityModel: string
+  antigravityModels: Array<{ value: string; label: string }>
+  antigravitySignedIn: boolean
   // local
   localEndpoint: string
   localModel: string
@@ -53,6 +61,8 @@ const PROVIDERS: Array<{ value: ProviderName; label: string }> = [
   { value: 'claude', label: 'Claude' },
   { value: 'gemini', label: 'Gemini' },
   { value: 'openai', label: 'OpenAI' },
+  { value: 'codex', label: 'ChatGPT' },
+  { value: 'antigravity', label: 'Gemini (Antigravity)' },
   { value: 'local', label: 'Local' }
 ]
 
@@ -111,6 +121,90 @@ export default function Intelligence(p: IntelligenceProps): ReactElement {
                   key={m.value}
                   className={`schip${p.model === m.value ? ' on' : ''}`}
                   onClick={() => p.onPickModel('claude', m.value)}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
+
+      {p.provider === 'codex' && (
+        <>
+          <Card
+            title="Authentication"
+            status={{
+              msg: p.codexSignedIn ? 'signed in with ChatGPT' : 'not signed in',
+              tone: p.codexSignedIn ? 'ok' : 'err'
+            }}
+          >
+            <Field
+              label="ChatGPT login"
+              help={
+                <>
+                  Run <code>codex login</code> in a terminal to sign in with your ChatGPT
+                  account — no API key needed. AxiVale uses that login; usage counts against
+                  your ChatGPT subscription.
+                </>
+              }
+            >
+              <p className="shelp">
+                {p.codexSignedIn
+                  ? 'This machine is signed in. Reopen Settings after logging in to refresh.'
+                  : 'No ChatGPT login found. Run codex login, then reopen Settings.'}
+              </p>
+            </Field>
+          </Card>
+          <Card title="Model">
+            <div className="schips">
+              {p.codexModels.map((m) => (
+                <button
+                  key={m.value}
+                  className={`schip${p.codexModel === m.value ? ' on' : ''}`}
+                  onClick={() => p.onPickModel('codex', m.value)}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
+
+      {p.provider === 'antigravity' && (
+        <>
+          <Card
+            title="Authentication"
+            status={{
+              msg: p.antigravitySignedIn ? 'signed in with Google' : 'not signed in',
+              tone: p.antigravitySignedIn ? 'ok' : 'err'
+            }}
+          >
+            <Field
+              label="Antigravity login"
+              help={
+                <>
+                  Run <code>gemini</code> once and sign in with Google (or install the Antigravity
+                  CLI) — no API key needed. AxiVale uses that login; usage counts against your
+                  Gemini/Antigravity subscription.
+                </>
+              }
+            >
+              <p className="shelp">
+                {p.antigravitySignedIn
+                  ? 'This machine is signed in. Reopen Settings after logging in to refresh.'
+                  : 'No Google login found at ~/.gemini. Run gemini and sign in, then reopen Settings.'}
+              </p>
+            </Field>
+          </Card>
+          <Card title="Model">
+            <div className="schips">
+              {p.antigravityModels.map((m) => (
+                <button
+                  key={m.value}
+                  className={`schip${p.antigravityModel === m.value ? ' on' : ''}`}
+                  onClick={() => p.onPickModel('antigravity', m.value)}
                 >
                   {m.label}
                 </button>

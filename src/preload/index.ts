@@ -119,6 +119,8 @@ contextBridge.exposeInMainWorld('officer', {
   axitools: (method: string, ...args: unknown[]) =>
     ipcRenderer.invoke('axitools:call', method, ...args),
   localStatus: () => ipcRenderer.invoke('local:status'),
+  codexAuthStatus: () => ipcRenderer.invoke('codex:auth-status'),
+  antigravityAuthStatus: () => ipcRenderer.invoke('antigravity:auth-status'),
   providerStatus: () => ipcRenderer.invoke('provider:status'),
   appVersion: () => ipcRenderer.invoke('app:version'),
   checkUpdates: () => ipcRenderer.invoke('updates:check'),

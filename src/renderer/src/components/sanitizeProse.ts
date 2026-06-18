@@ -18,6 +18,27 @@ function isJsonBlob(s: string): boolean {
 
 const FENCE = /```[ \t]*([^\n`]*)\n([\s\S]*?)```/g
 
+/** Entity-link marker the renderer understands: only these types resolve to a
+ *  hover card (see rehypeEntityLinks). */
+const KNOWN_ENTITY_TYPES = new Set(['skill', 'trait', 'item'])
+const ENTITY_MARKER = /\[\[([a-zA-Z]+):([^\][]+)\]\]/g
+
+/**
+ * Normalize entity-link markers in the markdown source. Models (notably Gemini)
+ * sometimes invent marker types the renderer doesn't support — `[[spec:Reaper]]`,
+ * `[[boon:Alacrity]]` — which otherwise leak as literal `[[…]]` brackets because
+ * the class-icon pass only rewrites the inner name. Strip any unsupported
+ * `[[type:Name]]` down to bare `Name` (so a spec name still gets its auto class
+ * icon and a boon renders as clean text), while leaving the supported
+ * skill/trait/item markers intact for rehypeEntityLinks.
+ */
+export function normalizeEntityMarkers(md: string): string {
+  if (!md) return md
+  return md.replace(ENTITY_MARKER, (full, type: string, name: string) =>
+    KNOWN_ENTITY_TYPES.has(type.toLowerCase()) ? full : name.trim()
+  )
+}
+
 /**
  * Remove raw JSON from reader-facing markdown:
  *  - fenced blocks tagged json/jsonc, or whose body is a JSON object/array
