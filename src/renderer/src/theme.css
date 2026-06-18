@@ -158,6 +158,9 @@ td.nm2{color:var(--ink)}
 /* rich display blocks inside tool coupons */
 .rich{margin-top:6px}
 .rich .rich-title{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:8px}
+.rich .rich-title-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:8px}
+.rich .rich-title-bar .rich-title{border-bottom:0;padding-bottom:0;margin-bottom:0}
+.rich .rich-stale-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:3px 7px;white-space:nowrap}
 .richtable th{cursor:pointer;user-select:none}
 .richtable th:hover{color:var(--ink)}
 .richtable th .arr{color:var(--accent-b);margin-left:5px;font-size:8px}

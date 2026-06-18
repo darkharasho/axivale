@@ -30,6 +30,8 @@ export type DisplayPayload =
         xKey: string
         series: ChartSeriesSpec[]
         rows: Array<Record<string, string | number>>
+        stale?: boolean
+        staleAge?: string
       }
     }
   | {
@@ -38,6 +40,8 @@ export type DisplayPayload =
         title?: string
         columns: Array<{ key: string; label: string }>
         rows: Array<Record<string, string | number>>
+        stale?: boolean
+        staleAge?: string
       }
     }
   | {

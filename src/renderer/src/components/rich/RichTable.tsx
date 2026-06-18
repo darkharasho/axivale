@@ -31,7 +31,14 @@ export default function RichTable({ spec }: { spec: TableSpec }): ReactElement {
 
   return (
     <div className="rich richtable">
-      {spec.title && <div className="rich-title">{spec.title}</div>}
+      {(spec.title || spec.stale) && (
+        <div className="rich-title-bar">
+          {spec.title && <div className="rich-title">{spec.title}</div>}
+          {spec.stale && (
+            <span className="rich-stale-badge">cached · {spec.staleAge} · source unreachable</span>
+          )}
+        </div>
+      )}
       <table>
         <thead>
           <tr>

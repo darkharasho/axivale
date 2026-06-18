@@ -39,4 +39,21 @@ describe('RichTable', () => {
     )
     expect(getAllByRole('row')[1].textContent).toContain('—')
   })
+
+  it('renders a stale badge with the exact text when stale', () => {
+    const { getByText, queryByText } = render(
+      <RichTable spec={{ ...spec, stale: true, staleAge: '3h ago' }} />
+    )
+    expect(getByText('cached · 3h ago · source unreachable')).toBeTruthy()
+    const { container: c2 } = render(<RichTable spec={spec} />)
+    expect(c2.querySelector('.rich-stale-badge')).toBeNull() // no badge when fresh
+    expect(queryByText).toBeTruthy()
+  })
+
+  it('renders the badge even when the table has no title', () => {
+    const { getByText } = render(
+      <RichTable spec={{ columns: spec.columns, rows: spec.rows, stale: true, staleAge: 'unknown age' }} />
+    )
+    expect(getByText('cached · unknown age · source unreachable')).toBeTruthy()
+  })
 })

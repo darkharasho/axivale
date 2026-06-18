@@ -112,7 +112,12 @@ export default function RichChart({ spec }: { spec: ChartSpec }): ReactElement {
 
   return (
     <div className="rich richchart">
-      <div className="rich-title">{spec.title}</div>
+      <div className="rich-title-bar">
+        <div className="rich-title">{spec.title}</div>
+        {spec.stale && (
+          <span className="rich-stale-badge">cached · {spec.staleAge} · source unreachable</span>
+        )}
+      </div>
       {chart}
     </div>
   )
