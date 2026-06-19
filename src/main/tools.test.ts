@@ -124,8 +124,16 @@ describe('officer tools', () => {
     expect((result.content[0] as { text: string }).text).toContain('R.1')
   })
 
+  it('discord_servers lists the saved servers', async () => {
+    const deps = makeDeps()
+    const tool = buildOfficerTools(deps).find((t) => t.name === 'discord_servers')!
+    const res = await tool.handler({}, {})
+    expect((res.content[0] as { text: string }).text).toContain('DEFI')
+  })
+
   it('discord_overview fetches the snapshot, with members on request', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const overview = tools.find((t) => t.name === 'discord_overview')!
     await overview.handler({}, {})
@@ -134,8 +142,18 @@ describe('officer tools', () => {
     expect(deps.axitools.discordOverview).toHaveBeenCalledWith('123', true)
   })
 
+  it('discord_overview resolves the requested server', async () => {
+    const deps = makeDeps()
+    const seen: string[] = []
+    deps.resolveAxitoolsServer = async (server?: string) => { seen.push(server ?? ''); return { client: deps.axitools, guildId: '123', name: 'EWW', label: 'EWW' } }
+    await buildOfficerTools(deps).find((t) => t.name === 'discord_overview')!.handler({ server: 'EWW' }, {})
+    expect(seen).toEqual(['EWW'])
+    expect(deps.axitools.discordOverview).toHaveBeenCalledWith('123', false)
+  })
+
   it('discord_messages forwards channel/thread/limit/before/after', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const messages = tools.find((t) => t.name === 'discord_messages')!
     await messages.handler({ channel_id: '555', limit: 50 }, {})
@@ -158,6 +176,7 @@ describe('officer tools', () => {
 
   it('discord_action forwards action and params', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const action = tools.find((t) => t.name === 'discord_action')!
     const result = await action.handler(
