@@ -5,6 +5,10 @@ export interface ConfirmReq {
   id: string
   toolName: string
   input: Record<string, unknown>
+  /** True for irreversible/harmful actions (deletes); false for sensitive-but-safe
+   *  ones (publish, send). Treated as destructive when absent, so an older main
+   *  process that omits the flag still errs toward the stronger warning. */
+  destructive?: boolean
 }
 
 export interface ConfirmDialogProps {
@@ -13,11 +17,14 @@ export interface ConfirmDialogProps {
 }
 
 export default function ConfirmDialog({ req, onRespond }: ConfirmDialogProps): ReactElement {
+  const destructive = req.destructive !== false
   return (
     <div className="overlay">
-      <div className="notice">
-        <div className="nh">Notice of Destruction</div>
-        <div className="nsub">Public Notice · Authorization Required</div>
+      <div className={`notice${destructive ? '' : ' notice--safe'}`}>
+        <div className="nh">{destructive ? 'Notice of Destruction' : 'Authorization Required'}</div>
+        <div className="nsub">
+          {destructive ? 'Public Notice · Authorization Required' : 'Public Notice · Awaiting Approval'}
+        </div>
         <div className="nbody">
           <div className="tool">
             <div className="th">

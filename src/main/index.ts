@@ -12,6 +12,7 @@ import {
   type SettingKey
 } from './secrets'
 import { AxitoolsClient } from './axitoolsClient'
+import { isDestructiveConfirm } from './tools'
 import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
 import { AxiforgeClient, forgeDataDir } from './axiforgeClient'
@@ -590,7 +591,8 @@ app.whenReady().then(async () => {
         }
         const id = randomUUID()
         pendingConfirms.set(id, resolve)
-        win.webContents.send('agent:confirm-request', { id, toolName, input })
+        const destructive = isDestructiveConfirm(toolName, input)
+        win.webContents.send('agent:confirm-request', { id, toolName, input, destructive })
       })
   })
 

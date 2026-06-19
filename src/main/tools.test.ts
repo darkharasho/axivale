@@ -3,6 +3,7 @@ import {
   buildOfficerTools,
   DESTRUCTIVE_TOOLS,
   DESTRUCTIVE_DISCORD_ACTIONS,
+  isDestructiveConfirm,
   type ToolDeps
 } from './tools'
 
@@ -392,5 +393,25 @@ describe('officer tools', () => {
     const result = await list.handler({}, {})
     expect(result.isError).toBe(true)
     expect((result.content[0] as { text: string }).text).toMatch(/guild not connected.*AxiVale key/i)
+  })
+})
+
+describe('isDestructiveConfirm', () => {
+  it('flags deletes (and other non-listed confirm tools) as destructive', () => {
+    expect(isDestructiveConfirm('axiforge_builds_delete', {})).toBe(true)
+    expect(isDestructiveConfirm('axiforge_comps_delete', {})).toBe(true)
+    expect(isDestructiveConfirm('axitools_builds_delete', {})).toBe(true)
+  })
+
+  it('treats AxiForge publishes as non-destructive (publish, not destruction)', () => {
+    expect(isDestructiveConfirm('axiforge_build_publish', { build_id: 'b1' })).toBe(false)
+    expect(isDestructiveConfirm('axiforge_comp_publish', { comp_id: 'c1' })).toBe(false)
+  })
+
+  it('classifies discord_action by its verb: sends are safe, deletes/bans are destructive', () => {
+    expect(isDestructiveConfirm('discord_action', { action: 'member_dm' })).toBe(false)
+    expect(isDestructiveConfirm('discord_action', { action: 'members_dm' })).toBe(false)
+    expect(isDestructiveConfirm('discord_action', { action: 'channel_delete' })).toBe(true)
+    expect(isDestructiveConfirm('discord_action', { action: 'member_ban' })).toBe(true)
   })
 })

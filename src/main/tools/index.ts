@@ -35,6 +35,28 @@ export const ACTION_GATED_TOOLS: Record<string, string[]> = {
 }
 
 /**
+ * Among the confirm-gated tools/actions above, these are NOT destructive: they
+ * publish or send outward but delete/overwrite nothing. They still require
+ * confirmation — this only tells the dialog to drop the "destruction" framing.
+ */
+export const NON_DESTRUCTIVE_CONFIRM_TOOLS = ['axiforge_build_publish', 'axiforge_comp_publish']
+export const NON_DESTRUCTIVE_CONFIRM_ACTIONS: Record<string, string[]> = {
+  discord_action: ['member_dm', 'members_dm']
+}
+
+/**
+ * Whether a confirm-gated call is destructive (irreversible / harmful) rather
+ * than merely sensitive (a publish or a send). Drives the confirm dialog's
+ * wording only — not whether confirmation is required. `bareTool` is the tool
+ * name without the officer MCP prefix.
+ */
+export function isDestructiveConfirm(bareTool: string, input: Record<string, unknown>): boolean {
+  const safeActions = NON_DESTRUCTIVE_CONFIRM_ACTIONS[bareTool]
+  if (safeActions) return !safeActions.includes(String(input.action ?? ''))
+  return !NON_DESTRUCTIVE_CONFIRM_TOOLS.includes(bareTool)
+}
+
+/**
  * Builds the officer MCP toolset.
  *
  * The SDK's `tool()` returns a plain `SdkMcpToolDefinition` object exposing

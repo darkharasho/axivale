@@ -458,6 +458,11 @@ td.nm2{color:var(--ink)}
 .notice .nact{display:flex;gap:14px;justify-content:center;padding:6px 22px 20px}
 .btn-stamp{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:9px 22px;text-transform:uppercase;font-weight:500;border:1px dashed rgba(255,255,255,.4);outline:3px solid var(--accent);cursor:pointer}
 .btn-out{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--ink-dim);background:transparent;padding:9px 22px;text-transform:uppercase;font-weight:500;border:1px solid var(--rule2);cursor:pointer}
+/* non-destructive approval (publish/send): same notice, without the alarm —
+   neutral border + title, and a calm (non-red) approve stamp. */
+.notice--safe{border-color:var(--rule2)}
+.notice--safe .nh{color:var(--ink)}
+.notice--safe .btn-stamp{background:var(--accent-b);outline-color:var(--accent-b)}
 /* settings */
 .settings{padding:22px 0;overflow-y:auto;flex:1}
 .sgroup{margin-bottom:26px;padding-bottom:22px;border-bottom:1px dashed var(--rule)}
