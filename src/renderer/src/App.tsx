@@ -23,6 +23,7 @@ import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
 import SettingsNav, { type SettingsSection, type SettingsNavStatus } from './components/settings/SettingsNav'
 import UpdateBanner from './components/UpdateBanner'
+import AppContextMenu from './components/AppContextMenu'
 import type { RendererConversation, RendererMetaMode, RendererMetaProgress } from '../../preload/index.d'
 
 const SECTION_TITLES: Record<Section, string> = {
@@ -560,6 +561,7 @@ export default function App(): ReactElement {
       )}
       {confirmQueue.length > 0 && <ConfirmDialog req={confirmQueue[0]} onRespond={respondConfirm} />}
       <ShareDialog state={shareState} onClose={() => setShareState({ status: 'idle' })} />
+      <AppContextMenu />
     </>
   )
 }

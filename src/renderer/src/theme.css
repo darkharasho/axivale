@@ -438,6 +438,16 @@ td.nm2{color:var(--ink)}
 .folio-act:hover{color:var(--ink);border-color:var(--accent-b)}
 /* axibridge fetch progress — faint ticker above the input */
 .bridge-progress{padding:4px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border-top:1px dashed var(--rule);background:var(--bg2)}
+/* right-click context menu — themed, context-aware */
+.ctx-menu{position:fixed;z-index:60;min-width:200px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.45);padding:5px 0;font-family:'IBM Plex Mono',monospace;user-select:none}
+.ctx-item{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;background:none;border:none;padding:7px 14px;font-size:11px;letter-spacing:.04em;color:var(--ink-dim);cursor:pointer;text-align:left}
+.ctx-item:hover{background:rgba(200,66,58,.16);color:var(--ink)}
+.ctx-item.dis{color:var(--faint);opacity:.5;cursor:default}
+.ctx-item.dis:hover{background:none;color:var(--faint)}
+.ctx-k{display:flex;align-items:center;gap:10px}
+.ctx-ico{display:flex;color:var(--accent-b)}
+.ctx-sc{color:var(--faint);font-size:9px;letter-spacing:.08em}
+.ctx-sep{height:1px;background:var(--line);margin:5px 0}
 /* confirm dialog — public notice */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50}
 .notice{background:var(--paper);border:3px double var(--accent);max-width:560px;width:90%;box-shadow:6px 6px 0 rgba(0,0,0,.4)}
