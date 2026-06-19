@@ -70,7 +70,8 @@ jobs:
 
   # Set the GitHub release body from RELEASE_NOTES.md and announce to Discord —
   # mirrors how AxiForge/AxiBridge ship. Runs once after all platforms publish.
-  # The webhook lives in the DISCORD_WEBHOOK_URL Actions variable (not .env).
+  # Posts via the bot (DISCORD_BOT_TOKEN secret) to the DISCORD_RELEASE_CHANNEL_ID
+  # Actions variable.
   publish:
     needs: release
     runs-on: ubuntu-latest
@@ -78,6 +79,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: axivale
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Publish release notes
         working-directory: axivale
@@ -120,43 +124,9 @@ jobs:
             -f body="$notes" \
             -F draft=false
 
-      - name: Post to Discord
-        if: ${{ vars.DISCORD_WEBHOOK_URL != '' }}
+      - name: Announce on Discord
+        if: ${{ vars.DISCORD_RELEASE_CHANNEL_ID != '' }}
         working-directory: axivale
         env:
-          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          tag="${GITHUB_REF#refs/tags/}"
-          release_url="https://github.com/darkharasho/axivale/releases/tag/${tag}"
-          notes=$(gh release view "$tag" --json body --jq '.body' 2>/dev/null || echo "")
-
-          export TAG="$tag"
-          export RELEASE_URL="$release_url"
-          export NOTES="$notes"
-
-          payload=$(python3 -c "
-          import json, os
-
-          tag = os.environ['TAG']
-          release_url = os.environ['RELEASE_URL']
-          notes = os.environ.get('NOTES', '')
-
-          if len(notes) > 3800:
-              notes = notes[:3800] + '\n\n*... see full notes on GitHub*'
-
-          embed = {
-              'title': f'AxiVale {tag}',
-              'url': release_url,
-              'description': notes or 'A new version of AxiVale is available!',
-              'color': 0xc8423a,
-              'thumbnail': {'url': 'https://raw.githubusercontent.com/darkharasho/axivale/main/build/icon.png'},
-              'footer': {'text': 'AxiVale Release'},
-          }
-
-          print(json.dumps({
-              'embeds': [embed],
-          }))
-          ")
-
-          curl -s -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: node scripts/post-discord-release.mjs "${{ vars.DISCORD_RELEASE_CHANNEL_ID }}" "${GITHUB_REF#refs/tags/}"
