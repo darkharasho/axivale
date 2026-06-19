@@ -97,6 +97,12 @@ interface CatalogCacheFile {
 // call — especially on a cold app — so these get a much longer ceiling than the
 // 3s default that would otherwise time them out into a "card failed" error.
 const DECODE_TIMEOUT_MS = 25_000
+// Publishing pushes the build/comp to GitHub (network git/API round-trip), which
+// routinely runs well past the 3s default — and a timeout here is especially
+// nasty: request() maps the abort to NotRunning, so the write() wrapper "restarts"
+// AxiForge and retries, which times out again ("AxiForge started but the publish
+// still failed"). Give it a generous ceiling.
+const PUBLISH_TIMEOUT_MS = 60_000
 
 export class AxiforgeClient {
   private readonly requestTimeoutMs: number
@@ -237,7 +243,7 @@ export class AxiforgeClient {
   }
 
   publishBuild(id: string): Promise<unknown> {
-    return this.request('POST', `/builds/${encodeURIComponent(id)}/publish`)
+    return this.request('POST', `/builds/${encodeURIComponent(id)}/publish`, undefined, PUBLISH_TIMEOUT_MS)
   }
 
   buildChatLink(id: string): Promise<{ chatLink: string }> {
@@ -280,7 +286,8 @@ export class AxiforgeClient {
     return this.request(
       'POST',
       `/comps/${encodeURIComponent(id)}/publish`,
-      boonCoverageHtml !== undefined ? { boonCoverageHtml } : undefined
+      boonCoverageHtml !== undefined ? { boonCoverageHtml } : undefined,
+      PUBLISH_TIMEOUT_MS
     )
   }
 

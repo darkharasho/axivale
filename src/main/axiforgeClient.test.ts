@@ -298,6 +298,40 @@ describe('fetch timeout', () => {
       await new Promise<void>((r) => hangingServer.close(() => r()))
     }
   }, 5000)
+
+  it('publish uses a longer timeout than the request default — a slow GitHub push must not abort', async () => {
+    // Pushing a published build/comp to GitHub on AxiForge's side routinely takes
+    // longer than the 3s request default. If publish used that default, the abort
+    // would surface as AxiforgeNotRunningError and trigger a bogus restart-retry
+    // that also fails ("AxiForge started but the publish still failed"). Publish
+    // must override with a generous deadline. Server here responds AFTER the short
+    // default, so a correct publish still resolves.
+    const sockets: import('net').Socket[] = []
+    const slowServer = await new Promise<Server>((resolve) => {
+      const s = createServer((req: IncomingMessage, res: ServerResponse) => {
+        sockets.push(req.socket)
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', () => {
+          setTimeout(() => {
+            res.writeHead(200, { 'content-type': 'application/json' })
+            res.end(JSON.stringify({ url: 'https://axiforge.app/c/zerg' }))
+          }, 400)
+        })
+      })
+      s.listen(0, '127.0.0.1', () => resolve(s))
+    })
+    const port = (slowServer.address() as AddressInfo).port
+    writeDiscovery(port)
+
+    try {
+      const res = await makeClient({ requestTimeoutMs: 100 }).publishComp('c1')
+      expect(res).toEqual({ url: 'https://axiforge.app/c/zerg' })
+    } finally {
+      sockets.forEach((s) => s.destroy())
+      await new Promise<void>((r) => slowServer.close(() => r()))
+    }
+  }, 5000)
 })
 
 describe('401 self-heal', () => {
