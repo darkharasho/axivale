@@ -18,12 +18,12 @@ export function resolveServerEntry(servers: ServerEntry[], server?: string): Ser
     )
     if (matches.length === 1) return matches[0]
     if (matches.length === 0) {
-      if (!servers.length) throw new Error('No Discord server is configured — add an AxiVale key in Settings (05).')
+      if (!servers.length) throw new Error('No Discord server is configured — add an AxiVale key in Settings (03).')
       throw new Error(`Unknown Discord server "${server}". Connected servers: ${labels}.`)
     }
     throw new Error(`"${server}" matches multiple servers: ${matches.map((s) => s.label).join(', ')}.`)
   }
   if (servers.length === 1) return servers[0]
-  if (servers.length === 0) throw new Error('No Discord server is configured — add an AxiVale key in Settings (05).')
+  if (servers.length === 0) throw new Error('No Discord server is configured — add an AxiVale key in Settings (03).')
   throw new Error(`Multiple Discord servers connected (${labels}). Pass the \`server\` argument to choose one.`)
 }

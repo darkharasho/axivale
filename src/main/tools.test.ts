@@ -436,7 +436,7 @@ describe('officer tools', () => {
 
   it('errors when no server is configured', async () => {
     const deps = makeDeps()
-    deps.resolveAxitoolsServer = async () => { throw new Error('No Discord server is configured — add an AxiVale key in Settings (05).') }
+    deps.resolveAxitoolsServer = async () => { throw new Error('No Discord server is configured — add an AxiVale key in Settings (03).') }
     const tools = buildOfficerTools(deps)
     const list = tools.find((t) => t.name === 'axitools_builds_list')!
     const result = await list.handler({}, {})

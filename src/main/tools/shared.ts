@@ -116,6 +116,6 @@ export function safeRich<A>(
 
 export function requireDiscordGuild(deps: ToolDeps): string {
   const id = deps.discordGuildId()
-  if (id === '') throw new Error('Discord guild not connected — save an AxiVale key in Settings (05)')
+  if (id === '') throw new Error('Discord guild not connected — save an AxiVale key in Settings (03)')
   return id
 }
