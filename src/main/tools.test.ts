@@ -104,6 +104,7 @@ describe('officer tools', () => {
 
   it('builds_create calls the client with the active guild', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const create = tools.find((t) => t.name === 'axitools_builds_create')!
     const result = await create.handler(
@@ -201,6 +202,7 @@ describe('officer tools', () => {
 
   it('axitools_audit queries either source', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const audit = tools.find((t) => t.name === 'axitools_audit')!
     await audit.handler({ source: 'discord', event_type: 'member_join', limit: 10 }, {})
@@ -214,6 +216,7 @@ describe('officer tools', () => {
 
   it('axitools_rss routes actions', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const rss = tools.find((t) => t.name === 'axitools_rss')!
     await rss.handler({ action: 'list' }, {})
@@ -229,6 +232,7 @@ describe('officer tools', () => {
 
   it('axitools_streams set requires platform fields', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const streams = tools.find((t) => t.name === 'axitools_streams')!
     const bad = await streams.handler({ action: 'set', name: 'tv' }, {})
@@ -242,6 +246,7 @@ describe('officer tools', () => {
 
   it('axitools_members returns derived data', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const members = tools.find((t) => t.name === 'axitools_members')!
     await members.handler({}, {})
@@ -250,6 +255,7 @@ describe('officer tools', () => {
 
   it('axitools_members is compact by default and expands on request', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     ;(deps.axitools.membersLinked as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
         member_id: '7',
@@ -282,14 +288,23 @@ describe('officer tools', () => {
 
   it('tool results are compact JSON, not pretty-printed', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const create = tools.find((t) => t.name === 'axitools_builds_create')!
     const result = await create.handler({ name: 'FB', profession: 'G', chat_code: '[&x]' }, {})
     expect((result.content[0] as { text: string }).text).not.toMatch(/\n {2}/)
   })
 
+  it('axitools_builds_list targets the requested server', async () => {
+    const deps = makeDeps()
+    deps.resolveAxitoolsServer = async (server?: string) => ({ client: deps.axitools, guildId: server === 'EWW' ? '999' : '123', name: server ?? 'DEFI', label: server ?? 'DEFI' })
+    await buildOfficerTools(deps).find((t) => t.name === 'axitools_builds_list')!.handler({ server: 'EWW' }, {})
+    expect(deps.axitools.listBuilds).toHaveBeenCalledWith('999')
+  })
+
   it('axitools_key_holders checks account names', async () => {
     const deps = makeDeps()
+    deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
     const tools = buildOfficerTools(deps)
     const kh = tools.find((t) => t.name === 'axitools_key_holders')!
     const result = await kh.handler({ account_names: ['A.1', 'B.2'] }, {})
@@ -418,14 +433,14 @@ describe('officer tools', () => {
     expect((result.content[0] as { text: string }).text).toContain('boom')
   })
 
-  it('errors when no guild is configured', async () => {
+  it('errors when no server is configured', async () => {
     const deps = makeDeps()
-    deps.discordGuildId = () => ''
+    deps.resolveAxitoolsServer = async () => { throw new Error('No Discord server is configured — add an AxiVale key in Settings (05).') }
     const tools = buildOfficerTools(deps)
     const list = tools.find((t) => t.name === 'axitools_builds_list')!
     const result = await list.handler({}, {})
     expect(result.isError).toBe(true)
-    expect((result.content[0] as { text: string }).text).toMatch(/guild not connected.*AxiVale key/i)
+    expect((result.content[0] as { text: string }).text).toMatch(/No Discord server is configured/i)
   })
 })
 

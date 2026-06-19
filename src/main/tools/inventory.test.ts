@@ -78,6 +78,7 @@ describe('tools module split', () => {
       'discord_messages',
       'discord_overview',
       'discord_search',
+      'discord_servers',
       'general_search',
       'gw2_account_info',
       'gw2_api',
