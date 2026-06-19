@@ -49,7 +49,9 @@ describe('toToolSpecs', () => {
       fetchBuildPage: async () => null,
       fetchBuildPageRaw: async () => null,
       memory: () => ({}) as never,
-      resolveEntityKey: async () => null
+      resolveEntityKey: async () => null,
+      axivaleServers: () => [],
+      resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
     })
     const specs = toToolSpecs(tools)
     expect(specs.length).toBe(tools.length)

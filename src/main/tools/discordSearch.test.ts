@@ -56,7 +56,9 @@ function makeDeps(corpus: Msg[]): { deps: ToolDeps; calls: Array<Record<string, 
     fetchBuildPage: async () => null,
     fetchBuildPageRaw: async () => null,
     memory: () => ({}) as never,
-    resolveEntityKey: async () => null
+    resolveEntityKey: async () => null,
+    axivaleServers: () => [],
+    resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
   } satisfies ToolDeps
   return { deps, calls }
 }

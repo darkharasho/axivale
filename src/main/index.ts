@@ -11,7 +11,7 @@ import {
   type SecretKey,
   type SettingKey
 } from './secrets'
-import { AxitoolsClient } from './axitoolsClient'
+import { AxitoolsClient, AxitoolsError } from './axitoolsClient'
 import { isDestructiveConfirm } from './tools'
 import { parseAxivaleKey } from './axivaleKey'
 import { Gw2Client } from './gw2Client'
@@ -532,6 +532,31 @@ app.whenReady().then(async () => {
   const agent = new AgentService({
     toolDeps: () => ({
       axitools: buildAxitools(),
+      axivaleServers: () =>
+        store.listKeyLabels('axivale').map((k) => ({
+          label: k.label,
+          name: k.meta?.name ?? null,
+          guildId: k.meta?.id ?? null
+        })),
+      resolveAxitoolsServer: async (server?: string) => {
+        const { resolveServerEntry } = await import('./serverResolve')
+        const servers = store.listKeyLabels('axivale').map((k) => ({
+          label: k.label, name: k.meta?.name ?? null, guildId: k.meta?.id ?? null
+        }))
+        const entry = resolveServerEntry(servers, server)
+        const parsed = parseAxivaleKey(store.getKey('axivale', entry.label) ?? '')
+        if (!parsed) throw new AxitoolsError(`The AxiVale key "${entry.label}" is invalid — regenerate it.`)
+        const client = new AxitoolsClient(parsed.baseUrl, parsed.token)
+        let { guildId, name } = entry
+        if (!guildId) {
+          const guilds = await client.listGuilds()
+          if (!guilds.length) throw new AxitoolsError(`The bot isn't in the "${entry.label}" server, or the key is wrong.`)
+          guildId = String(guilds[0].id)
+          name = guilds[0].name
+          store.setKeyMeta('axivale', entry.label, { id: guildId, name })
+        }
+        return { client, guildId, name, label: entry.label }
+      },
       gw2: buildGw2(),
       // Kept as a string: Discord snowflakes exceed Number.MAX_SAFE_INTEGER.
       discordGuildId: () => store.getSetting('guildId') ?? '',

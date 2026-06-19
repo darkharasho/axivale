@@ -69,7 +69,9 @@ function makeDeps(): ToolDeps {
     fetchBuildPage: async () => null,
     fetchBuildPageRaw: async () => null,
     memory: () => ({}) as never,
-    resolveEntityKey: async () => null
+    resolveEntityKey: async () => null,
+    axivaleServers: () => [{ label: 'DEFI', name: 'DEFI', guildId: '123' }],
+    resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '123', name: 'DEFI', label: 'DEFI' })
   }
 }
 

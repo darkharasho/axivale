@@ -56,7 +56,9 @@ function makeDeps(): ToolDeps {
     fetchBuildPage: vi.fn().mockResolvedValue(null),
     fetchBuildPageRaw: vi.fn().mockResolvedValue(null),
     memory: () => ({}) as never,
-    resolveEntityKey: async () => null
+    resolveEntityKey: async () => null,
+    axivaleServers: () => [],
+    resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
   }
 }
 

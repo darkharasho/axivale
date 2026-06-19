@@ -19,7 +19,9 @@ const deps: ToolDeps = {
   fetchBuildPage: async () => null,
   fetchBuildPageRaw: async () => null,
   memory: () => ({}) as never,
-  resolveEntityKey: async () => null
+  resolveEntityKey: async () => null,
+  axivaleServers: () => [],
+  resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
 }
 
 describe('tools module split', () => {

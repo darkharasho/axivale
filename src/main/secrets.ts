@@ -220,6 +220,11 @@ export class SettingsStore {
     const active = this.activeLabel(service, ring)
     return ring.find((k) => k.label === active)?.key ?? null
   }
+
+  /** A specific key's material by label, or null if absent. */
+  getKey(service: KeyService, label: string): string | null {
+    return this.readRing(service).find((k) => k.label === label)?.key ?? null
+  }
 }
 
 /** Production cipher backed by Electron safeStorage. Imported lazily so tests

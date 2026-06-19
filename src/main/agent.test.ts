@@ -183,7 +183,9 @@ describe('AgentService turn serialization', () => {
         fetchBuildPage: async () => null,
         fetchBuildPageRaw: async () => null,
         memory: () => ({}) as never,
-        resolveEntityKey: async () => null
+        resolveEntityKey: async () => null,
+        axivaleServers: () => [],
+        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -251,7 +253,9 @@ describe('AgentService turn serialization', () => {
         fetchBuildPage: async () => null,
         fetchBuildPageRaw: async () => null,
         memory: () => ({}) as never,
-        resolveEntityKey: async () => null
+        resolveEntityKey: async () => null,
+        axivaleServers: () => [],
+        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -311,7 +315,9 @@ describe('AgentService persistence', () => {
         fetchBuildPage: async () => null,
         fetchBuildPageRaw: async () => null,
         memory: () => ({}) as never,
-        resolveEntityKey: async () => null
+        resolveEntityKey: async () => null,
+        axivaleServers: () => [],
+        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
       }),
       config: () => ({
         provider: 'claude' as const,

@@ -1,4 +1,5 @@
 import type { AxitoolsClient } from '../axitoolsClient'
+import type { ServerEntry } from '../serverResolve'
 import type { Gw2Client } from '../gw2Client'
 import type { AxiforgeClient } from '../axiforgeClient'
 import type { AxibridgeService } from '../axibridgeService'
@@ -16,6 +17,13 @@ export interface AxiforgeLauncherLike {
 
 export interface ToolDeps {
   axitools: AxitoolsClient
+  /** All saved Discord (AxiVale-key) servers, for enumeration. */
+  axivaleServers: () => ServerEntry[]
+  /** Resolve `server` (label/name) → that server's client + guild. Throws an
+   *  agent-actionable message on none/unknown/ambiguous input. */
+  resolveAxitoolsServer: (
+    server?: string
+  ) => Promise<{ client: AxitoolsClient; guildId: string; name: string | null; label: string }>
   gw2: Gw2Client
   /** active Discord guild id from settings as a string — snowflakes overflow JS numbers ('' = unset) */
   discordGuildId: () => string
