@@ -138,6 +138,26 @@ describe('API path', () => {
     expect(await client.shareBuildToDiscord('b1')).toEqual({ success: true })
   })
 
+  it('shareCompToDiscord posts webhook_ids when given', async () => {
+    const port = await startStub({ 'POST /comps/c1/share-discord': { json: { success: true } } })
+    writeDiscovery(port)
+    await makeClient().shareCompToDiscord('c1', ['w1', 'w2'])
+    expect(JSON.parse(requests[0].body)).toEqual({ webhook_ids: ['w1', 'w2'] })
+  })
+
+  it('shareCompToDiscord omits the body when no ids', async () => {
+    const port = await startStub({ 'POST /comps/c1/share-discord': { json: { success: true } } })
+    writeDiscovery(port)
+    await makeClient().shareCompToDiscord('c1')
+    expect(requests[0].body).toBe('')
+  })
+
+  it('listDiscordWebhooks returns comp + build lists', async () => {
+    const port = await startStub({ 'GET /discord/webhooks': { json: { comp: [{ id: 'c1', name: 'DEFI' }], build: [] } } })
+    writeDiscovery(port)
+    expect(await makeClient().listDiscordWebhooks()).toEqual({ comp: [{ id: 'c1', name: 'DEFI' }], build: [] })
+  })
+
   it('shareCompToDiscord surfaces a precondition failure as AxiforgeError', async () => {
     const port = await startStub({
       'POST /comps/c1/share-discord': { status: 400, json: { error: 'Comp must be published before sharing' } }

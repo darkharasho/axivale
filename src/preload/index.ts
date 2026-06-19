@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('officer', {
   axitoolsStatus: () => ipcRenderer.invoke('axitools:status'),
   axiforgeStatus: () => ipcRenderer.invoke('axiforge:status'),
   axiforgeLaunch: () => ipcRenderer.invoke('axiforge:launch'),
+  listDiscordWebhooks: () => ipcRenderer.invoke('axiforge:list-discord-webhooks'),
   axibridgeReposList: () => ipcRenderer.invoke('axibridge:repos-list'),
   axibridgeReposAdd: (input: string) => ipcRenderer.invoke('axibridge:repos-add', input),
   axibridgeReposRemove: (owner: string, repo: string) =>

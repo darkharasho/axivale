@@ -39,6 +39,9 @@ export type SettingKey =
   /** JSON map of Discord guild id -> guild-member role id; anchors the reconciled
    *  roster per server (each connected server has its own roles). */
   | 'discordMemberRoleByGuild'
+  /** JSON map of AxiVale key label -> { comp: string[]; build: string[] } webhook ids
+   *  tied to that server for routing AxiForge shares. */
+  | 'discordWebhookTie'
 
 /** Services that hold a ring of labeled keys with one active. */
 export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'

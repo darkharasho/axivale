@@ -287,15 +287,31 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'axiforge_comp_share_discord',
-      'Post an already-published comp to the guild Discord as a rich AxiForge embed (party grid + per-build legend with links), via AxiForge\'s own configured Discord webhook. PREFER THIS over discord_action message_send for sharing a comp to Discord — it renders the full comp card, not just a link. The comp must be published first (axiforge_comp_publish) and a Discord webhook must be set in AxiForge Settings. Starts AxiForge headless if closed; the user confirms before it posts. Requires a recent AxiForge build.',
-      { comp_id: z.string().describe('Id of the comp to share (must already be published)') },
-      safe(async ({ comp_id }) => write(() => deps.axiforge.shareCompToDiscord(comp_id)))
+      'Post an already-published comp to a Discord server as a rich AxiForge embed (party grid + per-build legend). PREFER THIS over discord_action message_send. It posts to the AxiForge webhook(s) tied to the chosen server in Settings (05). The comp must be published first (axiforge_comp_publish). Starts AxiForge headless if closed; the user confirms before it posts.',
+      {
+        comp_id: z.string().describe('Id of the comp to share (must already be published)'),
+        server: z.string().optional().describe('Which Discord server (label or name); omit if only one, ask if several')
+      },
+      safe(async ({ comp_id, server }) => {
+        const { label, name } = await deps.resolveAxitoolsServer(server)
+        const ids = deps.discordWebhookTie(label).comp
+        if (!ids.length) throw new Error(`No Discord webhook is tied to the server "${name ?? label}" — set one in Settings (05).`)
+        return write(() => deps.axiforge.shareCompToDiscord(comp_id, ids))
+      })
     ),
     tool(
       'axiforge_build_share_discord',
-      'Post an already-published build to the guild Discord as a rich AxiForge embed, via AxiForge\'s own configured Discord webhook. PREFER THIS over discord_action message_send for sharing a build to Discord — it renders the full build card, not just a link. The build must be published first (axiforge_build_publish) and a Discord webhook must be set in AxiForge Settings. Starts AxiForge headless if closed; the user confirms before it posts. Requires a recent AxiForge build.',
-      { build_id: z.string().describe('Id of the build to share (must already be published)') },
-      safe(async ({ build_id }) => write(() => deps.axiforge.shareBuildToDiscord(build_id)))
+      'Post an already-published build to a Discord server as a rich AxiForge embed. PREFER THIS over discord_action message_send. It posts to the AxiForge build webhook(s) tied to the chosen server in Settings (05). The build must be published first (axiforge_build_publish). Starts AxiForge headless if closed; the user confirms before it posts.',
+      {
+        build_id: z.string().describe('Id of the build to share (must already be published)'),
+        server: z.string().optional().describe('Which Discord server (label or name); omit if only one, ask if several')
+      },
+      safe(async ({ build_id, server }) => {
+        const { label, name } = await deps.resolveAxitoolsServer(server)
+        const ids = deps.discordWebhookTie(label).build
+        if (!ids.length) throw new Error(`No Discord webhook is tied to the server "${name ?? label}" — set one in Settings (05).`)
+        return write(() => deps.axiforge.shareBuildToDiscord(build_id, ids))
+      })
     ),
     tool(
       'axiforge_import_chat_link',

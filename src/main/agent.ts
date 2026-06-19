@@ -120,10 +120,11 @@ Rules:
   the tool and let the confirmation flow happen.
 - To post an AxiForge build/comp to the guild Discord, publish it first, then use
   axiforge_comp_share_discord / axiforge_build_share_discord — these render the
-  full AxiForge card (party grid + build legend) through AxiForge's own webhook.
-  Prefer them over pasting the share URL via discord_action message_send. If the
-  share fails because AxiForge has no webhook configured or is too old to support
-  it, fall back to posting the link and tell the user.
+  full AxiForge card (party grid + build legend) to the AxiForge webhook(s) tied
+  to the chosen server in Settings (05). Prefer them over pasting the share URL
+  via discord_action message_send. If the share fails because no webhook is tied
+  to the server, tell the user to set one in Settings (05) — an untied server
+  errors until configured.
 - A pasted gw2skills.net link: offer both — gw2skills_parse to decode and
   preview/critique it WITHOUT saving, and axiforge_import_gw2skills to rebuild
   it as a saved AxiForge build (which starts AxiForge automatically). Don't

@@ -65,6 +65,7 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     onMemoryProgress: vi.fn().mockImplementation(noop),
     resolveEntity: vi.fn().mockResolvedValue(undefined as never),
     entityDictionary: vi.fn().mockResolvedValue(undefined as never),
+    listDiscordWebhooks: vi.fn().mockResolvedValue({ comp: [], build: [] }),
     rosterReconcile: vi.fn().mockResolvedValue(undefined as never),
     rosterLinksList: vi.fn().mockResolvedValue([]),
     rosterLinkSet: vi.fn().mockResolvedValue(undefined as never),

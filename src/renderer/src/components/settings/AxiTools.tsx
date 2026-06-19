@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Pane, Card, Field, Keyring, type KeyLabel } from '../panelui'
 import GuildMemberRoleField from './GuildMemberRoleField'
+import DiscordWebhookTie from './DiscordWebhookTie'
 
 export interface AxiGuild {
   id: string
@@ -69,6 +70,7 @@ export default function AxiTools(p: AxiToolsProps): ReactElement {
           </div>
         )}
       </Card>
+      <DiscordWebhookTie keys={p.axiKeys} />
       <Card title="Guild roster">
         <GuildMemberRoleField key={p.axiGuild?.id ?? 'none'} guildId={p.axiGuild?.id ?? null} />
       </Card>

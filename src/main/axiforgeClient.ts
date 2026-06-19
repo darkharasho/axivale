@@ -43,6 +43,8 @@ export interface ForgeComp {
   updatedAt?: string
 }
 
+export interface WebhookRef { id: string; name: string }
+
 export interface ForgeImportOptions {
   name?: string
   folderId?: string
@@ -254,8 +256,13 @@ export class AxiforgeClient {
    *  rich embed. Resolves { success: true } or throws AxiforgeError with the reason
    *  (webhook unset / build not published). Requires AxiForge ≥ the build that adds
    *  the /share-discord route. */
-  shareBuildToDiscord(id: string): Promise<{ success: boolean }> {
-    return this.request('POST', `/builds/${encodeURIComponent(id)}/share-discord`, undefined, SHARE_TIMEOUT_MS)
+  shareBuildToDiscord(id: string, webhookIds?: string[]): Promise<{ success: boolean }> {
+    return this.request(
+      'POST',
+      `/builds/${encodeURIComponent(id)}/share-discord`,
+      webhookIds ? { webhook_ids: webhookIds } : undefined,
+      SHARE_TIMEOUT_MS
+    )
   }
 
   buildChatLink(id: string): Promise<{ chatLink: string }> {
@@ -307,8 +314,18 @@ export class AxiforgeClient {
    *  rich embed (party grid + build legend). Resolves { success: true } or throws
    *  AxiforgeError with the reason (webhook unset / comp not published). Requires
    *  AxiForge ≥ the build that adds the /share-discord route. */
-  shareCompToDiscord(id: string): Promise<{ success: boolean }> {
-    return this.request('POST', `/comps/${encodeURIComponent(id)}/share-discord`, undefined, SHARE_TIMEOUT_MS)
+  shareCompToDiscord(id: string, webhookIds?: string[]): Promise<{ success: boolean }> {
+    return this.request(
+      'POST',
+      `/comps/${encodeURIComponent(id)}/share-discord`,
+      webhookIds ? { webhook_ids: webhookIds } : undefined,
+      SHARE_TIMEOUT_MS
+    )
+  }
+
+  /** Comp + build webhooks configured in AxiForge, for tying servers to them. */
+  listDiscordWebhooks(): Promise<{ comp: WebhookRef[]; build: WebhookRef[] }> {
+    return this.request('GET', '/discord/webhooks', undefined, SHARE_TIMEOUT_MS)
   }
 
   compPlaintext(id: string): Promise<{ text: string }> {

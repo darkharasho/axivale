@@ -58,7 +58,8 @@ function makeDeps(corpus: Msg[]): { deps: ToolDeps; calls: Array<Record<string, 
     memory: () => ({}) as never,
     resolveEntityKey: async () => null,
     axivaleServers: () => [{ label: 'DEFI', name: 'DEFI', guildId: '123' }],
-    resolveAxitoolsServer: async () => ({ client: { discordMessages } as never, guildId: '123', name: 'DEFI', label: 'DEFI' })
+    resolveAxitoolsServer: async () => ({ client: { discordMessages } as never, guildId: '123', name: 'DEFI', label: 'DEFI' }),
+    discordWebhookTie: () => ({ comp: [], build: [] })
   } satisfies ToolDeps
   return { deps, calls }
 }
