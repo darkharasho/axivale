@@ -6,6 +6,7 @@
 // (the same embeds Snowcrows/MetaBattle render); resolves item/stat details via
 // the public GW2 API. Network failures degrade to null (card stays sparse).
 import { parseArmory, type FetchLike } from './snowcrows'
+import { resilientFetch } from '../net/resilientFetch'
 
 export interface GearWeapon {
   type: string // e.g. "Greatsword"
@@ -120,7 +121,15 @@ interface ItemDef {
 }
 
 const UA = 'AxiVale/0.4 (https://github.com/darkharasho)'
-const defaultFetch: FetchLike = (url) => fetch(url, { headers: { 'User-Agent': UA } })
+// Gear scraping fires several SEQUENTIAL GW2 API calls (items, stats, weapon
+// skills). api.guildwars2.com is frequently slow/rate-limited, and a bare fetch()
+// has no timeout — one stalled call would block a build-from-url for minutes
+// (observed: 15+). Give every call a deadline (plus one retry, since these are
+// idempotent GETs) so a slow API degrades the gear to sparse instead of wedging
+// the whole import.
+export const gw2Fetch: FetchLike = (url) =>
+  resilientFetch(url, { headers: { 'User-Agent': UA }, timeoutMs: 10_000, retries: 1 })
+const defaultFetch: FetchLike = gw2Fetch
 
 async function resolveItems(ids: number[], fetchImpl: FetchLike): Promise<Map<number, ItemDef>> {
   const map = new Map<number, ItemDef>()

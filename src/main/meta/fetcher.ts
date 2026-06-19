@@ -207,7 +207,10 @@ export class BrowserWindowFetcher implements MetaFetcher {
    */
   async fetchBuildPageRaw(url: string): Promise<string | null> {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': SCRAPE_UA } })
+      // Deadline-bounded: a stalled build-page host must not hang build-from-url.
+      // On timeout/error this returns null and the caller falls back to the
+      // (already-bounded) browser HTML, so failing fast here is safe.
+      const res = await resilientFetch(url, { headers: { 'User-Agent': SCRAPE_UA }, timeoutMs: 10_000 })
       if (!res.ok) return null
       const html = await res.text()
       return isChallengePage('', html) ? null : html

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { scrapeBuildGear, parseMetabattleSlots } from './buildGear'
+import { describe, it, expect, vi } from 'vitest'
+import { scrapeBuildGear, parseMetabattleSlots, gw2Fetch } from './buildGear'
 
 // Faithful slice of a MetaBattle build page's Equipment section: each piece is its
 // own equipment-slot embed with a <small> label; sigils follow their weapon SET in
@@ -128,3 +128,26 @@ function mbFetch(): (
     return { ok: true, json: async () => body, text: async () => JSON.stringify(body) }
   }
 }
+
+describe('gw2Fetch (default gear-scrape fetch)', () => {
+  it('attaches a request deadline so a stalled GW2 API cannot hang build-from-url', async () => {
+    // Regression guard: gear scraping makes several sequential GW2 API calls. The
+    // old default used a plain fetch() with no timeout, so a slow/hung
+    // api.guildwars2.com blocked the whole build-from-url for minutes. Every call
+    // must now carry an AbortSignal deadline.
+    const seen: Array<RequestInit | undefined> = []
+    const fake = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      seen.push(init)
+      return new Response('[]', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fake)
+    try {
+      await gw2Fetch('https://api.guildwars2.com/v2/items?ids=1')
+    } finally {
+      vi.unstubAllGlobals()
+    }
+    expect(fake).toHaveBeenCalledTimes(1)
+    expect(seen[0]?.signal).toBeInstanceOf(AbortSignal)
+    expect((seen[0]?.headers as Record<string, string>)?.['User-Agent']).toContain('AxiVale')
+  })
+})
