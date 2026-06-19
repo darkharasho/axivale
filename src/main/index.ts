@@ -704,6 +704,13 @@ app.whenReady().then(async () => {
   })
 
   ipcMain.handle('axiforge:status', () => axiforge.status())
+  ipcMain.handle('axiforge:list-discord-webhooks', async () => {
+    try {
+      return await axiforge.listDiscordWebhooks()
+    } catch {
+      return { comp: [], build: [] }
+    }
+  })
   // Manually start AxiForge (headless, or its dev server in dev) on demand —
   // the same path a write would trigger, exposed so the user can spin it up
   // from Settings instead of waiting for the first edit.

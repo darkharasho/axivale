@@ -241,6 +241,7 @@ export interface OfficerApi {
     { state: 'connected'; version: string } | { state: 'file-only' } | { state: 'offline' }
   >
   axiforgeLaunch(): Promise<{ ok: boolean; error?: string }>
+  listDiscordWebhooks(): Promise<{ comp: Array<{ id: string; name: string }>; build: Array<{ id: string; name: string }> }>
   /** Cached AxiForge upgrade catalog for inline cards; null when never fetched. */
   forgeCatalogUpgrades(): Promise<{
     runes: Array<{ id: number; name: string; icon?: string; bonuses?: string[] }>
