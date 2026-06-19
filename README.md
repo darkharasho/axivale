@@ -11,6 +11,12 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/darkharasho/axivale/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/darkharasho/axivale/ci.yml?branch=main&style=flat-square&label=CI&color=c8423a" alt="CI" /></a>
+  <a href="https://github.com/darkharasho/axivale/releases/latest"><img src="https://img.shields.io/github/v/release/darkharasho/axivale?style=flat-square&color=c8423a" alt="Latest Release" /></a>
+  <a href="https://github.com/darkharasho/axivale/releases"><img src="https://img.shields.io/github/downloads/darkharasho/axivale/total?style=flat-square&color=c8423a" alt="Downloads" /></a>
+</p>
+
+<p align="center">
   <img src="docs/screenshots/dispatches.png" alt="The Dispatches desk: a filed article with markdown, tool receipts in the Notices rail, and the telegraph input bar" width="800" />
 </p>
 
