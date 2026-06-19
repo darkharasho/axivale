@@ -32,17 +32,16 @@ export default function DiscordWebhookTie({ keys }: { keys: KeyLabel[] }): React
 
   if (!keys.length) return null
 
-  const persist = (next: Tie): void => {
-    setTie(next)
-    void window.officer.setSetting('discordWebhookTie', JSON.stringify(next))
-  }
-
   const toggle = (label: string, kind: 'comp' | 'build', id: string): void => {
-    const entry = tie[label] ?? { comp: [], build: [] }
-    const set = new Set(entry[kind])
-    if (set.has(id)) set.delete(id)
-    else set.add(id)
-    persist({ ...tie, [label]: { ...entry, [kind]: [...set] } })
+    setTie((prev) => {
+      const entry = prev[label] ?? { comp: [], build: [] }
+      const set = new Set(entry[kind])
+      if (set.has(id)) set.delete(id)
+      else set.add(id)
+      const next = { ...prev, [label]: { ...entry, [kind]: [...set] } }
+      void window.officer.setSetting('discordWebhookTie', JSON.stringify(next))
+      return next
+    })
   }
 
   const noHooks = webhooks != null && !webhooks.comp.length && !webhooks.build.length
