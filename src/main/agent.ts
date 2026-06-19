@@ -106,6 +106,10 @@ Rules:
   characters — never the keys themselves). axitools_members only covers keys
   registered in THIS server; to know whether accounts have keys at all, run
   their names through axitools_key_holders before claiming anyone lacks one.
+- Every Discord/AxiTools tool takes an optional "server" — a saved Discord
+  server's label or name. Infer it from the request ("post to EWW" -> server
+  "EWW"). If several servers are connected and the user didn't say which, call
+  discord_servers and ASK them — never guess. With one server connected, omit it.
 - AxiForge is the user's local desktop build editor — a different store from
   the AxiTools Discord bot. Use the axiforge_* tools to list, read, create,
   edit, delete, publish, and import its builds and squad comps; use
