@@ -190,16 +190,28 @@ export default function App(): ReactElement {
       setProviderNote(null)
     }
     setGw2AccountName(await window.officer.getSetting('gw2AccountName'))
-    const chosenGuild = await window.officer.getSetting('guildId')
+    // The active server name for the header. Prefer the live status, but always
+    // fall back to the active AxiVale key's cached server name so switching
+    // servers re-points the header even when the new key's live status lags or
+    // fails — otherwise it pins the previously-selected server.
+    const activeServerName = async (): Promise<string | null> => {
+      const keys = await window.officer.listKeys('axivale').catch(() => [])
+      return keys.find((k) => k.active)?.meta?.name ?? null
+    }
     try {
       const res = await window.officer.axitoolsStatus()
       setAxiConnected(res.ok)
-      if (res.ok && res.guilds) {
-        const match = res.guilds.find((g) => String(g.id) === chosenGuild)
-        setGuildName(match?.name ?? res.guilds[0]?.name ?? null)
+      let server: string | null = null
+      if (res.ok && res.guilds && res.guilds.length) {
+        // axitools:status sets guildId to the active key's server — read it back
+        // (not a pre-call value) so the name matches the current server.
+        const activeGuildId = await window.officer.getSetting('guildId')
+        server = (res.guilds.find((g) => String(g.id) === activeGuildId) ?? res.guilds[0]).name
       }
+      setGuildName(server ?? (await activeServerName()))
     } catch {
       setAxiConnected(false)
+      setGuildName(await activeServerName())
     }
   }
 
