@@ -77,6 +77,7 @@ export function buildDiscordTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
       'discord_search',
       'Search a Discord channel or thread for messages matching a substring and/or author and/or date range. Discord gives bots no true server search, so this scans a bounded window newest→older (up to max_messages, default 500, hard cap 1000) and filters in code. Returns { matches, scanned, reachedCap, oldestScannedAt }: when reachedCap is true the channel has more history than was scanned — tell the user and offer to narrow by `to`/`from` date or raise max_messages rather than implying an exhaustive search. Pass channel_id OR thread_id.',
       {
+        server: z.string().optional().describe('Which Discord server (label or name). Omit if only one is connected; if several are and the user did not say, ask them.'),
         channel_id: z.string().optional().describe('Channel id (from discord_overview)'),
         thread_id: z.string().optional().describe('Thread id to search instead of a channel'),
         query: z.string().optional().describe('Case-insensitive substring to match in message content'),
@@ -88,8 +89,8 @@ export function buildDiscordTools(deps: ToolDeps): Array<SdkMcpToolDefinition<an
           .optional()
           .describe('How many messages to scan before stopping (default 500, hard cap 1000)')
       },
-      safe(async ({ channel_id, thread_id, query, author, from, to, max_messages }) => {
-        const { client, guildId } = await deps.resolveAxitoolsServer()
+      safe(async ({ server, channel_id, thread_id, query, author, from, to, max_messages }) => {
+        const { client, guildId } = await deps.resolveAxitoolsServer(server)
         const cap = Math.min(Math.max(1, max_messages ?? 500), 1000)
         const needle = query?.toLowerCase()
         const authorNeedle = author?.toLowerCase()

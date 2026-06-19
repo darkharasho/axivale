@@ -151,6 +151,15 @@ describe('officer tools', () => {
     expect(deps.axitools.discordOverview).toHaveBeenCalledWith('123', false)
   })
 
+  it('discord_search forwards its server arg', async () => {
+    const deps = makeDeps()
+    const seen: string[] = []
+    deps.resolveAxitoolsServer = async (server?: string) => { seen.push(server ?? ''); return { client: deps.axitools, guildId: '123', name: 'EWW', label: 'EWW' } }
+    ;(deps.axitools.discordMessages as ReturnType<typeof vi.fn>).mockResolvedValue([])
+    await buildOfficerTools(deps).find((t) => t.name === 'discord_search')!.handler({ server: 'EWW', channel_id: '555' }, {})
+    expect(seen).toEqual(['EWW'])
+  })
+
   it('discord_messages forwards channel/thread/limit/before/after', async () => {
     const deps = makeDeps()
     deps.resolveAxitoolsServer = async () => ({ client: deps.axitools, guildId: '123', name: 'DEFI', label: 'DEFI' })
