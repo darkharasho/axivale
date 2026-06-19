@@ -42,7 +42,9 @@ function makeDeps(): ToolDeps {
         gameMode: 'wvw',
         equipment: {},
         images: { icon: 'data:image/png;base64,abc123' }
-      })
+      }),
+      shareCompToDiscord: vi.fn().mockResolvedValue({ success: true }),
+      shareBuildToDiscord: vi.fn().mockResolvedValue({ success: true })
     } as never,
     axiforgeLauncher: { ensureRunning: vi.fn().mockResolvedValue(undefined) },
     axibridge: () => ({}) as never,
@@ -58,7 +60,8 @@ function makeDeps(): ToolDeps {
     memory: () => ({}) as never,
     resolveEntityKey: async () => null,
     axivaleServers: () => [],
-    resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
+    resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' }),
+    discordWebhookTie: () => ({ comp: [], build: [] })
   }
 }
 
@@ -598,6 +601,25 @@ describe('axiforge tools', () => {
 
     it('is not destructive', () => {
       expect(DESTRUCTIVE_TOOLS).not.toContain('axiforge_build_chat_link')
+    })
+  })
+
+  describe('discord share tie routing', () => {
+    it('comp_share_discord posts the tied webhook ids for the resolved server', async () => {
+      const deps = makeDeps()
+      deps.resolveAxitoolsServer = async () => ({ client: {} as never, guildId: '1', name: 'DEFI', label: 'DEFI' })
+      deps.discordWebhookTie = (label) => (label === 'DEFI' ? { comp: ['w1'], build: [] } : { comp: [], build: [] })
+      await find(deps, 'axiforge_comp_share_discord').handler({ comp_id: 'c1', server: 'DEFI' }, {})
+      expect(deps.axiforge.shareCompToDiscord).toHaveBeenCalledWith('c1', ['w1'])
+    })
+
+    it('comp_share_discord errors when no webhook is tied', async () => {
+      const deps = makeDeps()
+      deps.resolveAxitoolsServer = async () => ({ client: {} as never, guildId: '1', name: 'EWW', label: 'EWW' })
+      deps.discordWebhookTie = () => ({ comp: [], build: [] })
+      const res = await find(deps, 'axiforge_comp_share_discord').handler({ comp_id: 'c1', server: 'EWW' }, {})
+      expect(res.isError).toBe(true)
+      expect((res.content[0] as { text: string }).text).toMatch(/No Discord webhook is tied to the server "EWW"/)
     })
   })
 })

@@ -557,6 +557,16 @@ app.whenReady().then(async () => {
         }
         return { client, guildId, name, label: entry.label }
       },
+      discordWebhookTie: (label: string) => {
+        try {
+          const all = JSON.parse(store.getSetting('discordWebhookTie') ?? '{}') as
+            Record<string, { comp?: string[]; build?: string[] }>
+          const e = all[label] ?? {}
+          return { comp: e.comp ?? [], build: e.build ?? [] }
+        } catch {
+          return { comp: [], build: [] }
+        }
+      },
       gw2: buildGw2(),
       // Kept as a string: Discord snowflakes exceed Number.MAX_SAFE_INTEGER.
       discordGuildId: () => store.getSetting('guildId') ?? '',

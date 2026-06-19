@@ -185,7 +185,8 @@ describe('AgentService turn serialization', () => {
         memory: () => ({}) as never,
         resolveEntityKey: async () => null,
         axivaleServers: () => [],
-        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
+        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' }),
+        discordWebhookTie: () => ({ comp: [], build: [] })
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -255,7 +256,8 @@ describe('AgentService turn serialization', () => {
         memory: () => ({}) as never,
         resolveEntityKey: async () => null,
         axivaleServers: () => [],
-        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
+        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' }),
+        discordWebhookTie: () => ({ comp: [], build: [] })
       }),
       config: () => ({
         provider: 'claude' as const,
@@ -317,7 +319,8 @@ describe('AgentService persistence', () => {
         memory: () => ({}) as never,
         resolveEntityKey: async () => null,
         axivaleServers: () => [],
-        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
+        resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' }),
+        discordWebhookTie: () => ({ comp: [], build: [] })
       }),
       config: () => ({
         provider: 'claude' as const,

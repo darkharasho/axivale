@@ -21,7 +21,8 @@ const deps: ToolDeps = {
   memory: () => ({}) as never,
   resolveEntityKey: async () => null,
   axivaleServers: () => [],
-  resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' })
+  resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' }),
+  discordWebhookTie: () => ({ comp: [], build: [] })
 }
 
 describe('tools module split', () => {
