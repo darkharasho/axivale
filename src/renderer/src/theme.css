@@ -88,7 +88,17 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 /* user clipping with torn bottom edge */
 .msg.user{align-self:flex-end;max-width:660px;margin-bottom:4px}
 .msg.user .kick{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;text-align:right;margin-bottom:6px}
-.msg.user .body{position:relative;background:var(--paper);border:1px solid var(--line);padding:13px 18px 16px;font-size:15px;line-height:1.55;box-shadow:3px 3px 0 rgba(0,0,0,.3);white-space:pre-wrap}
+.msg.user .body{position:relative;background:var(--paper);border:1px solid var(--line);padding:13px 18px 16px;font-size:15px;line-height:1.55;box-shadow:3px 3px 0 rgba(0,0,0,.3);overflow-wrap:break-word;word-break:break-word}
+/* markdown children: tighten block spacing so a single-paragraph order reads
+   like the plain text it replaces, while multi-block orders still breathe */
+.msg.user .body>:first-child{margin-top:0}
+.msg.user .body>:last-child{margin-bottom:0}
+.msg.user .body p{margin:0 0 8px}
+.msg.user .body ul,.msg.user .body ol{margin:0 0 8px;padding-left:20px}
+.msg.user .body a{color:var(--accent-b);text-decoration:underline}
+.msg.user .body code{font-family:'IBM Plex Mono',monospace;font-size:13px}
+.msg.user .body pre{margin:0 0 8px;padding:8px 10px;background:var(--bg2);overflow-x:auto}
+.msg.user .body pre code{font-size:12px}
 .msg.user .body::after{content:'';position:absolute;left:-1px;right:-1px;bottom:-7px;height:7px;background:var(--paper);
   clip-path:polygon(0 0,3% 90%,6% 20%,10% 100%,14% 30%,18% 85%,23% 10%,27% 95%,32% 35%,36% 80%,41% 15%,45% 100%,50% 25%,55% 90%,60% 10%,64% 75%,69% 30%,73% 95%,78% 15%,82% 85%,87% 40%,91% 90%,95% 20%,98% 70%,100% 0)}
 /* officer article */
@@ -407,13 +417,13 @@ td.nm2{color:var(--ink)}
 .inputzone::before{content:'';position:absolute;top:-8px;left:0;right:0;height:8px;background:var(--paper);
   clip-path:polygon(0 100%,2% 10%,5% 80%,8% 25%,12% 95%,15% 15%,19% 75%,23% 30%,27% 90%,31% 10%,35% 70%,39% 20%,43% 95%,47% 35%,51% 80%,55% 12%,59% 88%,63% 28%,67% 92%,71% 18%,75% 70%,79% 32%,83% 94%,87% 14%,91% 78%,95% 26%,98% 85%,100% 0,100% 100%,0 100%)}
 .inputbar{padding:16px 30px}
-.inwrap{display:flex;align-items:center;gap:14px;max-width:980px;margin:0 auto}
+.inwrap{display:flex;align-items:flex-end;gap:14px;max-width:980px;margin:0 auto}
 .prompt{font-family:'IBM Plex Mono',monospace;color:var(--accent-b);font-size:15px}
 /* the field rides over a mirror that paints the skill-token highlights, so it's
    transparent-backed and shares the mirror's exact box + typography */
 .field-wrap{position:relative;flex:1;min-width:0;display:flex}
-.field{width:100%;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-size:15px;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b);position:relative;z-index:1}
-.field-mirror{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;white-space:pre;border-bottom:1.5px dashed transparent;padding:7px 2px;font-size:15px;font-family:'Source Serif 4',serif;color:transparent;display:flex;align-items:center}
+.field{width:100%;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-size:15px;line-height:1.5;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b);position:relative;z-index:1;resize:none;white-space:pre-wrap;overflow-wrap:break-word;display:block;max-height:160px;overflow-y:auto}
+.field-mirror{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;border-bottom:1.5px dashed transparent;padding:7px 2px;font-size:15px;line-height:1.5;font-family:'Source Serif 4',serif;color:transparent}
 /* a recognized /skill reads as a valid token: a faint vermilion wash under the
    real (visible) glyphs, underlined in the muted focus accent. No horizontal
    padding — that would shift the mirror out of step with the input. */

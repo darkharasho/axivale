@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactElement } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { Camera, Check, X, Share2 } from 'lucide-react'
 import type { Turn } from '../state'
 import { rehypeEmojiIcons } from './rehypeEmojiIcons'
@@ -138,7 +139,17 @@ export default function Article({
             return skill ? <span className="kick-skill">{skill}</span> : null
           })()}
         </div>
-        <div className="body">{turn.userText}</div>
+        <div className="body">
+          {/* The commander's own words: render markdown (links, bold, lists, code)
+              with bare URLs auto-linked via GFM, and single newlines preserved as
+              line breaks so multi-line orders read as filed. */}
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkBreaks]}
+            components={{ a: renderExtLink }}
+          >
+            {turn.userText}
+          </ReactMarkdown>
+        </div>
       </div>
       <div className="rip">
         <span className="t"></span>

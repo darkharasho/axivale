@@ -44,8 +44,19 @@ export default function InputBar({
   const [caret, setCaret] = useState(0)
   const [hi, setHi] = useState(0)
   const [dismissed, setDismissed] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
+
+  // Grow the textarea to fit its content (up to the CSS max-height, past which it
+  // scrolls), so multi-line orders are composed in full instead of one scrolling
+  // line. Runs after every value change.
+  function autoGrow(): void {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+  useEffect(autoGrow, [value])
 
   const enabled = useMemo(() => skills.filter((s) => s.enabled), [skills])
   const bySlug = useMemo(() => {
@@ -87,7 +98,7 @@ export default function InputBar({
   function syncCaret(): void {
     const el = inputRef.current
     if (el) setCaret(el.selectionStart ?? el.value.length)
-    if (mirrorRef.current && el) mirrorRef.current.scrollLeft = el.scrollLeft
+    if (mirrorRef.current && el) mirrorRef.current.scrollTop = el.scrollTop
   }
 
   function applySkill(s: InputBarSkill): void {
@@ -130,7 +141,7 @@ export default function InputBar({
     setCaret(0)
   }
 
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void {
     if (open) {
       if (e.key === 'ArrowDown') {
         e.preventDefault()
@@ -153,7 +164,9 @@ export default function InputBar({
         return
       }
     }
-    if (e.key === 'Enter') {
+    // Enter sends; Shift+Enter (or Ctrl/Cmd+Enter) drops to a new line so
+    // multi-line orders can be composed before filing.
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault()
       submit()
     }
@@ -193,18 +206,22 @@ export default function InputBar({
             <div className="field-mirror" ref={mirrorRef} aria-hidden="true">
               {mirror}
             </div>
-            <input
+            <textarea
               ref={inputRef}
               className="field"
               value={value}
               disabled={disabled}
+              rows={1}
               placeholder={
-                enabled.length ? 'File your orders…  ·  type / for a skill' : 'File your orders…'
+                enabled.length
+                  ? 'File your orders…  ·  type / for a skill  ·  shift+enter for a new line'
+                  : 'File your orders…  ·  shift+enter for a new line'
               }
               role="combobox"
               aria-expanded={open}
               aria-autocomplete="list"
               aria-controls="skill-typeahead"
+              aria-multiline="true"
               onChange={(e) => {
                 setValue(e.target.value)
                 setCaret(e.target.selectionStart ?? e.target.value.length)
