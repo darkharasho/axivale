@@ -284,7 +284,10 @@ describe('officer tools', () => {
       'member_kick',
       'member_ban',
       'member_dm',
-      'members_dm'
+      'members_dm',
+      'message_delete',
+      'forum_tag_delete',
+      'emoji_delete'
     ])
   })
 
