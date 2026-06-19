@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Pane, Card } from '../panelui'
+import WhatsNew from './WhatsNew'
 
 export interface AboutProps {
   version: string
@@ -24,6 +25,9 @@ export default function About({ version, updateMsg, onCheckUpdates }: AboutProps
           Updates install automatically from GitHub releases; a banner appears when a new
           edition is ready.
         </p>
+      </Card>
+      <Card title="Release Notes">
+        <WhatsNew />
       </Card>
     </Pane>
   )

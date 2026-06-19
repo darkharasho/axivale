@@ -23,6 +23,7 @@ import ConfirmDialog, { type ConfirmReq } from './components/ConfirmDialog'
 import Settings from './components/Settings'
 import SettingsNav, { type SettingsSection, type SettingsNavStatus } from './components/settings/SettingsNav'
 import UpdateBanner from './components/UpdateBanner'
+import WhatsNewModal from './components/WhatsNewModal'
 import AppContextMenu from './components/AppContextMenu'
 import type { RendererConversation, RendererMetaMode, RendererMetaProgress } from '../../preload/index.d'
 
@@ -448,6 +449,7 @@ export default function App(): ReactElement {
 
   return (
     <>
+      <WhatsNewModal />
       <UpdateBanner />
       <Masthead
         version={appVersion}
