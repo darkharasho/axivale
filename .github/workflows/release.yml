@@ -67,3 +67,96 @@ jobs:
         working-directory: axivale
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Set the GitHub release body from RELEASE_NOTES.md and announce to Discord —
+  # mirrors how AxiForge/AxiBridge ship. Runs once after all platforms publish.
+  # The webhook lives in the DISCORD_WEBHOOK_URL Actions variable (not .env).
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: axivale
+
+      - name: Publish release notes
+        working-directory: axivale
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+
+          notes=$(awk -v ver="$tag" '
+            $0 ~ "^## Version " ver "( |$)" { capture=1; next }
+            capture && /^## Version v/ { exit }
+            capture { print }
+          ' RELEASE_NOTES.md)
+
+          # Fail loudly if RELEASE_NOTES.md has no section for this tag, rather
+          # than publishing an empty body and a generic Discord post.
+          if [ -z "$(printf '%s' "$notes" | tr -d '[:space:]')" ]; then
+            echo "::error::No RELEASE_NOTES.md section found for $tag. Add a '## Version $tag — <date>' entry and re-run." >&2
+            exit 1
+          fi
+
+          # Match this tag's release whether electron-builder left it draft or live.
+          # The PATCH is idempotent — it (re)writes the notes and ensures it's live.
+          release_id=$(gh api graphql -f query='
+            query($owner:String!,$repo:String!){
+              repository(owner:$owner,name:$repo){
+                releases(first:20,orderBy:{field:CREATED_AT,direction:DESC}){
+                  nodes{ databaseId tagName isDraft }
+                }
+              }
+            }' -F owner=darkharasho -F repo=axivale \
+            --jq ".data.repository.releases.nodes[] | select(.tagName==\"$tag\") | .databaseId" | head -1)
+
+          if [ -z "$release_id" ]; then
+            echo "No release found for tag $tag (expected electron-builder to have created it)" >&2
+            exit 1
+          fi
+
+          gh api -X PATCH "repos/darkharasho/axivale/releases/$release_id" \
+            -f body="$notes" \
+            -F draft=false
+
+      - name: Post to Discord
+        if: ${{ vars.DISCORD_WEBHOOK_URL != '' }}
+        working-directory: axivale
+        env:
+          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          release_url="https://github.com/darkharasho/axivale/releases/tag/${tag}"
+          notes=$(gh release view "$tag" --json body --jq '.body' 2>/dev/null || echo "")
+
+          export TAG="$tag"
+          export RELEASE_URL="$release_url"
+          export NOTES="$notes"
+
+          payload=$(python3 -c "
+          import json, os
+
+          tag = os.environ['TAG']
+          release_url = os.environ['RELEASE_URL']
+          notes = os.environ.get('NOTES', '')
+
+          if len(notes) > 3800:
+              notes = notes[:3800] + '\n\n*... see full notes on GitHub*'
+
+          embed = {
+              'title': f'AxiVale {tag}',
+              'url': release_url,
+              'description': notes or 'A new version of AxiVale is available!',
+              'color': 0xc8423a,
+              'thumbnail': {'url': 'https://raw.githubusercontent.com/darkharasho/axivale/main/build/icon.png'},
+              'footer': {'text': 'AxiVale Release'},
+          }
+
+          print(json.dumps({
+              'embeds': [embed],
+          }))
+          ")
+
+          curl -s -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
