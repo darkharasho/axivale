@@ -127,6 +127,27 @@ describe('API path', () => {
     expect(res).toMatchObject({ url: 'https://axiforge.app/b/heal-fb' })
   })
 
+  it('shareCompToDiscord / shareBuildToDiscord hit the share-discord endpoints', async () => {
+    const port = await startStub({
+      'POST /comps/c1/share-discord': { json: { success: true } },
+      'POST /builds/b1/share-discord': { json: { success: true } }
+    })
+    writeDiscovery(port)
+    const client = makeClient()
+    expect(await client.shareCompToDiscord('c1')).toEqual({ success: true })
+    expect(await client.shareBuildToDiscord('b1')).toEqual({ success: true })
+  })
+
+  it('shareCompToDiscord surfaces a precondition failure as AxiforgeError', async () => {
+    const port = await startStub({
+      'POST /comps/c1/share-discord': { status: 400, json: { error: 'Comp must be published before sharing' } }
+    })
+    writeDiscovery(port)
+    await expect(makeClient().shareCompToDiscord('c1')).rejects.toThrowError(
+      'Comp must be published before sharing'
+    )
+  })
+
   it('buildChatLink hits the chat-link endpoint and returns the link', async () => {
     const port = await startStub({ 'POST /builds/b1/chat-link': { json: { chatLink: '[&DQE...]' } } })
     writeDiscovery(port)

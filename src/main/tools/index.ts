@@ -39,7 +39,12 @@ export const ACTION_GATED_TOOLS: Record<string, string[]> = {
  * publish or send outward but delete/overwrite nothing. They still require
  * confirmation — this only tells the dialog to drop the "destruction" framing.
  */
-export const NON_DESTRUCTIVE_CONFIRM_TOOLS = ['axiforge_build_publish', 'axiforge_comp_publish']
+export const NON_DESTRUCTIVE_CONFIRM_TOOLS = [
+  'axiforge_build_publish',
+  'axiforge_comp_publish',
+  'axiforge_comp_share_discord',
+  'axiforge_build_share_discord'
+]
 export const NON_DESTRUCTIVE_CONFIRM_ACTIONS: Record<string, string[]> = {
   discord_action: ['member_dm', 'members_dm']
 }

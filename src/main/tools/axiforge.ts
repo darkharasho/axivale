@@ -5,12 +5,16 @@ import { AxiforgeError, AxiforgeNotRunningError } from '../axiforgeClient'
 import { extractChatCode } from '../meta/fetcher'
 import { scrapeBuildGear } from '../meta/buildGear'
 
-/** Tools here that join the top-level DESTRUCTIVE_TOOLS list (deletes + public publishes). */
+/** Tools here that join the top-level DESTRUCTIVE_TOOLS list — i.e. require user
+ *  confirmation (deletes, public publishes, and outward Discord posts). The
+ *  publishes/shares are non-destructive; see NON_DESTRUCTIVE_CONFIRM_TOOLS. */
 export const AXIFORGE_DESTRUCTIVE_TOOLS = [
   'axiforge_builds_delete',
   'axiforge_comps_delete',
   'axiforge_build_publish',
-  'axiforge_comp_publish'
+  'axiforge_comp_publish',
+  'axiforge_comp_share_discord',
+  'axiforge_build_share_discord'
 ]
 
 /**
@@ -280,6 +284,18 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
       'Publish an AxiForge squad composition PUBLICLY and return its share URL. This is destructive (public) — the user will be asked to confirm before it runs.',
       { comp_id: z.string().describe('Id of the comp to publish') },
       safe(async ({ comp_id }) => write(() => deps.axiforge.publishComp(comp_id)))
+    ),
+    tool(
+      'axiforge_comp_share_discord',
+      'Post an already-published comp to the guild Discord as a rich AxiForge embed (party grid + per-build legend with links), via AxiForge\'s own configured Discord webhook. PREFER THIS over discord_action message_send for sharing a comp to Discord — it renders the full comp card, not just a link. The comp must be published first (axiforge_comp_publish) and a Discord webhook must be set in AxiForge Settings. Starts AxiForge headless if closed; the user confirms before it posts. Requires a recent AxiForge build.',
+      { comp_id: z.string().describe('Id of the comp to share (must already be published)') },
+      safe(async ({ comp_id }) => write(() => deps.axiforge.shareCompToDiscord(comp_id)))
+    ),
+    tool(
+      'axiforge_build_share_discord',
+      'Post an already-published build to the guild Discord as a rich AxiForge embed, via AxiForge\'s own configured Discord webhook. PREFER THIS over discord_action message_send for sharing a build to Discord — it renders the full build card, not just a link. The build must be published first (axiforge_build_publish) and a Discord webhook must be set in AxiForge Settings. Starts AxiForge headless if closed; the user confirms before it posts. Requires a recent AxiForge build.',
+      { build_id: z.string().describe('Id of the build to share (must already be published)') },
+      safe(async ({ build_id }) => write(() => deps.axiforge.shareBuildToDiscord(build_id)))
     ),
     tool(
       'axiforge_import_chat_link',

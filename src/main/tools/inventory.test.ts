@@ -39,12 +39,14 @@ describe('tools module split', () => {
       'axibridge_runs_list',
       'axiforge_build_chat_link',
       'axiforge_build_publish',
+      'axiforge_build_share_discord',
       'axiforge_builds_delete',
       'axiforge_builds_get',
       'axiforge_builds_list',
       'axiforge_builds_save',
       'axiforge_catalog',
       'axiforge_comp_publish',
+      'axiforge_comp_share_discord',
       'axiforge_comps_delete',
       'axiforge_comps_get',
       'axiforge_comps_list',
@@ -99,7 +101,9 @@ describe('tools module split', () => {
       'axiforge_builds_delete',
       'axiforge_comps_delete',
       'axiforge_build_publish',
-      'axiforge_comp_publish'
+      'axiforge_comp_publish',
+      'axiforge_comp_share_discord',
+      'axiforge_build_share_discord'
     ])
     expect(ACTION_GATED_TOOLS).toEqual({
       discord_action: [

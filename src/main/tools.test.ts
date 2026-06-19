@@ -403,9 +403,11 @@ describe('isDestructiveConfirm', () => {
     expect(isDestructiveConfirm('axitools_builds_delete', {})).toBe(true)
   })
 
-  it('treats AxiForge publishes as non-destructive (publish, not destruction)', () => {
+  it('treats AxiForge publishes and Discord shares as non-destructive', () => {
     expect(isDestructiveConfirm('axiforge_build_publish', { build_id: 'b1' })).toBe(false)
     expect(isDestructiveConfirm('axiforge_comp_publish', { comp_id: 'c1' })).toBe(false)
+    expect(isDestructiveConfirm('axiforge_comp_share_discord', { comp_id: 'c1' })).toBe(false)
+    expect(isDestructiveConfirm('axiforge_build_share_discord', { build_id: 'b1' })).toBe(false)
   })
 
   it('classifies discord_action by its verb: sends are safe, deletes/bans are destructive', () => {

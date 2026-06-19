@@ -103,6 +103,10 @@ const DECODE_TIMEOUT_MS = 25_000
 // AxiForge and retries, which times out again ("AxiForge started but the publish
 // still failed"). Give it a generous ceiling.
 const PUBLISH_TIMEOUT_MS = 60_000
+// Sharing to Discord builds the embed and POSTs to a webhook (no git push), so it's
+// quicker than publish but can still stall on a slow/rate-limited Discord — give it
+// more than the 3s default.
+const SHARE_TIMEOUT_MS = 20_000
 
 export class AxiforgeClient {
   private readonly requestTimeoutMs: number
@@ -246,6 +250,14 @@ export class AxiforgeClient {
     return this.request('POST', `/builds/${encodeURIComponent(id)}/publish`, undefined, PUBLISH_TIMEOUT_MS)
   }
 
+  /** Post an already-published build to AxiForge's configured Discord webhook as a
+   *  rich embed. Resolves { success: true } or throws AxiforgeError with the reason
+   *  (webhook unset / build not published). Requires AxiForge ≥ the build that adds
+   *  the /share-discord route. */
+  shareBuildToDiscord(id: string): Promise<{ success: boolean }> {
+    return this.request('POST', `/builds/${encodeURIComponent(id)}/share-discord`, undefined, SHARE_TIMEOUT_MS)
+  }
+
   buildChatLink(id: string): Promise<{ chatLink: string }> {
     return this.request('POST', `/builds/${encodeURIComponent(id)}/chat-link`)
   }
@@ -289,6 +301,14 @@ export class AxiforgeClient {
       boonCoverageHtml !== undefined ? { boonCoverageHtml } : undefined,
       PUBLISH_TIMEOUT_MS
     )
+  }
+
+  /** Post an already-published comp to AxiForge's configured Discord webhook as a
+   *  rich embed (party grid + build legend). Resolves { success: true } or throws
+   *  AxiforgeError with the reason (webhook unset / comp not published). Requires
+   *  AxiForge ≥ the build that adds the /share-discord route. */
+  shareCompToDiscord(id: string): Promise<{ success: boolean }> {
+    return this.request('POST', `/comps/${encodeURIComponent(id)}/share-discord`, undefined, SHARE_TIMEOUT_MS)
   }
 
   compPlaintext(id: string): Promise<{ text: string }> {
