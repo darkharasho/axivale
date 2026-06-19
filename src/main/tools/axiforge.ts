@@ -61,6 +61,55 @@ function stripImages(build: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+// Derived presentation caches the AxiForge app stores on a comp for its own
+// rendering. boonCoverageHtml is a pre-rendered HTML snapshot that can reach
+// multiple megabytes (millions of tokens) — it carries nothing the model can act
+// on, and shipping it as the tool value blows the context window.
+const HEAVY_COMP_FIELDS = ['boonCoverageHtml']
+// Any single string field beyond this is treated as an accidental blob, not real
+// comp content (notes/tags are tiny) — a safety net so a future cache field can't
+// silently nuke the context the way boonCoverageHtml did.
+const MAX_COMP_FIELD_CHARS = 100_000
+
+/**
+ * Strip heavy derived/cache fields from a comp before returning it to the model.
+ * The comp's partyLines (slot → build id) are what the model needs and stay
+ * intact; the card display keeps the full comp. omittedFields names what was
+ * dropped so the model knows the field exists. Returns the comp unchanged when
+ * there is nothing heavy to drop.
+ */
+function stripCompForModel(comp: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...comp }
+  const omitted: string[] = []
+  for (const [key, val] of Object.entries(out)) {
+    const heavy = HEAVY_COMP_FIELDS.includes(key)
+    const oversized = typeof val === 'string' && val.length > MAX_COMP_FIELD_CHARS
+    if (heavy || oversized) {
+      delete out[key]
+      omitted.push(key)
+    }
+  }
+  if (omitted.length === 0) return comp
+  out.omittedFields = omitted
+  return out
+}
+
+/**
+ * Compact id → { title, profession } map for the builds a comp references, built
+ * from the builds already fetched for the card. Lets a single comps_get answer
+ * "which build is in which slot" — partyLines gives slot → build id, this gives
+ * build id → name — without a second builds_list round-trip.
+ */
+function buildSummaries(
+  builds: Record<string, Record<string, unknown>>
+): Record<string, { title: unknown; profession: unknown }> {
+  const out: Record<string, { title: unknown; profession: unknown }> = {}
+  for (const [id, b] of Object.entries(builds)) {
+    out[id] = { title: b.title ?? null, profession: b.profession ?? null }
+  }
+  return out
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<any>> {
   // Auto-spawn-on-write: mutations hit the API; if AxiForge is closed, start it
@@ -169,7 +218,7 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
     ),
     tool(
       'axiforge_comps_get',
-      'Fetch one full AxiForge squad composition by id. Works even when AxiForge is closed. The user sees a rich comp card for this result.',
+      'Fetch one full AxiForge squad composition by id. Works even when AxiForge is closed. The user sees a rich comp card for this result. partyLines[].slots hold build ids (which build sits in which subgroup slot); buildSummaries maps each referenced build id to its title and profession so you can read the slot layout without a separate builds_list call. Heavy derived fields (e.g. boonCoverageHtml, a megabytes-large pre-rendered snapshot) are stripped from the response and named in omittedFields.',
       { comp_id: z.string().describe('Comp id from axiforge_comps_list') },
       safeRich(async ({ comp_id }) => {
         const comp = (await deps.axiforge.getComp(comp_id)) as Record<string, unknown>
@@ -193,9 +242,11 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
               }
             })
           )
-          return { value: comp, display: { kind: 'comp-card', data: { comp, builds } } }
+          const value = { ...stripCompForModel(comp), buildSummaries: buildSummaries(builds) }
+          return { value, display: { kind: 'comp-card', data: { comp, builds } } }
         } catch {
-          return { value: comp }
+          // Even if the build fetch/embed failed, never ship the heavy comp value.
+          return { value: stripCompForModel(comp) }
         }
       })
     ),

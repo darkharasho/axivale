@@ -280,7 +280,40 @@ describe('axiforge tools', () => {
         kind: 'comp-card',
         data: { comp, builds: { b1, b2 } }
       })
-      expect((result.content[0] as { text: string }).text).toBe(JSON.stringify(comp))
+      // The model value is the comp plus a compact id → title/profession map so the
+      // slot layout (partyLines slot → build id → name) is readable in one call.
+      expect(JSON.parse((result.content[0] as { text: string }).text)).toEqual({
+        ...comp,
+        buildSummaries: {
+          b1: { title: 'FB', profession: 'Guardian' },
+          b2: { title: 'Scrapper', profession: 'Engineer' }
+        }
+      })
+    })
+
+    it('comps_get strips heavy derived fields (boonCoverageHtml) from the model value but keeps them on the card', async () => {
+      const deps = makeDeps()
+      const boonCoverageHtml = '<div>'.repeat(50_000) // a multi-hundred-KB cache blob
+      const comp = {
+        id: 'c1',
+        name: 'EWW',
+        partyLines: [{ id: 'p1', capacity: 5, slots: ['b1'] }],
+        boonCoverageHtml
+      }
+      const b1 = { id: 'b1', title: 'FB', profession: 'Guardian' }
+      ;(deps.axiforge.getComp as ReturnType<typeof vi.fn>).mockResolvedValueOnce(comp)
+      ;(deps.axiforge.getBuild as ReturnType<typeof vi.fn>).mockResolvedValue(b1)
+      const result = await find(deps, 'axiforge_comps_get').handler({ comp_id: 'c1' }, {})
+      const value = JSON.parse((result.content[0] as { text: string }).text)
+      // Model never sees the blob; partyLines + omittedFields tell it what's there.
+      expect(value.boonCoverageHtml).toBeUndefined()
+      expect(value.omittedFields).toEqual(['boonCoverageHtml'])
+      expect(value.partyLines).toEqual(comp.partyLines)
+      expect(value.buildSummaries).toEqual({ b1: { title: 'FB', profession: 'Guardian' } })
+      // The card display still has the full comp (with the blob) for rendering.
+      expect((result.display as { data: { comp: typeof comp } }).data.comp.boonCoverageHtml).toBe(
+        boonCoverageHtml
+      )
     })
 
     it('comps_get tolerates failed build fetches: missing builds are left out, value still returns', async () => {
@@ -294,7 +327,10 @@ describe('axiforge tools', () => {
       })
       const result = await find(deps, 'axiforge_comps_get').handler({ comp_id: 'c1' }, {})
       expect(result.isError).toBeUndefined()
-      expect((result.content[0] as { text: string }).text).toBe(JSON.stringify(comp))
+      expect(JSON.parse((result.content[0] as { text: string }).text)).toEqual({
+        ...comp,
+        buildSummaries: { b1: { title: 'FB', profession: 'Guardian' } }
+      })
       expect(result.display).toEqual({ kind: 'comp-card', data: { comp, builds: { b1 } } })
     })
 
