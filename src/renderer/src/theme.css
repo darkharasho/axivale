@@ -463,6 +463,17 @@ td.nm2{color:var(--ink)}
 .notice--safe{border-color:var(--rule2)}
 .notice--safe .nh{color:var(--ink)}
 .notice--safe .btn-stamp{background:var(--accent-b);outline-color:var(--accent-b)}
+/* per-server Discord webhook routing (Settings → AxiTools) */
+.webhook-tie{display:flex;flex-direction:column;gap:14px}
+.wt-server{border:1px dashed var(--rule2);padding:10px 12px}
+.wt-server-name{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-b);margin-bottom:8px}
+.wt-group{margin-bottom:8px}
+.wt-group:last-child{margin-bottom:0}
+.wt-group-label{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.wt-opt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-dim);padding:2px 0;cursor:pointer}
+.wt-opt:hover{color:var(--ink)}
+.wt-opt input{accent-color:var(--accent)}
+.wt-empty{font-size:12px;color:var(--faint);font-style:italic}
 /* settings */
 .settings{padding:22px 0;overflow-y:auto;flex:1}
 .sgroup{margin-bottom:26px;padding-bottom:22px;border-bottom:1px dashed var(--rule)}
