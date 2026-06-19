@@ -621,5 +621,23 @@ describe('axiforge tools', () => {
       expect(res.isError).toBe(true)
       expect((res.content[0] as { text: string }).text).toMatch(/No Discord webhook is tied to the server "EWW"/)
     })
+
+    it('build_share_discord posts the tied BUILD webhook ids for the resolved server', async () => {
+      const deps = makeDeps()
+      deps.resolveAxitoolsServer = async () => ({ client: {} as never, guildId: '1', name: 'DEFI', label: 'DEFI' })
+      // build webhooks distinct from comp, to prove the build tool reads .build (no swap)
+      deps.discordWebhookTie = (label) => (label === 'DEFI' ? { comp: ['cWeb'], build: ['bWeb'] } : { comp: [], build: [] })
+      await find(deps, 'axiforge_build_share_discord').handler({ build_id: 'b1', server: 'DEFI' }, {})
+      expect(deps.axiforge.shareBuildToDiscord).toHaveBeenCalledWith('b1', ['bWeb'])
+    })
+
+    it('build_share_discord errors when no build webhook is tied', async () => {
+      const deps = makeDeps()
+      deps.resolveAxitoolsServer = async () => ({ client: {} as never, guildId: '1', name: 'EWW', label: 'EWW' })
+      deps.discordWebhookTie = () => ({ comp: ['cWeb'], build: [] })
+      const res = await find(deps, 'axiforge_build_share_discord').handler({ build_id: 'b1', server: 'EWW' }, {})
+      expect(res.isError).toBe(true)
+      expect((res.content[0] as { text: string }).text).toMatch(/No Discord webhook is tied to the server "EWW"/)
+    })
   })
 })
