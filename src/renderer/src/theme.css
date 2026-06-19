@@ -964,8 +964,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   line-height: 0;
 }
 .cs-icon svg {
-  height: 100%;
-  width: auto;
+  /* Class icons have varied, non-square viewBoxes and carry an inline
+     height:100%;width:auto — which fills the tile HEIGHT, so widths differ and
+     the art sits off-centre. Fill a SQUARE viewport instead and let the SVG's
+     default preserveAspectRatio (xMidYMid meet) fit + centre each icon, for a
+     uniform, centred footprint across the grid. !important beats the inline. */
+  width: 100% !important;
+  height: 100% !important;
   display: block;
 }
 .cs-icon--missing {
