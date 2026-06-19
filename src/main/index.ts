@@ -14,6 +14,7 @@ import {
 import { AxitoolsClient, AxitoolsError } from './axitoolsClient'
 import { isDestructiveConfirm } from './tools'
 import { parseAxivaleKey } from './axivaleKey'
+import { resolveServerEntry } from './serverResolve'
 import { Gw2Client } from './gw2Client'
 import { AxiforgeClient, forgeDataDir } from './axiforgeClient'
 import { AxiAppLauncher, defaultIo } from './axiAppLauncher'
@@ -539,7 +540,6 @@ app.whenReady().then(async () => {
           guildId: k.meta?.id ?? null
         })),
       resolveAxitoolsServer: async (server?: string) => {
-        const { resolveServerEntry } = await import('./serverResolve')
         const servers = store.listKeyLabels('axivale').map((k) => ({
           label: k.label, name: k.meta?.name ?? null, guildId: k.meta?.id ?? null
         }))

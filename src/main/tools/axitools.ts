@@ -351,6 +351,9 @@ export function buildAxitoolsTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
         // The linked roster + Discord display names need a connected guild, but
         // logged AxiBridge players do not — so resolve against whatever's available
         // rather than hard-failing when no Discord guild is connected.
+        // Intentionally NOT server-targeted: this resolves against the active
+        // server's roster (+ AxiBridge logs), tolerating no connected guild — so
+        // it keeps deps.discordGuildId()/deps.axitools rather than resolveAxitoolsServer.
         const gid = deps.discordGuildId()
         const anns = deps.rosterAnnotations()
         let raw: ResolveMemberLite[] = []
