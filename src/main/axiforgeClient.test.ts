@@ -312,6 +312,27 @@ describe('not-running detection and file fallback', () => {
     expect(err).toBeInstanceOf(AxiforgeNotRunningError)
     expect(err.message).toContain('no local data found')
   })
+
+  it('listDiscordWebhooks falls back to settings.json when AxiForge is closed', async () => {
+    writeFileSync(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({
+        'discord.compWebhooks': [
+          { id: 'c1', name: 'DEFI', url: 'https://discord.com/api/webhooks/1/a' },
+          { id: 'c2', name: 'EWW', url: 'https://discord.com/api/webhooks/2/b' }
+        ],
+        'discord.buildWebhooks': [{ id: 'bw1', name: 'Builds', url: 'https://discord.com/api/webhooks/3/c' }]
+      })
+    )
+    expect(await makeClient().listDiscordWebhooks()).toEqual({
+      comp: [{ id: 'c1', name: 'DEFI' }, { id: 'c2', name: 'EWW' }],
+      build: [{ id: 'bw1', name: 'Builds' }]
+    })
+  })
+
+  it('listDiscordWebhooks returns empty lists when settings.json is absent', async () => {
+    expect(await makeClient().listDiscordWebhooks()).toEqual({ comp: [], build: [] })
+  })
 })
 
 describe('fetch timeout', () => {

@@ -323,9 +323,34 @@ export class AxiforgeClient {
     )
   }
 
-  /** Comp + build webhooks configured in AxiForge, for tying servers to them. */
+  /** Comp + build webhooks configured in AxiForge, for tying servers to them.
+   *  Falls back to reading AxiForge's settings.json directly when AxiForge is
+   *  closed, so the webhook-tie panel populates without spawning AxiForge. */
   listDiscordWebhooks(): Promise<{ comp: WebhookRef[]; build: WebhookRef[] }> {
-    return this.request('GET', '/discord/webhooks', undefined, SHARE_TIMEOUT_MS)
+    const toRefs = (v: unknown): WebhookRef[] =>
+      Array.isArray(v)
+        ? v
+            .filter((w): w is { id: string; name?: unknown } =>
+              !!w && typeof (w as { id?: unknown }).id === 'string')
+            .map((w) => ({ id: w.id, name: typeof w.name === 'string' ? w.name : '' }))
+        : []
+    // Webhooks live in AxiForge's settings.json under these keys, which is the
+    // authoritative local source. Fall back to it on ANY request failure — not
+    // just NotRunning — so the panel still populates when AxiForge is closed OR
+    // is an older build without the /discord/webhooks route. Only the array
+    // forms have stable ids the share route can target; the legacy single build
+    // webhook gets a stable id only once AxiForge migrates it, so it's omitted.
+    const fromFile = async (): Promise<{ comp: WebhookRef[]; build: WebhookRef[] }> => {
+      const settings = await this.readJsonFile<Record<string, unknown>>('settings.json')
+      if (!settings) return { comp: [], build: [] }
+      return {
+        comp: toRefs(settings['discord.compWebhooks']),
+        build: toRefs(settings['discord.buildWebhooks'])
+      }
+    }
+    return this.request<{ comp: WebhookRef[]; build: WebhookRef[] }>(
+      'GET', '/discord/webhooks', undefined, SHARE_TIMEOUT_MS
+    ).catch(fromFile)
   }
 
   compPlaintext(id: string): Promise<{ text: string }> {

@@ -705,6 +705,8 @@ app.whenReady().then(async () => {
 
   ipcMain.handle('axiforge:status', () => axiforge.status())
   ipcMain.handle('axiforge:list-discord-webhooks', async () => {
+    // The client reads AxiForge's settings.json directly when AxiForge is closed
+    // (withFileFallback), so this works whether or not AxiForge is running.
     try {
       return await axiforge.listDiscordWebhooks()
     } catch {
