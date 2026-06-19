@@ -470,9 +470,13 @@ td.nm2{color:var(--ink)}
 .wt-group{margin-bottom:8px}
 .wt-group:last-child{margin-bottom:0}
 .wt-group-label{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
-.wt-opt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-dim);padding:2px 0;cursor:pointer}
+.wt-opt{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-dim);padding:3px 0;cursor:pointer}
 .wt-opt:hover{color:var(--ink)}
-.wt-opt input{accent-color:var(--accent)}
+.wt-opt input{appearance:none;-webkit-appearance:none;margin:0;flex:none;width:15px;height:15px;border:1.5px solid var(--rule2);background:rgba(0,0,0,.25);position:relative;cursor:pointer;transition:border-color .12s,background .12s}
+.wt-opt:hover input{border-color:var(--ink-dim)}
+.wt-opt input:checked{background:var(--accent);border-color:var(--accent)}
+.wt-opt input:checked::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #f4f1ea;border-width:0 2px 2px 0;transform:rotate(43deg)}
+.wt-opt input:focus-visible{outline:1px solid var(--accent-b);outline-offset:2px}
 .wt-empty{font-size:12px;color:var(--faint);font-style:italic}
 /* settings */
 .settings{padding:22px 0;overflow-y:auto;flex:1}
