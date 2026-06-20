@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version v1.1.2 — June 20, 2026
+
+### Right-click clipboard fixes
+Paste from the right-click menu now works — it was silently doing nothing because of a clipboard permission quirk, and clipboard actions now run through a path that behaves the same on Windows, Mac, and Linux. You can also right-click your own messages to copy them, not just AxiVale's replies.
+
 ## Version v1.1.1 — June 20, 2026
 
 ### ChatGPT tools now work in the Windows app
