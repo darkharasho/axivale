@@ -37,7 +37,7 @@ const DEBOUNCE_MS = 300
 
 const DEFAULT_SEED: DefaultSkill[] = [
   {
-    key: 'night-report',
+    key: 'wvw-report',
     name: 'WvW Report',
     whenToUse:
       'recapping how a WvW raid/night went — "how did we do tonight", performance review, squad report',

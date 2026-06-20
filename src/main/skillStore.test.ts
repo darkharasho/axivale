@@ -16,10 +16,10 @@ beforeEach(() => {
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
 describe('SKILLS (default seed)', () => {
-  it('commander-review and night-report reference axibridge_positioning', () => {
+  it('commander-review and wvw-report reference axibridge_positioning', () => {
     const keys = Object.fromEntries(SKILLS.map((s) => [s.key, s.instructions]))
     expect(keys['commander-review']).toMatch(/axibridge_positioning/)
-    expect(keys['night-report']).toMatch(/axibridge_positioning/)
+    expect(keys['wvw-report']).toMatch(/axibridge_positioning/)
   })
 })
 
@@ -116,7 +116,7 @@ describe('SkillStore', () => {
       // Persisted state records the seed key so it is not reapplied.
       s.flush()
       const onDisk = JSON.parse(readFileSync(path, 'utf8'))
-      expect(onDisk.seeded).toContain('night-report')
+      expect(onDisk.seeded).toContain('wvw-report')
     })
   })
 })
