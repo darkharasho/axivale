@@ -1,5 +1,22 @@
 # Release Notes
 
+## Version v1.0.1 — June 19, 2026
+
+### AxiBridge & AxiForge work on their own
+Reviewing a player or working with builds no longer pushes you to connect the
+AxiTools Discord bot. If you only use AxiBridge (WvW reports) or AxiForge
+(builds & comps), AxiVale now handles those fully on their own — it resolves
+players straight from your combat logs instead of asking you to hook up Discord.
+
+### A picture of where the meta comes from
+The **Sources** page now opens with a diagram showing how AxiVale's GW2 knowledge
+flows — community sources (Snowcrows, MetaBattle, Discretize, and friends) crawled,
+dated, indexed, and cited back to you when you ask.
+
+### Fixes
+- The "What's New" notice now closes properly — the ✕ sits where it should and
+  clicks cleanly.
+
 ## Version v1.0.0 — June 19, 2026
 
 **AxiVale is generally available.** A virtual officer for your Guild Wars 2 guild

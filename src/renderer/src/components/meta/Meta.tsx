@@ -4,6 +4,7 @@ import { Pane, Card } from '../panelui'
 import ModeSummary from './ModeSummary'
 import PlaybookLauncher from './PlaybookModal'
 import MetaIndexInspector from '../MetaIndexInspector'
+import SourcesDiagram from './SourcesDiagram'
 import { META_OVERVIEW, WIKI_REF } from './MetaNav'
 
 function ago(iso: string | null): string {
@@ -86,6 +87,7 @@ export default function Meta({ modes, active, busy, fetching, pages, onRefresh }
           title="Sources"
           sub="The knowledge AxiVale draws on for recall — grouped as Meta (live build/comp meta per game mode), Wiki (holistic GW2-wiki reference), and General (long-form guides). It refreshes automatically in the background; nothing to edit."
         >
+          <SourcesDiagram />
           {import.meta.env.DEV && (
             <Card title="Developer">
               <div className="sactions" style={{ marginTop: 0 }}>

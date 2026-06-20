@@ -55,6 +55,16 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/comp_check/)
   })
 
+  it('treats AxiBridge and AxiForge as standalone — no AxiTools/Discord required', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/AxiBridge and AxiForge are STANDALONE/i)
+    // Must not push the user toward connecting Discord / officer tools for them.
+    expect(p).toMatch(/NEVER tell the user to connect\s+Discord/i)
+    // Loose player names resolve from the combat logs, not just the roster.
+    expect(p).toMatch(/resolve_identity FIRST/i)
+    expect(p).toMatch(/matches names against the AxiBridge combat logs/i)
+  })
+
   it('forbids fabricated stats and guessed citation URLs', () => {
     const p = AXIVALE_SYSTEM_PROMPT
     expect(p).toMatch(/no fabricated evidence/i)

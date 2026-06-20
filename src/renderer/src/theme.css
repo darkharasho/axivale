@@ -1520,13 +1520,39 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 @media (max-width:760px){.wn-entries{column-count:1}}
 
 /* ── What's New: one-time launch modal (Special Edition) ── */
-.wnm-scrim{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:34px;backdrop-filter:blur(1.5px);-webkit-app-region:no-drag}
-.wnm{width:680px;max-width:100%;max-height:88vh;display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--rule2);box-shadow:8px 8px 0 rgba(0,0,0,.5)}
-.wnm-rule{display:flex;align-items:center;padding:9px 18px;border-bottom:3px double var(--rule2);background:rgba(0,0,0,.18)}
+/* Top-anchored below the masthead: a tall modal centred over the window would
+   overlap the masthead's -webkit-app-region:drag zone, where the OS drag region
+   hijacks clicks (grab cursor, dead close button). Starting below it avoids that. */
+.wnm-scrim{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.62);display:flex;align-items:flex-start;justify-content:center;padding:124px 34px 34px;backdrop-filter:blur(1.5px);-webkit-app-region:no-drag}
+.wnm{width:680px;max-width:100%;max-height:calc(100vh - 158px);display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--rule2);box-shadow:8px 8px 0 rgba(0,0,0,.5);-webkit-app-region:no-drag}
+.wnm-rule{display:flex;align-items:center;padding:9px 18px;border-bottom:3px double var(--rule2);background:rgba(0,0,0,.18);-webkit-app-region:no-drag}
 .wnm-ear{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint)}
-.wnm-x{margin-left:auto;display:flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-6px -8px -6px 0;background:none;border:none;color:var(--faint);cursor:pointer;padding:0;-webkit-app-region:no-drag}
+.wnm-x{margin-left:auto;margin-right:-6px;margin-top:-4px;margin-bottom:-4px;display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:none;border:none;color:var(--faint);cursor:pointer;padding:0;-webkit-app-region:no-drag}
 .wnm-x:hover{color:var(--ink);background:rgba(228,227,220,.1)}
 .wnm-body{padding:22px 26px;overflow:auto}
 .wnm-foot{display:flex;justify-content:flex-end;padding:14px 26px;border-top:1px solid var(--line)}
 .wnm-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#fff;background:var(--accent);border:none;padding:9px 20px;cursor:pointer}
 .wnm-btn:hover{background:var(--accent-b)}
+
+/* ── Sources "how it works" diagram (Meta overview) ── */
+.srcflow{margin-top:14px;border:1px solid var(--line);background:var(--paper);box-shadow:4px 4px 0 rgba(0,0,0,.3);padding:20px 20px 24px}
+.srcflow-h{font-family:'Playfair Display',serif;font-weight:700;font-size:18px;margin:0 0 2px}
+.srcflow-sub{font-size:12.5px;color:var(--ink-dim);margin:0 0 18px;line-height:1.45}
+.sf-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.sf-grp{border:1px solid var(--rule);background:rgba(0,0,0,.14);padding:11px 12px 13px}
+.sf-grp-t{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:9px;padding-bottom:7px;border-bottom:1px dashed var(--rule)}
+.sf-led{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.sf-chips{display:flex;flex-wrap:wrap;gap:6px}
+.sf-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink);background:var(--paper);border:1px solid var(--rule2);padding:3px 8px}
+.sf-note{font-size:11px;color:var(--faint);margin:9px 0 0;line-height:1.4}
+.sf-funnel{display:flex;justify-content:space-around;max-width:70%;margin:6px auto 0}
+.sf-funnel span{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--accent-b)}
+.sf-collect{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);border-top:1px dashed var(--rule);padding-top:10px;margin-top:4px}
+.sf-pipe{display:flex;align-items:stretch;margin-top:14px}
+.sf-step{flex:1;border:1px solid var(--rule);background:rgba(0,0,0,.14);padding:12px 13px}
+.sf-step.final{border-color:var(--accent);background:rgba(200,66,58,.08)}
+.sf-step-n{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.22em;color:var(--accent-b);text-transform:uppercase}
+.sf-step-t{font-family:'Playfair Display',serif;font-weight:700;font-size:14px;margin:5px 0 5px;line-height:1.2}
+.sf-step-d{font-size:11.5px;line-height:1.4;color:var(--ink-dim);margin:0}
+.sf-arrow{display:flex;align-items:center;justify-content:center;flex:0 0 30px;font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--accent-b)}
+@media (max-width:720px){.sf-row{grid-template-columns:1fr}.sf-pipe{flex-direction:column}.sf-arrow{flex:0 0 24px;transform:rotate(90deg)}}
