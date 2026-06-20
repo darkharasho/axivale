@@ -5,6 +5,7 @@ import RichTable from './RichTable'
 import RichCode from './RichCode'
 import CompSketch from './CompSketch'
 import ForgeCard from './ForgeCard'
+import RichPositioning from './RichPositioning'
 
 /** Returns the rich block for a display payload, or null when this build of
  *  the app has no renderer for the kind (the coupon then shows generic copy). */
@@ -21,6 +22,8 @@ export default function RichDisplay({ display }: { display: DisplayPayload }): R
     case 'build-card':
     case 'comp-card':
       return <ForgeCard display={display} />
+    case 'positioning':
+      return <RichPositioning data={display} />
     default:
       return null
   }
