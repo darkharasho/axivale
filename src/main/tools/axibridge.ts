@@ -260,13 +260,12 @@ export function buildAxibridgeTools(
         '  • full — all figure data available (tag path, spread timeline, death/down positions); use the spatial display and the numeric summaries together.',
         '  • coarse — no figure (the recorder captured only coarse-grained replay); rely on the distance numbers and outOfPositionDeaths list; say so when reporting.',
         '  • none — the recorder did not capture combat replay at all; tell the user to enable precise replay in AxiBridge settings; only squad spread (if available) is present.',
-        'Filter by run id, accounts, or date range. Omitting all filters picks the latest run.'
+        'Positioning is inherently squad/fight-wide — it covers the whole fight, not individual accounts. Filter by run id or date range. Omitting all filters picks the latest run.'
       ].join(' '),
       {
         run_id: z.string().optional().describe('Run id from axibridge_runs_list; omit to use the latest run'),
         from: z.string().optional().describe('Earliest date, YYYY-MM-DD'),
-        to: z.string().optional().describe('Latest date, YYYY-MM-DD'),
-        accounts: z.array(z.string()).optional().describe('Limit perPlayer rows to these GW2 accounts')
+        to: z.string().optional().describe('Latest date, YYYY-MM-DD')
       },
       safeRich(async (args) => {
         const result = await service().positioning(args)
