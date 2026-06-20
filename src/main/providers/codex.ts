@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { mkdtempSync, rmSync, existsSync, mkdirSync, appendFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, existsSync, mkdirSync, appendFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname, delimiter } from 'node:path'
 import type { AgentEvent, ProviderAdapter, ProviderConfig, SessionState, TurnInput } from './types'
@@ -157,6 +157,29 @@ export class CodexAdapter implements ProviderAdapter {
       if (v !== undefined && officerEnv[k] === undefined) officerEnv[k] = v
     }
 
+    // On Windows, set ELECTRON_RUN_AS_NODE inside a .cmd wrapper rather than
+    // relying on codex to propagate the mcp_servers.<name>.env override. Without
+    // the var the spawn launches AxiVale as a GUI, the proxy never starts, the
+    // MCP handshake closes, codex exits clean and the model claims tools are
+    // unavailable. Wrapper lives in the per-turn tmp dir (auto cleaned up).
+    let proxyCommand: string
+    let proxyArgs: string[]
+    if (process.platform === 'win32') {
+      const wrapper = join(tmp, 'officer-proxy.cmd')
+      const q = (s: string): string => `"${s.replace(/"/g, '""')}"`
+      writeFileSync(
+        wrapper,
+        '@echo off\r\n' +
+          'set ELECTRON_RUN_AS_NODE=1\r\n' +
+          `${q(process.execPath)} ${q(OFFICER_SERVER_PATH)} ${q(socketPath)} ${q(bridge.token)}\r\n`
+      )
+      proxyCommand = process.env.ComSpec ?? 'cmd.exe'
+      proxyArgs = ['/c', wrapper]
+    } else {
+      proxyCommand = process.execPath
+      proxyArgs = [OFFICER_SERVER_PATH, socketPath, bridge.token]
+    }
+
     const overrides = configOverrides({
       // Officer tools only — disable Codex's own coding/web tools (the bypass
       // flag turns the sandbox off, so containment is by tool-removal + the
@@ -165,9 +188,10 @@ export class CodexAdapter implements ProviderAdapter {
       web_search: 'disabled',
       mcp_servers: {
         officer: {
-          command: process.execPath,
-          args: [OFFICER_SERVER_PATH, socketPath, bridge.token],
+          command: proxyCommand,
+          args: proxyArgs,
           // Spawn Electron's bundled node as a plain node for the proxy.
+          // (Windows sets ELECTRON_RUN_AS_NODE in the .cmd wrapper above.)
           env: officerEnv
         }
       }

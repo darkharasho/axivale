@@ -91,7 +91,8 @@
     "asarUnpack": [
       "**/node_modules/@anthropic-ai/claude-agent-sdk*/**",
       "**/node_modules/@openai/codex*/**",
-      "**/codexOfficerServer.js",
+      "**/codexOfficerServer.mjs",
+      "**/node_modules/zod/**",
       "**/node_modules/@lancedb/**",
       "**/node_modules/@xenova/**",
       "**/node_modules/onnxruntime-node/**",

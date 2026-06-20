@@ -4,12 +4,19 @@
  * every call back to the AxiVale main process over a local socket, where the
  * real tool runs WITH the destructive-action confirm gate and display capture.
  *
- * Spawned by CodexAdapter as: `<node> codexOfficerServer.js <socketPath> <token>`.
+ * Spawned by CodexAdapter as: `<electron-as-node> codexOfficerServer.mjs
+ * <socketPath> <token>`. Built to .mjs (not .js) so plain node treats it as
+ * ESM unconditionally — under ELECTRON_RUN_AS_NODE=1, node can't read the
+ * `type: module` package.json inside app.asar, so a .js extension defaults
+ * to CJS and dies on the first `import` statement.
+ *
  * Uses the low-level MCP Server so our JSON-Schema tool specs pass through
  * verbatim (the high-level helper expects Zod shapes, which we don't have here).
  */
 import net from 'node:net'
 import { randomUUID } from 'node:crypto'
+import { existsSync, mkdirSync, appendFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprotocol/sdk/types.js'
@@ -20,8 +27,32 @@ interface ToolSpec {
   parameters: Record<string, unknown>
 }
 
+/**
+ * Standalone proxy log — written WITHOUT electron (this file runs as plain
+ * node under the codex MCP spawn). The boot line proves the proxy actually
+ * started; absence of any entry means codex spawned the wrapper but node
+ * failed to load this file (e.g. wrong module type, missing unpacked dep).
+ */
+function proxyLog(msg: string): void {
+  try {
+    const dir = process.env.APPDATA ? join(process.env.APPDATA, 'axivale', 'logs') : null
+    if (!dir) return
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    appendFileSync(join(dir, 'officer-proxy.log'), `[${new Date().toISOString()}] ${msg}\n`)
+  } catch {
+    // best-effort
+  }
+}
+
+proxyLog(
+  `boot pid=${process.pid} execPath=${process.execPath} ` +
+    `electronAsNode=${process.env.ELECTRON_RUN_AS_NODE ?? '<unset>'} ` +
+    `argv=${JSON.stringify(process.argv)}`
+)
+
 const [, , socketPath, token] = process.argv
 if (!socketPath || !token) {
+  proxyLog('missing socket path / token — exiting')
   process.stderr.write('officer server: missing socket path / token\n')
   process.exit(1)
 }
@@ -104,6 +135,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  process.stderr.write(`officer server fatal: ${err instanceof Error ? err.message : String(err)}\n`)
+  const msg = err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err)
+  proxyLog(`fatal: ${msg}`)
+  process.stderr.write(`officer server fatal: ${msg}\n`)
   process.exit(1)
 })

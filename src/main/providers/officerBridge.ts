@@ -1,8 +1,29 @@
 import net from 'node:net'
+import { createRequire } from 'node:module'
+import { existsSync, mkdirSync, appendFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { sep } from 'node:path'
+import { join, sep } from 'node:path'
 import type { AgentEvent, TurnInput } from './types'
 import { toToolSpecs, gateAndRunTool } from './toolSchema'
+
+const requireModule = createRequire(import.meta.url)
+
+/**
+ * Append a line to logs/officer-bridge.log. Without this, a silent failure
+ * of the MCP officer proxy (e.g. it never connects back on Windows) is
+ * indistinguishable from "model chose not to call any tool" — both yield a
+ * clean codex exit with no stderr. Recording connects/list/call here makes
+ * the proxy's health observable. Lazy electron require keeps this test-safe.
+ */
+function bridgeLog(msg: string): void {
+  try {
+    const dir = (requireModule('electron') as { app: { getPath(n: string): string } }).app.getPath('logs')
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    appendFileSync(join(dir, 'officer-bridge.log'), `[${new Date().toISOString()}] ${msg}\n`)
+  } catch {
+    // best-effort; logging must never throw
+  }
+}
 
 /**
  * Rewrite an app.asar path to its app.asar.unpacked twin. In a packaged build,
@@ -21,7 +42,7 @@ export function unpacked(p: string): string {
  * both the Codex and Gemini-CLI adapters spawn it and point it at a bridge
  * socket. Unpacked so the spawned node can read it in a packaged app.
  */
-export const OFFICER_SERVER_PATH = unpacked(fileURLToPath(new URL('./codexOfficerServer.js', import.meta.url)))
+export const OFFICER_SERVER_PATH = unpacked(fileURLToPath(new URL('./codexOfficerServer.mjs', import.meta.url)))
 
 /**
  * Minimal async queue merging two event producers — the provider's own event
@@ -83,7 +104,12 @@ export async function startOfficerBridge(
   const { randomBytes } = await import('node:crypto')
   const token = randomBytes(16).toString('hex')
 
+  bridgeLog(`listen socket=${socketPath} tools=${input.tools.length}`)
+
   const server = net.createServer((sock) => {
+    bridgeLog('proxy connected')
+    sock.on('close', () => bridgeLog('proxy disconnected'))
+    sock.on('error', (err) => bridgeLog(`proxy socket error: ${err.message}`))
     sock.setEncoding('utf8')
     let buf = ''
     sock.on('data', async (chunk: string) => {
@@ -100,12 +126,16 @@ export async function startOfficerBridge(
           continue
         }
         if (msg.token !== token) {
+          bridgeLog(`unauthorized request (method=${msg.method})`)
           sock.write(JSON.stringify({ id: msg.id, error: 'unauthorized' }) + '\n')
           continue
         }
         if (msg.method === 'list') {
-          sock.write(JSON.stringify({ id: msg.id, result: toToolSpecs(input.tools) }) + '\n')
+          const specs = toToolSpecs(input.tools)
+          bridgeLog(`list -> ${specs.length} tools`)
+          sock.write(JSON.stringify({ id: msg.id, result: specs }) + '\n')
         } else if (msg.method === 'call' && msg.name) {
+          bridgeLog(`call ${msg.name}`)
           const name = msg.name
           const args = msg.args ?? {}
           queue.push({ kind: 'tool-start', id: msg.id, name, input: args })
@@ -126,7 +156,10 @@ export async function startOfficerBridge(
   })
 
   await new Promise<void>((resolve, reject) => {
-    server.once('error', reject)
+    server.once('error', (err) => {
+      bridgeLog(`listen failed: ${err.message}`)
+      reject(err)
+    })
     server.listen(socketPath, resolve)
   })
 

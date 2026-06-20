@@ -38,7 +38,12 @@ export default defineConfig({
         // Second entry so the report summarizer compiles to its own worker file.
         // Keep `[name].js` naming so `index.js` stays the Electron main entry
         // (package.json "main"); the package is `type: module`, so the emitted
-        // worker `.js` loads as ESM under worker_threads.
+        // worker `.js` loads as ESM under worker_threads. EXCEPT
+        // codexOfficerServer, which runs under PLAIN node (codex spawns it via
+        // ELECTRON_RUN_AS_NODE=1) — plain node can't read app.asar to find the
+        // `type: module` package.json, so it defaults .js to CJS and dies on
+        // the ESM `import` syntax. Emit it as `.mjs` so node treats it as ESM
+        // unconditionally.
         input: {
           index: 'src/main/index.ts',
           axibridgeWorker: 'src/main/axibridgeWorker.ts',
@@ -46,7 +51,10 @@ export default defineConfig({
           // sibling file so CodexAdapter can point Codex at it on disk.
           codexOfficerServer: 'src/main/providers/codexOfficerServer.ts'
         },
-        output: { entryFileNames: '[name].js' }
+        output: {
+          entryFileNames: (chunk) =>
+            chunk.name === 'codexOfficerServer' ? '[name].mjs' : '[name].js'
+        }
       }
     }
   },
