@@ -55,6 +55,16 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/comp_check/)
   })
 
+  it('orients the model that tool names may be namespace-prefixed (Codex/MCP)', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/tool list is the single source of truth/i)
+    expect(p).toMatch(/namespace prefix/i)
+    expect(p).toMatch(/officer__/)
+    expect(p).toMatch(/match by suffix/i)
+    // Must forbid the "tool not exposed/available" confabulation we saw on Codex.
+    expect(p).toMatch(/NEVER tell the user a tool is "not exposed"/i)
+  })
+
   it('treats AxiBridge and AxiForge as standalone — no AxiTools/Discord required', () => {
     const p = AXIVALE_SYSTEM_PROMPT
     expect(p).toMatch(/AxiBridge and AxiForge are STANDALONE/i)

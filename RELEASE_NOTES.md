@@ -1,5 +1,14 @@
 # Release Notes
 
+## Version v1.0.2 — June 19, 2026
+
+### ChatGPT now uses your analytics tools instead of refusing
+On the ChatGPT provider, AxiVale could wrongly claim its AxiBridge/identity tools
+were "not available" and ask you to paste data — because the model didn't match
+the tool names. It now finds and uses them, so player reviews and WvW analytics
+work on ChatGPT the same as on Claude and Gemini. (Start a new conversation to
+pick up the fix.)
+
 ## Version v1.0.1 — June 19, 2026
 
 ### AxiBridge & AxiForge work on their own
