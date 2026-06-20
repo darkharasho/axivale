@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version v1.1.1 — June 20, 2026
+
+### ChatGPT tools now work in the Windows app
+On Windows, the packaged build couldn't start the ChatGPT (Codex) provider's officer tools — so player reviews and other tool-backed answers came back empty, even with AxiBridge reports loaded. The bundled tool proxy now launches correctly inside the installed app, and AxiVale writes `officer-bridge.log` / `officer-proxy.log` so any future spawn issue is obvious at a glance. Claude and Gemini were unaffected.
+
 ## Version v1.1.0 — June 20, 2026
 
 ### Positioning — see *where* a WvW fight was won or lost
