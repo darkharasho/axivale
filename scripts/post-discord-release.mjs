@@ -46,7 +46,35 @@ function extractNotes(md, tag) {
     }
     if (capturing) out.push(line)
   }
-  return out.join('\n').trim()
+  return reflowNotes(out.join('\n'))
+}
+
+/**
+ * Collapse hard-wrapped prose into one line per paragraph so Discord (which
+ * renders every newline literally) doesn't show random mid-sentence breaks.
+ * Headings, list items, blockquotes, and blank lines keep their own lines.
+ */
+function reflowNotes(md) {
+  const out = []
+  let para = []
+  const flush = () => {
+    if (para.length) out.push(para.join(' '))
+    para = []
+  }
+  for (const raw of md.split('\n')) {
+    const t = raw.trim()
+    if (t === '') {
+      flush()
+      out.push('')
+    } else if (/^(#{1,6}\s|[-*+]\s|\d+[.)]\s|>)/.test(t)) {
+      flush()
+      out.push(t)
+    } else {
+      para.push(t)
+    }
+  }
+  flush()
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 async function main() {
