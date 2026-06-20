@@ -111,6 +111,8 @@ contextBridge.exposeInMainWorld('officer', {
     ipcRenderer.send('agent:confirm-response', { id, allowed }),
   windowControl: (action: 'minimize' | 'maximize-toggle' | 'close') =>
     ipcRenderer.send('window:control', action),
+  clipboardRead: () => ipcRenderer.invoke('clipboard:read'),
+  clipboardWrite: (text: string) => ipcRenderer.invoke('clipboard:write', text),
   listKeys: (service: string) => ipcRenderer.invoke('keys:list', service),
   addKey: (service: string, label: string, key: string) =>
     ipcRenderer.invoke('keys:add', service, label, key),

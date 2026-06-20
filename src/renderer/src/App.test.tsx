@@ -133,6 +133,8 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     onLearnProgress: vi.fn().mockImplementation(noop),
     respondConfirm: vi.fn(),
     windowControl: vi.fn(),
+    clipboardRead: vi.fn().mockResolvedValue(''),
+    clipboardWrite: vi.fn().mockResolvedValue(undefined),
     listKeys: vi.fn().mockResolvedValue([]),
     addKey: vi.fn().mockResolvedValue(undefined),
     removeKey: vi.fn().mockResolvedValue(undefined),

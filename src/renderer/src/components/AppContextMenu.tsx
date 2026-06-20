@@ -51,10 +51,33 @@ function selectionText(): string {
 }
 
 async function writeText(text: string): Promise<void> {
+  // Prefer the main-process clipboard (no permission gate, works everywhere);
+  // fall back to the renderer API outside Electron / before preload is ready.
+  try {
+    await window.officer.clipboardWrite(text)
+    return
+  } catch {
+    /* fall through to navigator */
+  }
   try {
     await navigator.clipboard.writeText(text)
   } catch {
     /* clipboard denied — nothing we can do from here */
+  }
+}
+
+async function readText(): Promise<string> {
+  // `navigator.clipboard.readText()` needs the `clipboard-read` permission, which
+  // the app doesn't grant, so it throws — go through the main process instead.
+  try {
+    return await window.officer.clipboardRead()
+  } catch {
+    /* fall through to navigator */
+  }
+  try {
+    return await navigator.clipboard.readText()
+  } catch {
+    return ''
   }
 }
 
@@ -140,12 +163,7 @@ function buildGroups(target: Element): MenuGroup[] {
       }
     }
     const paste = async (): Promise<void> => {
-      let text = ''
-      try {
-        text = await navigator.clipboard.readText()
-      } catch {
-        return
-      }
+      const text = await readText()
       if (!text) return
       const { start: s, end: e } = fieldSelection(field)
       setNativeValue(field, field.value.slice(0, s) + text + field.value.slice(e))
@@ -219,6 +237,19 @@ function buildGroups(target: Element): MenuGroup[] {
     // "Select all" here means the message body, not the whole document.
     groups.push([
       { label: 'Select all', icon: <TextSelect size={ICON} />, run: () => selectNode(article.querySelector('.prose') ?? article) }
+    ])
+  }
+
+  // 6) A user message (the commander's own orders). Offer copy + select-all on its
+  //    body, mirroring the assistant message but without image/share actions.
+  const userMsg = target.closest('.msg.user') as HTMLElement | null
+  if (userMsg) {
+    const body = userMsg.querySelector('.body') ?? userMsg
+    groups.push([
+      { label: 'Copy message', icon: <Copy size={ICON} />, run: () => writeText((body.textContent ?? '').trim()) }
+    ])
+    groups.push([
+      { label: 'Select all', icon: <TextSelect size={ICON} />, run: () => selectNode(body) }
     ])
   }
 

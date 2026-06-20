@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, ipcMain, screen, shell } from 'electron'
+import { app, BrowserWindow, Notification, clipboard, ipcMain, screen, shell } from 'electron'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
@@ -638,6 +638,13 @@ app.whenReady().then(async () => {
     else if (action === 'maximize-toggle') win.isMaximized() ? win.unmaximize() : win.maximize()
     else if (action === 'close') win.close()
   })
+
+  // Clipboard goes through the main process: the renderer's `navigator.clipboard`
+  // can write but reading needs the `clipboard-read` permission, which isn't
+  // granted — so right-click Paste silently no-op'd. Electron's main `clipboard`
+  // module has no such gate and works identically on every platform.
+  ipcMain.handle('clipboard:read', () => clipboard.readText())
+  ipcMain.handle('clipboard:write', (_event, text: string) => clipboard.writeText(text))
 
   ipcMain.on('agent:confirm-response', (_event, { id, allowed }: { id: string; allowed: boolean }) => {
     const resolve = pendingConfirms.get(id)

@@ -376,6 +376,8 @@ export interface OfficerApi {
     ready: boolean
     note: string | null
   }>
+  clipboardRead(): Promise<string>
+  clipboardWrite(text: string): Promise<void>
   appVersion(): Promise<string>
   checkUpdates(): Promise<unknown>
   installUpdate(): Promise<void>
