@@ -1,5 +1,14 @@
 # Release Notes
 
+## Version v1.0.3 — June 19, 2026
+
+### ChatGPT tool access on Windows
+Chasing a Windows-only issue where the ChatGPT provider couldn't reach AxiVale's
+tools — player reviews and other tool-backed answers came back empty ("0 actions
+taken"). This build hardens how those tools are launched on Windows and writes a
+diagnostic log to `logs/codex.log` so any remaining cases can be pinned down
+exactly. Claude and Gemini are unaffected.
+
 ## Version v1.0.2 — June 19, 2026
 
 ### ChatGPT now uses your analytics tools instead of refusing

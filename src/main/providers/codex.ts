@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, existsSync, mkdirSync, appendFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname, delimiter } from 'node:path'
 import type { AgentEvent, ProviderAdapter, ProviderConfig, SessionState, TurnInput } from './types'
@@ -8,6 +8,22 @@ import { EventQueue, OFFICER_SERVER_PATH, startOfficerBridge, unpacked } from '.
 import { translateCodexEvent, type CodexThreadEvent } from './codexEvents'
 
 const requireModule = createRequire(import.meta.url)
+
+/**
+ * Append a line to logs/codex.log. Codex writes officer-MCP connection failures
+ * to its stderr, which we otherwise discard on a clean exit — so when the proxy
+ * fails to start (e.g. on Windows) the model silently runs with zero tools and
+ * the cause is invisible. Lazy electron require keeps this module test-safe.
+ */
+function codexLog(msg: string): void {
+  try {
+    const dir = (requireModule('electron') as { app: { getPath(n: string): string } }).app.getPath('logs')
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+    appendFileSync(join(dir, 'codex.log'), `[${new Date().toISOString()}] ${msg}\n`)
+  } catch {
+    // best-effort; logging must never throw
+  }
+}
 
 /** Platform package that ships the codex binary, by Rust target triple. */
 const PLATFORM_PACKAGE: Record<string, string> = {
@@ -126,6 +142,21 @@ export class CodexAdapter implements ProviderAdapter {
     const bridge = await startOfficerBridge(input, queue, socketPath)
     const { model } = this.config()
 
+    // Codex launches the officer proxy with exactly this env. Pass the platform
+    // essentials through so the child starts even if Codex REPLACES (rather than
+    // merges) the environment — on Windows a process without SystemRoot/Path
+    // fails to initialize, which silently leaves Codex with zero officer tools
+    // (the model then takes "0 actions" and claims tools are unavailable).
+    const officerEnv: Record<string, string> = { ELECTRON_RUN_AS_NODE: '1' }
+    const passKeys =
+      process.platform === 'win32'
+        ? ['SystemRoot', 'windir', 'Path', 'PATH', 'PATHEXT', 'TEMP', 'TMP', 'APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'ProgramData', 'ComSpec', 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE']
+        : ['PATH', 'HOME', 'TMPDIR', 'LANG']
+    for (const k of passKeys) {
+      const v = process.env[k]
+      if (v !== undefined && officerEnv[k] === undefined) officerEnv[k] = v
+    }
+
     const overrides = configOverrides({
       // Officer tools only — disable Codex's own coding/web tools (the bypass
       // flag turns the sandbox off, so containment is by tool-removal + the
@@ -137,10 +168,16 @@ export class CodexAdapter implements ProviderAdapter {
           command: process.execPath,
           args: [OFFICER_SERVER_PATH, socketPath, bridge.token],
           // Spawn Electron's bundled node as a plain node for the proxy.
-          env: { ELECTRON_RUN_AS_NODE: '1' }
+          env: officerEnv
         }
       }
     })
+
+    codexLog(
+      `turn start: model=${model ?? 'default'} resume=${this.threadId ? 'yes' : 'no'} ` +
+        `bin=${CODEX_BINARY.bin} officerServer=${OFFICER_SERVER_PATH} socket=${socketPath} ` +
+        `officerEnvKeys=[${Object.keys(officerEnv).join(',')}]`
+    )
 
     const args = [
       'exec',
@@ -203,6 +240,9 @@ export class CodexAdapter implements ProviderAdapter {
 
     child.on('close', (code) => {
       if (buf.trim()) handleLine(buf)
+      // Surface Codex's stderr — officer-MCP connection errors land here and are
+      // otherwise lost when Codex exits 0 with the proxy never connected.
+      codexLog(stderr.trim() ? `exit ${code}; stderr:\n${stderr.trim()}` : `exit ${code} (no stderr)`)
       if (!sawDone) {
         queue.push({
           kind: 'done',
