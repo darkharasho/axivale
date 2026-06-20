@@ -55,6 +55,12 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/comp_check/)
   })
 
+  it('expects a commander\'s personal stats to run below the squad average', () => {
+    const p = AXIVALE_SYSTEM_PROMPT
+    expect(p).toMatch(/commander.*PERSONAL output.*EXPECTED to run BELOW the squad average/is)
+    expect(p).toMatch(/never compare their personal stats to the squad average/i)
+  })
+
   it('orients the model that tool names may be namespace-prefixed (Codex/MCP)', () => {
     const p = AXIVALE_SYSTEM_PROMPT
     expect(p).toMatch(/tool list is the single source of truth/i)
