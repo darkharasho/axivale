@@ -119,4 +119,9 @@ describe('system prompt', () => {
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/stale/i)
     expect(AXIVALE_SYSTEM_PROMPT).toMatch(/cached/i)
   })
+
+  it('tells reviews to use positioning when available', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/axibridge_positioning/)
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/positioning.*when (it'?s )?available/i)
+  })
 })

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { mkdtempSync, rmSync, existsSync, writeFileSync, readFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { SkillStore } from './skillStore'
+import { SkillStore, SKILLS } from './skillStore'
 
 // Names of the skills shipped as defaults (see DEFAULT_SEED in skillStore.ts).
 const SEEDED_NAMES = ['Commander Review', 'WvW Report', 'WvW Trends']
@@ -14,6 +14,14 @@ beforeEach(() => {
   path = join(dir, 'skills.json')
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+describe('SKILLS (default seed)', () => {
+  it('commander-review and night-report reference axibridge_positioning', () => {
+    const keys = Object.fromEntries(SKILLS.map((s) => [s.key, s.instructions]))
+    expect(keys['commander-review']).toMatch(/axibridge_positioning/)
+    expect(keys['night-report']).toMatch(/axibridge_positioning/)
+  })
+})
 
 describe('SkillStore', () => {
   it('creates skills with ids/timestamps and defaults enabled', () => {
@@ -108,7 +116,7 @@ describe('SkillStore', () => {
       // Persisted state records the seed key so it is not reapplied.
       s.flush()
       const onDisk = JSON.parse(readFileSync(path, 'utf8'))
-      expect(onDisk.seeded).toContain('wvw-report')
+      expect(onDisk.seeded).toContain('night-report')
     })
   })
 })
