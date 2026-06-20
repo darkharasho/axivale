@@ -197,6 +197,17 @@ describe('AxibridgeService', () => {
     expect(typeof result.stale).toBe('boolean')
   })
 
+  it('positioning() rejects with "not found" for an unknown run_id', async () => {
+    const svc = makeService({
+      fetchIndex: async () => [
+        { id: 'pos-run-1', title: 'Pos Run', commanders: ['Commander.1'], dateStart: '2026-06-18T20:00:00Z', dateEnd: '2026-06-18T22:00:00Z' }
+      ]
+    })
+    await expect(svc.positioning({ run_id: 'does-not-exist' })).rejects.toThrow(
+      /does-not-exist.*not found/i
+    )
+  })
+
   it('runsList reports stale + staleSince from a stale index', async () => {
     const repo = { owner: 'o', repo: 'r' }
     const cache = {
