@@ -1,5 +1,24 @@
 # Release Notes
 
+## Version v1.1.0 — June 20, 2026
+
+### Positioning — see *where* a WvW fight was won or lost
+AxiVale now reads your AxiBridge replay data and analyzes fights by position:
+squad cohesion (how tight the ball stayed), overextension and out-of-position
+deaths, where on the map people fell, and the commander's pathing. Ask for a
+review and — when your reports carry replay data — it weaves this into the
+verdict with an inline map of the death/down hotspots, the commander's route,
+and a squad-spread-over-time strip. Shows up automatically in the WvW night
+report and commander review, and you can ask directly ("did we overextend?",
+"where did we die?"). Degrades gracefully when a report has only partial
+positional data.
+
+### Fairer commander reviews
+A commander's personal damage/cleave/strips are *expected* to run below the
+squad average — they tag, position, and call rather than pad personal numbers.
+Reviews no longer read that as underperformance; leadership is judged on squad
+outcomes and positioning instead.
+
 ## Version v1.0.3 — June 19, 2026
 
 ### ChatGPT tool access on Windows
