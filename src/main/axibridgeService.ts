@@ -7,7 +7,8 @@ import { AxibridgeCache } from './axibridgeCache'
 import type { SummaryJob, SummaryJobResult } from './axibridgeSummarize'
 import {
   aggregatePlayers, compareRunSets, buildRollupData, extractRollupSource,
-  type RunSummary, type RollupData, type RollupReportPayload
+  computePositioning,
+  type RunSummary, type RollupData, type RollupReportPayload, type PositioningSummary
 } from '@axiapps/bridge-metrics'
 
 export interface AxibridgeServiceDeps {
@@ -163,6 +164,48 @@ export class AxibridgeService {
       throw new Error(`Run ${runId} could not be summarized: ${skippedRuns[0]?.reason ?? 'unknown'}`)
     }
     return { summary: summaries[0], skippedRuns }
+  }
+
+  /**
+   * Compute positional analysis for a single run.
+   *
+   * V1 scope: when a date range is provided we pick the *latest* run in range
+   * and compute positioning for that one run. Aggregating positioning across
+   * multiple runs (e.g. averaging perPlayer distances) is deferred to a future
+   * iteration because merging figure payloads and death clusters meaningfully
+   * requires additional design work.
+   */
+  async positioning(
+    args: { run_id?: string } & DateRange
+  ): Promise<PositioningSummary & { runsConsidered: number; stale: boolean; staleSince: string | null }> {
+    const { runs, stale, staleSince } = await this.runsList(args)
+    const repos = new Map(this.deps.repos().map((r) => [repoKey(r), r]))
+
+    // Resolve the target run: explicit run_id, or the latest in the range (runs are newest-first).
+    let targetRun: RunListEntry | undefined
+    if (args.run_id) {
+      targetRun = runs.find((r) => r.id === args.run_id)
+      if (!targetRun) throw new Error(`Run ${args.run_id} not found in any linked repo — call axibridge_runs_list for valid ids.`)
+    } else {
+      targetRun = runs[0] // newest-first sort; pick latest in range
+      if (!targetRun) throw new Error('No runs found in the specified range.')
+    }
+
+    const repo = repos.get(targetRun.repo)
+    if (!repo) throw new Error(`Repo ${targetRun.repo} is no longer linked.`)
+
+    // Fetch the raw EI report (the object fetchReport returns is the EI log, with
+    // .details.players and .details.combatReplayMetaData at the top level).
+    // We read from cache if available, otherwise fetch + cache it.
+    let body = this.deps.cache.readReport(repo, targetRun.id)
+    if (!body) {
+      body = JSON.stringify(await this.deps.client.fetchReport(repo, targetRun.id))
+      this.deps.cache.putReport(repo, targetRun.id, body)
+    }
+    const rawReport = JSON.parse(body) as Parameters<typeof computePositioning>[0]
+
+    const summary = computePositioning(rawReport)
+    return { ...summary, runsConsidered: 1, stale, staleSince }
   }
 
   async playerStats(args: DateRange & { accounts?: string[] }) {

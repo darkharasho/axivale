@@ -35,6 +35,7 @@ describe('tools module split', () => {
       'axibridge_commander_stats',
       'axibridge_compare',
       'axibridge_player_stats',
+      'axibridge_positioning',
       'axibridge_query',
       'axibridge_render_chart',
       'axibridge_repos_status',

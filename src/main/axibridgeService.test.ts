@@ -7,6 +7,34 @@ import { AxibridgeCache } from './axibridgeCache'
 import { AxibridgeError } from './axibridgeClient'
 
 const repoA = { owner: 'o', repo: 'a' }
+
+/** Full-replay report with a commander + one strayed linked death, usable by computePositioning. */
+const fullReplayReport = (id: string, dateStart: string) => ({
+  meta: { id, title: id, dateStart, dateEnd: dateStart, commanders: ['Commander.1'] },
+  stats: { total: 1, wins: 1, losses: 0, attendanceData: [], commanderStats: { rows: [] }, offensePlayers: [] },
+  details: {
+    combatReplayMetaData: { pollingRate: 1000, inchToPixel: 1, sizes: [4000, 4000] as [number, number] },
+    durationMS: 3000,
+    players: [
+      {
+        account: 'Commander.1', hasCommanderTag: true, profession: 'Guardian',
+        combatReplayData: { start: 0, positions: [[0, 0], [0, 0], [0, 0]] as [number,number][], dead: [], down: [] },
+        statsAll: [{ distToCom: 0 }, { distToCom: 0 }, { distToCom: 0 }]
+      },
+      {
+        account: 'Strayer.1', profession: 'Necromancer',
+        combatReplayData: {
+          start: 0,
+          positions: [[0, 0], [1500, 0], [1500, 0]] as [number,number][],
+          dead: [[2000, 3000]] as [number,number][],
+          down: [[1000, 2000]] as [number,number][]
+        },
+        statsAll: [{ distToCom: 0 }, { distToCom: 1500 }, { distToCom: 1500 }]
+      }
+    ]
+  }
+})
+
 const report = (id: string, dateStart: string) => ({
   meta: { id, title: id, dateStart, dateEnd: dateStart, commanders: ['C.1'] },
   stats: {
@@ -153,6 +181,31 @@ describe('AxibridgeService', () => {
     const out = await svc.attendance({})
     expect(out.stale).toBe(true)
     expect(out.staleSince).toBe('2025-06-15T15:06:40.000Z')
+  })
+
+  it('positioning() returns full degree and outOfPositionDeaths from a full-replay report', async () => {
+    const svc = makeService({
+      fetchIndex: async () => [
+        { id: 'pos-run-1', title: 'Pos Run', commanders: ['Commander.1'], dateStart: '2026-06-18T20:00:00Z', dateEnd: '2026-06-18T22:00:00Z' }
+      ],
+      fetchReport: async () => fullReplayReport('pos-run-1', '2026-06-18T20:00:00Z')
+    })
+    const result = await svc.positioning({ run_id: 'pos-run-1' })
+    expect(result.degree).toBe('full')
+    expect(result.outOfPositionDeaths.length).toBeGreaterThan(0)
+    expect(result.runsConsidered).toBe(1)
+    expect(typeof result.stale).toBe('boolean')
+  })
+
+  it('positioning() rejects with "not found" for an unknown run_id', async () => {
+    const svc = makeService({
+      fetchIndex: async () => [
+        { id: 'pos-run-1', title: 'Pos Run', commanders: ['Commander.1'], dateStart: '2026-06-18T20:00:00Z', dateEnd: '2026-06-18T22:00:00Z' }
+      ]
+    })
+    await expect(svc.positioning({ run_id: 'does-not-exist' })).rejects.toThrow(
+      /does-not-exist.*not found/i
+    )
   })
 
   it('runsList reports stale + staleSince from a stale index', async () => {

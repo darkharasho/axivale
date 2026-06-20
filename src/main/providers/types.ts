@@ -53,6 +53,24 @@ export type DisplayPayload =
         builds: Array<{ spec: string; role: string; count?: number; weapons?: string; note?: string }>
       }
     }
+  | {
+      /** Spatial positioning figure for a WvW fight (all distances in game inches). */
+      kind: 'positioning'
+      degree: 'full' | 'coarse' | 'none'
+      map: { sizes: [number, number]; inchToPixel: number }
+      /** Down-sampled tag path ~1 pt/sec */
+      tagPath: Array<[number, number]>
+      /** Approximate bounding circle of the squad centroid over time */
+      squadMass: { x: number; y: number; r: number }
+      /** Death locations as raw [x, y] points */
+      deaths: Array<[number, number]>
+      /** Down positions as raw [x, y] points */
+      downs: Array<[number, number]>
+      /** [[sec, spreadValue]] spread time-series, ~1 pt/sec */
+      spread: Array<[number, number]>
+      /** Peak squad spread in game inches */
+      peakSpread: number
+    }
 
 export type AgentEvent =
   | { kind: 'text-delta'; text: string }

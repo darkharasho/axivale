@@ -252,6 +252,33 @@ export function buildAxibridgeTools(
       })
     ),
     tool(
+      'axibridge_positioning',
+      [
+        'Positional and movement analysis for a WvW fight: squad spread, tag path, out-of-position deaths, death/down clusters, and per-player distance to tag.',
+        'All distances are in game INCHES (1 200 in = ~1 WvW range unit). Use this to explain what went wrong or right in a fight — e.g. "the squad spread peaked at 900 in at second 38, and P.1 died 1 500 in from the tag".',
+        'The richness of the result degrades with the AxiBridge recorder\'s replay setting:',
+        '  • full — all figure data available (tag path, spread timeline, death/down positions); use the spatial display and the numeric summaries together.',
+        '  • coarse — no figure (the recorder captured only coarse-grained replay); rely on the distance numbers and outOfPositionDeaths list; say so when reporting.',
+        '  • none — the recorder did not capture combat replay at all; tell the user to enable precise replay in AxiBridge settings; only squad spread (if available) is present.',
+        'Positioning is inherently squad/fight-wide — it covers the whole fight, not individual accounts. Filter by run id or date range. Omitting all filters picks the latest run.'
+      ].join(' '),
+      {
+        run_id: z.string().optional().describe('Run id from axibridge_runs_list; omit to use the latest run'),
+        from: z.string().optional().describe('Earliest date, YYYY-MM-DD'),
+        to: z.string().optional().describe('Latest date, YYYY-MM-DD')
+      },
+      safeRich(async (args) => {
+        const result = await service().positioning(args)
+        const { figure, ...value } = result
+        return {
+          value,
+          display: figure
+            ? { kind: 'positioning' as const, degree: result.degree, ...figure }
+            : undefined
+        }
+      })
+    ),
+    tool(
       'axibridge_query',
       [
         'Deep query of ALL AxiBridge content with a jq expression — the escape hatch when the other axibridge_* tools cannot shape an answer.',
