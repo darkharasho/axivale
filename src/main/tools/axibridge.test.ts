@@ -1,6 +1,47 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildAxibridgeTools } from './axibridge'
 import type { JqEngine } from '../jqEngine'
+import type { PositioningSummary } from '@axiapps/bridge-metrics'
+
+/** Full-replay PositioningSummary fixture for axibridge_positioning tests. */
+function stubFullReplayPositioning(): PositioningSummary & { runsConsidered: number; stale: boolean; staleSince: string | null } {
+  return {
+    degree: 'full',
+    perPlayer: [{ account: 'P.1', avgDistToTag: 300, peakDistToTag: 1800 }],
+    outOfPositionDeaths: [{ account: 'P.1', distAtDown: 1500, atSec: 42 }],
+    squad: { avgSpread: 400, peakSpread: { value: 900, atSec: 38 }, cohesionNote: 'tight' },
+    commander: null,
+    deathClusters: [{ x: 100, y: 200, count: 3 }],
+    figure: {
+      map: { sizes: [1024, 1024], inchToPixel: 0.5 },
+      tagPath: [[100, 200], [110, 210]],
+      squadMass: { x: 105, y: 205, r: 50 },
+      deaths: [[120, 220], [130, 230]],
+      downs: [[115, 215]],
+      spread: [[0, 400], [1, 420]],
+      peakSpread: 450
+    },
+    runsConsidered: 1,
+    stale: false,
+    staleSince: null
+  }
+}
+
+/** Coarse-replay PositioningSummary fixture (no figure). */
+function stubCoarsePositioning(): PositioningSummary & { runsConsidered: number; stale: boolean; staleSince: string | null } {
+  return {
+    degree: 'coarse',
+    perPlayer: [{ account: 'P.1', avgDistToTag: 350, peakDistToTag: 2000 }],
+    outOfPositionDeaths: [],
+    squad: null,
+    commander: null,
+    deathClusters: [],
+    figure: undefined,
+    runsConsidered: 1,
+    stale: false,
+    staleSince: null
+  }
+}
 
 const fakeService = {
   reposStatus: vi.fn(async () => ({ repos: [{ repo: 'o/a', runs: 2, firstRun: '2026-06-01', lastRun: '2026-06-08', cachedReports: 1, lastIndexFetch: 1, error: null, stale: false, staleSince: null as string | null }] })),
@@ -9,7 +50,8 @@ const fakeService = {
   playerStats: vi.fn(async () => ({ players: [{ account: 'P.1', runsJoined: 2, dps: 1200, damage: 100, combatTimeMs: 1, squadTimeMs: 2, professionTimeMs: { Scourge: 1 }, downContribution: 1, kills: 1, strips: 1, cleanses: 1, resurrects: 0, healing: 0, barrier: 0, damageTaken: 1, downs: 0, deaths: 0, lastSeen: '2026-06-08' }], runsConsidered: 2, skippedRuns: [], errors: [], stale: false, staleSince: null as string | null })),
   attendance: vi.fn(async () => ({ attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null as string | null })),
   commanderStats: vi.fn(async () => ({ commanders: [{ account: 'C.1', characterNames: [], profession: 'Firebrand', runs: 2, fightsLed: 4, kills: 10, downs: 14, commanderDeaths: 0, alliesDead: 2, wins: 2, losses: 2, kdr: 5, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null as string | null })),
-  compare: vi.fn(async () => ({ a: 'r1', b: 'r2', runsA: 1, runsB: 1, comparison: { metrics: [{ metric: 'squadDeaths', a: 3, b: 1, delta: -2, deltaPct: -2 / 3 }] } }))
+  compare: vi.fn(async () => ({ a: 'r1', b: 'r2', runsA: 1, runsB: 1, comparison: { metrics: [{ metric: 'squadDeaths', a: 3, b: 1, delta: -2, deltaPct: -2 / 3 }] } })),
+  positioning: vi.fn(async () => stubFullReplayPositioning())
 }
 
 const tools = buildAxibridgeTools(() => fakeService as never)
@@ -23,6 +65,7 @@ describe('axibridge tools', () => {
       'axibridge_commander_stats',
       'axibridge_compare',
       'axibridge_player_stats',
+      'axibridge_positioning',
       'axibridge_query',
       'axibridge_render_chart',
       'axibridge_repos_status',
@@ -95,6 +138,31 @@ describe('axibridge tools', () => {
     const res = (await byName('axibridge_runs_list').handler({}, {})) as never as { content: Array<{ text: string }> }
     expect(parse(res).stale).toBe(true)
     expect(parse(res).staleRepos).toEqual(['o/a'])
+  })
+
+  it('axibridge_positioning returns compact value + positioning display for full-replay', async () => {
+    fakeService.positioning.mockResolvedValueOnce(stubFullReplayPositioning())
+    const res = (await byName('axibridge_positioning').handler({ run_id: '20260618-2000' }, {})) as never as {
+      content: Array<{ text: string }>
+      display?: { kind: string; degree: string }
+    }
+    const value = parse(res)
+    expect(value.outOfPositionDeaths).toBeDefined()
+    expect(value.figure).toBeUndefined()          // raw figure never in model value
+    expect(res.display?.kind).toBe('positioning')
+    expect(res.display?.degree).toBe('full')
+  })
+
+  it('axibridge_positioning returns no display when degree is coarse (figure undefined)', async () => {
+    fakeService.positioning.mockResolvedValueOnce(stubCoarsePositioning())
+    const res = (await byName('axibridge_positioning').handler({}, {})) as never as {
+      content: Array<{ text: string }>
+      display?: unknown
+    }
+    const value = parse(res)
+    expect(value.outOfPositionDeaths).toBeDefined()
+    expect(value.figure).toBeUndefined()
+    expect(res.display).toBeUndefined()
   })
 })
 
