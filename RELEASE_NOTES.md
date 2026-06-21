@@ -1,5 +1,19 @@
 # Release Notes
 
+## Version v1.3.0 — June 21, 2026
+
+### Condition stats actually work now
+Asking about condition damage used to come back empty — every player showed zero outgoing conditions, which quietly understated your condi specs (Scourge, Reaper, and friends) in every analysis. The numbers were in your reports the whole time; AxiVale was reading the wrong field. Now "who's putting out the most condi pressure?" returns real per-player applications and condition damage, and you can drill into a single condition: "who applied the most Poison last run?" or "Torment by player." Both outgoing and incoming conditions are covered.
+
+### See who's actually landing the crowd control
+Crowd control had only ever shown CC *received*. There's now a separate view for CC *applied* — disables landed on the enemy, total disable duration, interrupts, and the down-contribution from your CC. Ask "who's doing the most CC?" and you get the players setting up your bombs, not the ones eating them. (One honest limit: AxiBridge reports a single aggregate disable count, so stuns vs dazes vs knockbacks can't be split apart — AxiVale will tell you that instead of inventing a breakdown.)
+
+### Healing on downed allies
+Healers who specialize in picking people up off the floor were invisible in the healing numbers. Downed-ally healing is now surfaced alongside total / squad / group / self healing, plus resurrect contribution — so "who kept us off the floor last fight?" is answerable, separate from raw healing throughput.
+
+### AxiVale speaks GW2 shorthand
+You can talk to AxiVale the way you talk in squad chat. It now understands the common abbreviations — condi, HFB, QB, alac, stab, boon strip, vuln, the profession and elite-spec short names, WvW/EBG/BL, and the rest — and expands them in context (it knows "BS" means boon strip in one breath and Spellbreaker in another). For the long tail of community slang it can look the rest up on the wiki.
+
 ## Version v1.2.0 — June 21, 2026
 
 ### Boon, mitigation & sustain analysis — straight from your reports
