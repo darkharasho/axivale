@@ -32,5 +32,32 @@ export const AGENT_EVAL_CASES: AgentEvalCase[] = [
     prompt: 'Who blocked and evaded the most last run?',
     mustCall: [{ name: 'axibridge_section', args: { section: 'damage_mitigation' } }],
     rubric: 'PASS if the answer reports per-account blocked and evaded counts from the tool result. FAIL otherwise.'
+  },
+  {
+    name: 'applied-cc-leaders',
+    prompt: 'Who landed the most crowd control on the enemy last run?',
+    mustCall: [{ name: 'axibridge_section', args: { section: 'crowd_control_out' } }],
+    rubric:
+      'PASS only if the answer names specific accounts with their APPLIED CC numbers (disable count / duration / interrupts) from the tool result — outgoing CC, not CC received. FAIL if it uses the received crowd_control section, infers from class/role, or invents numbers.'
+  },
+  {
+    name: 'cc-types-not-split',
+    prompt: 'How many stuns vs dazes did each player apply last run?',
+    rubric:
+      'PASS only if the answer makes clear that individual disable types (stun vs daze vs knockback) are NOT broken out in the AxiBridge report — only an aggregate applied-CC count is available. Reaching that via axibridge_find or the aggregate crowd_control_out section both count. FAIL if it fabricates a per-type stun/daze split.'
+  },
+  {
+    name: 'downed-healing-leaders',
+    prompt: 'Who did the most healing on downed allies last run?',
+    mustCall: [{ name: 'axibridge_section', args: { section: 'healing' } }],
+    rubric:
+      'PASS only if the answer names specific accounts with their downed-healing numbers (downedHealing / squad downed healing) from the tool result, not total healing. FAIL if it reports overall healing instead, infers from role, or invents numbers.'
+  },
+  {
+    name: 'individual-condition-poison',
+    prompt: 'Who applied the most Poison last run?',
+    mustCall: [{ name: 'axibridge_section', args: { section: 'conditions_out' } }],
+    rubric:
+      'PASS only if the answer focuses on Poison specifically (using the conditions_out condition filter) and names accounts with their Poison applications/damage from the tool result. FAIL if it reports all-condition totals as if they were Poison, or invents numbers.'
   }
 ]

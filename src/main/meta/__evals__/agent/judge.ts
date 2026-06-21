@@ -19,10 +19,21 @@ export function defaultJudgeModel(env: NodeJS.ProcessEnv = process.env): JudgeMo
   return (prompt: string) => runClaudeOnce(prompt, { oauthToken: cfg.oauthToken, model })
 }
 
+// Per-result budget the judge sees. Section results are 40-row tables; at ~400
+// chars the judge only saw the first row or two and wrongly flagged correct
+// top-of-list answers as fabricated. 4000 covers a full per-player section so
+// the judge can actually verify the cited accounts/numbers.
+const JUDGE_RESULT_CHARS = 4000
+
 function renderTrace(calls: ToolCallRecord[]): string {
   if (calls.length === 0) return '(no tools called)'
   return calls
-    .map((c) => `- ${c.name}(${JSON.stringify(c.input)})${c.isError ? ' [ERROR]' : ''} -> ${c.resultText.slice(0, 400)}`)
+    .map((c) => {
+      const text = c.resultText.length > JUDGE_RESULT_CHARS
+        ? `${c.resultText.slice(0, JUDGE_RESULT_CHARS)}… [truncated ${c.resultText.length - JUDGE_RESULT_CHARS} chars]`
+        : c.resultText
+      return `- ${c.name}(${JSON.stringify(c.input)})${c.isError ? ' [ERROR]' : ''} -> ${text}`
+    })
     .join('\n')
 }
 
