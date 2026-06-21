@@ -4,6 +4,7 @@ import { safe, safeRich, type ToolDeps } from './shared'
 import { AxiforgeError, AxiforgeNotRunningError } from '../axiforgeClient'
 import { extractChatCode } from '../meta/fetcher'
 import { scrapeBuildGear } from '../meta/buildGear'
+import { transpileNotes, type NoteCatalog } from '../buildNoteLinks'
 
 /** Tools here that join the top-level DESTRUCTIVE_TOOLS list — i.e. require user
  *  confirmation (deletes, public publishes, and outward Discord posts). The
@@ -140,6 +141,19 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
 
   const folderNames = async (): Promise<Map<string, string>> =>
     new Map((await deps.axiforge.listFolders()).map((f) => [f.id, f.name]))
+
+  // Load the build's profession catalog + upgrades for name->id resolution.
+  // Offline-tolerant: any failure degrades to null, so build-component
+  // resolution still works and catalog-only names are reported, not fatal.
+  const loadCatalog = async (profession: string, gameMode: string): Promise<NoteCatalog | null> => {
+    const mode = gameMode === 'pve' || gameMode === 'wvw' || gameMode === 'pvp' ? gameMode : undefined
+    const [profCat, upgrades] = await Promise.all([
+      profession ? deps.axiforge.catalogProfession(profession, mode).catch(() => null) : Promise.resolve(null),
+      deps.axiforge.catalogUpgrades().catch(() => null)
+    ])
+    if (!profCat && !upgrades) return null
+    return { profession: profCat, upgrades }
+  }
 
   return [
     tool(
@@ -426,6 +440,51 @@ export function buildAxiforgeTools(deps: ToolDeps): Array<SdkMcpToolDefinition<a
         if (kind === 'upgrades') return deps.axiforge.catalogUpgrades()
         if (!profession_id) throw new Error('kind "profession" requires profession_id')
         return deps.axiforge.catalogProfession(profession_id, game_mode)
+      })
+    ),
+    tool(
+      'axiforge_build_notes_get',
+      'Read the markdown notes/guide saved on an AxiForge build (returns the raw text and its length). Call this BEFORE writing a guide so you edit the existing one instead of regenerating from scratch. Works while AxiForge is closed.',
+      { build_id: z.string().describe('Id of the build (from axiforge_builds_list)') },
+      safe(async ({ build_id }) => {
+        const build = await deps.axiforge.getBuild(build_id)
+        const notes = typeof (build as Record<string, unknown>).notes === 'string'
+          ? ((build as Record<string, unknown>).notes as string)
+          : ''
+        return { build_id, title: (build as Record<string, unknown>).title ?? null, notes, notesChars: notes.length }
+      })
+    ),
+    tool(
+      'axiforge_build_notes_set',
+      [
+        "Save a markdown build guide onto a build's notes field. Write links to skills/traits/gear by NAME as [[skill:Name]], [[trait:Name]], or [[item:Name]] (runes/sigils/relics use [[item:...]]); this tool resolves each name to the real GW2 id and converts it to the AxiForge @[...] token that renders as a skill chip. Existing @[...] tokens are kept as-is.",
+        'It returns resolved (count) and unresolved (names it could not link — fix their spelling, or they may be off this build/off-meta). Overwrites the notes field, so read the current notes first with axiforge_build_notes_get and edit them. Images and all other build fields are preserved.'
+      ].join(' '),
+      {
+        build_id: z.string().describe('Id of the build to write notes onto'),
+        notes: z.string().describe('Full markdown guide; link entities as [[skill:Name]] / [[trait:Name]] / [[item:Name]]')
+      },
+      safeRich(async ({ build_id, notes }) => {
+        if (notes.length > 100000) {
+          throw new Error(`Notes are ${notes.length} chars; AxiForge caps build notes at 100000. Trim the guide.`)
+        }
+        const build = (await deps.axiforge.getBuild(build_id)) as Record<string, unknown>
+        const profession = typeof build.profession === 'string' ? build.profession : ''
+        const gameMode = typeof build.gameMode === 'string' ? build.gameMode : ''
+        const catalog = await loadCatalog(profession, gameMode)
+        const { notes: transpiled, resolved, unresolved } = transpileNotes(notes, build, catalog)
+        // build came from getBuild (full object incl. images), so spreading it preserves everything.
+        const saved = (await write(() => deps.axiforge.saveBuild({ ...build, notes: transpiled }))) as Record<string, unknown>
+        return {
+          value: {
+            build_id: saved.id ?? build_id,
+            title: saved.title ?? build.title ?? null,
+            resolved,
+            unresolved,
+            notesChars: transpiled.length
+          },
+          display: { kind: 'build-card', data: { build: saved } }
+        }
       })
     )
   ]

@@ -5,7 +5,7 @@ import { join } from 'path'
 import { SkillStore, SKILLS } from './skillStore'
 
 // Names of the skills shipped as defaults (see DEFAULT_SEED in skillStore.ts).
-const SEEDED_NAMES = ['Commander Review', 'WvW Report', 'WvW Trends']
+const SEEDED_NAMES = ['Build Guide', 'Commander Review', 'WvW Report', 'WvW Trends']
 
 let dir: string
 let path: string
@@ -20,6 +20,16 @@ describe('SKILLS (default seed)', () => {
     const keys = Object.fromEntries(SKILLS.map((s) => [s.key, s.instructions]))
     expect(keys['commander-review']).toMatch(/axibridge_positioning/)
     expect(keys['wvw-report']).toMatch(/axibridge_positioning/)
+  })
+})
+
+describe('build-guide default skill', () => {
+  it('is seeded and steers the read->edit->save notes flow', () => {
+    const s = SKILLS.find((x) => x.key === 'build-guide')
+    expect(s, 'build-guide seed present').toBeTruthy()
+    expect(s!.instructions).toMatch(/axiforge_build_notes_get/)
+    expect(s!.instructions).toMatch(/axiforge_build_notes_set/)
+    expect(s!.instructions).toMatch(/\[\[skill:/)
   })
 })
 

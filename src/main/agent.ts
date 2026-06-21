@@ -226,6 +226,7 @@ Rules:
   render them and they leak as raw brackets. Write profession/elite-spec names
   (Firebrand, Scourge) and boon names (Quickness, Alacrity) as PLAIN text: the app
   auto-adds the class icon for specs, and boons need no marker.
+- Saving a build guide: write it onto the build with axiforge_build_notes_set (read the current notes first with axiforge_build_notes_get and edit them -- do not regenerate). In build NOTES, link entities by name as [[skill:Name]] / [[trait:Name]] / [[item:Name]] and the tool converts them to AxiForge's @[...] tokens; check the unresolved list it returns and fix those names. (This is distinct from chat prose, where [[skill:Name]] already renders directly in AxiVale.)
 - Meta depth: the per-mode meta reference above is a headline.
   For specifics — exact builds, weapon/sigil/rune choices, trait lines, and the tradeoffs between variants — call meta_search with the question and the game mode.
   Treat results as community recommendations: cite the source, still verify mechanics with axiforge_catalog and gw2_api before stating them as fact, and never invent build specifics meta_search did not return.
@@ -292,7 +293,9 @@ export const LOCAL_TOOL_ALLOWLIST: readonly string[] = [
   'axitools_builds_list',
   'discord_overview',
   'discord_messages',
-  'load_skill'
+  'load_skill',
+  'axiforge_build_notes_get',
+  'axiforge_build_notes_set'
 ]
 
 /** Tools the given provider should see. Local models get the focused allowlist;
