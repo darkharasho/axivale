@@ -1,5 +1,16 @@
 # Release Notes
 
+## Version v1.2.0 — June 21, 2026
+
+### Boon, mitigation & sustain analysis — straight from your reports
+AxiVale now reads *every* section AxiBridge publishes — boon generation and uptime (split self / group / squad), damage mitigation (blocks, evades, dodges, invulns, interrupts), damage taken, cleanses, boon strips, healing, barrier, crowd control, outgoing conditions, and the per-metric leaderboards. Ask things like "who wasted the most Protection?" or "was our boon coverage good last fight?" and it pulls the real per-player numbers instead of inferring from each player's role. Under the hood: a quick search to find the right section, then a pull for the exact figures — so boon and sustain questions are grounded in data, not assumptions. This fixes boon analysis that previously read as guesswork.
+
+### Save a build guide onto the build itself
+You can now write a build guide and save it straight onto the build's notes in AxiForge — and a fresh chat reads and *edits* the existing guide instead of starting over. Reference skills, traits, runes and relics by name (`[[skill:Shelter]]`) and AxiVale resolves each to the real game entity so it renders as a proper skill chip in AxiForge. Say "write a short guide for my Reaper and save it," tweak later with "update the rotation section," and the finished guide lives on the build — not buried in a chat transcript.
+
+### Under the hood
+A new live-turn eval harness lets us catch agent regressions automatically: it runs real questions against real data and grades the answers with a second model, so behavior changes like the boon fix above are verified before they ship.
+
 ## Version v1.1.2 — June 20, 2026
 
 ### Right-click clipboard fixes
