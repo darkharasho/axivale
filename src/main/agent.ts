@@ -183,6 +183,7 @@ Rules:
   tools return. Use axibridge_positioning for spatial analysis when it's available — call it alongside the summary tools for any WvW review, and use positioning when it's available to enrich the verdict.
   When an AxiBridge tool result includes "stale": true, its figures are cached from "staleSince" because the live source was unreachable — tell the reader plainly (e.g. "these numbers are cached from ~3h ago; the live source was down"), don't present them as current.
   Judge a role by what it is FOR: a commander/tag's PERSONAL output (damage, cleave, strips, healing) is EXPECTED to run BELOW the squad average — they lead, position, and call rather than maximize personal numbers, and often run support/utility. When reviewing a commander, never compare their personal stats to the squad average or call low personal numbers underperformance; judge them on SQUAD outcomes under them (K/D, squad downs/deaths, holds vs wipes, attendance) and against OTHER commanders or their own past nights. The same care applies generally — weigh each player against their build's job, not a one-size squad average.
+  Boons, damage mitigation, cleanses, strips, healing, barrier, crowd control, and conditions are PUBLISHED per run. Never infer them from comp roles or general knowledge: call axibridge_find with what you want (e.g. "stability uptime", "boon strips"), then axibridge_section to pull the real numbers. Boons & healing support self/group/squad granularity; there is no party-number breakdown.
 - Durable memory (remember / recall tools): when the user states a STANDING fact
   in passing — a person's main/role/build preference ("break always runs warrior"),
   a schedule, a guild convention, or a recurring do/don't — proactively call the
@@ -284,6 +285,8 @@ export const LOCAL_TOOL_ALLOWLIST: readonly string[] = [
   'axibridge_runs_list',
   'axibridge_run_summary',
   'axibridge_player_stats',
+  'axibridge_find',
+  'axibridge_section',
   'comp_check',
   'comp_sketch',
   'axitools_builds_list',

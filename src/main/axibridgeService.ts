@@ -1,3 +1,4 @@
+import type { ParsedReport } from './axibridgeSections'
 import type { RepoRef } from './axibridgeRepos'
 import { repoKey } from './axibridgeRepos'
 import { localRunDate } from './axibridgeRunDate'
@@ -167,6 +168,46 @@ export class AxibridgeService {
   }
 
   /**
+   * Resolve a single run (explicit id, else latest in range, else latest overall)
+   * and return its parsed published report ({ meta, stats }). Reads the on-disk
+   * cache when present, otherwise fetches once and caches. Shared by positioning
+   * and the section tools so the fetch/cache logic lives in one place.
+   */
+  async reportFor(
+    args: { run_id?: string } & DateRange
+  ): Promise<ParsedReport & { meta: Record<string, unknown>; stats: Record<string, unknown>; raw: unknown; run: RunListEntry; stale: boolean; staleSince: string | null }> {
+    const { runs, stale, staleSince } = await this.runsList(args)
+    const repos = new Map(this.deps.repos().map((r) => [repoKey(r), r]))
+
+    let targetRun: RunListEntry | undefined
+    if (args.run_id) {
+      targetRun = runs.find((r) => r.id === args.run_id)
+      if (!targetRun) throw new Error(`Run ${args.run_id} not found in any linked repo — call axibridge_runs_list for valid ids.`)
+    } else {
+      targetRun = runs[0]
+      if (!targetRun) throw new Error('No runs found in the specified range.')
+    }
+
+    const repo = repos.get(targetRun.repo)
+    if (!repo) throw new Error(`Repo ${targetRun.repo} is no longer linked.`)
+
+    let body = this.deps.cache.readReport(repo, targetRun.id)
+    if (!body) {
+      body = JSON.stringify(await this.deps.client.fetchReport(repo, targetRun.id))
+      this.deps.cache.putReport(repo, targetRun.id, body)
+    }
+    const parsed = JSON.parse(body) as { meta?: Record<string, unknown>; stats?: Record<string, unknown> }
+    return {
+      meta: parsed.meta ?? {},
+      stats: parsed.stats ?? {},
+      raw: parsed as unknown,
+      run: targetRun,
+      stale,
+      staleSince
+    }
+  }
+
+  /**
    * Compute positional analysis for a single run.
    *
    * V1 scope: when a date range is provided we pick the *latest* run in range
@@ -178,33 +219,8 @@ export class AxibridgeService {
   async positioning(
     args: { run_id?: string } & DateRange
   ): Promise<PositioningSummary & { runsConsidered: number; stale: boolean; staleSince: string | null }> {
-    const { runs, stale, staleSince } = await this.runsList(args)
-    const repos = new Map(this.deps.repos().map((r) => [repoKey(r), r]))
-
-    // Resolve the target run: explicit run_id, or the latest in the range (runs are newest-first).
-    let targetRun: RunListEntry | undefined
-    if (args.run_id) {
-      targetRun = runs.find((r) => r.id === args.run_id)
-      if (!targetRun) throw new Error(`Run ${args.run_id} not found in any linked repo — call axibridge_runs_list for valid ids.`)
-    } else {
-      targetRun = runs[0] // newest-first sort; pick latest in range
-      if (!targetRun) throw new Error('No runs found in the specified range.')
-    }
-
-    const repo = repos.get(targetRun.repo)
-    if (!repo) throw new Error(`Repo ${targetRun.repo} is no longer linked.`)
-
-    // Fetch the raw EI report (the object fetchReport returns is the EI log, with
-    // .details.players and .details.combatReplayMetaData at the top level).
-    // We read from cache if available, otherwise fetch + cache it.
-    let body = this.deps.cache.readReport(repo, targetRun.id)
-    if (!body) {
-      body = JSON.stringify(await this.deps.client.fetchReport(repo, targetRun.id))
-      this.deps.cache.putReport(repo, targetRun.id, body)
-    }
-    const rawReport = JSON.parse(body) as Parameters<typeof computePositioning>[0]
-
-    const summary = computePositioning(rawReport)
+    const { raw, stale, staleSince } = await this.reportFor(args)
+    const summary = computePositioning(raw as Parameters<typeof computePositioning>[0])
     return { ...summary, runsConsidered: 1, stale, staleSince }
   }
 

@@ -8,6 +8,26 @@ import { AxibridgeError } from './axibridgeClient'
 
 const repoA = { owner: 'o', repo: 'a' }
 
+/** Build a service with a single repo (repoA) and a single run whose id matches report.meta.id. */
+function makeServiceWithReport(report: { meta: { id: string; title?: string }; stats: Record<string, unknown> }) {
+  const dir = mkdtempSync(join(tmpdir(), 'axibridge-svc-rep-'))
+  const cache = new AxibridgeCache({ dir, capBytes: 2 ** 31, ttlMs: 300_000 })
+  const runId = report.meta.id
+  const fakeClient = {
+    fetchIndex: async () => [{ id: runId, title: report.meta.title ?? runId, commanders: [], dateStart: '2026-06-01T20:00:00Z', dateEnd: '2026-06-01T22:00:00Z' }],
+    fetchReport: async () => report,
+    fetchRollup: async () => null
+  }
+  const service = new AxibridgeService({
+    repos: () => [repoA],
+    client: fakeClient as never,
+    cache,
+    summarize: async (jobs) => (await import('./axibridgeSummarize')).runSummaryJobs(jobs),
+    onProgress: () => {}
+  })
+  return { service }
+}
+
 /** Full-replay report with a commander + one strayed linked death, usable by computePositioning. */
 const fullReplayReport = (id: string, dateStart: string) => ({
   meta: { id, title: id, dateStart, dateEnd: dateStart, commanders: ['Commander.1'] },
@@ -222,5 +242,17 @@ describe('AxibridgeService', () => {
     expect(out.stale).toBe(true)
     expect(out.staleSince).toBe('2025-06-15T15:06:40.000Z')
     expect(out.staleRepos).toEqual(['o/r'])
+  })
+})
+
+describe('reportFor', () => {
+  it('resolves the latest run and returns parsed meta+stats from cache', async () => {
+    const { service } = makeServiceWithReport({
+      meta: { id: '20260601-2000-aa', title: 'R' },
+      stats: { boonTables: [], defensePlayers: [{ account: 'A.1', profession: 'X', defenseTotals: { blockedCount: 3 } }] }
+    })
+    const res = await service.reportFor({})
+    expect(res.stats.defensePlayers).toBeTruthy()
+    expect(res.run.id).toBe('20260601-2000-aa')
   })
 })
