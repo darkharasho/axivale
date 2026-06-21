@@ -253,7 +253,7 @@ const cleansesSection = playerTotalsSection(
 
 const stripsSection = playerTotalsSection(
   'strips', 'Boon strips',
-  ['strip', 'strips', 'boon strip', 'boon removal', 'corrupt', 'rip', 'strip to down', 'down contribution from strips'],
+  ['strip', 'strips', 'boon strip', 'boon removal', 'corrupt', 'rip', 'strip to down', 'down contribution from strips', 'stun break', 'stunbreak'],
   'Per-player boon strips, strip-to-down contribution, and stun-breaks.',
   'supportPlayers', 'supportTotals',
   [
@@ -266,8 +266,8 @@ const stripsSection = playerTotalsSection(
 
 const crowdControlSection = playerTotalsSection(
   'crowd_control', 'Crowd control (received)',
-  ['cc', 'crowd control', 'received cc', 'stunned', 'stun break', 'hard cc', 'soft cc', 'disabled'],
-  'Per-player crowd control received plus stun-breaks and stun duration removed.',
+  ['cc', 'crowd control', 'received cc', 'stunned', 'hard cc', 'soft cc', 'disabled'],
+  'Per-player crowd control received, plus downs and deaths taken. Stun-breaks are in the "strips" section.',
   'defensePlayers', 'defenseTotals',
   [
     { key: 'receivedCC', label: 'CC received', from: 'receivedCrowdControl' },
