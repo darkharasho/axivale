@@ -79,13 +79,22 @@ const totalsReport = {
       { account: 'A.1', profession: 'Spellbreaker', professionList: ['Spellbreaker'], totalFightMs: 300000,
         offenseTotals: {}, offenseRateWeights: {}, downs: 5, downContribution: 22000 }
     ],
+    // Real AxiBridge shape: totals live inside a nested `conditions` map, not as
+    // flat per-row fields. Damaging conditions carry applications/damage;
+    // non-damaging ones carry applicationsFromBuffs + uptime.
     outgoingConditionPlayers: [
-      { account: 'A.1', profession: 'Spellbreaker', professionList: ['Spellbreaker'], totalFightMs: 300000,
-        totalApplications: 900, totalDamage: 120000, conditions: {} }
+      { account: 'A.1', profession: 'Scourge', professionList: ['Scourge'],
+        conditions: {
+          Torment: { applications: 600, damage: 80000, applicationsFromBuffs: 50, uptimeMs: 100000 },
+          Burning: { applications: 300, damage: 40000, applicationsFromBuffs: 30, uptimeMs: 50000 },
+          Vulnerability: { applications: 0, damage: 0, applicationsFromBuffs: 200, uptimeMs: 90000 }
+        } }
     ],
     incomingConditionPlayers: [
-      { account: 'A.1', profession: 'Spellbreaker', professionList: ['Spellbreaker'], totalFightMs: 300000,
-        totalApplications: 700, totalDamage: 90000, conditions: {} }
+      { account: 'A.1', profession: 'Scourge', professionList: ['Scourge'],
+        conditions: {
+          Bleeding: { applications: 700, damage: 90000, applicationsFromBuffs: 40, uptimeMs: 70000 }
+        } }
     ]
   }
 }
@@ -120,6 +129,46 @@ describe('player-totals sections', () => {
   it('account filter narrows to one player', () => {
     const res = gs('strips')!.shape(totalsReport, { account: 'A.1' })
     expect(res.rows).toHaveLength(1)
+  })
+})
+
+describe('conditions sections', () => {
+  it('conditions_out sums applications/damage across the nested conditions map', () => {
+    const res = gs('conditions_out')!.shape(totalsReport, { granularity: 'player' })
+    const a = res.rows.find((r) => r.account === 'A.1')!
+    // direct (damaging) applications: 600 + 300, Vuln contributes 0
+    expect(a.applications).toBe(900)
+    // condi damage: 80000 + 40000
+    expect(a.condiDamage).toBe(120000)
+    // buff applications cover non-damaging Vuln: 50 + 30 + 200
+    expect(a.buffApplications).toBe(280)
+  })
+
+  it('conditions_in sums from incomingConditionPlayers', () => {
+    const res = gs('conditions_in')!.shape(totalsReport, { granularity: 'player' })
+    expect(res.rows[0].applications).toBe(700)
+    expect(res.rows[0].condiDamage).toBe(90000)
+  })
+
+  it('condition filter focuses one condition and labels it', () => {
+    const res = gs('conditions_out')!.shape(totalsReport, { condition: 'torment' })
+    const a = res.rows[0]
+    expect(a.condition).toBe('Torment')
+    expect(a.applications).toBe(600)
+    expect(a.condiDamage).toBe(80000)
+  })
+
+  it('unknown condition returns empty rows + note listing available ones', () => {
+    const res = gs('conditions_out')!.shape(totalsReport, { condition: 'nope' })
+    expect(res.rows).toEqual([])
+    expect(res.note).toMatch(/Torment/)
+  })
+
+  it('squad granularity sums condition totals into one row', () => {
+    const res = gs('conditions_out')!.shape(totalsReport, { granularity: 'squad' })
+    expect(res.rows).toHaveLength(1)
+    expect(res.rows[0].applications).toBe(900)
+    expect(res.rows[0].condiDamage).toBe(120000)
   })
 })
 

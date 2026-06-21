@@ -6,6 +6,7 @@ export interface SectionQuery {
   granularity?: Granularity
   account?: string
   boon?: string
+  condition?: string
   limit?: number
 }
 export interface SectionResult {
@@ -325,26 +326,119 @@ const downContribSection = playerTotalsSection(
   ]
 )
 
-const conditionsOutSection = playerTotalsSection(
+// --- conditions sections ----------------------------------------------------
+// AxiBridge publishes each `<dir>ConditionPlayers` row as
+//   { account, profession, conditions: { <Name>: { applications, damage,
+//     applicationsFromBuffs, uptimeMs, ... }, ... } }
+// i.e. there is NO flat per-row total — totals must be summed across the nested
+// `conditions` map. Damaging conditions (Burning, Torment, Bleeding, Poison,
+// Confusion) carry direct `applications`/`damage`; non-damaging ones (Vuln,
+// Chill, Cripple, Weakness, …) carry `applicationsFromBuffs` and uptime instead.
+interface ConditionTotals {
+  applications?: number
+  damage?: number
+  applicationsFromBuffs?: number
+}
+interface ConditionPlayerRow {
+  account: string
+  profession: string
+  professionList?: string[]
+  conditions?: Record<string, ConditionTotals>
+}
+
+const CONDITION_FIELDS: SectionField[] = [
+  { key: 'applications', label: 'Applications', help: 'direct (skill) condition applications' },
+  { key: 'buffApplications', label: 'Buff applications', help: 'applications tracked via buffs; covers non-damaging conditions (Vuln, Chill, …)' },
+  { key: 'condiDamage', label: 'Condi damage' }
+]
+
+function conditionsSection(
+  key: string, title: string, aliases: string[], summary: string, statsKey: string
+): SectionDescriptor {
+  return {
+    key, title, aliases, summary,
+    granularities: ['player', 'squad'],
+    fields: CONDITION_FIELDS,
+    shape(report, opts) {
+      const rows = report.stats?.[statsKey] as ConditionPlayerRow[] | undefined
+      if (!rows || rows.length === 0) {
+        return { rows: [], columns: [], note: `This report did not include ${statsKey}.` }
+      }
+
+      // Canonical condition names across every player, for the optional filter.
+      const available = new Map<string, string>()
+      for (const r of rows) {
+        for (const name of Object.keys(r.conditions ?? {})) {
+          if (!available.has(name.toLowerCase())) available.set(name.toLowerCase(), name)
+        }
+      }
+      const want = opts.condition?.trim().toLowerCase()
+      if (want && !available.has(want)) {
+        return {
+          rows: [], columns: [],
+          note: `No condition named "${opts.condition}". Available: ${[...available.values()].join(', ')}.`
+        }
+      }
+      const canonical = want ? available.get(want)! : undefined
+
+      const columns = [
+        { key: 'account', label: 'Account' },
+        { key: 'profession', label: 'Profession' },
+        ...(canonical ? [{ key: 'condition', label: 'Condition' }] : []),
+        ...CONDITION_FIELDS.map((f) => ({ key: f.key, label: f.label }))
+      ]
+
+      let mapped = rows
+        .filter((r) => !opts.account || r.account === opts.account)
+        .map((r) => {
+          let applications = 0
+          let buffApplications = 0
+          let condiDamage = 0
+          for (const [name, c] of Object.entries(r.conditions ?? {})) {
+            if (want && name.toLowerCase() !== want) continue
+            applications += Number(c?.applications) || 0
+            buffApplications += Number(c?.applicationsFromBuffs) || 0
+            condiDamage += Number(c?.damage) || 0
+          }
+          const out: Record<string, string | number> = { account: r.account, profession: r.profession }
+          if (canonical) out.condition = canonical
+          out.applications = applications
+          out.buffApplications = buffApplications
+          out.condiDamage = condiDamage
+          return out
+        })
+
+      const note = canonical
+        ? undefined
+        : `Totals summed across all conditions — pass \`condition\` (e.g. ${[...available.values()].slice(0, 3).join(', ')}) to focus one. Damaging conditions populate Applications/Condi damage; non-damaging ones populate Buff applications.`
+
+      if (opts.granularity === 'squad') {
+        const total: Record<string, string | number> = { account: 'squad total', profession: '—' }
+        if (canonical) total.condition = canonical
+        for (const f of CONDITION_FIELDS) {
+          total[f.key] = mapped.reduce((acc, r) => acc + (Number(r[f.key]) || 0), 0)
+        }
+        return { rows: [total], columns, note }
+      }
+
+      if (opts.limit) mapped = mapped.slice(0, opts.limit)
+      return { rows: mapped, columns, note }
+    }
+  }
+}
+
+const conditionsOutSection = conditionsSection(
   'conditions_out', 'Outgoing conditions',
   ['conditions', 'outgoing conditions', 'condi', 'condition damage', 'condi applications', 'applications', 'condi pressure'],
-  'Per-player outgoing condition applications and condition damage.',
-  'outgoingConditionPlayers', '__row__',
-  [
-    { key: 'applications', label: 'Applications', from: 'totalApplications' },
-    { key: 'condiDamage', label: 'Condi damage', from: 'totalDamage' }
-  ]
+  'Per-player outgoing condition applications and condition damage, summed across all conditions. Pass `condition` (e.g. "Torment") to focus one.',
+  'outgoingConditionPlayers'
 )
 
-const conditionsInSection = playerTotalsSection(
+const conditionsInSection = conditionsSection(
   'conditions_in', 'Incoming conditions',
   ['incoming conditions', 'conditions taken', 'condi taken', 'condition pressure received'],
-  'Per-player incoming condition applications and condition damage taken.',
-  'incomingConditionPlayers', '__row__',
-  [
-    { key: 'applications', label: 'Applications', from: 'totalApplications' },
-    { key: 'condiDamage', label: 'Condi damage', from: 'totalDamage' }
-  ]
+  'Per-player incoming condition applications and condition damage taken, summed across all conditions. Pass `condition` to focus one.',
+  'incomingConditionPlayers'
 )
 
 const classDistributionSection: SectionDescriptor = {

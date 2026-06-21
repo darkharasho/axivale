@@ -429,7 +429,7 @@ export function buildAxibridgeTools(
         'Pull one fully-aggregated AxiBridge section for a run: boons, damage_mitigation, damage_taken, cleanses, strips,',
         'crowd_control, healing, barrier, down_contribution, conditions_out, conditions_in, class_distribution, leaderboards.',
         'Call axibridge_find first if unsure which section. granularity is player (default), category (self/group/squad, boons & healing), or squad (totals).',
-        'For boons, pass `boon` (e.g. "Stability") to focus one. Run selection mirrors axibridge_positioning: run_id, else latest in from/to, else latest overall.'
+        'For boons, pass `boon` (e.g. "Stability") to focus one; for conditions_out/conditions_in, pass `condition` (e.g. "Torment") to focus one. Run selection mirrors axibridge_positioning: run_id, else latest in from/to, else latest overall.'
       ].join(' '),
       {
         section: z.string().describe('Section key, e.g. "boons" or "damage_mitigation" (see axibridge_find)'),
@@ -439,9 +439,10 @@ export function buildAxibridgeTools(
         granularity: z.enum(['player', 'category', 'squad']).optional().describe('player (default) | category | squad'),
         account: z.string().optional().describe('Filter to one GW2 account'),
         boon: z.string().optional().describe('For section "boons": focus one boon by name'),
+        condition: z.string().optional().describe('For sections "conditions_out"/"conditions_in": focus one condition by name (e.g. "Torment", "Burning")'),
         limit: z.number().int().positive().optional().describe('Max rows (default: all)')
       },
-      safeRich(async ({ section, run_id, from, to, granularity, account, boon, limit }) => {
+      safeRich(async ({ section, run_id, from, to, granularity, account, boon, condition, limit }) => {
         const descriptor = getSection(section)
         if (!descriptor) {
           throw new Error(
@@ -451,7 +452,7 @@ export function buildAxibridgeTools(
         const report = await service().reportFor({ run_id, from, to })
         const result = descriptor.shape(
           { meta: report.meta, stats: report.stats },
-          { granularity: granularity as Granularity | undefined, account, boon, limit }
+          { granularity: granularity as Granularity | undefined, account, boon, condition, limit }
         )
         const runDate = localRunDate(String(report.meta.id ?? ''), (report.meta.dateStart as string) ?? null)
         return {
