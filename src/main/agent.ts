@@ -4,6 +4,7 @@ import type { Skill } from './skillStore'
 import { buildMetaReference } from './metaPrompt'
 import { buildPlaybookReference } from './playbookPrompt'
 import { buildMemoryReference } from './memoryPrompt'
+import { buildGlossaryReference } from './glossaryPrompt'
 import type { MetaMode } from './metaStore'
 import type { MemoryFact } from './memory/types'
 import { MCP_PREFIX, type AgentEvent, type ProviderConfig, type ProviderName } from './providers/types'
@@ -402,6 +403,7 @@ export class AgentService {
         (provider === 'local'
           ? base
           : base +
+            buildGlossaryReference() +
             buildMetaReference(this.deps.meta()) +
             buildPlaybookReference(this.deps.meta()) +
             buildMemoryReference(this.deps.pinnedMemory())) +

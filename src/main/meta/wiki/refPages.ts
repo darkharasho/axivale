@@ -121,5 +121,11 @@ export const WIKI_REF_PAGES: WikiRefPage[] = [
   { category: 'masteries', title: 'Mastery' },
   { category: 'masteries', title: 'Mastery point' },
   { category: 'achievements', title: 'Achievement' },
-  { category: 'achievements', title: 'Collections' }
+  { category: 'achievements', title: 'Collections' },
+
+  // Community abbreviation glossary. The most common build/WvW/profession
+  // abbreviations are baked into the system prompt (glossaryPrompt.ts) so the
+  // model expands them while reading; this ingests the full list for the long
+  // tail (raid/fractal/open-world/event slang) via gw2_wiki_search.
+  { category: 'reference', title: 'Abbreviations' }
 ]
