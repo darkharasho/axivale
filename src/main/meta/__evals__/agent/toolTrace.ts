@@ -6,7 +6,12 @@ export interface ToolTraceResult {
   failures: string[]
 }
 
-/** True when every key in `want` is present in `got` with a matching value. */
+/**
+ * True when every key in `want` is present in `got` with a matching value.
+ * Strings compare case-insensitively; plain objects recurse; numbers/booleans
+ * compare strictly. Array-valued matcher args fall to the strict branch and so
+ * only match by reference — array matchers are intentionally NOT supported.
+ */
 function subsetMatch(want: Record<string, unknown>, got: Record<string, unknown>): boolean {
   for (const [k, wv] of Object.entries(want)) {
     const gv = got[k]
@@ -28,7 +33,7 @@ function matches(m: ToolCallMatcher, call: ToolCallRecord): boolean {
   return subsetMatch(m.args, call.input)
 }
 
-function describe(m: ToolCallMatcher): string {
+function describeMatcher(m: ToolCallMatcher): string {
   return m.args ? `${m.name}(${JSON.stringify(m.args)})` : m.name
 }
 
@@ -38,12 +43,12 @@ export function gradeToolTrace(trace: TurnTrace, c: AgentEvalCase): ToolTraceRes
 
   for (const m of c.mustCall ?? []) {
     if (!trace.toolCalls.some((call) => matches(m, call))) {
-      failures.push(`expected a call to ${describe(m)} but it was not found; calls seen: ${seen}`)
+      failures.push(`expected a call to ${describeMatcher(m)} but it was not found; calls seen: ${seen}`)
     }
   }
   for (const m of c.mustNotCall ?? []) {
     if (trace.toolCalls.some((call) => matches(m, call))) {
-      failures.push(`should not have called ${describe(m)} but it was called`)
+      failures.push(`should not have called ${describeMatcher(m)} but it was called`)
     }
   }
   return { passed: failures.length === 0, failures }

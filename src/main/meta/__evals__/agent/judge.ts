@@ -43,7 +43,7 @@ function buildPrompt(input: JudgeInput): string {
   ].join('\n')
 }
 
-/** Extract the first balanced {...} JSON object from a model response. */
+/** Extract a JSON object from a model response (first `{` to last `}`). */
 function extractJson(raw: string): JudgeVerdict | null {
   const start = raw.indexOf('{')
   const end = raw.lastIndexOf('}')
