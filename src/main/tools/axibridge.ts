@@ -427,7 +427,7 @@ export function buildAxibridgeTools(
       'axibridge_section',
       [
         'Pull one fully-aggregated AxiBridge section for a run: boons, damage_mitigation, damage_taken, cleanses, strips,',
-        'crowd_control, healing, barrier, down_contribution, conditions_out, conditions_in, class_distribution, leaderboards.',
+        'crowd_control (received), crowd_control_out (applied), healing, barrier, down_contribution, conditions_out, conditions_in, class_distribution, leaderboards.',
         'Call axibridge_find first if unsure which section. granularity is player (default), category (self/group/squad, boons & healing), or squad (totals).',
         'For boons, pass `boon` (e.g. "Stability") to focus one; for conditions_out/conditions_in, pass `condition` (e.g. "Torment") to focus one. Run selection mirrors axibridge_positioning: run_id, else latest in from/to, else latest overall.'
       ].join(' '),

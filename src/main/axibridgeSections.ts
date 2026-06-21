@@ -267,8 +267,8 @@ const stripsSection = playerTotalsSection(
 
 const crowdControlSection = playerTotalsSection(
   'crowd_control', 'Crowd control (received)',
-  ['cc', 'crowd control', 'received cc', 'stunned', 'hard cc', 'soft cc', 'disabled'],
-  'Per-player crowd control received, plus downs and deaths taken. Stun-breaks are in the "strips" section.',
+  ['received cc', 'cc received', 'cc taken', 'stunned', 'soft cc', 'disabled', 'incoming cc'],
+  'Per-player crowd control received, plus downs and deaths taken. Stun-breaks are in the "strips" section. For CC a player APPLIES, use "crowd_control_out".',
   'defensePlayers', 'defenseTotals',
   [
     { key: 'receivedCC', label: 'CC received', from: 'receivedCrowdControl' },
@@ -277,17 +277,74 @@ const crowdControlSection = playerTotalsSection(
   ]
 )
 
+// Applied (outgoing) CC lives on offenseTotals; duration is in ms (-> seconds
+// here, matching boon durations). Individual disable types (stun vs daze vs
+// knockback) are NOT split out in the published data — only the aggregate
+// disable count, so per-type queries can't be answered from this report.
+const crowdControlOutSection: SectionDescriptor = {
+  key: 'crowd_control_out', title: 'Crowd control (applied)',
+  aliases: ['cc', 'crowd control', 'applied cc', 'outgoing cc', 'cc output', 'cc applied',
+    'who cc', 'cc pressure', 'hard cc', 'disables', 'disable', 'interrupts', 'interrupt',
+    'stun', 'stuns', 'daze', 'dazes', 'knockback', 'knockdown', 'pull', 'cc damage'],
+  summary: 'Per-player crowd control APPLIED to enemies: disable count, total disable duration, interrupts, and CC down-contribution. Aggregate only — individual disable types (stun vs daze vs knockback) are not separated in the published data. Received CC is in "crowd_control".',
+  granularities: ['player', 'squad'],
+  fields: [
+    { key: 'appliedCC', label: 'CC applied', help: 'disables landed on enemies (aggregate of all disable types)' },
+    { key: 'ccDurationSec', label: 'CC duration (s)', help: 'total disable duration applied' },
+    { key: 'interrupts', label: 'Interrupts' },
+    { key: 'ccDownContribution', label: 'CC down contrib', help: 'down contribution attributed to CC' }
+  ],
+  shape(report, opts) {
+    const rows = report.stats?.offensePlayers as Array<PlayerTotalsRow & Record<string, unknown>> | undefined
+    if (!rows || rows.length === 0) return { rows: [], columns: [], note: 'This report did not include offensePlayers.' }
+    const columns = [
+      { key: 'account', label: 'Account' },
+      { key: 'profession', label: 'Profession' },
+      { key: 'appliedCC', label: 'CC applied' },
+      { key: 'ccDurationSec', label: 'CC duration (s)' },
+      { key: 'interrupts', label: 'Interrupts' },
+      { key: 'ccDownContribution', label: 'CC down contrib' }
+    ]
+    let mapped = rows
+      .filter((r) => !opts.account || r.account === opts.account)
+      .map((r) => {
+        const t = (r.offenseTotals as Record<string, number>) ?? {}
+        return {
+          account: r.account,
+          profession: r.profession,
+          appliedCC: Number(t.appliedCrowdControl) || 0,
+          ccDurationSec: secondsFromMs(t.appliedCrowdControlDuration ?? 0),
+          interrupts: Number(t.interrupts) || 0,
+          ccDownContribution: Number(t.appliedCrowdControlDownContribution) || 0
+        }
+      })
+    const note = 'Aggregate disables only — stun/daze/knockback are not split out in the published data.'
+    if (opts.granularity === 'squad') {
+      const numeric = ['appliedCC', 'ccDurationSec', 'interrupts', 'ccDownContribution'] as const
+      const total: Record<string, string | number> = { account: 'squad total', profession: '—' }
+      for (const k of numeric) total[k] = Math.round(mapped.reduce((acc, r) => acc + (Number(r[k]) || 0), 0) * 10) / 10
+      return { rows: [total], columns, note }
+    }
+    if (opts.limit) mapped = mapped.slice(0, opts.limit)
+    return { rows: mapped, columns, note }
+  }
+}
+
 const healingSection: SectionDescriptor = {
   key: 'healing', title: 'Healing output',
-  aliases: ['healing', 'heals', 'healer', 'hps', 'squad healing', 'group healing', 'self healing'],
-  summary: 'Per-player healing split by self / group / squad / off-squad.',
+  aliases: ['healing', 'heals', 'healer', 'hps', 'squad healing', 'group healing', 'self healing',
+    'downed healing', 'downed heal', 'down healing', 'rally healing', 'healing downed', 'res', 'revive', 'rez'],
+  summary: 'Per-player healing split by self / group / squad / off-squad, plus healing done to downed allies and resurrect utility.',
   granularities: ['player', 'category', 'squad'],
   fields: [
     { key: 'healing', label: 'Total healing' },
     { key: 'squadHealing', label: 'Squad healing' },
     { key: 'groupHealing', label: 'Group healing' },
     { key: 'selfHealing', label: 'Self healing' },
-    { key: 'offSquadHealing', label: 'Off-squad healing' }
+    { key: 'offSquadHealing', label: 'Off-squad healing' },
+    { key: 'downedHealing', label: 'Downed healing', help: 'healing done to downed allies' },
+    { key: 'squadDownedHealing', label: 'Squad downed healing', help: 'downed-ally healing within the squad' },
+    { key: 'resUtility', label: 'Res utility', help: 'resurrect contribution (rallying/stomping support)' }
   ],
   shape: (report, opts) =>
     shapePlayerTotals(
@@ -298,7 +355,10 @@ const healingSection: SectionDescriptor = {
         { key: 'squadHealing', label: 'Squad healing', from: 'squadHealing' },
         { key: 'groupHealing', label: 'Group healing', from: 'groupHealing' },
         { key: 'selfHealing', label: 'Self healing', from: 'selfHealing' },
-        { key: 'offSquadHealing', label: 'Off-squad healing', from: 'offSquadHealing' }
+        { key: 'offSquadHealing', label: 'Off-squad healing', from: 'offSquadHealing' },
+        { key: 'downedHealing', label: 'Downed healing', from: 'downedHealing' },
+        { key: 'squadDownedHealing', label: 'Squad downed healing', from: 'squadDownedHealing' },
+        { key: 'resUtility', label: 'Res utility', from: 'resUtility' }
       ],
       opts, 'This report did not include healingPlayers.'
     )
@@ -501,6 +561,7 @@ export const SECTIONS: SectionDescriptor[] = [
   cleansesSection,
   stripsSection,
   crowdControlSection,
+  crowdControlOutSection,
   healingSection,
   barrierSection,
   downContribSection,
@@ -519,14 +580,21 @@ export function findSections(query: string): SectionDescriptor[] {
   if (!q) return SECTIONS
   const tokens = q.split(/\s+/).filter(Boolean)
   const scored = SECTIONS.map((s) => {
+    const aliasSet = new Set([s.key, ...s.aliases].map((a) => a.toLowerCase()))
     const hay = [
       s.key, s.title, ...s.aliases,
       ...s.fields.map((f) => f.label), ...s.fields.map((f) => f.help ?? '')
     ].join(' ').toLowerCase()
-    // whole-query substring is the strongest signal, then per-token hits
+    // Exact alias matches beat substring hits, so "stun" -> applied CC's exact
+    // alias `stun` outranks strips' substring `stunbreak`, and "cc" -> the
+    // applied-CC alias rather than a section that merely contains "cc".
     let score = 0
+    if (aliasSet.has(q)) score += 20
     if (hay.includes(q)) score += 10
-    for (const t of tokens) if (hay.includes(t)) score += 1
+    for (const t of tokens) {
+      if (aliasSet.has(t)) score += 3
+      else if (hay.includes(t)) score += 1
+    }
     return { s, score }
   })
   const hits = scored.filter((x) => x.score > 0).sort((a, b) => b.score - a.score)

@@ -172,6 +172,79 @@ describe('conditions sections', () => {
   })
 })
 
+describe('crowd_control_out (applied CC)', () => {
+  const report = {
+    meta: { id: 'r1' },
+    stats: {
+      offensePlayers: [
+        { account: 'A.1', profession: 'Harbinger', professionList: ['Harbinger'],
+          offenseTotals: {
+            appliedCrowdControl: 89, appliedCrowdControlDuration: 86520,
+            interrupts: 38, appliedCrowdControlDownContribution: 12000
+          } },
+        { account: 'B.2', profession: 'Druid', professionList: ['Druid'],
+          offenseTotals: {
+            appliedCrowdControl: 55, appliedCrowdControlDuration: 102500,
+            interrupts: 24, appliedCrowdControlDownContribution: 4000
+          } }
+      ]
+    }
+  }
+
+  it('reads applied CC from offenseTotals and converts duration ms->s', () => {
+    const res = gs('crowd_control_out')!.shape(report, { granularity: 'player' })
+    const a = res.rows.find((r) => r.account === 'A.1')!
+    expect(a.appliedCC).toBe(89)
+    expect(a.ccDurationSec).toBe(86.5)
+    expect(a.interrupts).toBe(38)
+    expect(a.ccDownContribution).toBe(12000)
+  })
+
+  it('squad granularity sums the applied-CC columns', () => {
+    const res = gs('crowd_control_out')!.shape(report, { granularity: 'squad' })
+    expect(res.rows).toHaveLength(1)
+    expect(res.rows[0].appliedCC).toBe(144)
+    expect(res.rows[0].interrupts).toBe(62)
+  })
+
+  it('notes that disable types are not split out', () => {
+    const res = gs('crowd_control_out')!.shape(report, {})
+    expect(res.note).toMatch(/not split out/i)
+  })
+
+  it('absent offensePlayers returns empty rows + note', () => {
+    const res = gs('crowd_control_out')!.shape({ meta: {}, stats: {} }, {})
+    expect(res.rows).toEqual([])
+    expect(res.note).toMatch(/did not include/i)
+  })
+})
+
+describe('healing — downed healing fields', () => {
+  const report = {
+    meta: { id: 'r1' },
+    stats: {
+      healingPlayers: [
+        { account: 'H.1', profession: 'Druid', professionList: ['Druid'], activeMs: 300000,
+          healingTotals: { healing: 400000, squadHealing: 250000, groupHealing: 120000,
+            selfHealing: 30000, offSquadHealing: 0,
+            downedHealing: 97992, squadDownedHealing: 84285, resUtility: 5 } }
+      ]
+    }
+  }
+
+  it('surfaces downedHealing / squadDownedHealing / resUtility', () => {
+    const res = gs('healing')!.shape(report, { granularity: 'player' })
+    const h = res.rows[0]
+    expect(h.downedHealing).toBe(97992)
+    expect(h.squadDownedHealing).toBe(84285)
+    expect(h.resUtility).toBe(5)
+  })
+
+  it('healing aliases include downed-healing phrasing', () => {
+    expect(gs('healing')!.aliases).toContain('downed healing')
+  })
+})
+
 const squadReport = {
   meta: { id: 'r1' },
   stats: {
@@ -211,5 +284,17 @@ describe('findSections', () => {
   })
   it('returns the full catalog for gibberish', () => {
     expect(findSections('zzzz').length).toBe(SECTIONS.length)
+  })
+  it('routes generic "cc" to applied CC, not received', () => {
+    expect(findSections('cc')[0].key).toBe('crowd_control_out')
+  })
+  it('routes "stun" to applied CC (exact alias) over strips (substring stunbreak)', () => {
+    expect(findSections('stun')[0].key).toBe('crowd_control_out')
+  })
+  it('routes "cc received" to the received section', () => {
+    expect(findSections('cc received')[0].key).toBe('crowd_control')
+  })
+  it('routes "downed healing" to healing', () => {
+    expect(findSections('downed healing')[0].key).toBe('healing')
   })
 })
