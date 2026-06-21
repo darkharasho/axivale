@@ -1,6 +1,6 @@
 // src/main/axibridgeSections.test.ts
 import { describe, it, expect } from 'vitest'
-import { SECTIONS, getSection } from './axibridgeSections'
+import { SECTIONS, getSection, findSections } from './axibridgeSections'
 import { getSection as gs } from './axibridgeSections'
 
 const boonReport = {
@@ -120,5 +120,47 @@ describe('player-totals sections', () => {
   it('account filter narrows to one player', () => {
     const res = gs('strips')!.shape(totalsReport, { account: 'A.1' })
     expect(res.rows).toHaveLength(1)
+  })
+})
+
+const squadReport = {
+  meta: { id: 'r1' },
+  stats: {
+    squadClassData: [
+      { name: 'Firebrand', value: 8, color: '#fff' },
+      { name: 'Scourge', value: 6, color: '#000' }
+    ],
+    leaderboards: {
+      strips: [{ account: 'A.1', value: 120 }, { account: 'B.2', value: 90 }],
+      cleanses: [{ account: 'H.1', value: 200 }]
+    }
+  }
+}
+
+describe('squad-only sections', () => {
+  it('class_distribution returns class -> count rows', () => {
+    const res = gs('class_distribution')!.shape(squadReport, {})
+    expect(res.rows).toContainEqual({ class: 'Firebrand', count: 8 })
+  })
+
+  it('leaderboards returns one metric when account/boon-less query names it via limit', () => {
+    const res = gs('leaderboards')!.shape(squadReport, {})
+    // flattened: metric + rank + account + value
+    expect(res.rows.some((r) => r.metric === 'strips' && r.account === 'A.1')).toBe(true)
+  })
+})
+
+describe('findSections', () => {
+  it('maps "strips" to the strips section', () => {
+    expect(findSections('strips').map((s) => s.key)).toContain('strips')
+  })
+  it('maps "damage taken" to damage_taken', () => {
+    expect(findSections('damage taken')[0].key).toBe('damage_taken')
+  })
+  it('maps "boon uptime" to boons', () => {
+    expect(findSections('boon uptime').map((s) => s.key)).toContain('boons')
+  })
+  it('returns the full catalog for gibberish', () => {
+    expect(findSections('zzzz').length).toBe(SECTIONS.length)
   })
 })

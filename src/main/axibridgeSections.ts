@@ -347,6 +347,59 @@ const conditionsInSection = playerTotalsSection(
   ]
 )
 
+const classDistributionSection: SectionDescriptor = {
+  key: 'class_distribution', title: 'Class distribution',
+  aliases: ['classes', 'class distribution', 'comp', 'composition', 'professions', 'spec count', 'roster'],
+  summary: 'Squad class/spec counts for the run.',
+  granularities: ['squad'],
+  fields: [{ key: 'class', label: 'Class' }, { key: 'count', label: 'Count' }],
+  shape(report) {
+    const data = report.stats?.squadClassData as Array<{ name: string; value: number }> | undefined
+    if (!data || data.length === 0) return { rows: [], columns: [], note: 'This report did not include squadClassData.' }
+    return {
+      rows: data.map((d) => ({ class: d.name, count: Number(d.value) || 0 })),
+      columns: [{ key: 'class', label: 'Class' }, { key: 'count', label: 'Count' }]
+    }
+  }
+}
+
+const leaderboardsSection: SectionDescriptor = {
+  key: 'leaderboards', title: 'Leaderboards',
+  aliases: ['leaderboard', 'leaderboards', 'top', 'ranking', 'rankings', 'best', 'mvp', 'who is top'],
+  summary: 'Published per-metric leaderboards (downContrib, barrier, healing, dodges, strips, cleanses, cc, stability, dps, damage, …).',
+  granularities: ['squad'],
+  fields: [
+    { key: 'metric', label: 'Metric' },
+    { key: 'rank', label: 'Rank' },
+    { key: 'account', label: 'Account' },
+    { key: 'value', label: 'Value' }
+  ],
+  shape(report, opts) {
+    const lb = report.stats?.leaderboards as Record<string, Array<Record<string, unknown>>> | undefined
+    if (!lb || Object.keys(lb).length === 0) return { rows: [], columns: [], note: 'This report did not include leaderboards.' }
+    const rows: Array<Record<string, string | number>> = []
+    for (const [metric, list] of Object.entries(lb)) {
+      ;(list ?? []).forEach((entry, i) => {
+        rows.push({
+          metric, rank: i + 1,
+          account: String(entry.account ?? entry.name ?? '—'),
+          value: Number(entry.value ?? 0)
+        })
+      })
+    }
+    const limited = opts.limit ? rows.slice(0, opts.limit) : rows
+    return {
+      rows: limited,
+      columns: [
+        { key: 'metric', label: 'Metric' },
+        { key: 'rank', label: 'Rank' },
+        { key: 'account', label: 'Account' },
+        { key: 'value', label: 'Value' }
+      ]
+    }
+  }
+}
+
 export const SECTIONS: SectionDescriptor[] = [
   boonsSection,
   mitigationSection,
@@ -358,8 +411,30 @@ export const SECTIONS: SectionDescriptor[] = [
   barrierSection,
   downContribSection,
   conditionsOutSection,
-  conditionsInSection
+  conditionsInSection,
+  classDistributionSection,
+  leaderboardsSection
 ]
 
 export const getSection = (key: string): SectionDescriptor | undefined =>
   SECTIONS.find((s) => s.key === key)
+
+/** Free-text discovery over the registry. Empty / no match -> full catalog. */
+export function findSections(query: string): SectionDescriptor[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return SECTIONS
+  const tokens = q.split(/\s+/).filter(Boolean)
+  const scored = SECTIONS.map((s) => {
+    const hay = [
+      s.key, s.title, ...s.aliases,
+      ...s.fields.map((f) => f.label), ...s.fields.map((f) => f.help ?? '')
+    ].join(' ').toLowerCase()
+    // whole-query substring is the strongest signal, then per-token hits
+    let score = 0
+    if (hay.includes(q)) score += 10
+    for (const t of tokens) if (hay.includes(t)) score += 1
+    return { s, score }
+  })
+  const hits = scored.filter((x) => x.score > 0).sort((a, b) => b.score - a.score)
+  return hits.length ? hits.map((x) => x.s) : SECTIONS
+}
