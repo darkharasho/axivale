@@ -139,7 +139,227 @@ const boonsSection: SectionDescriptor = {
   }
 }
 
-export const SECTIONS: SectionDescriptor[] = [boonsSection]
+// --- generic per-player totals sections ------------------------------------
+interface PlayerTotalsRow {
+  account: string
+  profession: string
+  professionList?: string[]
+  activeMs?: number
+  totalFightMs?: number
+}
+
+/**
+ * Shape a `<domain>Players` array whose rows carry a `<totalsKey>` object.
+ * `fields` maps output column key -> the key inside the totals object.
+ * When `totalsKey === '__row__'`, reads fields directly from the row itself.
+ * Squad granularity collapses to one summed row.
+ */
+function shapePlayerTotals(
+  rows: Array<PlayerTotalsRow & Record<string, unknown>> | undefined,
+  totalsKey: string,
+  fields: Array<{ key: string; label: string; from: string }>,
+  opts: SectionQuery,
+  absentNote: string
+): SectionResult {
+  if (!rows || rows.length === 0) return { rows: [], columns: [], note: absentNote }
+
+  const mapRow = (r: PlayerTotalsRow & Record<string, unknown>): Record<string, string | number> => {
+    const totals = totalsKey === '__row__'
+      ? (r as Record<string, number>)
+      : ((r[totalsKey] as Record<string, number>) ?? {})
+    const out: Record<string, string | number> = { account: r.account, profession: r.profession }
+    for (const f of fields) out[f.key] = Number(totals[f.from] ?? 0)
+    return out
+  }
+
+  let mapped = rows.filter((r) => !opts.account || r.account === opts.account).map(mapRow)
+
+  const columns = [
+    { key: 'account', label: 'Account' },
+    { key: 'profession', label: 'Profession' },
+    ...fields.map((f) => ({ key: f.key, label: f.label }))
+  ]
+
+  if (opts.granularity === 'squad') {
+    const total: Record<string, string | number> = { account: 'squad total', profession: '—' }
+    for (const f of fields) total[f.key] = mapped.reduce((acc, r) => acc + (Number(r[f.key]) || 0), 0)
+    return { rows: [total], columns }
+  }
+
+  if (opts.limit) mapped = mapped.slice(0, opts.limit)
+  return { rows: mapped, columns }
+}
+
+function playerTotalsSection(
+  key: string, title: string, aliases: string[], summary: string,
+  statsKey: string, totalsKey: string,
+  fields: Array<{ key: string; label: string; from: string; help?: string }>
+): SectionDescriptor {
+  return {
+    key, title, aliases, summary,
+    granularities: ['player', 'squad'],
+    fields: fields.map((f) => ({ key: f.key, label: f.label, help: f.help })),
+    shape: (report, opts) =>
+      shapePlayerTotals(
+        report.stats?.[statsKey] as Array<PlayerTotalsRow & Record<string, unknown>> | undefined,
+        totalsKey, fields, opts,
+        `This report did not include ${statsKey}.`
+      )
+  }
+}
+
+const mitigationSection = playerTotalsSection(
+  'damage_mitigation', 'Damage mitigation',
+  ['mitigation', 'blocks', 'blocked', 'evades', 'evaded', 'dodge', 'dodges', 'miss', 'missed',
+    'invuln', 'invulned', 'block', 'avoidance', 'defense'],
+  'Per-player active defense: blocks, evades, misses, dodges, invulns, interrupts.',
+  'defensePlayers', 'defenseTotals',
+  [
+    { key: 'blocked', label: 'Blocked', from: 'blockedCount' },
+    { key: 'evaded', label: 'Evaded', from: 'evadedCount' },
+    { key: 'missed', label: 'Missed', from: 'missedCount' },
+    { key: 'dodged', label: 'Dodged', from: 'dodgeCount' },
+    { key: 'invulned', label: 'Invulned', from: 'invulnedCount' },
+    { key: 'interrupted', label: 'Interrupted', from: 'interruptedCount' }
+  ]
+)
+
+const damageTakenSection = playerTotalsSection(
+  'damage_taken', 'Damage taken',
+  ['damage taken', 'incoming damage', 'tanked', 'damage received', 'barrier absorbed', 'downs taken', 'deaths'],
+  'Per-player incoming damage split into power/condition, barrier absorbed, and down/dead counts.',
+  'defensePlayers', 'defenseTotals',
+  [
+    { key: 'damageTaken', label: 'Damage taken', from: 'damageTaken' },
+    { key: 'powerTaken', label: 'Power taken', from: 'powerDamageTaken' },
+    { key: 'condiTaken', label: 'Condi taken', from: 'conditionDamageTaken' },
+    { key: 'barrierAbsorbed', label: 'Barrier absorbed', from: 'damageBarrier' },
+    { key: 'downCount', label: 'Downs', from: 'downCount' },
+    { key: 'deadCount', label: 'Deaths', from: 'deadCount' }
+  ]
+)
+
+const cleansesSection = playerTotalsSection(
+  'cleanses', 'Condition cleanses',
+  ['cleanse', 'cleanses', 'condi cleanse', 'condition cleanse', 'clears', 'condi clear'],
+  'Per-player condition cleanses (total and self) with cleanse time.',
+  'supportPlayers', 'supportTotals',
+  [
+    { key: 'cleanses', label: 'Cleanses', from: 'condiCleanse' },
+    { key: 'cleanseTimeMs', label: 'Cleanse time (ms)', from: 'condiCleanseTime' },
+    { key: 'selfCleanses', label: 'Self cleanses', from: 'condiCleanseSelf' }
+  ]
+)
+
+const stripsSection = playerTotalsSection(
+  'strips', 'Boon strips',
+  ['strip', 'strips', 'boon strip', 'boon removal', 'corrupt', 'rip', 'strip to down', 'down contribution from strips'],
+  'Per-player boon strips, strip-to-down contribution, and stun-breaks.',
+  'supportPlayers', 'supportTotals',
+  [
+    { key: 'boonStrips', label: 'Strips', from: 'boonStrips' },
+    { key: 'stripTimeMs', label: 'Strip time (ms)', from: 'boonStripsTime' },
+    { key: 'stripDownContribution', label: 'Strip→down contrib', from: 'boonStripDownContribution' },
+    { key: 'stunBreaks', label: 'Stun breaks', from: 'stunBreak' }
+  ]
+)
+
+const crowdControlSection = playerTotalsSection(
+  'crowd_control', 'Crowd control (received)',
+  ['cc', 'crowd control', 'received cc', 'stunned', 'stun break', 'hard cc', 'soft cc', 'disabled'],
+  'Per-player crowd control received plus stun-breaks and stun duration removed.',
+  'defensePlayers', 'defenseTotals',
+  [
+    { key: 'receivedCC', label: 'CC received', from: 'receivedCrowdControl' },
+    { key: 'downCount', label: 'Downs', from: 'downCount' },
+    { key: 'deadCount', label: 'Deaths', from: 'deadCount' }
+  ]
+)
+
+const healingSection: SectionDescriptor = {
+  key: 'healing', title: 'Healing output',
+  aliases: ['healing', 'heals', 'healer', 'hps', 'squad healing', 'group healing', 'self healing'],
+  summary: 'Per-player healing split by self / group / squad / off-squad.',
+  granularities: ['player', 'category', 'squad'],
+  fields: [
+    { key: 'healing', label: 'Total healing' },
+    { key: 'squadHealing', label: 'Squad healing' },
+    { key: 'groupHealing', label: 'Group healing' },
+    { key: 'selfHealing', label: 'Self healing' },
+    { key: 'offSquadHealing', label: 'Off-squad healing' }
+  ],
+  shape: (report, opts) =>
+    shapePlayerTotals(
+      report.stats?.healingPlayers as Array<PlayerTotalsRow & Record<string, unknown>> | undefined,
+      'healingTotals',
+      [
+        { key: 'healing', label: 'Total healing', from: 'healing' },
+        { key: 'squadHealing', label: 'Squad healing', from: 'squadHealing' },
+        { key: 'groupHealing', label: 'Group healing', from: 'groupHealing' },
+        { key: 'selfHealing', label: 'Self healing', from: 'selfHealing' },
+        { key: 'offSquadHealing', label: 'Off-squad healing', from: 'offSquadHealing' }
+      ],
+      opts, 'This report did not include healingPlayers.'
+    )
+}
+
+const barrierSection = playerTotalsSection(
+  'barrier', 'Barrier',
+  ['barrier', 'barriers', 'damage barrier', 'shielding', 'absorbed'],
+  'Per-player barrier absorbed (incoming damage soaked by barrier).',
+  'defensePlayers', 'defenseTotals',
+  [
+    { key: 'barrierAbsorbed', label: 'Barrier absorbed', from: 'damageBarrier' },
+    { key: 'barrierHitCount', label: 'Barrier hits', from: 'damageBarrierCount' }
+  ]
+)
+
+const downContribSection = playerTotalsSection(
+  'down_contribution', 'Down contribution',
+  ['down contribution', 'downs', 'down contrib', 'pressure', 'who downed'],
+  'Per-player downs caused and down-contribution damage.',
+  'offensePlayers', '__row__',
+  [
+    { key: 'downs', label: 'Downs', from: 'downs' },
+    { key: 'downContribution', label: 'Down contrib', from: 'downContribution' }
+  ]
+)
+
+const conditionsOutSection = playerTotalsSection(
+  'conditions_out', 'Outgoing conditions',
+  ['conditions', 'outgoing conditions', 'condi', 'condition damage', 'condi applications', 'applications', 'condi pressure'],
+  'Per-player outgoing condition applications and condition damage.',
+  'outgoingConditionPlayers', '__row__',
+  [
+    { key: 'applications', label: 'Applications', from: 'totalApplications' },
+    { key: 'condiDamage', label: 'Condi damage', from: 'totalDamage' }
+  ]
+)
+
+const conditionsInSection = playerTotalsSection(
+  'conditions_in', 'Incoming conditions',
+  ['incoming conditions', 'conditions taken', 'condi taken', 'condition pressure received'],
+  'Per-player incoming condition applications and condition damage taken.',
+  'incomingConditionPlayers', '__row__',
+  [
+    { key: 'applications', label: 'Applications', from: 'totalApplications' },
+    { key: 'condiDamage', label: 'Condi damage', from: 'totalDamage' }
+  ]
+)
+
+export const SECTIONS: SectionDescriptor[] = [
+  boonsSection,
+  mitigationSection,
+  damageTakenSection,
+  cleansesSection,
+  stripsSection,
+  crowdControlSection,
+  healingSection,
+  barrierSection,
+  downContribSection,
+  conditionsOutSection,
+  conditionsInSection
+]
 
 export const getSection = (key: string): SectionDescriptor | undefined =>
   SECTIONS.find((s) => s.key === key)
