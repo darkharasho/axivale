@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildOfficerTools, DESTRUCTIVE_TOOLS } from './index'
+import { buildAxiforgeTools } from './axiforge'
 import type { ToolDeps } from './shared'
 import { AxiforgeError, AxiforgeNotRunningError } from '../axiforgeClient'
 
@@ -639,5 +640,87 @@ describe('axiforge tools', () => {
       expect(res.isError).toBe(true)
       expect((res.content[0] as { text: string }).text).toMatch(/No Discord webhook is tied to the server "EWW"/)
     })
+  })
+})
+
+// ─── axiforge_build_notes_get / axiforge_build_notes_set ──────────────────────
+
+function fakeDeps(buildOverride: Record<string, unknown> = {}) {
+  const saveBuild = vi.fn(async (b: Record<string, unknown>) => ({ ...b, updatedAt: '2026-06-21' }))
+  const build = {
+    id: 'b1',
+    title: 'FB WvW',
+    profession: 'Guardian',
+    gameMode: 'wvw',
+    images: { icon: 'BIGBASE64' },
+    skills: { heal: { id: 9102, name: 'Shelter' }, utility: [], elite: null },
+    notes: 'old @[skill:1:Old]',
+    ...buildOverride
+  }
+  const deps = {
+    axiforge: {
+      getBuild: vi.fn(async () => build),
+      saveBuild,
+      catalogProfession: vi.fn(async () => null),
+      catalogUpgrades: vi.fn(async () => [{ id: 24836, name: 'Rune of the Scholar' }])
+    },
+    axiforgeLauncher: { ensureRunning: vi.fn(async () => {}) }
+  }
+  return { deps, saveBuild, build }
+}
+
+const tools = (deps: unknown) => buildAxiforgeTools(deps as never)
+const byName = (deps: unknown, name: string) => tools(deps).find((t) => t.name === name)!
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const parse = (res: any) => JSON.parse(res.content[0].text as string)
+
+describe('axiforge_build_notes_get', () => {
+  it('returns the raw notes and a char count', async () => {
+    const { deps } = fakeDeps()
+    const res = await byName(deps, 'axiforge_build_notes_get').handler({ build_id: 'b1' }, {})
+    const out = parse(res)
+    expect(out.notes).toBe('old @[skill:1:Old]')
+    expect(out.notesChars).toBe('old @[skill:1:Old]'.length)
+  })
+})
+
+describe('axiforge_build_notes_set', () => {
+  it('transpiles [[..]] markers, preserves images + other fields, and reports resolution', async () => {
+    const { deps, saveBuild } = fakeDeps()
+    const res = await byName(deps, 'axiforge_build_notes_set').handler(
+      { build_id: 'b1', notes: 'Open [[skill:Shelter]] · [[item:Rune of the Scholar]] · [[skill:Nope]]' },
+      {}
+    )
+    const saved = saveBuild.mock.calls[0][0] as Record<string, unknown>
+    expect(saved.notes).toBe('Open @[skill:9102:Shelter] · @[item:24836:Rune of the Scholar] · Nope')
+    expect(saved.images).toEqual({ icon: 'BIGBASE64' }) // preserved
+    expect(saved.title).toBe('FB WvW')                  // other fields preserved
+    const out = parse(res)
+    expect(out.resolved).toBe(2)
+    expect(out.unresolved).toEqual([{ name: 'Nope', type: 'skill', reason: 'not-found' }])
+  })
+
+  it('rejects notes over the 100000-char cap before saving', async () => {
+    const { deps, saveBuild } = fakeDeps()
+    const res = await byName(deps, 'axiforge_build_notes_set').handler(
+      { build_id: 'b1', notes: 'x'.repeat(100001) },
+      {}
+    )
+    expect(res.isError).toBe(true)
+    expect((res.content[0] as { text: string }).text).toMatch(/100000/)
+    expect(saveBuild).not.toHaveBeenCalled()
+  })
+
+  it('degrades gracefully when the catalog calls fail (still resolves build skills)', async () => {
+    const { deps, saveBuild } = fakeDeps()
+    deps.axiforge.catalogProfession = vi.fn(async () => { throw new Error('closed') })
+    deps.axiforge.catalogUpgrades = vi.fn(async () => { throw new Error('closed') })
+    await byName(deps, 'axiforge_build_notes_set').handler(
+      { build_id: 'b1', notes: '[[skill:Shelter]] [[item:Rune of the Scholar]]' },
+      {}
+    )
+    const saved = saveBuild.mock.calls[0][0] as Record<string, unknown>
+    // build skill resolves; the catalog-only item degrades to plain text
+    expect(saved.notes).toBe('@[skill:9102:Shelter] Rune of the Scholar')
   })
 })

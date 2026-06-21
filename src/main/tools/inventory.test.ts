@@ -44,6 +44,8 @@ describe('tools module split', () => {
       'axibridge_runs_list',
       'axibridge_section',
       'axiforge_build_chat_link',
+      'axiforge_build_notes_get',
+      'axiforge_build_notes_set',
       'axiforge_build_publish',
       'axiforge_build_share_discord',
       'axiforge_builds_delete',
