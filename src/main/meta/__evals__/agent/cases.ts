@@ -23,9 +23,9 @@ export const AGENT_EVAL_CASES: AgentEvalCase[] = [
   },
   {
     name: 'stun-break-routing',
-    prompt: 'Where would I find stun breaks?',
+    prompt: 'In our AxiBridge fight reports, which section has stun-break data?',
     mustCall: [{ name: 'axibridge_find' }],
-    rubric: 'PASS if the answer points the user to the strips section (where stun-breaks live). FAIL otherwise.'
+    rubric: 'PASS if the answer points the user to the strips section (where stun-breaks live in the report data). FAIL otherwise.'
   },
   {
     name: 'mitigation-blocks-evades',
