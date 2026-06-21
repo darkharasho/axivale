@@ -51,7 +51,16 @@ const fakeService = {
   attendance: vi.fn(async () => ({ attendance: [{ account: 'P.1', characterNames: [], profession: 'Scourge', runs: 2, combatTimeMs: 1, squadTimeMs: 2, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null as string | null })),
   commanderStats: vi.fn(async () => ({ commanders: [{ account: 'C.1', characterNames: [], profession: 'Firebrand', runs: 2, fightsLed: 4, kills: 10, downs: 14, commanderDeaths: 0, alliesDead: 2, wins: 2, losses: 2, kdr: 5, lastSeenTs: 1 }], rollupSource: 'published', range: {}, stale: false, staleSince: null as string | null })),
   compare: vi.fn(async () => ({ a: 'r1', b: 'r2', runsA: 1, runsB: 1, comparison: { metrics: [{ metric: 'squadDeaths', a: 3, b: 1, delta: -2, deltaPct: -2 / 3 }] } })),
-  positioning: vi.fn(async () => stubFullReplayPositioning())
+  positioning: vi.fn(async () => stubFullReplayPositioning()),
+  reportFor: vi.fn(async () => ({
+    meta: { id: 'r1', title: 'Run 1' },
+    stats: {
+      defensePlayers: [{ account: 'A.1', profession: 'Spellbreaker', defenseTotals: { blockedCount: 40, evadedCount: 20, missedCount: 0, dodgeCount: 3, invulnedCount: 0, interruptedCount: 1 } }],
+      boonTables: []
+    },
+    run: { id: 'r1', title: 'Run 1', repo: 'o/a', commanders: ['C.1'], dateStart: '2026-06-01T19:00:00Z', dateEnd: null },
+    raw: {}, stale: false, staleSince: null
+  }))
 }
 
 const tools = buildAxibridgeTools(() => fakeService as never)
@@ -64,13 +73,15 @@ describe('axibridge tools', () => {
       'axibridge_attendance',
       'axibridge_commander_stats',
       'axibridge_compare',
+      'axibridge_find',
       'axibridge_player_stats',
       'axibridge_positioning',
       'axibridge_query',
       'axibridge_render_chart',
       'axibridge_repos_status',
       'axibridge_run_summary',
-      'axibridge_runs_list'
+      'axibridge_runs_list',
+      'axibridge_section'
     ])
   })
   it('repos_status returns compact JSON and a table display', async () => {
@@ -188,5 +199,30 @@ describe('axibridge_query tool', () => {
     const res = (await t.handler({ query: '.[' }, {})) as never as { isError?: boolean; content: Array<{ text: string }> }
     expect(res.isError).toBe(true)
     expect(res.content[0].text).toContain('syntax error')
+  })
+})
+
+describe('axibridge_find', () => {
+  it('returns matching sections for a term', async () => {
+    const res = (await byName('axibridge_find').handler({ query: 'blocks' }, {})) as never as { content: Array<{ text: string }> }
+    const out = parse(res)
+    expect(out.matches.some((m: { section: string }) => m.section === 'damage_mitigation')).toBe(true)
+  })
+})
+
+describe('axibridge_section', () => {
+  it('shapes the requested section from the cached report', async () => {
+    const res = (await byName('axibridge_section').handler(
+      { run_id: 'r1', section: 'damage_mitigation', granularity: 'player' }, {}
+    )) as never as { content: Array<{ text: string }> }
+    const out = parse(res)
+    expect(out.rows[0].blocked).toBe(40)
+    expect(out.section).toBe('damage_mitigation')
+  })
+
+  it('errors helpfully on an unknown section', async () => {
+    const res = (await byName('axibridge_section').handler({ run_id: 'r1', section: 'nope' }, {})) as never as { isError?: boolean; content: Array<{ text: string }> }
+    expect(res.isError).toBe(true)
+    expect(res.content[0].text).toMatch(/unknown section/i)
   })
 })

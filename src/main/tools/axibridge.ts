@@ -6,6 +6,7 @@ import { localRunDate } from '../axibridgeRunDate'
 import { runAxibridgeQuery } from '../axibridgeQuery'
 import { jqEngine, type JqEngine } from '../jqEngine'
 import { relativeAge } from '../axibridgeStale'
+import { findSections, getSection, SECTIONS, type Granularity } from '../axibridgeSections'
 
 const chartSpecSchema = z.object({
   type: z.enum(['line', 'bar', 'area']),
@@ -387,6 +388,98 @@ export function buildAxibridgeTools(
         value: { rendered: true, title: spec.title, points: spec.rows.length },
         display: { kind: 'chart', data: spec }
       }))
-    )
+    ),
+    tool(
+      'axibridge_find',
+      [
+        'Discover which AxiBridge section answers a question. Free-text in (e.g. "strips", "who gave stability", "damage taken", "boon uptime");',
+        'returns matching section keys with a summary, available granularities, fields, and the exact axibridge_section call to run next.',
+        'Use this first for boon / mitigation / sustain / condition questions, then call axibridge_section — do not infer these numbers from comp roles.'
+      ].join(' '),
+      { query: z.string().describe('What you want to know, in plain words') },
+      safeRich(async ({ query }) => {
+        const matches = findSections(query).slice(0, 8).map((s) => ({
+          section: s.key,
+          title: s.title,
+          summary: s.summary,
+          granularities: s.granularities,
+          fields: s.fields.map((f) => f.key),
+          exampleCall: { tool: 'axibridge_section', section: s.key, granularity: s.granularities[0] }
+        }))
+        return {
+          value: { count: matches.length, matches },
+          display: {
+            kind: 'table',
+            data: {
+              title: `Sections for "${query}"`,
+              columns: [
+                { key: 'section', label: 'Section' },
+                { key: 'title', label: 'What' },
+                { key: 'granularities', label: 'Granularity' }
+              ],
+              rows: matches.map((m) => ({ section: m.section, title: m.title, granularities: m.granularities.join(', ') }))
+            }
+          }
+        }
+      })
+    ),
+    tool(
+      'axibridge_section',
+      [
+        'Pull one fully-aggregated AxiBridge section for a run: boons, damage_mitigation, damage_taken, cleanses, strips,',
+        'crowd_control, healing, barrier, down_contribution, conditions_out, conditions_in, class_distribution, leaderboards.',
+        'Call axibridge_find first if unsure which section. granularity is player (default), category (self/group/squad, boons & healing), or squad (totals).',
+        'For boons, pass `boon` (e.g. "Stability") to focus one. Run selection mirrors axibridge_positioning: run_id, else latest in from/to, else latest overall.'
+      ].join(' '),
+      {
+        section: z.string().describe('Section key, e.g. "boons" or "damage_mitigation" (see axibridge_find)'),
+        run_id: z.string().optional().describe('Run id from axibridge_runs_list; omit to use the latest run'),
+        from: z.string().optional().describe('Earliest date, YYYY-MM-DD'),
+        to: z.string().optional().describe('Latest date, YYYY-MM-DD'),
+        granularity: z.enum(['player', 'category', 'squad']).optional().describe('player (default) | category | squad'),
+        account: z.string().optional().describe('Filter to one GW2 account'),
+        boon: z.string().optional().describe('For section "boons": focus one boon by name'),
+        limit: z.number().int().positive().optional().describe('Max rows (default: all)')
+      },
+      safeRich(async ({ section, run_id, from, to, granularity, account, boon, limit }) => {
+        const descriptor = getSection(section)
+        if (!descriptor) {
+          throw new Error(
+            `Unknown section "${section}". Valid: ${SECTIONS.map((s) => s.key).join(', ')}. Use axibridge_find to search.`
+          )
+        }
+        const report = await service().reportFor({ run_id, from, to })
+        const result = descriptor.shape(
+          { meta: report.meta, stats: report.stats },
+          { granularity: granularity as Granularity | undefined, account, boon, limit }
+        )
+        const runDate = localRunDate(String(report.meta.id ?? ''), (report.meta.dateStart as string) ?? null)
+        return {
+          value: {
+            run: { id: report.meta.id, title: report.meta.title, date: runDate },
+            section: descriptor.key,
+            title: descriptor.title,
+            granularity: granularity ?? 'player',
+            note: result.note,
+            warnings: result.warnings,
+            rowCount: result.rows.length,
+            rows: result.rows,
+            stale: report.stale,
+            staleSince: report.staleSince
+          },
+          display: result.rows.length
+            ? {
+                kind: 'table',
+                data: {
+                  title: `${descriptor.title} — ${report.meta.title ?? report.meta.id}`,
+                  columns: result.columns,
+                  rows: result.rows,
+                  ...staleDisplay(report.stale, report.staleSince)
+                }
+              }
+            : undefined
+        }
+      })
+    ),
   ]
 }
