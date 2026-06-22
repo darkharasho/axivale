@@ -107,7 +107,7 @@ async function main() {
     url: `https://github.com/darkharasho/axivale/releases/tag/${tag}`,
     description: notes,
     color: 0xc8423a, // AxiVale newsprint accent (--accent)
-    thumbnail: { url: 'https://raw.githubusercontent.com/darkharasho/axivale/main/build/icon.png' },
+    thumbnail: { url: `https://raw.githubusercontent.com/darkharasho/axivale/main/build/icon.png?v=${tag}` },
     footer: { text: 'AxiVale Release' }
   }
 
