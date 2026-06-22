@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version v1.3.1 — June 21, 2026
+
+### New app icon
+AxiVale's mark is now a duotone **quill**, refreshed alongside the rest of the Axi suite. New icon across the installer, app window, and share-viewer favicons. No functional changes in this release.
+
 ## Version v1.3.0 — June 21, 2026
 
 ### Condition stats actually work now
