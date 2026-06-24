@@ -58,6 +58,37 @@ export default function InputBar({
   }
   useEffect(autoGrow, [value])
 
+  // Type-to-focus: rather than grabbing focus automatically, pull focus into the
+  // composer only when the user actually starts typing — a plain printable
+  // keystroke (no Ctrl/Meta/Alt, so keyboard shortcuts are excluded) made while
+  // no other editable element is focused. The character then falls through into
+  // the textarea.
+  useEffect(() => {
+    const onKeyDown = (e: globalThis.KeyboardEvent): void => {
+      if (disabled) return
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      if (e.key.length !== 1) return
+      const ta = inputRef.current
+      if (!ta || ta === document.activeElement) return
+      const act = document.activeElement as HTMLElement | null
+      if (act && act !== document.body) {
+        const tag = act.tagName
+        const editable =
+          act.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+        if (editable) return
+      }
+      ta.focus()
+      const len = ta.value.length
+      try {
+        ta.setSelectionRange(len, len)
+      } catch {
+        /* ignore */
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [disabled])
+
   const enabled = useMemo(() => skills.filter((s) => s.enabled), [skills])
   const bySlug = useMemo(() => {
     const m = new Map<string, InputBarSkill>()
