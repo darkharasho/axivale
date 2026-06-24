@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version v1.3.2 — June 23, 2026
+
+### Just start typing
+You no longer have to click the message box first. Start typing anywhere in the AxiVale window and your keystrokes land in the composer automatically — the first character isn't lost. Plain printable keys pull focus in; keyboard shortcuts and typing inside another field are left untouched.
+
 ## Version v1.3.1 — June 21, 2026
 
 ### New app icon
