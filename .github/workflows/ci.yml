@@ -52,7 +52,7 @@ jobs:
         shell: pwsh
         run: |
           $unpacked = "release/win-unpacked/resources/app.asar.unpacked"
-          if (-not (Test-Path "$unpacked/out/main/codexOfficerServer.js")) {
+          if (-not (Test-Path "$unpacked/out/main/codexOfficerServer.mjs")) {
             throw "officer MCP proxy was not asar-unpacked"
           }
           $codex = Get-ChildItem -Recurse -Path $unpacked -Filter codex.exe -ErrorAction SilentlyContinue | Select-Object -First 1
