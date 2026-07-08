@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version v1.3.4 — July 8, 2026
+
+### Shared pages are now a 1:1 match with the app
+Follow-up to v1.3.3: shared pages no longer append the raw player-list tables after the article. Those tables belong to the Actions rail in the app and were never part of the article body — now the published page shows exactly what you see in AxiVale, nothing more. As before, existing share links pick up the fix the next time you publish any share (allow ~30 seconds after publishing for GitHub Pages to rebuild before opening the link).
+
 ## Version v1.3.3 — July 8, 2026
 
 ### Shared pages now match the app
