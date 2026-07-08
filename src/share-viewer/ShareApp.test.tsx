@@ -64,11 +64,12 @@ describe('ShareApp figure placement', () => {
     const { findByText, container } = render(<ShareApp />)
     await findByText('Intro paragraph.')
     const figures = [...container.querySelectorAll('figure.post-figure')]
-    expect(figures.length).toBe(2)
+    expect(figures.length).toBe(1)
     // The marker slot gets the chart — exactly what the app renders inline.
     expect(figures[0].textContent).toContain('CHART_TITLE')
-    // The table (Actions-rail material in the app) still renders, appended after.
-    expect(figures[1].textContent).toContain('TABLE_TITLE')
+    // Tables are Actions-rail material in the app and never appear in the
+    // article — the share must match, so they don't render at all.
+    expect(container.textContent).not.toContain('TABLE_TITLE')
   })
 
   it('keeps the marker figure between its surrounding paragraphs', async () => {
