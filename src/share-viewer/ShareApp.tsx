@@ -79,10 +79,13 @@ function ArticleView({
   ]
   const { headline, rest: rawRest } = splitHeadline(turn.agentText)
   const rest = stripRawJson(rawRest)
-  // Unlike the main app (where excluded tables fall back to the Actions panel),
-  // the standalone viewer has no such panel — so tables must render here or they
-  // vanish entirely. Include every display kind RichDisplay can draw.
-  const figures = turn.tools.filter((t) => t.display)
+  // {{figure}} markers must map to the SAME figure list the app uses
+  // (Article.tsx excludes tables), or every marker slot shifts and charts land
+  // in the wrong place. Unlike the app (where excluded tables fall back to the
+  // Actions panel), the viewer has no such panel — so tables render too, but
+  // appended after the prose rather than competing for marker slots.
+  const figures = turn.tools.filter((t) => t.display && t.display.kind !== 'table')
+  const tables = turn.tools.filter((t) => t.display?.kind === 'table')
   const segments = rest.split(/\{\{\s*figure\s*\}\}/i)
   const renderFigure = (t: (typeof figures)[number], key: number): ReactElement => (
     <figure className="post-figure" key={key}>
@@ -133,6 +136,7 @@ function ArticleView({
           </Fragment>
         ))}
         {figures.slice(Math.max(0, segments.length - 1)).map((t, i) => renderFigure(t, 1000 + i))}
+        {tables.map((t, i) => renderFigure(t, 2000 + i))}
         <span className="sv-endmark">∎</span>
       </div>
     </article>
