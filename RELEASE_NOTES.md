@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version v1.3.3 — July 8, 2026
+
+### Shared pages now match the app
+Published shares could scramble a dispatch's layout: a chart the article introduced ("here's the top down-contribution…") would show up as a raw data table in that spot, with the actual chart exiled to the bottom of the page. The share viewer now places charts and figures exactly where the app does; the full data tables still appear, tucked after the article instead of hijacking a figure's spot. Existing share links pick up the fix automatically the next time you publish any share.
+
 ## Version v1.3.2 — June 23, 2026
 
 ### Just start typing
