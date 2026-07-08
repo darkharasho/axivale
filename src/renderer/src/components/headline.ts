@@ -35,9 +35,44 @@ export function splitHeadline(text: string): { headline: string; rest: string } 
   return { headline, rest }
 }
 
+// A headline shorter than this is a stub ("One note", "So") — not a title.
+const HEADLINE_MIN = 20
+
+// Meta preambles are asides, not headlines: "One note: …", "FYI, …",
+// "Heads up — …". The opener must be followed by punctuation so real prose
+// like "Note harasho tags as a Troubadour" doesn't match.
+const META_OPENER =
+  /^(?:(?:one|a)\s+(?:quick\s+|small\s+|last\s+|final\s+)?(?:note|caveat|aside|thing)|(?:quick|small|side|final|last)\s+(?:note|caveat|aside)|note|fyi|btw|by the way|heads[\s-]?up|psa|housekeeping)\s*[:,—–-]/i
+
+const SENTENCE_END = /[.!?](?=\s|$)|\n/
+
+function firstSentence(text: string): { body: string; end: number } | null {
+  const m = text.match(SENTENCE_END)
+  if (!m || m.index === undefined) return null
+  const end = text[m.index] === '\n' ? m.index : m.index + 1
+  return { body: text.slice(0, end), end }
+}
+
 function rawSplitHeadline(text: string): { headline: string; rest: string } {
-  const trimmed = text.replace(/^\s+/, '')
-  const sentenceEnd = trimmed.match(/[.!?](?=\s|$)|\n/)
+  let trimmed = text.replace(/^\s+/, '')
+  // Skip up to two meta preamble sentences and headline the first real one.
+  // The skipped sentences aren't lost — they lead the body instead.
+  let preamble = ''
+  for (let skips = 0; skips < 2; skips++) {
+    const s = firstSentence(trimmed)
+    if (!s || !META_OPENER.test(s.body)) break
+    const after = trimmed.slice(s.end).replace(/^\s+/, '')
+    if (!after) break // a lone meta sentence still has to be the headline
+    preamble = preamble ? `${preamble} ${s.body.trim()}` : s.body.trim()
+    trimmed = after
+  }
+  const { headline, rest } = pickHeadline(trimmed)
+  if (!preamble) return { headline, rest }
+  return { headline, rest: rest ? `${preamble}\n\n${rest}` : preamble }
+}
+
+function pickHeadline(trimmed: string): { headline: string; rest: string } {
+  const sentenceEnd = trimmed.match(SENTENCE_END)
   if (sentenceEnd && sentenceEnd.index !== undefined) {
     const isNewline = trimmed[sentenceEnd.index] === '\n'
     const end = isNewline ? sentenceEnd.index : sentenceEnd.index + 1
@@ -45,12 +80,22 @@ function rawSplitHeadline(text: string): { headline: string; rest: string } {
       return { headline: trimmed.slice(0, end).trim(), rest: trimmed.slice(end).trim() }
     }
   }
-  // Long single sentence: break at a clause boundary instead.
-  const clause = trimmed.match(/[,;:—](?=\s)/)
-  if (clause && clause.index !== undefined && clause.index <= HEADLINE_MAX) {
+  // Long single sentence: break at a clause boundary — the first one that
+  // yields something title-sized, not a stub like "So" or "One note".
+  for (const clause of trimmed.matchAll(/[,;:—](?=\s)/g)) {
+    if (clause.index === undefined || clause.index > HEADLINE_MAX) break
+    if (clause.index < HEADLINE_MIN) continue
     return {
       headline: trimmed.slice(0, clause.index).trim(),
       rest: trimmed.slice(clause.index + 1).trim()
+    }
+  }
+  // No title-sized clause either: cut at the last word boundary inside the
+  // limit rather than letting a wall of text be the headline.
+  if (trimmed.length > HEADLINE_MAX) {
+    const cut = trimmed.lastIndexOf(' ', HEADLINE_MAX)
+    if (cut >= HEADLINE_MIN) {
+      return { headline: trimmed.slice(0, cut).trim(), rest: trimmed.slice(cut + 1).trim() }
     }
   }
   if (sentenceEnd && sentenceEnd.index !== undefined) {
