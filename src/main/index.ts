@@ -198,6 +198,13 @@ function createWindow(store: SettingsStore): void {
     // Resolve all pending confirms with false so agent turns don't hang.
     for (const resolve of pendingConfirms.values()) resolve(false)
     pendingConfirms.clear()
+    // The hidden meta-scrape BrowserWindow (BrowserWindowFetcher) stays open in
+    // the background between fetches, so 'window-all-closed' never fires when the
+    // user closes the main window — which would leave AxiVale running headless
+    // forever (AxiOM's pgrep then shows it as "running"). The main window IS the
+    // app's lifetime on non-macOS, so quitting here tears everything down via
+    // before-quit (which destroys the scrape window and clears the timers).
+    if (process.platform !== 'darwin') app.quit()
   })
 }
 
@@ -473,13 +480,30 @@ app.whenReady().then(async () => {
     if (releasingForge) return
     releasingForge = true
     e.preventDefault()
-    if (metaTimer) clearInterval(metaTimer)
-    if (wikiTimer) clearInterval(wikiTimer)
-    if (metaStartTimer) clearTimeout(metaStartTimer)
-    wikiAbort.abort() // stop the wiki crawl mid-run; it resumes next launch
-    metaFetcher.destroy()
-    ollama.stopServer()
-    void axiforgeLauncher.releaseIfSpawned().finally(() => app.quit())
+    try {
+      if (metaTimer) clearInterval(metaTimer)
+      if (wikiTimer) clearInterval(wikiTimer)
+      if (metaStartTimer) clearTimeout(metaStartTimer)
+      wikiAbort.abort() // stop the wiki crawl mid-run; it resumes next launch
+      metaFetcher.destroy()
+      ollama.stopServer()
+    } catch (err) {
+      console.error('[quit] cleanup error (quitting anyway):', err)
+    }
+    // Guarantee the quit: the release call is best-effort, so race it against a
+    // hard timeout. Without this, a hang (or a throw above) after preventDefault
+    // would strand AxiVale running headless forever and swallow SIGTERM.
+    let quit = false
+    const finishQuit = (): void => {
+      if (quit) return
+      quit = true
+      app.quit()
+    }
+    const killSwitch = setTimeout(finishQuit, 3_000)
+    void axiforgeLauncher.releaseIfSpawned().finally(() => {
+      clearTimeout(killSwitch)
+      finishQuit()
+    })
   })
 
   // AxiBridge analytics: one client/cache/service for the app's lifetime; the
