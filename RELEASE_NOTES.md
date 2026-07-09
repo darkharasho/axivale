@@ -1,5 +1,10 @@
 # Release Notes
 
+## Version v1.3.5 — July 8, 2026
+
+### Closing AxiVale actually closes it
+Closing the window used to leave AxiVale running invisibly in the background — it would still show as "running" in AxiOM, and closing and reopening a few times could quietly stack up several hidden copies. AxiVale now shuts down completely when you close its window, so closed means closed.
+
 ## Version v1.3.4 — July 8, 2026
 
 ### Shared pages are now a 1:1 match with the app
