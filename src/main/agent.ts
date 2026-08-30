@@ -309,7 +309,12 @@ export function toolsForProvider<T extends { name: string }>(provider: ProviderN
 }
 
 export interface AgentDeps {
-  toolDeps: () => ToolDeps
+  /**
+   * Built per turn, so it is handed the conversation the tools are running for
+   * — the one seam where a tool call can be attributed to a conversation (used
+   * to persist axilog log refs).
+   */
+  toolDeps: (conversationId: string) => ToolDeps
   /** Provider, model, and credentials — read fresh at the start of every turn. */
   config: () => ProviderConfig
   confirm: (toolName: string, input: Record<string, unknown>) => Promise<boolean>
@@ -387,7 +392,7 @@ export class AgentService {
     const adapter = this.adapterFor(conversationId)
     try {
       const provider = this.deps.config().provider
-      const tools = toolsForProvider(provider, buildOfficerTools(this.deps.toolDeps()))
+      const tools = toolsForProvider(provider, buildOfficerTools(this.deps.toolDeps(conversationId)))
       const skills = this.deps.skills()
       const forced = opts?.forcedSkillId
         ? (skills.find((s) => s.id === opts.forcedSkillId) ?? null)

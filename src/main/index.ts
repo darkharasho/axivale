@@ -579,7 +579,7 @@ app.whenReady().then(async () => {
   }
 
   const agent = new AgentService({
-    toolDeps: () => ({
+    toolDeps: (conversationId: string) => ({
       axitools: buildAxitools(),
       axivaleServers: () =>
         store.listKeyLabels('axivale').map((k) => ({
@@ -656,7 +656,20 @@ app.whenReady().then(async () => {
       rosterLinks: () => rosterLinks.list(),
       memory: () => memoryService,
       resolveEntityKey,
-      axilog: () => ({ watcher: axilogWatcher, service: axilogService })
+      axilog: () => ({
+        watcher: axilogWatcher,
+        service: axilogService,
+        // Persist the fight this turn touched onto the conversation record, so
+        // reopening the thread tomorrow still resolves the same logId (the
+        // watcher registry is in-memory and empty at every launch). Metadata
+        // only — {logId, path, label} — never anything parsed.
+        onLogUsed: (entry) =>
+          conversations.addLogRef(conversationId, {
+            logId: entry.logId,
+            path: entry.path,
+            label: `${entry.mapFolder} ${entry.startedAt.replace('T', ' ')}`
+          })
+      })
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),
@@ -1143,6 +1156,10 @@ app.whenReady().then(async () => {
         return
       }
     }
+    // Replay this conversation's persisted log refs into the watcher before the
+    // turn runs, so a logId from an earlier session still resolves — and one
+    // whose file is gone reports as gone rather than as an unknown log.
+    axilogWatcher.rehydrate(conversations.get(conversationId)?.logRefs ?? [])
     await agent.runTurn(conversationId, prompt, (agentEvent) => {
       if (!event.sender.isDestroyed()) {
         event.sender.send('agent:event', { ...agentEvent, conversationId })

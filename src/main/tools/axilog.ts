@@ -9,6 +9,13 @@ export interface AxilogDeps {
   watcher: AxilogWatcher
   /** null when the native module failed to load — every tool then errors kindly. */
   service: AxilogService | null
+  /**
+   * Called with the entry every time a tool touches a specific log, so the
+   * conversation can persist the ref ({logId, path, label}) and still resolve
+   * that fight after a relaunch. Metadata only — nothing parsed is recorded.
+   * Optional so tests and non-conversation call sites can omit it.
+   */
+  onLogUsed?: (entry: LogEntry) => void
 }
 
 const SCHEMA_MAP =
@@ -27,8 +34,20 @@ function resolve(deps: AxilogDeps, logId: string): { entry: LogEntry; service: A
   }
   const entry = deps.watcher.resolve(logId)
   if (!entry) {
+    // A ref this conversation used before, whose file has since disappeared:
+    // say so explicitly. "Unknown log" would read as a lookup slip and invite
+    // an answer from memory about a fight nothing can see any more. The label
+    // (map + time), never the path, is what the model is given.
+    const gone = deps.watcher.missingRef(logId)
+    if (gone) {
+      throw new Error(
+        `The log file for "${gone.label}" is no longer on disk, so it cannot be analyzed. ` +
+          'Tell the user the file is gone — do not answer about that fight from earlier context.'
+      )
+    }
     throw new Error(`Unknown log "${logId}". Call axilog_logs_list to see the available fights.`)
   }
+  deps.onLogUsed?.(entry)
   return { entry, service: deps.service }
 }
 

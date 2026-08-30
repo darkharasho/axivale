@@ -143,6 +143,36 @@ describe('axilog tools', () => {
     expect(JSON.parse(res.content[0].text).truncated).toBe(true)
   })
 
+  // I5 — the conversation record must store the refs it has touched, so
+  // reopening the thread tomorrow still resolves the same fight.
+  it('records a log ref the first time a tool touches that log', async () => {
+    const watcher = new AxilogWatcher({ dir: () => null, now: () => 0 })
+    const entry = watcher.registerOpened('/logs/20260830-211432.zevtc')
+    const onLogUsed = vi.fn()
+    const service = { overview: vi.fn(async () => ({ coverage: {} })) }
+    const tools = buildAxilogTools(() => ({
+      watcher,
+      service: service as never,
+      onLogUsed
+    }))
+    await call(tools, 'axilog_fight_overview', { logId: entry.logId })
+    expect(onLogUsed).toHaveBeenCalledWith(entry)
+  })
+
+  it('says a since-deleted log file is gone rather than reporting it unknown', async () => {
+    const watcher = new AxilogWatcher({ dir: () => null, now: () => 0 })
+    watcher.rehydrate([
+      { logId: 'abc12345', path: '/gone/20260830-211432.zevtc', label: 'World vs World 21:14' }
+    ])
+    const tools = buildAxilogTools(() => ({ watcher, service: {} as never }))
+    const res = await call(tools, 'axilog_fight_overview', { logId: 'abc12345' })
+    expect(res.isError).toBe(true)
+    expect(res.content[0].text).toMatch(/no longer on disk/i)
+    expect(res.content[0].text).toMatch(/World vs World 21:14/)
+    // Still no filesystem path in what the model sees.
+    expect(res.content[0].text).not.toContain('/gone/')
+  })
+
   it('keeps the entity-id note from the worker alongside the truncation warning', async () => {
     const { tools, entry } = deps({
       query: vi.fn(async () => ({

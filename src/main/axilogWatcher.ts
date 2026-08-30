@@ -17,6 +17,18 @@ export interface LogEntry {
   source: 'watched' | 'opened'
 }
 
+/**
+ * The metadata a conversation persists about a log it touched. Structurally the
+ * same shape as ConversationLogRef in conversationStore — declared here so the
+ * watcher does not depend on the store (and so nothing parsed is ever part of
+ * it: this is filesystem metadata only).
+ */
+export interface LogRef {
+  logId: string
+  path: string
+  label: string
+}
+
 /** Injected so tests never touch a real directory. */
 export interface WatcherFs {
   exists(path: string): boolean
@@ -165,6 +177,8 @@ export class AxilogWatcher {
   private readonly entries = new Map<string, LogEntry>()
   /** Last observed size per path, for the settle check. */
   private readonly sizes = new Map<string, number>()
+  /** Rehydrated conversation refs whose file no longer exists. */
+  private readonly missing = new Map<string, LogRef>()
   private readonly dir: () => string | null
   private readonly fs: WatcherFs
   private readonly now: () => number
@@ -231,6 +245,33 @@ export class AxilogWatcher {
     this.entries.set(logId, entry)
     this.prune()
     return entry
+  }
+
+  /**
+   * Replay a conversation's persisted refs back into the registry. The registry
+   * is in-memory only, so an `opened` log is gone at every launch and a logId
+   * sitting in yesterday's transcript would otherwise resolve to nothing.
+   * `logIdForPath` is a pure hash of the path, so re-registering the same path
+   * restores the SAME logId the transcript refers to.
+   *
+   * A ref whose file is no longer on disk is remembered as missing rather than
+   * dropped: silently absent reads to the model as "unknown log", which invites
+   * a fabricated answer about a fight it cannot see.
+   */
+  rehydrate(refs: LogRef[]): void {
+    for (const ref of refs) {
+      if (this.fs.exists(ref.path)) {
+        this.missing.delete(ref.logId)
+        if (!this.entries.has(ref.logId)) this.registerOpened(ref.path)
+      } else {
+        this.missing.set(ref.logId, ref)
+      }
+    }
+  }
+
+  /** A rehydrated ref whose file has since disappeared, or null. */
+  missingRef(logId: string): LogRef | null {
+    return this.missing.get(logId) ?? null
   }
 
   resolve(logId: string): LogEntry | null {

@@ -164,8 +164,10 @@ describe('AgentService turn serialization', () => {
     const { AgentService } = await import('./agent')
     vi.spyOn(await import('./tools'), 'buildOfficerTools').mockReturnValue([])
 
-    const mockDeps = {
-      toolDeps: () => ({
+    // I5 — tools are built per turn, so this is the one seam that knows which
+    // conversation a tool call belongs to. Asserting the id reaches toolDeps
+    // is what keeps the log-ref recording wired.
+    const toolDeps = vi.fn(() => ({
         axitools: {} as never,
         gw2: {} as never,
         discordGuildId: () => '1',
@@ -188,7 +190,9 @@ describe('AgentService turn serialization', () => {
         axivaleServers: () => [],
         resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' }),
         discordWebhookTie: () => ({ comp: [], build: [] })
-      }),
+    }))
+    const mockDeps = {
+      toolDeps,
       config: () => ({
         provider: 'claude' as const,
         model: null,
@@ -224,6 +228,8 @@ describe('AgentService turn serialization', () => {
       kind: 'done',
       error: expect.stringContaining('already in progress')
     })
+
+    expect(toolDeps).toHaveBeenCalledWith('c1')
 
     _releaseTurn!()
     _turnGate.held = null

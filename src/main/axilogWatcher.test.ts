@@ -199,6 +199,45 @@ describe('AxilogWatcher', () => {
     expect(watcher.list()).toHaveLength(1)
   })
 
+  // I5 — the registry is in-memory only, so an `opened` log is gone at every
+  // launch and yesterday's logId in a transcript resolves to nothing. A
+  // conversation's persisted refs are replayed back in on load.
+  it('rehydrates a conversation ref back to the same logId', () => {
+    const fs = fakeFs({ '/elsewhere/20260830-201000.zevtc': 500 })
+    const first = new AxilogWatcher({ dir: () => null, fs: fs.api, now: () => 0 })
+    const entry = first.registerOpened('/elsewhere/20260830-201000.zevtc')
+
+    // A fresh launch: empty registry, then the stored refs are replayed.
+    const relaunched = new AxilogWatcher({ dir: () => null, fs: fs.api, now: () => 0 })
+    expect(relaunched.resolve(entry.logId)).toBeNull()
+    relaunched.rehydrate([
+      { logId: entry.logId, path: entry.path, label: 'World vs World 20:10' }
+    ])
+    expect(relaunched.resolve(entry.logId)?.path).toBe(entry.path)
+  })
+
+  it('surfaces a ref whose file is gone as explicitly unavailable, not silently absent', () => {
+    const fs = fakeFs({})
+    const watcher = new AxilogWatcher({ dir: () => null, fs: fs.api, now: () => 0 })
+    const ref = { logId: 'abc12345', path: '/gone/20260830-201000.zevtc', label: 'WvW 20:10' }
+    watcher.rehydrate([ref])
+    expect(watcher.resolve('abc12345')).toBeNull()
+    expect(watcher.missingRef('abc12345')).toEqual(ref)
+    expect(watcher.missingRef('never-seen')).toBeNull()
+  })
+
+  it('clears the missing marker once the file is back', () => {
+    const fs = fakeFs({})
+    const watcher = new AxilogWatcher({ dir: () => null, fs: fs.api, now: () => 0 })
+    const ref = { logId: logIdForPath('/back/20260830-201000.zevtc'), path: '/back/20260830-201000.zevtc', label: 'WvW 20:10' }
+    watcher.rehydrate([ref])
+    expect(watcher.missingRef(ref.logId)).toEqual(ref)
+    fs.state['/back/20260830-201000.zevtc'] = 500
+    watcher.rehydrate([ref])
+    expect(watcher.missingRef(ref.logId)).toBeNull()
+    expect(watcher.resolve(ref.logId)?.path).toBe(ref.path)
+  })
+
   it('lists newest first and honours limit', () => {
     const fs = fakeFs({
       [`${DIR}/20260830-210000.zevtc`]: 100,
