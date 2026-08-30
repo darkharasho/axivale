@@ -158,6 +158,30 @@ describe('runSection', () => {
     expect(untruncated.note).toMatch(/present but empty/)
   })
 
+  // M6 — the empty note must be emitted on ALL THREE shapeByEntity paths, the
+  // way boonsSection already does. Two shapers disagreeing about when to say it
+  // is how the design's honesty rule drifts into a bug.
+  it('says a present-but-empty block is empty at squad granularity too', () => {
+    const emptyCoverage = {
+      ...report,
+      coverage: { ...report.coverage, damage: 'empty' }
+    } as AxilogReport
+    const squad = runSection(emptyCoverage, 'damage', { granularity: 'squad' })
+    expect(squad.note).toMatch(/Summed across \d+ matching entities/)
+    expect(squad.note).toMatch(/present but empty/)
+  })
+
+  it('says a present-but-empty block is empty when no entities match at all', () => {
+    const emptyCoverage = {
+      ...report,
+      coverage: { ...report.coverage, damage: 'empty' }
+    } as AxilogReport
+    const none = runSection(emptyCoverage, 'damage', { subgroup: 99 })
+    expect(none.rows).toHaveLength(0)
+    expect(none.note).toMatch(/No entities matched/)
+    expect(none.note).toMatch(/present but empty/)
+  })
+
   it('takes damageTaken from the authoritative damage block, not a derived sum', () => {
     const def = runSection(report, 'defenses', { entity: 'Anon132' })
     const dmg = runSection(report, 'damage', { entity: 'Anon132' })

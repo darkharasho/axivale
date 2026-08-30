@@ -214,12 +214,20 @@ function shapeByEntity(
   ]
   const warningsPart = warnings.length ? { warnings } : {}
 
+  // `empty` is the ONE coverage state where reporting 0 is honest, so every
+  // return path below must say the block was empty — a bare "0" with no such
+  // statement reads as a real measurement. Computed once, here, so the three
+  // paths cannot drift apart (which is exactly how this drifted from
+  // boonsSection, which emits its equivalent note on all of its paths).
+  const emptyNote =
+    coverage === 'empty' ? 'This block is present but empty for this fight.' : undefined
+
   // A `present` block can still cover only part of the roster, so "no rows" is
   // a fact about this block's coverage and must be stated, not implied.
   if (rows.length === 0) {
     const filters = describeFilters(opts, only)
     const note = `No entities matched${filters ? ` (${filters})` : ''}. This block covers ${Object.keys(byEntity).length} of the log's ${index.all().length} entities.`
-    return { rows: [], columns, note: joinNotes(note, extraNote), ...warningsPart }
+    return { rows: [], columns, note: joinNotes(note, emptyNote, extraNote), ...warningsPart }
   }
 
   if (opts.granularity === 'squad') {
@@ -236,6 +244,7 @@ function shapeByEntity(
       note: joinNotes(
         `Summed across ${rows.length} matching entities.`,
         meanLabels.length ? `${meanLabels.join(', ')} is a mean, not a sum.` : undefined,
+        emptyNote,
         extraNote
       ),
       ...warningsPart
@@ -253,8 +262,6 @@ function shapeByEntity(
       : undefined
   // Independent of truncation: a present-but-empty block that also truncates
   // must not lose its "empty" message.
-  const emptyNote =
-    coverage === 'empty' ? 'This block is present but empty for this fight.' : undefined
   const note = joinNotes(sortNote, truncatedNote, emptyNote, extraNote)
 
   return { rows: limited, columns, ...(note ? { note } : {}), ...warningsPart }
