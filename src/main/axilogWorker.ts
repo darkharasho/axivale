@@ -5,7 +5,12 @@
 
 import { parentPort } from 'node:worker_threads'
 import { loadAxilog } from './axilogNative'
-import { buildEntityIndex, type AxilogReport } from './axilogEntities'
+import {
+  buildEntityIndex,
+  type AxilogReport,
+  type EntityIndex,
+  type EntityRole
+} from './axilogEntities'
 import { runSection, type SectionQuery, type SectionResult } from './axilogSections'
 import { jqEngine } from './jqEngine'
 
@@ -79,6 +84,62 @@ function load(logId: string, path: string, passes: PassFlags): AxilogReport {
   return report
 }
 
+/**
+ * jq output is arbitrarily shaped, so the query path cannot reshape rows the way
+ * `runSection` does. What it CAN do — shape-agnostically, without touching the
+ * rows themselves — is tell the model which numeric-string keys are entity ids
+ * and what those ids are called. Without this, `.blocks.support.by_entity`
+ * returns `{"12":{"strips":88}}`: real numbers with no names, and a standing
+ * invitation for the model to guess a name off the roster and misattribute it.
+ */
+export const QUERY_ENTITY_NOTE =
+  'Numeric-string keys in this result are entity ids (blocks.<name>.by_entity is keyed by entities[].id AS STRINGS). ' +
+  '`entities` below maps every such id found here to its roster name — use those names verbatim. ' +
+  "Ids in `unresolvedIds` are not in this fight's roster: report them as unresolved. " +
+  'NEVER name a player from a by_entity key you resolved yourself, and never guess a nearest match. ' +
+  'Ids under `catalogs.*` are skill/buff ids, not entities — this map does not apply to those.'
+
+export interface QueryEntityAnnotation {
+  /** id (string, exactly as it appears as a key) -> roster identity. */
+  entities: Record<string, { name: string; role: EntityRole }>
+  /** Numeric keys with no roster match — named as unresolved, never guessed. */
+  unresolvedIds: string[]
+  note: string
+}
+
+const NUMERIC_KEY = /^\d+$/
+
+function collectNumericKeys(value: unknown, out: Set<string>): void {
+  if (Array.isArray(value)) {
+    // Array indices are not object keys — only walk the elements.
+    for (const v of value) collectNumericKeys(v, out)
+    return
+  }
+  if (value === null || typeof value !== 'object') return
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (NUMERIC_KEY.test(k)) out.add(k)
+    collectNumericKeys(v, out)
+  }
+}
+
+/** null when the result carries no entity-id-shaped keys — no note, no payload cost. */
+export function annotateQueryEntities(
+  rows: unknown[],
+  index: EntityIndex
+): QueryEntityAnnotation | null {
+  const ids = new Set<string>()
+  collectNumericKeys(rows, ids)
+  if (ids.size === 0) return null
+  const entities: QueryEntityAnnotation['entities'] = {}
+  const unresolvedIds: string[] = []
+  for (const id of [...ids].sort((a, b) => Number(a) - Number(b))) {
+    const ref = index.get(id)
+    if (ref) entities[id] = { name: ref.name, role: ref.role }
+    else unresolvedIds.push(id)
+  }
+  return { entities, unresolvedIds, note: QUERY_ENTITY_NOTE }
+}
+
 export async function handle(req: WorkerRequest): Promise<unknown> {
   if (req.kind === 'overview') {
     const report = load(req.logId, req.path, {})
@@ -108,6 +169,7 @@ export async function handle(req: WorkerRequest): Promise<unknown> {
   // Cap by SERIALIZED size, not row count: one row of replay tracks can be
   // megabytes while a thousand scalar rows are trivial.
   const out: unknown[] = []
+  const sizes: number[] = []
   let bytes = 0
   let truncated = false
   for (const row of rows.slice(0, req.limit)) {
@@ -117,10 +179,23 @@ export async function handle(req: WorkerRequest): Promise<unknown> {
       break
     }
     out.push(row)
+    sizes.push(size)
     bytes += size
   }
   if (rows.length > req.limit) truncated = true
-  return { rows: out, truncated }
+
+  // The id->name map is part of the payload, so it is counted against the cap
+  // rather than appended after it: drop trailing rows until rows AND map fit.
+  const index = buildEntityIndex(report)
+  const annBytes = (a: QueryEntityAnnotation | null): number => (a ? JSON.stringify(a).length : 0)
+  let annotation = annotateQueryEntities(out, index)
+  while (out.length > 0 && bytes + annBytes(annotation) > MAX_QUERY_BYTES) {
+    out.pop()
+    bytes -= sizes.pop() ?? 0
+    truncated = true
+    annotation = annotateQueryEntities(out, index)
+  }
+  return annotation ? { rows: out, truncated, ...annotation } : { rows: out, truncated }
 }
 
 parentPort?.on('message', (req: WorkerRequest) => {

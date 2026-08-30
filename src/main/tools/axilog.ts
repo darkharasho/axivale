@@ -186,12 +186,15 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
       safe(async (args: { logId: string; filter: string; limit?: number }) => {
         const { entry, service } = resolve(deps(), args.logId)
         const res = await service.query(entry.logId, entry.path, args.filter, args.limit ?? 50)
-        return {
-          ...res,
-          note: res.truncated
+        // The worker may already have attached an entity-id note; keep it and
+        // append the truncation warning rather than clobbering one with the other.
+        const notes = [
+          res.note,
+          res.truncated
             ? 'Result truncated — narrow the filter rather than treating this as the complete answer.'
             : undefined
-        }
+        ].filter(Boolean)
+        return { ...res, note: notes.length ? notes.join(' ') : undefined }
       })
     )
   ]

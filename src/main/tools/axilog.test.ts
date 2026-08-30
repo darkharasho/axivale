@@ -91,7 +91,6 @@ describe('axilog tools', () => {
       expect(res.content[0].text, name).not.toContain('.zevtc')
     }
   })
-
   it('returns coverage in the overview so the model can refuse honestly', async () => {
     const { tools, entry } = deps()
     const res = await call(tools, 'axilog_fight_overview', { logId: entry.logId })
@@ -142,5 +141,22 @@ describe('axilog tools', () => {
     const { tools, entry } = deps({ query: vi.fn(async () => ({ rows: [1], truncated: true })) })
     const res = await call(tools, 'axilog_query', { logId: entry.logId, filter: '.blocks' })
     expect(JSON.parse(res.content[0].text).truncated).toBe(true)
+  })
+
+  it('keeps the entity-id note from the worker alongside the truncation warning', async () => {
+    const { tools, entry } = deps({
+      query: vi.fn(async () => ({
+        rows: [{ '12': { strips: 88 } }],
+        truncated: true,
+        entities: { '12': { name: 'Anon133', role: 'squad' } },
+        unresolvedIds: [],
+        note: 'ENTITY NOTE.'
+      }))
+    })
+    const res = await call(tools, 'axilog_query', { logId: entry.logId, filter: '.blocks' })
+    const parsed = JSON.parse(res.content[0].text)
+    expect(parsed.note).toContain('ENTITY NOTE.')
+    expect(parsed.note).toMatch(/truncated/i)
+    expect(parsed.entities['12'].name).toBe('Anon133')
   })
 })

@@ -7,9 +7,17 @@ import { Worker } from 'node:worker_threads'
 import { existsSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { PassFlags, WorkerRequest, WorkerResponse } from './axilogWorker'
+import type {
+  PassFlags,
+  QueryEntityAnnotation,
+  WorkerRequest,
+  WorkerResponse
+} from './axilogWorker'
 import type { SectionQuery, SectionResult } from './axilogSections'
 import type { CoverageState } from './axilogEntities'
+
+/** jq rows plus, when the result contains entity-id keys, the id->name map. */
+export type QueryResult = { rows: unknown[]; truncated: boolean } & Partial<QueryEntityAnnotation>
 
 export const MAX_LOG_BYTES = 150 * 1024 * 1024
 export const PARSE_TIMEOUT_MS = 30_000
@@ -111,11 +119,8 @@ export class AxilogService {
     path: string,
     filter: string,
     limit: number
-  ): Promise<{ rows: unknown[]; truncated: boolean }> {
-    return (await this.send(path, { kind: 'query', logId, path, filter, limit })) as {
-      rows: unknown[]
-      truncated: boolean
-    }
+  ): Promise<QueryResult> {
+    return (await this.send(path, { kind: 'query', logId, path, filter, limit })) as QueryResult
   }
 
   dispose(): void {
