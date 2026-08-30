@@ -30,9 +30,7 @@ export interface FightOverview {
 interface WorkerLike {
   postMessage(value: unknown): void
   terminate(): Promise<number>
-  on(event: string, cb: (arg: never) => void): void
-  off(event: string, cb: (arg: never) => void): void
-  once(event: string, cb: (arg: never) => void): void
+  on(event: 'message' | 'error' | 'exit', cb: (arg: never) => void): void
 }
 
 /**
@@ -70,6 +68,8 @@ export class AxilogService {
   private readonly idleKillMs: number
   private readonly maxLogBytes: number
   private readonly spawn: (workerPath: string) => WorkerLike
+  /** A fake spawn has no bundle on disk, so the existsSync guard must not apply. */
+  private readonly spawnInjected: boolean
 
   constructor(opts: AxilogServiceOptions = {}) {
     this.workerPath = opts.workerPath ?? defaultWorkerPath()
@@ -78,6 +78,7 @@ export class AxilogService {
     this.idleKillMs = opts.idleKillMs ?? IDLE_KILL_MS
     this.maxLogBytes = opts.maxLogBytes ?? MAX_LOG_BYTES
     this.spawn = opts.spawn ?? ((p) => new Worker(p) as unknown as WorkerLike)
+    this.spawnInjected = opts.spawn !== undefined
   }
 
   workerIsRunning(): boolean {
@@ -143,9 +144,23 @@ export class AxilogService {
     }
   }
 
+  /**
+   * Fail every in-flight request at once. Any event that ends the worker
+   * (error, exit, a timeout that terminates it) invalidates ALL pending
+   * requests, not just the one that noticed — leaving the others armed would
+   * make each wait out its own timeout and then blame the wrong cause.
+   */
+  private drainPending(error: Error): void {
+    for (const { reject, timer } of this.pending.values()) {
+      clearTimeout(timer)
+      reject(error)
+    }
+    this.pending.clear()
+  }
+
   private ensureWorker(): WorkerLike {
     if (this.worker) return this.worker
-    if (!existsSync(this.workerPath)) {
+    if (!this.spawnInjected && !existsSync(this.workerPath)) {
       throw new Error(
         `AxiLog worker bundle missing at ${this.workerPath} — run \`npm run build\` (electron-vite emits it as a second main entry)`
       )
@@ -161,12 +176,16 @@ export class AxilogService {
       this.armIdleKill()
     }) as (arg: never) => void)
     worker.on('error', ((err: Error) => {
-      for (const { reject, timer } of this.pending.values()) {
-        clearTimeout(timer)
-        reject(err)
-      }
-      this.pending.clear()
       this.worker = null
+      this.drainPending(err)
+    }) as (arg: never) => void)
+    // A worker can die WITHOUT emitting 'error' — an OOM kill, or a native
+    // addon calling process.exit. Without this, `pending` and `this.worker`
+    // would both survive a dead worker and workerIsRunning() would lie.
+    worker.on('exit', ((code: number) => {
+      if (this.worker !== worker) return
+      this.worker = null
+      this.drainPending(new Error(`AxiLog worker exited unexpectedly (code ${code})`))
     }) as (arg: never) => void)
     this.worker = worker
     return worker
@@ -192,6 +211,12 @@ export class AxilogService {
         this.pending.delete(id)
         void this.worker?.terminate()
         this.worker = null
+        // Terminating takes every other in-flight request down with it, so they
+        // are drained here with an honest cause rather than each timing out
+        // later against a worker that is already gone.
+        this.drainPending(
+          new Error('AxiLog worker was terminated because another request timed out')
+        )
         reject(new Error(`AxiLog parse timed out after ${this.parseTimeoutMs}ms`))
       }, this.parseTimeoutMs)
       timer.unref?.()
