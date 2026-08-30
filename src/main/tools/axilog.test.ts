@@ -62,6 +62,36 @@ describe('axilog tools', () => {
     expect(JSON.parse(res.content[0].text).logs).toHaveLength(1)
   })
 
+  it('never sends a filesystem path to the model in axilog_logs_list', async () => {
+    const watcher = new AxilogWatcher({ dir: () => null, now: () => 0 })
+    watcher.registerOpened('/home/realuser/Documents/Guild Wars 2/logs/20260830-211432.zevtc')
+    const tools = buildAxilogTools(() => ({ watcher, service: null }))
+    const res = await call(tools, 'axilog_logs_list', { limit: 5 })
+    const serialized = res.content[0].text
+    // A real guard, not a field allowlist: any path-like substring at all fails,
+    // so a future field carrying a path cannot slip through.
+    expect(serialized).not.toMatch(/[/\\]/)
+    expect(serialized).not.toContain('realuser')
+    const logs = JSON.parse(serialized).logs
+    expect(logs).toHaveLength(1)
+    expect(logs[0].logId).toEqual(expect.any(String))
+    expect(logs[0].path).toBeUndefined()
+  })
+
+  it('never sends a filesystem path to the model in the parsing tools', async () => {
+    const { tools, entry } = deps()
+    for (const [name, args] of [
+      ['axilog_fight_overview', { logId: entry.logId }],
+      ['axilog_section', { logId: entry.logId, section: 'support' }],
+      ['axilog_query', { logId: entry.logId, filter: '.encounter' }]
+    ] as const) {
+      const res = await call(tools, name, args)
+      expect(res.isError, name).toBeFalsy()
+      expect(res.content[0].text, name).not.toContain('/logs/')
+      expect(res.content[0].text, name).not.toContain('.zevtc')
+    }
+  })
+
   it('returns coverage in the overview so the model can refuse honestly', async () => {
     const { tools, entry } = deps()
     const res = await call(tools, 'axilog_fight_overview', { logId: entry.logId })

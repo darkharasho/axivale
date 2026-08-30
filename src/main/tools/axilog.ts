@@ -54,7 +54,19 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
         const logs = d.watcher.list({ since: args.since, limit: args.limit ?? 20, map: args.map })
         return {
           value: {
-            logs,
+            // PROJECTED, never the raw LogEntry: `path` is an absolute
+            // filesystem path (home directory, OS account name) and this value
+            // is serialized straight into the model's context and shipped to a
+            // third-party inference API. The model addresses logs by `logId`;
+            // main resolves the path itself in `resolve()`. Nothing downstream
+            // needs it, so it must never be added back here.
+            logs: logs.map(({ logId, startedAt, mapFolder, bytes, source }) => ({
+              logId,
+              startedAt,
+              mapFolder,
+              bytes,
+              source
+            })),
             note:
               logs.length === 0
                 ? 'No logs found. The user may need to set the arcdps log folder in the Logs panel, or drop a .zevtc into the chat.'
