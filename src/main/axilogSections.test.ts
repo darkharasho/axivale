@@ -19,6 +19,15 @@ describe('section registry', () => {
     expect(findSections('xyzzy').length).toBe(findSections('').length)
   })
 
+  it('hands back a copy, so a caller sorting the result cannot mutate the registry', () => {
+    const first = findSections('')
+    expect(first).not.toBe(SECTIONS)
+    first.reverse()
+    expect(findSections('')[0].key).toBe('damage')
+    const miss = findSections('xyzzy')
+    expect(miss).not.toBe(SECTIONS)
+  })
+
   it('declares which parse passes each section needs', () => {
     expect(getSection('damage')!.passes).toEqual({})
   })
@@ -83,6 +92,33 @@ describe('runSection', () => {
     const perEntity = runSection(report, 'damage', { role: 'squad', limit: 1000 }).rows
     const summed = perEntity.reduce((acc, r) => acc + Number(r.total), 0)
     expect(Number(squad.rows[0].total)).toBe(summed)
+    // omitted, not set to undefined — same as the entity path
+    expect('warnings' in squad).toBe(false)
+  })
+
+  it('averages rate columns at squad granularity instead of summing them', () => {
+    const squad = runSection(report, 'damage', { granularity: 'squad', role: 'squad' })
+    const perEntity = runSection(report, 'damage', { role: 'squad', limit: 1000 }).rows
+    const dpsSum = perEntity.reduce((acc, r) => acc + Number(r.dps), 0)
+    expect(Number(squad.rows[0].dps)).toBe(Math.round((dpsSum / perEntity.length) * 10) / 10)
+    expect(Number(squad.rows[0].dps)).toBeLessThan(dpsSum)
+    expect(squad.note).toMatch(/DPS is a mean, not a sum/)
+  })
+
+  it('explains a filter that matched nothing rather than returning a bare empty table', () => {
+    // defenses/contribution cover only the 42 friendly entities: a `present`
+    // block that still has no enemy rows at all.
+    const res = runSection(report, 'defenses', { role: 'enemy_player' })
+    expect(res.rows).toEqual([])
+    expect(res.note).toMatch(/No entities matched \(role=enemy_player\)/)
+    expect(res.note).toMatch(/covers 42 of the log's 122 entities/)
+  })
+
+  it('returns no row at all, not a fabricated zero, when a squad rollup matches nothing', () => {
+    const res = runSection(report, 'defenses', { granularity: 'squad', role: 'enemy_player' })
+    expect(res.rows).toEqual([])
+    expect(res.note).toMatch(/No entities matched \(role=enemy_player\)/)
+    expect(res.note).toMatch(/covers 42 of the log's 122 entities/)
   })
 
   it('reports an absent block as a note rather than empty rows', () => {
@@ -104,6 +140,42 @@ describe('runSection', () => {
 
   it('throws an actionable error for an unknown section', () => {
     expect(() => runSection(report, 'nonsense', {})).toThrow(/unknown section "nonsense"/i)
+  })
+
+  it('reports an unsupported block as a note', () => {
+    const stripped = { ...report, blocks: {}, coverage: { damage: 'unsupported' } } as AxilogReport
+    const res = runSection(stripped, 'damage', {})
+    expect(res.rows).toEqual([])
+    expect(res.note).toMatch(/unsupported/)
+  })
+
+  it('says a present-but-empty block is empty, even when the result also truncates', () => {
+    const emptyCoverage = { ...report, coverage: { ...report.coverage, damage: 'empty' } } as AxilogReport
+    const truncated = runSection(emptyCoverage, 'damage', { limit: 2 })
+    expect(truncated.note).toMatch(/Showing 2 of \d+ rows/)
+    expect(truncated.note).toMatch(/present but empty/)
+    const untruncated = runSection(emptyCoverage, 'damage', { limit: 1000 })
+    expect(untruncated.note).toMatch(/present but empty/)
+  })
+
+  it('takes damageTaken from the authoritative damage block, not a derived sum', () => {
+    const def = runSection(report, 'defenses', { entity: 'Anon132' })
+    const dmg = runSection(report, 'damage', { entity: 'Anon132' })
+    expect(def.rows).toHaveLength(1)
+    expect(dmg.rows).toHaveLength(1)
+    expect(def.rows[0].damageTaken).toBe(dmg.rows[0].taken)
+    expect(Number(def.rows[0].damageTaken)).toBe(8993)
+  })
+
+  it('blanks damageTaken and says why when the damage block is absent', () => {
+    const noDamage = {
+      ...report,
+      blocks: { defenses: report.blocks.defenses },
+      coverage: { ...report.coverage, damage: 'not_computed' }
+    } as AxilogReport
+    const res = runSection(noDamage, 'defenses', { limit: 2 })
+    expect(res.rows[0].damageTaken).toBe('')
+    expect(res.note).toMatch(/Damage taken is blank/)
   })
 
   it('shapes defenses with damage taken and downs', () => {

@@ -8,6 +8,12 @@
 // warnings?}. The parsed report never leaves the worker, so no shaper may
 // return a report fragment, a nested object, or an array — every cell is a
 // string or a number.
+//
+// Coverage honesty runs deeper than the `coverage` map: a block can be
+// `present` and still cover only part of the roster (in the WvW fixture
+// `defenses` and `contribution` carry the 42 friendly entities and no enemies
+// at all). Zero matching rows is therefore reported as a note explaining what
+// the block covers, never as a silent empty table and never as a summed zero.
 
 import {
   buildEntityIndex,
@@ -25,6 +31,11 @@ export interface SectionField {
   key: string
   label: string
   help?: string
+  /**
+   * How the squad granularity collapses this column. Totals sum; rates must not
+   * (38 players' dps summed is a ~40k number that means nothing). Default 'sum'.
+   */
+  aggregate?: 'sum' | 'mean' | 'none'
 }
 
 export interface SectionQuery {
@@ -75,11 +86,23 @@ const round1 = (v: number): number => Math.round(v * 10) / 10
 const nested = (obj: Record<string, unknown>, outer: string, inner: string): number =>
   num((obj[outer] as Record<string, unknown> | undefined)?.[inner])
 
+const joinNotes = (...parts: Array<string | undefined>): string | undefined =>
+  parts.filter(Boolean).join(' ') || undefined
+
 function matchesFilters(ref: EntityRef, opts: SectionQuery, only: EntityRef | null): boolean {
   if (only && ref.id !== only.id) return false
   if (opts.role && ref.role !== opts.role) return false
   if (opts.subgroup !== undefined && ref.subgroup !== opts.subgroup) return false
   return true
+}
+
+/** Human-readable echo of the active filters, for the "matched nothing" note. */
+function describeFilters(opts: SectionQuery, only: EntityRef | null): string {
+  const parts: string[] = []
+  if (only) parts.push(`entity=${only.name}`)
+  if (opts.role) parts.push(`role=${opts.role}`)
+  if (opts.subgroup !== undefined) parts.push(`subgroup=${opts.subgroup}`)
+  return parts.join(', ')
 }
 
 /**
@@ -92,7 +115,8 @@ function shapeByEntity(
   index: EntityIndex,
   opts: SectionQuery,
   descriptor: SectionDescriptor,
-  project: (stats: Record<string, unknown>) => Record<string, number>
+  project: (stats: Record<string, unknown>, ref: EntityRef) => Record<string, string | number>,
+  extraNote?: string
 ): SectionResult {
   const coverage = report.coverage?.[descriptor.block]
   const byEntity = report.blocks?.[descriptor.block]?.by_entity
@@ -118,7 +142,6 @@ function shapeByEntity(
     }
   }
 
-  const metricKeys = descriptor.fields.map((f) => f.key)
   const warnings: string[] = []
   const rows: Array<Record<string, string | number>> = []
   for (const [id, stats] of Object.entries(byEntity)) {
@@ -132,11 +155,23 @@ function shapeByEntity(
       name: ref.name,
       profession: ref.profession,
       subgroup: ref.subgroup ?? '',
-      ...project((stats ?? {}) as Record<string, unknown>)
+      ...project((stats ?? {}) as Record<string, unknown>, ref)
     })
   }
 
-  const columns = [...IDENTITY_COLUMNS, ...descriptor.fields.map((f) => ({ key: f.key, label: f.label }))]
+  const columns = [
+    ...IDENTITY_COLUMNS,
+    ...descriptor.fields.map((f) => ({ key: f.key, label: f.label }))
+  ]
+  const warningsPart = warnings.length ? { warnings } : {}
+
+  // A `present` block can still cover only part of the roster, so "no rows" is
+  // a fact about this block's coverage and must be stated, not implied.
+  if (rows.length === 0) {
+    const filters = describeFilters(opts, only)
+    const note = `No entities matched${filters ? ` (${filters})` : ''}. This block covers ${Object.keys(byEntity).length} of the log's ${index.all().length} entities.`
+    return { rows: [], columns, note: joinNotes(note, extraNote), ...warningsPart }
+  }
 
   if (opts.granularity === 'squad') {
     const total: Record<string, string | number> = {
@@ -144,17 +179,34 @@ function shapeByEntity(
       profession: '—',
       subgroup: ''
     }
-    for (const k of metricKeys) total[k] = round1(rows.reduce((acc, r) => acc + num(r[k]), 0))
+    const means: string[] = []
+    for (const f of descriptor.fields) {
+      if (f.aggregate === 'none') {
+        total[f.key] = '—'
+        continue
+      }
+      const sum = rows.reduce((acc, r) => acc + num(r[f.key]), 0)
+      if (f.aggregate === 'mean') {
+        total[f.key] = round1(sum / rows.length)
+        means.push(f.label)
+      } else {
+        total[f.key] = round1(sum)
+      }
+    }
     return {
       rows: [total],
       columns,
-      note: `Summed across ${rows.length} matching entities.`,
-      warnings: warnings.length ? warnings : undefined
+      note: joinNotes(
+        `Summed across ${rows.length} matching entities.`,
+        means.length ? `${means.join(', ')} is a mean, not a sum.` : undefined,
+        extraNote
+      ),
+      ...warningsPart
     }
   }
 
-  const sortKey =
-    opts.sort && metricKeys.includes(opts.sort) ? opts.sort : descriptor.fields[0].key
+  const metricKeys = descriptor.fields.map((f) => f.key)
+  const sortKey = opts.sort && metricKeys.includes(opts.sort) ? opts.sort : descriptor.fields[0].key
   const sortNote =
     opts.sort && !metricKeys.includes(opts.sort)
       ? `Unknown sort key "${opts.sort}"; sorted by ${sortKey} instead.`
@@ -166,17 +218,14 @@ function shapeByEntity(
   const truncatedNote =
     rows.length > limited.length
       ? `Showing ${limited.length} of ${rows.length} rows (raise \`limit\` for more).`
-      : coverage === 'empty'
-        ? 'This block is present but empty for this fight.'
-        : undefined
-  const note = [sortNote, truncatedNote].filter(Boolean).join(' ') || undefined
+      : undefined
+  // Independent of truncation: a present-but-empty block that also truncates
+  // must not lose its "empty" message.
+  const emptyNote =
+    coverage === 'empty' ? 'This block is present but empty for this fight.' : undefined
+  const note = joinNotes(sortNote, truncatedNote, emptyNote, extraNote)
 
-  return {
-    rows: limited,
-    columns,
-    ...(note ? { note } : {}),
-    ...(warnings.length ? { warnings } : {})
-  }
+  return { rows: limited, columns, ...(note ? { note } : {}), ...warningsPart }
 }
 
 const damageSection: SectionDescriptor = {
@@ -191,7 +240,7 @@ const damageSection: SectionDescriptor = {
   granularities: ['entity', 'squad'],
   fields: [
     { key: 'total', label: 'Damage' },
-    { key: 'dps', label: 'DPS' },
+    { key: 'dps', label: 'DPS', aggregate: 'mean' },
     { key: 'downs', label: 'Downs', help: 'enemies this entity downed' },
     { key: 'kills', label: 'Kills' },
     { key: 'taken', label: 'Damage taken' },
@@ -220,7 +269,7 @@ const defensesSection: SectionDescriptor = {
   passes: {},
   granularities: ['entity', 'squad'],
   fields: [
-    { key: 'damageTaken', label: 'Damage taken', help: 'strike + condition + life-leech damage' },
+    { key: 'damageTaken', label: 'Damage taken', help: 'from blocks.damage.taken, the same figure the damage section reports' },
     { key: 'downsTaken', label: 'Times downed' },
     { key: 'deaths', label: 'Deaths' },
     { key: 'boonStripsTaken', label: 'Strips taken' },
@@ -230,19 +279,34 @@ const defensesSection: SectionDescriptor = {
     { key: 'dodges', label: 'Dodges' }
   ],
   shape(report, index, opts) {
-    return shapeByEntity(report, index, opts, defensesSection, (s) => ({
-      // axilog has no single `damage_taken`; it splits incoming damage by kind.
-      // strike + condition + life-leech reproduces `blocks.damage.taken` exactly
-      // on the fixture, so that is the sum used here.
-      damageTaken: num(s.strike_damage) + num(s.condition_damage) + num(s.life_leech_damage),
-      downsTaken: num(s.downs_taken),
-      deaths: num(s.deaths),
-      boonStripsTaken: num(s.boon_strips_taken),
-      barrierDamage: num(s.barrier_damage),
-      blocked: num(s.blocked_count),
-      evaded: num(s.evaded_count),
-      dodges: num(s.dodge_count)
-    }))
+    // `blocks.defenses` has no total for incoming damage — it splits it by kind
+    // (strike / condition / life-leech / power / barrier), and summing those
+    // disagrees with `blocks.damage.taken` for 8 of the fixture's 42 entities.
+    // `taken` is the authoritative figure and is what the damage section
+    // publishes, so read it here too rather than surface a rival number.
+    const damageByEntity =
+      report.coverage?.damage === 'present' ? report.blocks?.damage?.by_entity : undefined
+    return shapeByEntity(
+      report,
+      index,
+      opts,
+      defensesSection,
+      (s, ref) => ({
+        damageTaken: damageByEntity
+          ? num((damageByEntity[ref.id] as Record<string, unknown> | undefined)?.taken)
+          : '',
+        downsTaken: num(s.downs_taken),
+        deaths: num(s.deaths),
+        boonStripsTaken: num(s.boon_strips_taken),
+        barrierDamage: num(s.barrier_damage),
+        blocked: num(s.blocked_count),
+        evaded: num(s.evaded_count),
+        dodges: num(s.dodge_count)
+      }),
+      damageByEntity
+        ? undefined
+        : 'Damage taken is blank: it comes from the damage block, which this log does not carry.'
+    )
   }
 }
 
@@ -281,10 +345,14 @@ export const SECTIONS: SectionDescriptor[] = [damageSection, defensesSection, co
 export const getSection = (key: string): SectionDescriptor | undefined =>
   SECTIONS.find((s) => s.key === key)
 
-/** Free-text discovery over the registry. Empty / no match -> full catalog. */
+/**
+ * Free-text discovery over the registry. Empty / no match -> full catalog.
+ * Always returns a fresh array: a caller that sorts or splices the result must
+ * not mutate the process-wide registry.
+ */
 export function findSections(query: string): SectionDescriptor[] {
   const q = query.trim().toLowerCase()
-  if (!q) return SECTIONS
+  if (!q) return [...SECTIONS]
   const tokens = q.split(/\s+/).filter(Boolean)
   const scored = SECTIONS.map((s) => {
     const aliasSet = new Set([s.key, ...s.aliases].map((a) => a.toLowerCase()))
@@ -301,7 +369,7 @@ export function findSections(query: string): SectionDescriptor[] {
     return { s, score }
   })
   const hits = scored.filter((x) => x.score > 0).sort((a, b) => b.score - a.score)
-  return hits.length ? hits.map((x) => x.s) : SECTIONS
+  return hits.length ? hits.map((x) => x.s) : [...SECTIONS]
 }
 
 export function runSection(
