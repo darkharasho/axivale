@@ -4,7 +4,7 @@
 // nothing cached on disk.
 
 import { createHash } from 'node:crypto'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, basename, dirname } from 'node:path'
 
 export interface LogEntry {
@@ -34,6 +34,10 @@ export interface WatcherFs {
   exists(path: string): boolean
   listFiles(dir: string): Array<{ path: string; bytes: number }>
   statSize(path: string): number
+  /** Returns null for an unreadable/absent file. Optional because only
+   *  log-folder detection needs it — a test fake that never detects a folder
+   *  has nothing to supply. Used solely to read Steam's libraryfolders.vdf. */
+  readText?(path: string): string | null
 }
 
 export interface WatcherOptions {
@@ -117,26 +121,70 @@ export function logIdForPath(path: string): string {
 }
 
 /**
+ * The filesystem slice detection needs: probe for a directory, and read Steam's
+ * library manifest. `readText` is optional so a caller with only `exists` (the
+ * shape most tests hand in) still type-checks — it just sees no extra
+ * libraries, which is the pre-existing behaviour.
+ */
+export type DetectFs = Pick<WatcherFs, 'exists' | 'readText'>
+
+/** The Steam app id for Guild Wars 2 — its Proton prefix lives under
+ *  `steamapps/compatdata/<id>/pfx` inside whichever library holds the game. */
+const GW2_APP_ID = '1284210'
+
+/** Where Steam itself can live. Each holds a `steamapps/libraryfolders.vdf`. */
+function steamRoots(home: string): string[] {
+  return [join(home, '.steam', 'steam'), join(home, '.local', 'share', 'Steam')]
+}
+
+/**
+ * Every Steam library on this machine, read out of `libraryfolders.vdf`.
+ *
+ * A multi-drive Steam install is the common case, not an exotic one: Steam
+ * puts big games on a second disk and records that library's root here. GW2's
+ * Proton prefix then lives on THAT drive, nowhere under ~/.steam — so a
+ * detector that only probes the two well-known Steam roots finds nothing and
+ * tells the user they have no logs, which is false. Parsing the manifest is
+ * what makes detection work on the machine it was actually reported broken on.
+ *
+ * The parse is deliberately shallow — every `"path" "<value>"` pair in the
+ * file — rather than a real VDF parser: `path` is the only key whose value is
+ * a directory, and a malformed line costs a candidate that fails `exists`.
+ */
+export function steamLibraryRoots(home: string, fs: DetectFs = realFs): string[] {
+  const out: string[] = []
+  for (const root of steamRoots(home)) {
+    out.push(root)
+    const text = fs.readText?.(join(root, 'steamapps', 'libraryfolders.vdf'))
+    if (!text) continue
+    for (const m of text.matchAll(/"path"\s+"((?:[^"\\]|\\.)*)"/g)) {
+      out.push(m[1].replace(/\\(.)/g, '$1'))
+    }
+  }
+  return [...new Set(out)]
+}
+
+/**
  * Where arcdps writes logs. On Linux the game runs under a Proton/Wine prefix,
  * so the same relative path hangs off a prefix root — hence the candidate list
  * rather than one path. Finding none is normal; the user picks the folder.
  */
-export function defaultLogDirCandidates(home: string): string[] {
+export function defaultLogDirCandidates(home: string, fs: DetectFs = realFs): string[] {
   const rel = join('Guild Wars 2', 'addons', 'arcdps', 'arcdps.cbtlogs')
-  const winDocs = join(home, 'Documents', rel)
   const prefixDocs = (prefix: string): string =>
     join(prefix, 'drive_c', 'users', 'steamuser', 'Documents', rel)
   return [
-    winDocs,
-    prefixDocs(join(home, '.steam', 'steam', 'steamapps', 'compatdata', '1284210', 'pfx')),
-    prefixDocs(join(home, '.local', 'share', 'Steam', 'steamapps', 'compatdata', '1284210', 'pfx')),
+    join(home, 'Documents', rel),
+    ...steamLibraryRoots(home, fs).map((lib) =>
+      prefixDocs(join(lib, 'steamapps', 'compatdata', GW2_APP_ID, 'pfx'))
+    ),
     prefixDocs(join(home, 'Games', 'guild-wars-2'))
   ]
 }
 
 /** The first default candidate that exists on disk, or null — the user picks the folder otherwise. */
-export function detectLogDir(home: string, fs: Pick<WatcherFs, 'exists'> = realFs): string | null {
-  return defaultLogDirCandidates(home).find((c) => fs.exists(c)) ?? null
+export function detectLogDir(home: string, fs: DetectFs = realFs): string | null {
+  return defaultLogDirCandidates(home, fs).find((c) => fs.exists(c)) ?? null
 }
 
 /**
@@ -149,7 +197,7 @@ export function detectLogDir(home: string, fs: Pick<WatcherFs, 'exists'> = realF
 export function resolveAxilogDir(
   configured: string | null | undefined,
   home: string,
-  fs: Pick<WatcherFs, 'exists'> = realFs
+  fs: DetectFs = realFs
 ): string | null {
   return (configured && configured.length > 0 ? configured : null) ?? detectLogDir(home, fs)
 }
@@ -166,7 +214,7 @@ export function computeAxilogAvailable(opts: {
   hasRegisteredLogs: boolean
   configuredDir: string | null | undefined
   home: string
-  fs?: Pick<WatcherFs, 'exists'>
+  fs?: DetectFs
 }): boolean {
   return (
     opts.serviceAvailable &&
@@ -193,7 +241,14 @@ const realFs: WatcherFs = {
     }
     return out
   },
-  statSize: (p) => statSync(p).size
+  statSize: (p) => statSync(p).size,
+  readText(path) {
+    try {
+      return readFileSync(path, 'utf8')
+    } catch {
+      return null
+    }
+  }
 }
 
 export class AxilogWatcher {

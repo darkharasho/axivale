@@ -6,7 +6,9 @@ import {
   defaultLogDirCandidates,
   hasLogExtension,
   resolveAxilogDir,
-  computeAxilogAvailable
+  computeAxilogAvailable,
+  steamLibraryRoots,
+  detectLogDir
 } from './axilogWatcher'
 
 /** In-memory fs + clock, so no test touches a real directory. */
@@ -54,6 +56,69 @@ describe('defaultLogDirCandidates', () => {
     const candidates = defaultLogDirCandidates('/home/user')
     expect(candidates.some((c) => c.includes('arcdps.cbtlogs'))).toBe(true)
     expect(candidates.some((c) => c.includes('drive_c'))).toBe(true)
+  })
+
+  it('offers a candidate under every library named in libraryfolders.vdf', () => {
+    const candidates = defaultLogDirCandidates('/home/user', vdfFs(LIBRARY_VDF))
+    expect(candidates).toContain(
+      '/mnt/data/SteamLibrary/steamapps/compatdata/1284210/pfx/drive_c/users/steamuser/Documents/Guild Wars 2/addons/arcdps/arcdps.cbtlogs'
+    )
+  })
+})
+
+/** Steam's real manifest shape: the library that holds a big game is often on
+ *  a different disk than ~/.steam, and only this file names it. */
+const LIBRARY_VDF = `"libraryfolders"
+{
+\t"0"
+\t{
+\t\t"path"\t\t"/home/user/.local/share/Steam"
+\t}
+\t"1"
+\t{
+\t\t"path"\t\t"/mnt/data/SteamLibrary"
+\t}
+}`
+
+function vdfFs(vdf: string, existing: string[] = []) {
+  return {
+    exists: (p: string) => existing.includes(p),
+    readText: (p: string) => (p.endsWith('libraryfolders.vdf') ? vdf : null)
+  }
+}
+
+describe('steamLibraryRoots', () => {
+  it('always includes the two well-known Steam roots', () => {
+    const roots = steamLibraryRoots('/home/user', { exists: () => false })
+    expect(roots).toContain('/home/user/.steam/steam')
+    expect(roots).toContain('/home/user/.local/share/Steam')
+  })
+
+  it('adds libraries on other drives and de-duplicates', () => {
+    const roots = steamLibraryRoots('/home/user', vdfFs(LIBRARY_VDF))
+    expect(roots).toContain('/mnt/data/SteamLibrary')
+    expect(roots.filter((r) => r === '/home/user/.local/share/Steam')).toHaveLength(1)
+  })
+
+  it('unescapes backslashes in a Windows-style path value', () => {
+    const roots = steamLibraryRoots('/home/user', vdfFs('"path"\t\t"D:\\\\SteamLibrary"'))
+    expect(roots).toContain('D:\\SteamLibrary')
+  })
+
+  it('survives an unreadable or malformed manifest', () => {
+    expect(() => steamLibraryRoots('/home/user', { exists: () => false })).not.toThrow()
+    expect(steamLibraryRoots('/home/user', vdfFs('not a vdf at all'))).toHaveLength(2)
+  })
+})
+
+describe('detectLogDir', () => {
+  // The reported bug: GW2 installed to a second Steam library on another
+  // drive. Every hard-coded candidate misses, and the app told the user it
+  // had no logs — which was false.
+  it('finds a log folder inside a second-drive Steam library', () => {
+    const real =
+      '/mnt/data/SteamLibrary/steamapps/compatdata/1284210/pfx/drive_c/users/steamuser/Documents/Guild Wars 2/addons/arcdps/arcdps.cbtlogs'
+    expect(detectLogDir('/home/user', vdfFs(LIBRARY_VDF, [real]))).toBe(real)
   })
 })
 
