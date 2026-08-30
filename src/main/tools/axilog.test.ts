@@ -91,6 +91,23 @@ describe('axilog tools', () => {
     expect(res.content[0].text).toMatch(/not available/i)
   })
 
+  it('lists logs even when the native module did not load — filesystem listing needs no parser', async () => {
+    const watcher = new AxilogWatcher({ dir: () => null, now: () => 0 })
+    watcher.registerOpened('/logs/20260830-211432.zevtc')
+    const tools = buildAxilogTools(() => ({ watcher, service: null }))
+    const res = await call(tools, 'axilog_logs_list', { limit: 5 })
+    expect(res.isError).toBeFalsy()
+    expect(JSON.parse(res.content[0].text).logs).toHaveLength(1)
+  })
+
+  it('lists sections even when the native module did not load — the catalog is static', async () => {
+    const watcher = new AxilogWatcher({ dir: () => null, now: () => 0 })
+    const tools = buildAxilogTools(() => ({ watcher, service: null }))
+    const res = await call(tools, 'axilog_sections_list', {})
+    expect(res.isError).toBeFalsy()
+    expect(JSON.parse(res.content[0].text).sections.length).toBeGreaterThan(0)
+  })
+
   it('flags a truncated jq result rather than presenting it as complete', async () => {
     const { tools, entry } = deps({ query: vi.fn(async () => ({ rows: [1], truncated: true })) })
     const res = await call(tools, 'axilog_query', { logId: entry.logId, filter: '.blocks' })

@@ -94,7 +94,7 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
 
     tool(
       'axilog_sections_list',
-      'The catalog of analysis sections a raw log exposes: keys, what each covers, and its columns. Pass `topic` to find the right section for a question ("strips", "who gave stability"). Roster coverage varies by section: `damage` covers all 95 entities (squad, friendly players, enemy players, npcs), but `defenses`, `contribution`, `support`, `cc`, and `boons` were only computed for the 42 friendly entities — a query for an enemy role against one of those five is honestly EMPTY (never computed), not a real zero. This log format also never attributes minion damage to a specific enemy player.',
+      'The catalog of analysis sections a raw log exposes: keys, what each covers, and its columns. Pass `topic` to find the right section for a question ("strips", "who gave stability"). Roster coverage varies by section: `damage` is computed for a broader set of entities than `defenses`, `contribution`, `support`, `cc`, and `boons`, which are computed only for friendly entities — a query for an enemy role against those five comes back honestly EMPTY (never computed), not a real zero; each result\'s note reports the actual coverage for that log. This log format also never attributes minion damage to a specific enemy player.',
       { topic: z.string().optional() },
       safe(async (args: { topic?: string }) => ({
         sections: findSections(args.topic ?? '').map((s) => ({
@@ -109,7 +109,7 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
 
     tool(
       'axilog_section',
-      'The workhorse: one analysis section of one fight, as named rows. Use `role` to separate your squad from the enemy, `entity` to focus one player, `sort` to rank by a column. Prefer this over axilog_query. Note: `defenses`, `contribution`, `support`, `cc`, and `boons` were only computed for the 42 friendly entities (squad/friendly_player), unlike `damage` which covers all 95 entities including enemies — an enemy-role query against those five sections comes back empty because the data was never computed, not because the enemy did nothing. Minion damage cannot be attributed to a specific enemy player in this log format.',
+      'The workhorse: one analysis section of one fight, as named rows. Use `role` to separate your squad from the enemy, `entity` to focus one player, `sort` to rank by a column. Prefer this over axilog_query. Note: `defenses`, `contribution`, `support`, `cc`, and `boons` are computed only for friendly entities (squad/friendly_player), unlike `damage` which is computed for a broader set of entities including enemies — an enemy-role query against those five sections comes back honestly EMPTY (never computed), not a real zero; the result\'s note reports the actual coverage for that log. Minion damage cannot be attributed to a specific enemy player in this log format.',
       {
         logId: z.string(),
         section: z.string().describe('a key from axilog_sections_list'),

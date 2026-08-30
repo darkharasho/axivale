@@ -25,7 +25,7 @@ import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridge
 import { summarizeResilient } from './axibridgeSummarize'
 import { AxilogWatcher, detectLogDir } from './axilogWatcher'
 import { AxilogService } from './axilogService'
-import { loadAxilog } from './axilogNative'
+import { axilogUnavailableReason } from './axilogNative'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
 import {
   GITHUB_DEVICE_CLIENT_ID,
@@ -539,8 +539,10 @@ app.whenReady().then(async () => {
   const axilogWatcher = new AxilogWatcher({
     dir: () => store.getSetting('axilogDir') || detectLogDir(app.getPath('home'))
   })
-  const axilogNative = loadAxilog()
-  const axilogService = axilogNative
+  // axilogUnavailableReason() calls the same memoized loadAxilog() internally,
+  // so this gate is equivalent without index.ts holding its own (unused) reference
+  // to the native module object.
+  const axilogService = axilogUnavailableReason() === null
     ? new AxilogService({
         // Pass the worker path explicitly: axilogService lives in a module that
         // electron-vite code-splits into out/main/chunks/, so its own
