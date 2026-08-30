@@ -26,8 +26,20 @@ export interface LogsController {
  *  has no name of its own worth spotlighting the way a skill's title does, so
  *  opening on "select a fight" avoids implying the most recent one is special
  *  and matches how a user actually works this panel — scan the list, then
- *  pick one. */
-export function useLogs(): LogsController {
+ *  pick one.
+ *
+ *  `active` is the Logs section being the visible one. The hook is mounted at
+ *  App level for the whole app lifetime, so a mount-time-only scan would show
+ *  whatever existed at launch — a user who raids for three hours then opens the
+ *  tab would see "No fights logged yet.", which sounds honest and is false.
+ *  Instead it scans when the section becomes active and polls while it stays
+ *  active; the interval is torn down on deactivation and unmount, because an
+ *  interval left scanning the filesystem forever is worse than a stale list.
+ *  (The spec's opportunistic fs.watch is deliberately not implemented: the poll
+ *  delivers the user-visible guarantee without fs.watch's platform quirks.) */
+export const LOGS_POLL_MS = 30_000
+
+export function useLogs(active: boolean): LogsController {
   const [logs, setLogs] = useState<RendererLogEntry[]>([])
   const [status, setStatus] = useState<AxilogStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -46,9 +58,12 @@ export function useLogs(): LogsController {
   }
 
   useEffect(() => {
+    if (!active) return
     void refresh()
+    const timer = setInterval(() => void refresh(), LOGS_POLL_MS)
+    return () => clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [active])
 
   async function pickDir(): Promise<void> {
     const dir = await window.officer.axilogPickDir()

@@ -119,7 +119,7 @@ export default function App(): ReactElement {
   const skills = skillsCtl.skills
   // Logs state shared by the left-rail list (LogsNav) and the detail pane
   // (Logs); mirrors skillsCtl's split.
-  const logsCtl = useLogs()
+  const logsCtl = useLogs(section === 'logs')
   // Active sub-section of the merged Operations tab (Builds/Comps/Bureau).
   const [operationsSection, setOperationsSection] = useState<OperationsSection>('builds')
   // Roster reconciliation + annotations, shared by RosterNav (rail) and Roster.

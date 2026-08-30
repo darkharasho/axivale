@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 // src/renderer/src/components/panels/Logs.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent, act } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import Logs from './Logs'
 import LogsNav from './LogsNav'
-import { useLogs } from './useLogs'
+import { useLogs, LOGS_POLL_MS } from './useLogs'
 
 // Harness mounting both the rail + detail over one controller, as App does.
-function Harness(): ReactElement {
-  const ctl = useLogs()
+function Harness({ active = true }: { active?: boolean }): ReactElement {
+  const ctl = useLogs(active)
   return (
     <div>
       <LogsNav ctl={ctl} />
@@ -215,5 +215,68 @@ describe('Logs panel', () => {
     render(<Harness />)
     expect(await screen.findByText(/checking/i)).toBeTruthy()
     expect(screen.queryByText(/no arcdps log folder found/i)).toBeNull()
+  })
+
+  // Important — the hook is mounted at App level for the whole app lifetime, so
+  // a single mount-time scan means the panel shows whatever existed at launch:
+  // raid for three hours, open the Logs tab, see "No fights logged yet." — an
+  // honest-sounding message that is false.
+  it('does not scan while the logs section is not the active one', async () => {
+    const of = officer()
+    ;(window as unknown as { officer: unknown }).officer = of
+    render(<Harness active={false} />)
+    await waitFor(() => expect(screen.getByText(/loading/i)).toBeTruthy())
+    expect(of.axilogList).not.toHaveBeenCalled()
+  })
+
+  it('rescans when the logs section becomes active', async () => {
+    const of = officer()
+    ;(window as unknown as { officer: unknown }).officer = of
+    const { rerender } = render(<Harness active={false} />)
+    expect(of.axilogList).not.toHaveBeenCalled()
+    rerender(<Harness active={true} />)
+    await waitFor(() => expect(of.axilogList).toHaveBeenCalledTimes(1))
+  })
+
+  it('polls while the section stays active and stops when it is no longer active', async () => {
+    vi.useFakeTimers()
+    try {
+      const of = officer()
+      ;(window as unknown as { officer: unknown }).officer = of
+      const { rerender, unmount } = render(<Harness active={true} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(of.axilogList).toHaveBeenCalledTimes(1)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LOGS_POLL_MS)
+      })
+      expect(of.axilogList).toHaveBeenCalledTimes(2)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LOGS_POLL_MS)
+      })
+      expect(of.axilogList).toHaveBeenCalledTimes(3)
+
+      // Leaving the section must clear the interval — a leaked interval
+      // scanning the filesystem forever is worse than the bug being fixed.
+      rerender(<Harness active={false} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LOGS_POLL_MS * 3)
+      })
+      expect(of.axilogList).toHaveBeenCalledTimes(3)
+
+      rerender(<Harness active={true} />)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(of.axilogList).toHaveBeenCalledTimes(4)
+      unmount()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(LOGS_POLL_MS * 3)
+      })
+      expect(of.axilogList).toHaveBeenCalledTimes(4)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
