@@ -33,8 +33,19 @@ export interface WatcherOptions {
 }
 
 const LOG_NAME = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})\.(zevtc|evtc|evtc\.zip)$/i
+// Same extension set as LOG_NAME, but without requiring arcdps's own
+// timestamp-prefixed filename — a user-renamed drop (e.g. "myfight.zevtc")
+// is still a valid log by extension, just not one arcdps itself wrote.
+const LOG_EXT = /\.(zevtc|evtc(\.zip)?)$/i
 const SETTLE_AGE_MS = 60_000
 export const MAX_REGISTRY_ENTRIES = 100
+
+/** Extension-only check for the axilog:open-file trust boundary in main —
+ *  a renderer-supplied path must at least look like a combat log before it's
+ *  registered and later handed to the parser worker. */
+export function hasLogExtension(path: string): boolean {
+  return LOG_EXT.test(path)
+}
 
 /** `20260830-211432.zevtc` -> its local start time. Null for anything else. */
 export function parseLogFilename(name: string): { startedAt: string } | null {

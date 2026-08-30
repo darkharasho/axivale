@@ -23,7 +23,7 @@ import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridg
 import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeResilient } from './axibridgeSummarize'
-import { AxilogWatcher, detectLogDir } from './axilogWatcher'
+import { AxilogWatcher, detectLogDir, hasLogExtension } from './axilogWatcher'
 import { AxilogService } from './axilogService'
 import { axilogUnavailableReason } from './axilogNative'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
@@ -1155,26 +1155,38 @@ app.whenReady().then(async () => {
   )
   ipcMain.handle('skills:delete', (_e, id: string) => skills.remove(id))
 
-  // AxiLog panel: read-only filesystem metadata. axilog:pick-dir is the only
-  // write in this surface (persists the chosen folder as a setting) — nothing
-  // here parses a log or touches a log file on disk.
+  // AxiLog panel: read-only filesystem metadata — nothing here parses a log
+  // or touches a log file on disk. Both axilog:pick-dir (below) and the
+  // generic settings:set handler (which has no per-key allowlist, and
+  // 'axilogDir' is a valid SettingKey) can write axilogDir; pick-dir is just
+  // the one that does so from a trusted, renderer-uncontrolled value (the
+  // native dialog's own result).
   ipcMain.handle('axilog:list', (_e, filter?: { since?: string; limit?: number; map?: string }) => {
     axilogWatcher.scan()
     return axilogWatcher.list(filter ?? {})
   })
-  ipcMain.handle('axilog:status', () => ({
-    dir: store.getSetting('axilogDir') || detectLogDir(app.getPath('home')),
-    available: axilogService !== null,
-    reason: axilogUnavailableReason(),
-    count: axilogWatcher.list().length
-  }))
+  ipcMain.handle('axilog:status', () => {
+    const dir = store.getSetting('axilogDir') || detectLogDir(app.getPath('home'))
+    return {
+      dir,
+      dirExists: dir !== null && existsSync(dir),
+      available: axilogService !== null,
+      reason: axilogUnavailableReason()
+    }
+  })
   ipcMain.handle('axilog:pick-dir', async () => {
     const res = await dialog.showOpenDialog({ properties: ['openDirectory'] })
     if (res.canceled || !res.filePaths[0]) return null
     store.setSetting('axilogDir', res.filePaths[0])
     return res.filePaths[0]
   })
-  ipcMain.handle('axilog:open-file', (_e, path: string) => axilogWatcher.registerOpened(path))
+  // The renderer is nominally trusted, but this is the trust boundary before
+  // a path reaches the parser worker (via tools/axilog.ts's resolve()) — so
+  // it gets its own checks rather than relying on the drop handler's filter.
+  ipcMain.handle('axilog:open-file', (_e, path: unknown) => {
+    if (typeof path !== 'string' || !hasLogExtension(path) || !existsSync(path)) return null
+    return axilogWatcher.registerOpened(path)
+  })
 
   ipcMain.handle('roster:annotations:list', () => rosterAnnotations.list())
   ipcMain.handle(

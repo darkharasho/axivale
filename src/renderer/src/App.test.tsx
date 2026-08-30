@@ -87,7 +87,7 @@ function makeOfficer(overrides: Partial<typeof window.officer> = {}): typeof win
     skillsUpdate: vi.fn().mockResolvedValue(null),
     skillsDelete: vi.fn().mockResolvedValue(undefined),
     axilogList: vi.fn().mockResolvedValue([]),
-    axilogStatus: vi.fn().mockResolvedValue({ dir: null, available: true, reason: null, count: 0 }),
+    axilogStatus: vi.fn().mockResolvedValue({ dir: null, dirExists: false, available: true, reason: null }),
     axilogPickDir: vi.fn().mockResolvedValue(null),
     axilogOpenFile: vi.fn().mockResolvedValue({} as never),
     axilogPathForFile: vi.fn().mockReturnValue(''),

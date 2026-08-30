@@ -3,7 +3,8 @@ import {
   AxilogWatcher,
   parseLogFilename,
   logIdForPath,
-  defaultLogDirCandidates
+  defaultLogDirCandidates,
+  hasLogExtension
 } from './axilogWatcher'
 
 /** In-memory fs + clock, so no test touches a real directory. */
@@ -51,6 +52,20 @@ describe('defaultLogDirCandidates', () => {
     const candidates = defaultLogDirCandidates('/home/user')
     expect(candidates.some((c) => c.includes('arcdps.cbtlogs'))).toBe(true)
     expect(candidates.some((c) => c.includes('drive_c'))).toBe(true)
+  })
+})
+
+describe('hasLogExtension', () => {
+  it('accepts the arcdps combat-log extensions and rejects everything else', () => {
+    expect(hasLogExtension('/logs/20260830-211432.zevtc')).toBe(true)
+    expect(hasLogExtension('/logs/a.evtc')).toBe(true)
+    expect(hasLogExtension('/logs/a.evtc.zip')).toBe(true)
+    expect(hasLogExtension('/logs/A.ZEVTC')).toBe(true)
+    // A user-renamed drop is still a valid log by extension — no timestamp required.
+    expect(hasLogExtension('/logs/myfight.zevtc')).toBe(true)
+    expect(hasLogExtension('/etc/shadow')).toBe(false)
+    expect(hasLogExtension('/logs/screenshot.png')).toBe(false)
+    expect(hasLogExtension('/logs/a.zevtc.zip')).toBe(false)
   })
 })
 

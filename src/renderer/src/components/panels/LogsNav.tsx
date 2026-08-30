@@ -7,11 +7,19 @@ function timeOf(startedAt: string): string {
   return m ? `${m[1]}:${m[2]}` : ''
 }
 
+function emptyReason(status: LogsController['status'], error: string | null): string {
+  if (error) return 'Couldn’t load logs.'
+  if (!status) return 'Loading…'
+  if (status.dir === null) return 'No log folder found.'
+  if (!status.dirExists) return 'Log folder no longer exists.'
+  return 'No fights logged yet.'
+}
+
 /** Left-rail master list for the Logs tab, mirroring SkillsNav's structure:
  *  recent fights by map + local start time, newest first (useLogs already
  *  sorts via axilog:list). */
 export default function LogsNav({ ctl }: { ctl: LogsController }): ReactElement {
-  const { logs, activeId, select, status } = ctl
+  const { logs, activeId, select, status, error } = ctl
   return (
     <nav className="rail left sk2-rail">
       <div className="sk2-rail-h">
@@ -31,11 +39,7 @@ export default function LogsNav({ ctl }: { ctl: LogsController }): ReactElement 
             </div>
           </li>
         ))}
-        {logs.length === 0 && (
-          <li className="sk2-empty">
-            {status.dir === null ? 'No log folder found.' : 'No fights logged yet.'}
-          </li>
-        )}
+        {logs.length === 0 && <li className="sk2-empty">{emptyReason(status, error)}</li>}
       </ul>
     </nav>
   )

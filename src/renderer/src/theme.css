@@ -419,6 +419,9 @@ td.nm2{color:var(--ink)}
 .inputbar{padding:16px 30px}
 .inwrap{display:flex;align-items:flex-end;gap:14px;max-width:980px;margin:0 auto;border:1px solid transparent}
 .inwrap.drag-over{border-color:var(--focus);background:rgba(224,90,80,.06)}
+.drop-error{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--accent-b);max-width:980px;margin:6px auto 0;padding:0 30px}
+.lg-status{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:16px}
+.lg-folder-path{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.03em;color:var(--faint)}
 .prompt{font-family:'IBM Plex Mono',monospace;color:var(--accent-b);font-size:15px}
 /* the field rides over a mirror that paints the skill-token highlights, so it's
    transparent-backed and shares the mirror's exact box + typography */

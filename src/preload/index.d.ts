@@ -238,9 +238,11 @@ export interface RendererLogEntry {
 
 export interface AxilogStatus {
   dir: string | null
+  /** Whether `dir` (when set) still exists on disk — false means the
+   *  configured folder was renamed/deleted/unmounted since it was chosen. */
+  dirExists: boolean
   available: boolean
   reason: string | null
-  count: number
 }
 
 export interface OfficerApi {
@@ -357,8 +359,9 @@ export interface OfficerApi {
   axilogStatus(): Promise<AxilogStatus>
   /** Opens the native folder picker and persists the choice; null when cancelled. */
   axilogPickDir(): Promise<string | null>
-  /** Registers a manually-opened/dropped log file in the watcher's registry. */
-  axilogOpenFile(path: string): Promise<RendererLogEntry>
+  /** Registers a manually-opened/dropped log file in the watcher's registry.
+   *  Null when main rejects the path (wrong extension, doesn't exist, or not a string). */
+  axilogOpenFile(path: string): Promise<RendererLogEntry | null>
   /** Resolves a dropped renderer File to its real filesystem path (preload-only). */
   axilogPathForFile(file: File): string
   rosterAnnotationsList(): Promise<RendererRosterAnnotation[]>
