@@ -119,6 +119,26 @@ export function resolveAxilogDir(
   return (configured && configured.length > 0 ? configured : null) ?? detectLogDir(home, fs)
 }
 
+/**
+ * The agent's "does the raw-log prompt block earn its tokens" predicate,
+ * expressed as a pure function of its inputs so it can be tested without
+ * Electron. It composes `resolveAxilogDir` rather than re-deriving the
+ * directory itself — that's what stops a call site from silently drifting
+ * back to a narrower, detectLogDir-only check (the exact bug this guards).
+ */
+export function computeAxilogAvailable(opts: {
+  serviceAvailable: boolean
+  hasRegisteredLogs: boolean
+  configuredDir: string | null | undefined
+  home: string
+  fs?: Pick<WatcherFs, 'exists'>
+}): boolean {
+  return (
+    opts.serviceAvailable &&
+    (opts.hasRegisteredLogs || resolveAxilogDir(opts.configuredDir, opts.home, opts.fs) !== null)
+  )
+}
+
 const realFs: WatcherFs = {
   exists: (p) => existsSync(p),
   listFiles(dir) {

@@ -5,7 +5,8 @@ import {
   logIdForPath,
   defaultLogDirCandidates,
   hasLogExtension,
-  resolveAxilogDir
+  resolveAxilogDir,
+  computeAxilogAvailable
 } from './axilogWatcher'
 
 /** In-memory fs + clock, so no test touches a real directory. */
@@ -76,6 +77,65 @@ describe('resolveAxilogDir', () => {
   it('treats an empty configured string as unset', () => {
     const fs = { exists: () => false }
     expect(resolveAxilogDir('', '/home/user', fs)).toBeNull()
+  })
+})
+
+describe('computeAxilogAvailable', () => {
+  // The exact regression this guards: a user configures a non-default log
+  // folder (so detectLogDir's hard-coded candidates would return null) and
+  // hasn't opened/registered a log yet. axilogAvailable must still be true —
+  // it must read the SAME resolved dir the watcher and the tools use, not
+  // reimplement its own narrower check.
+  it('is true with a configured dir even though detectLogDir alone would return null', () => {
+    const fs = { exists: (p: string) => p === '/configured' }
+    expect(
+      computeAxilogAvailable({
+        serviceAvailable: true,
+        hasRegisteredLogs: false,
+        configuredDir: '/configured',
+        home: '/home/user',
+        fs
+      })
+    ).toBe(true)
+  })
+
+  it('is false when the parse service is unavailable, regardless of dir', () => {
+    const fs = { exists: (p: string) => p === '/configured' }
+    expect(
+      computeAxilogAvailable({
+        serviceAvailable: false,
+        hasRegisteredLogs: false,
+        configuredDir: '/configured',
+        home: '/home/user',
+        fs
+      })
+    ).toBe(false)
+  })
+
+  it('is true when a log is already registered even with no configured/detected dir', () => {
+    const fs = { exists: () => false }
+    expect(
+      computeAxilogAvailable({
+        serviceAvailable: true,
+        hasRegisteredLogs: true,
+        configuredDir: null,
+        home: '/home/user',
+        fs
+      })
+    ).toBe(true)
+  })
+
+  it('is false when nothing is configured, nothing is detected, and no log is registered', () => {
+    const fs = { exists: () => false }
+    expect(
+      computeAxilogAvailable({
+        serviceAvailable: true,
+        hasRegisteredLogs: false,
+        configuredDir: null,
+        home: '/home/user',
+        fs
+      })
+    ).toBe(false)
   })
 })
 

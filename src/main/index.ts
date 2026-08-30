@@ -23,7 +23,7 @@ import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridg
 import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeResilient } from './axibridgeSummarize'
-import { AxilogWatcher, resolveAxilogDir, hasLogExtension } from './axilogWatcher'
+import { AxilogWatcher, resolveAxilogDir, computeAxilogAvailable, hasLogExtension } from './axilogWatcher'
 import { AxilogService } from './axilogService'
 import { axilogUnavailableReason } from './axilogNative'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
@@ -662,9 +662,12 @@ app.whenReady().then(async () => {
     meta: () => meta.list(),
     pinnedMemory: () => memoryStore.list().facts.filter((f) => f.pinned),
     axilogAvailable: () =>
-      axilogService !== null &&
-      (axilogWatcher.list().length > 0 ||
-        resolveAxilogDir(store.getSetting('axilogDir'), app.getPath('home')) !== null),
+      computeAxilogAvailable({
+        serviceAvailable: axilogService !== null,
+        hasRegisteredLogs: axilogWatcher.list().length > 0,
+        configuredDir: store.getSetting('axilogDir'),
+        home: app.getPath('home')
+      }),
     config: providerConfig,
     loadSession: (conversationId: string): SessionState =>
       conversations.get(conversationId)?.session ?? {},
