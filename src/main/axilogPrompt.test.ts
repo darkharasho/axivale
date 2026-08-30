@@ -25,4 +25,18 @@ describe('buildAxilogReference', () => {
     expect(block).toMatch(/coverage/i)
     expect(block).toMatch(/axibridge/i)
   })
+
+  it('scopes the raw-document FORMAT paragraph to axilog_query, not the section/overview tools', () => {
+    const block = buildAxilogReference(true)
+    const formatIdx = block.indexOf('FORMAT')
+    expect(formatIdx).toBeGreaterThan(-1)
+    expect(block.slice(formatIdx, formatIdx + 40)).toContain('axilog_query')
+  })
+
+  it('teaches the empty coverage state alongside not_computed/unsupported', () => {
+    const block = buildAxilogReference(true)
+    expect(block).toMatch(/\bempty\b/)
+    expect(block).toMatch(/not_computed/)
+    expect(block).toMatch(/unsupported/)
+  })
 })

@@ -161,6 +161,10 @@ export function buildEvalAgentService(
     skills: () => [],
     meta: () => [],
     pinnedMemory: () => [],
+    // Deliberately `true` even though buildEvalToolDeps sets `service: null` — production never
+    // reaches this combination (axilogAvailable ANDs axilogService !== null), but the eval cases
+    // need the prompt block present to grade routing/ordering. The tools error independently of
+    // this flag, so the "reports unavailable" half of the rubric is still graded faithfully.
     axilogAvailable: () => true
   }
   return new AgentService(deps)

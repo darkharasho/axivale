@@ -4,7 +4,8 @@ import {
   parseLogFilename,
   logIdForPath,
   defaultLogDirCandidates,
-  hasLogExtension
+  hasLogExtension,
+  resolveAxilogDir
 } from './axilogWatcher'
 
 /** In-memory fs + clock, so no test touches a real directory. */
@@ -52,6 +53,29 @@ describe('defaultLogDirCandidates', () => {
     const candidates = defaultLogDirCandidates('/home/user')
     expect(candidates.some((c) => c.includes('arcdps.cbtlogs'))).toBe(true)
     expect(candidates.some((c) => c.includes('drive_c'))).toBe(true)
+  })
+})
+
+describe('resolveAxilogDir', () => {
+  it('prefers the configured folder over auto-detection', () => {
+    const fs = { exists: (p: string) => p === '/detected' }
+    expect(resolveAxilogDir('/configured', '/home/user', fs)).toBe('/configured')
+  })
+
+  it('falls back to detectLogDir when nothing is configured', () => {
+    const fs = { exists: (p: string) => p.includes('arcdps.cbtlogs') }
+    const home = '/home/user'
+    expect(resolveAxilogDir(null, home, fs)).toBe(defaultLogDirCandidates(home)[0])
+  })
+
+  it('is null when neither is set', () => {
+    const fs = { exists: () => false }
+    expect(resolveAxilogDir(undefined, '/home/user', fs)).toBeNull()
+  })
+
+  it('treats an empty configured string as unset', () => {
+    const fs = { exists: () => false }
+    expect(resolveAxilogDir('', '/home/user', fs)).toBeNull()
   })
 })
 

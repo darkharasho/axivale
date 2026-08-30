@@ -76,9 +76,9 @@ const DEFAULT_SEED: DefaultSkill[] = [
     instructions:
       'Review ONE fight from a raw arcdps log, from real data only.\n' +
       '1. Resolve the fight: axilog_logs_list, then axilog_fight_overview. Read `coverage` before planning the review — name any gap in the writeup rather than working around it.\n' +
-      '2. Lead with what decided the fight: axilog_section on `damage` (down contribution) and `defenses` (deaths, strips taken) for the squad, then `support` (strips, cleanses) and `boons` (stability uptime).\n' +
+      '2. Lead with what decided the fight: axilog_section on `contribution` (down contribution) and `defenses` (deaths, strips taken) for the squad, then `support` (strips, cleanses) and `boons` (stability uptime).\n' +
       '3. Headline: one line — what decided it.\n' +
-      '4. One chart inline: the most telling metric, with {{figure}} on its own line right after you introduce it.\n' +
+      '4. One chart inline: call axibridge_render_chart for the most telling metric, with {{figure}} on its own line right after you introduce it.\n' +
       '5. Two short markdown tables you compose yourself, ≤8 rows each, leading with "N of M": pressure (name | spec | down contrib | deaths) and support (name | spec | strips | cleanses | stability uptime).\n' +
       "6. Enemy side: axilog_section with `role: 'enemy_player'` for what they brought — but only what the log actually attributes. If coverage says the data is not there, say so.\n" +
       '7. Close with the single highest-leverage fix for the next fight.\n' +

@@ -21,6 +21,14 @@ describe('SKILLS (default seed)', () => {
     expect(keys['commander-review']).toMatch(/axibridge_positioning/)
     expect(keys['wvw-report']).toMatch(/axibridge_positioning/)
   })
+
+  it('fight-review points down contribution at the contribution section and names the chart tool', () => {
+    const keys = Object.fromEntries(SKILLS.map((s) => [s.key, s.instructions]))
+    // "down contribution" lives in the `contribution` section, not `damage` (axilogSections.ts).
+    expect(keys['fight-review']).toMatch(/`contribution`[^.]*down contribution/)
+    expect(keys['fight-review']).not.toMatch(/`damage`[^.]*down contribution/)
+    expect(keys['fight-review']).toMatch(/axibridge_render_chart/)
+  })
 })
 
 describe('build-guide default skill', () => {

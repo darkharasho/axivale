@@ -23,7 +23,7 @@ import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridg
 import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeResilient } from './axibridgeSummarize'
-import { AxilogWatcher, detectLogDir, hasLogExtension } from './axilogWatcher'
+import { AxilogWatcher, resolveAxilogDir, hasLogExtension } from './axilogWatcher'
 import { AxilogService } from './axilogService'
 import { axilogUnavailableReason } from './axilogNative'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
@@ -537,7 +537,7 @@ app.whenReady().then(async () => {
   // parse service is null when the native module failed to load (unsupported
   // platform/arch), so every axilog_* tool degrades to an actionable error.
   const axilogWatcher = new AxilogWatcher({
-    dir: () => store.getSetting('axilogDir') || detectLogDir(app.getPath('home'))
+    dir: () => resolveAxilogDir(store.getSetting('axilogDir'), app.getPath('home'))
   })
   // axilogUnavailableReason() calls the same memoized loadAxilog() internally,
   // so this gate is equivalent without index.ts holding its own (unused) reference
@@ -663,7 +663,8 @@ app.whenReady().then(async () => {
     pinnedMemory: () => memoryStore.list().facts.filter((f) => f.pinned),
     axilogAvailable: () =>
       axilogService !== null &&
-      (axilogWatcher.list().length > 0 || detectLogDir(app.getPath('home')) !== null),
+      (axilogWatcher.list().length > 0 ||
+        resolveAxilogDir(store.getSetting('axilogDir'), app.getPath('home')) !== null),
     config: providerConfig,
     loadSession: (conversationId: string): SessionState =>
       conversations.get(conversationId)?.session ?? {},
@@ -1169,7 +1170,7 @@ app.whenReady().then(async () => {
     return axilogWatcher.list(filter ?? {})
   })
   ipcMain.handle('axilog:status', () => {
-    const dir = store.getSetting('axilogDir') || detectLogDir(app.getPath('home'))
+    const dir = resolveAxilogDir(store.getSetting('axilogDir'), app.getPath('home'))
     return {
       dir,
       dirExists: dir !== null && existsSync(dir),

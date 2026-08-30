@@ -104,6 +104,21 @@ export function detectLogDir(home: string, fs: Pick<WatcherFs, 'exists'> = realF
   return defaultLogDirCandidates(home).find((c) => fs.exists(c)) ?? null
 }
 
+/**
+ * Single source of truth for "where do we read logs from" — used both by the
+ * watcher's own `dir` getter and by any other caller (e.g. the agent's
+ * `axilogAvailable` predicate) that needs to know the same answer. A
+ * user-configured folder always wins; auto-detection is the fallback so a
+ * fresh install still finds Proton's default log path.
+ */
+export function resolveAxilogDir(
+  configured: string | null | undefined,
+  home: string,
+  fs: Pick<WatcherFs, 'exists'> = realFs
+): string | null {
+  return (configured && configured.length > 0 ? configured : null) ?? detectLogDir(home, fs)
+}
+
 const realFs: WatcherFs = {
   exists: (p) => existsSync(p),
   listFiles(dir) {
