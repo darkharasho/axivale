@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, clipboard, ipcMain, screen, shell } from 'electron'
+import { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, screen, shell } from 'electron'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
@@ -1154,6 +1154,27 @@ app.whenReady().then(async () => {
       skills.update(id, patch)
   )
   ipcMain.handle('skills:delete', (_e, id: string) => skills.remove(id))
+
+  // AxiLog panel: read-only filesystem metadata. axilog:pick-dir is the only
+  // write in this surface (persists the chosen folder as a setting) — nothing
+  // here parses a log or touches a log file on disk.
+  ipcMain.handle('axilog:list', (_e, filter?: { since?: string; limit?: number; map?: string }) => {
+    axilogWatcher.scan()
+    return axilogWatcher.list(filter ?? {})
+  })
+  ipcMain.handle('axilog:status', () => ({
+    dir: store.getSetting('axilogDir') || detectLogDir(app.getPath('home')),
+    available: axilogService !== null,
+    reason: axilogUnavailableReason(),
+    count: axilogWatcher.list().length
+  }))
+  ipcMain.handle('axilog:pick-dir', async () => {
+    const res = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+    if (res.canceled || !res.filePaths[0]) return null
+    store.setSetting('axilogDir', res.filePaths[0])
+    return res.filePaths[0]
+  })
+  ipcMain.handle('axilog:open-file', (_e, path: string) => axilogWatcher.registerOpened(path))
 
   ipcMain.handle('roster:annotations:list', () => rosterAnnotations.list())
   ipcMain.handle(

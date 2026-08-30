@@ -11,6 +11,9 @@ import { useRoster } from './components/panels/useRoster'
 import Skills from './components/panels/Skills'
 import SkillsNav from './components/panels/SkillsNav'
 import { useSkills } from './components/panels/useSkills'
+import Logs from './components/panels/Logs'
+import LogsNav from './components/panels/LogsNav'
+import { useLogs } from './components/panels/useLogs'
 import Meta from './components/meta/Meta'
 import MetaNav, { META_OVERVIEW, MEMORY_VIEW } from './components/meta/MetaNav'
 import MemoryPanel from './components/memory/MemoryPanel'
@@ -32,6 +35,7 @@ const SECTION_TITLES: Record<Section, string> = {
   operations: 'Operations',
   roster: 'Roster',
   skills: 'Skills',
+  logs: 'Logs',
   meta: 'Sources',
   settings: 'Settings'
 }
@@ -113,6 +117,9 @@ export default function App(): ReactElement {
   // (Skills); stays live across edits so the InputBar picker is always current.
   const skillsCtl = useSkills()
   const skills = skillsCtl.skills
+  // Logs state shared by the left-rail list (LogsNav) and the detail pane
+  // (Logs); mirrors skillsCtl's split.
+  const logsCtl = useLogs()
   // Active sub-section of the merged Operations tab (Builds/Comps/Bureau).
   const [operationsSection, setOperationsSection] = useState<OperationsSection>('builds')
   // Roster reconciliation + annotations, shared by RosterNav (rail) and Roster.
@@ -472,6 +479,8 @@ export default function App(): ReactElement {
           <MetaNav modes={metaModes} busy={metaBusy} active={activeMetaMode} onSelect={setActiveMetaMode} />
         ) : section === 'skills' ? (
           <SkillsNav ctl={skillsCtl} />
+        ) : section === 'logs' ? (
+          <LogsNav ctl={logsCtl} />
         ) : section === 'operations' ? (
           <OperationsNav active={operationsSection} onSelect={setOperationsSection} />
         ) : section === 'roster' ? (
@@ -521,6 +530,7 @@ export default function App(): ReactElement {
           {section === 'operations' && <Operations active={operationsSection} />}
           {section === 'roster' && <Roster ctl={rosterCtl} />}
           {section === 'skills' && <Skills ctl={skillsCtl} />}
+          {section === 'logs' && <Logs ctl={logsCtl} />}
           {section === 'meta' && (
             activeMetaMode === MEMORY_VIEW ? (
               <MemoryPanel />

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 contextBridge.exposeInMainWorld('officer', {
   getSetting: (key: string) => ipcRenderer.invoke('settings:get', key),
@@ -71,6 +71,14 @@ contextBridge.exposeInMainWorld('officer', {
     patch: Partial<{ name: string; whenToUse: string; instructions: string; enabled: boolean }>
   ) => ipcRenderer.invoke('skills:update', id, patch),
   skillsDelete: (id: string) => ipcRenderer.invoke('skills:delete', id),
+  axilogList: (filter?: { since?: string; limit?: number; map?: string }) =>
+    ipcRenderer.invoke('axilog:list', filter),
+  axilogStatus: () => ipcRenderer.invoke('axilog:status'),
+  axilogPickDir: () => ipcRenderer.invoke('axilog:pick-dir'),
+  axilogOpenFile: (path: string) => ipcRenderer.invoke('axilog:open-file', path),
+  // Renderer File objects lose their real path under the sandbox; webUtils
+  // resolves it here in preload (Electron 32+ removed File.path).
+  axilogPathForFile: (file: File) => webUtils.getPathForFile(file),
   rosterAnnotationsList: () => ipcRenderer.invoke('roster:annotations:list'),
   rosterAnnotationUpsert: (
     memberId: string,

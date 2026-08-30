@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent,
   type KeyboardEvent,
   type ReactElement,
   type ReactNode
@@ -34,6 +35,9 @@ function slugify(name: string): string {
 // A "/token" is a slash at the start or after whitespace, then word chars.
 const TOKEN_RE = /(^|\s)\/([\w-]+)/g
 
+// arcdps raw combat logs — the only file types the composer accepts a drop of.
+const LOG_EXT_RE = /\.(zevtc|evtc(\.zip)?)$/i
+
 export default function InputBar({
   disabled,
   onSubmit,
@@ -44,8 +48,32 @@ export default function InputBar({
   const [caret, setCaret] = useState(0)
   const [hi, setHi] = useState(0)
   const [dismissed, setDismissed] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
+
+  // A .zevtc/.evtc dropped onto the composer is registered with the log
+  // watcher (so it shows up in the Logs panel too) and its id is seeded into
+  // the message so the agent can act on it right away.
+  async function handleLogDrop(e: DragEvent<HTMLDivElement>): Promise<void> {
+    e.preventDefault()
+    setDragOver(false)
+    const file = Array.from(e.dataTransfer.files).find((f) => LOG_EXT_RE.test(f.name))
+    if (!file) return
+    const path = window.officer.axilogPathForFile(file)
+    if (!path) return
+    const entry = await window.officer.axilogOpenFile(path)
+    setValue((v) => {
+      const seed = `log ${entry.logId} (${entry.mapFolder})`
+      return v.trim() ? `${v.trim()} ${seed}` : seed
+    })
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>): void {
+    if (!Array.from(e.dataTransfer.items ?? []).some((it) => it.kind === 'file')) return
+    e.preventDefault()
+    setDragOver(true)
+  }
 
   // Grow the textarea to fit its content (up to the CSS max-height, past which it
   // scrolls), so multi-line orders are composed in full instead of one scrolling
@@ -231,7 +259,12 @@ export default function InputBar({
   return (
     <div className="inputzone">
       <div className="inputbar">
-        <div className="inwrap">
+        <div
+          className={`inwrap${dragOver ? ' drag-over' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => void handleLogDrop(e)}
+        >
           <span className="prompt">&gt;</span>
           <div className="field-wrap">
             <div className="field-mirror" ref={mirrorRef} aria-hidden="true">

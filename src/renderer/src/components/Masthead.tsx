@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { ChevronDown, Circle, Minus, Square, Star, X } from 'lucide-react'
 
-export type Section = 'dispatches' | 'operations' | 'roster' | 'skills' | 'meta' | 'settings'
+export type Section = 'dispatches' | 'operations' | 'roster' | 'skills' | 'logs' | 'meta' | 'settings'
 
 export type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
 
@@ -332,8 +332,9 @@ export default function Masthead(props: MastheadProps): ReactElement {
             ['02', 'operations', 'Operations'],
             ['03', 'roster', 'Roster'],
             ['04', 'skills', 'Skills'],
-            ['05', 'meta', 'Sources'],
-            ['06', 'settings', 'Settings']
+            ['05', 'logs', 'Logs'],
+            ['06', 'meta', 'Sources'],
+            ['07', 'settings', 'Settings']
           ] as Array<[string, Section, string]>
         ).map(([no, key, label]) => (
           <button key={key} className={section === key ? 'on' : ''} onClick={() => onSection(key)}>

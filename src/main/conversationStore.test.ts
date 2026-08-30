@@ -121,4 +121,26 @@ describe('ConversationStore', () => {
     expect(store.list()[0].id).toBe(a.id)
     expect(store.list()[1].id).toBe(b.id)
   })
+
+  it('persists log refs on a conversation and survives a reload', () => {
+    const path = makePath()
+    const store = new ConversationStore(path)
+    const convo = store.create({ title: 'Fight review' })
+    store.addLogRef(convo.id, { logId: 'abc12345', path: '/logs/20260830-211432.zevtc', label: 'WvW 21:14' })
+    store.flush()
+
+    const reloaded = new ConversationStore(path)
+    expect(reloaded.get(convo.id)!.logRefs).toEqual([
+      { logId: 'abc12345', path: '/logs/20260830-211432.zevtc', label: 'WvW 21:14' }
+    ])
+  })
+
+  it('does not duplicate a log ref added twice', () => {
+    const store = new ConversationStore(makePath())
+    const convo = store.create({ title: 'x' })
+    const ref = { logId: 'abc12345', path: '/logs/a.zevtc', label: 'a' }
+    store.addLogRef(convo.id, ref)
+    store.addLogRef(convo.id, ref)
+    expect(store.get(convo.id)!.logRefs).toHaveLength(1)
+  })
 })
