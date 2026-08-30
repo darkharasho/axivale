@@ -23,6 +23,9 @@ import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridg
 import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeResilient } from './axibridgeSummarize'
+import { AxilogWatcher, detectLogDir } from './axilogWatcher'
+import { AxilogService } from './axilogService'
+import { loadAxilog } from './axilogNative'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
 import {
   GITHUB_DEVICE_CLIENT_ID,
@@ -487,6 +490,7 @@ app.whenReady().then(async () => {
       wikiAbort.abort() // stop the wiki crawl mid-run; it resumes next launch
       metaFetcher.destroy()
       ollama.stopServer()
+      axilogService?.dispose()
     } catch (err) {
       console.error('[quit] cleanup error (quitting anyway):', err)
     }
@@ -528,6 +532,24 @@ app.whenReady().then(async () => {
       if (win && !win.isDestroyed()) win.webContents.send('axibridge:progress', message)
     }
   })
+
+  // AxiLog raw-log tools: watcher is filesystem-only and always available; the
+  // parse service is null when the native module failed to load (unsupported
+  // platform/arch), so every axilog_* tool degrades to an actionable error.
+  const axilogWatcher = new AxilogWatcher({
+    dir: () => store.getSetting('axilogDir') || detectLogDir(app.getPath('home'))
+  })
+  const axilogNative = loadAxilog()
+  const axilogService = axilogNative
+    ? new AxilogService({
+        // Pass the worker path explicitly: axilogService lives in a module that
+        // electron-vite code-splits into out/main/chunks/, so its own
+        // import.meta.url resolves to the wrong dir. __dirname here is
+        // out/main, where the worker emits.
+        workerPath: join(__dirname, 'axilogWorker.js'),
+        maxLogBytes: Number(store.getSetting('axilogMaxBytes')) || undefined
+      })
+    : null
 
   const PROVIDER_MODEL_SETTING: Record<ProviderName, SettingKey> = {
     claude: 'model',
@@ -631,7 +653,8 @@ app.whenReady().then(async () => {
       rosterAnnotations: () => rosterAnnotations.list(),
       rosterLinks: () => rosterLinks.list(),
       memory: () => memoryService,
-      resolveEntityKey
+      resolveEntityKey,
+      axilog: () => ({ watcher: axilogWatcher, service: axilogService })
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),

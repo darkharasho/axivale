@@ -113,7 +113,8 @@ function buildEvalToolDeps(env: NodeJS.ProcessEnv): ToolDeps {
     discordWebhookTie: () => ({ comp: [], build: [] }),
     wikiFacts: {} as never,
     fetchBuildPage: async () => null,
-    fetchBuildPageRaw: async () => null
+    fetchBuildPageRaw: async () => null,
+    axilog: () => ({ watcher: {} as never, service: null })
   }
 }
 

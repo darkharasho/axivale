@@ -88,6 +88,11 @@ export function defaultLogDirCandidates(home: string): string[] {
   ]
 }
 
+/** The first default candidate that exists on disk, or null — the user picks the folder otherwise. */
+export function detectLogDir(home: string, fs: Pick<WatcherFs, 'exists'> = realFs): string | null {
+  return defaultLogDirCandidates(home).find((c) => fs.exists(c)) ?? null
+}
+
 const realFs: WatcherFs = {
   exists: (p) => existsSync(p),
   listFiles(dir) {

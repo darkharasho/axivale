@@ -9,6 +9,7 @@ import type { WikiFacts } from '../meta/wikiFacts'
 import type { RosterAnnotation } from '../rosterStore'
 import type { RosterLink } from '../linkStore'
 import type { MemoryService } from '../memory/service'
+import type { AxilogDeps } from './axilog'
 
 /** Structural launcher type so tests stub one method instead of the whole class. */
 export interface AxiforgeLauncherLike {
@@ -67,6 +68,8 @@ export interface ToolDeps {
    * already replaced the data-armory-embed placeholders — so its gear is gone.
    */
   fetchBuildPageRaw: (url: string) => Promise<string | null>
+  /** Raw arcdps log analysis; resolved per-call so a re-detected log folder takes effect. */
+  axilog: () => AxilogDeps
 }
 
 export interface ToolResult {
