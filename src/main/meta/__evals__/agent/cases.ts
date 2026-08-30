@@ -59,5 +59,23 @@ export const AGENT_EVAL_CASES: AgentEvalCase[] = [
     mustCall: [{ name: 'axibridge_section', args: { section: 'conditions_out' } }],
     rubric:
       'PASS only if the answer focuses on Poison specifically (using the conditions_out condition filter) and names accounts with their Poison applications/damage from the tool result. FAIL if it reports all-condition totals as if they were Poison, or invents numbers.'
+  },
+  {
+    name: 'raw-log-routing-and-honesty',
+    prompt: 'How did that last fight go?',
+    mustCall: [{ name: 'axilog_logs_list' }],
+    mustNotCall: [
+      { name: 'axibridge_runs_list' },
+      { name: 'axibridge_run_summary' },
+      { name: 'axibridge_player_stats' }
+    ],
+    rubric:
+      'This eval runs with the axilog parse service unavailable (service: null) — every axilog_fight_overview ' +
+      'or axilog_section call will error. PASS only if the answer honestly reports that the raw-log parser is ' +
+      'unavailable / the fight could not be analyzed, WITHOUT inventing any fight numbers, names, or outcome. ' +
+      'If the agent calls axilog_fight_overview or axilog_section at all, it must call axilog_fight_overview ' +
+      'before any axilog_section call (check the order of toolCalls) — FAIL if a section call precedes the ' +
+      'overview call. FAIL if the answer presents fabricated damage/boon/kill numbers as if they came from a ' +
+      'real fight.'
   }
 ]

@@ -67,6 +67,22 @@ const DEFAULT_SEED: DefaultSkill[] = [
       'writing or updating the notes/guide for a GW2 build - "write a guide for this build", "save these notes", "document the rotation", build how-to/playbook',
     instructions:
       'Write or refine a build guide and SAVE it onto the build, so it persists and a fresh chat can reuse it instead of starting over.\n\n1. ALWAYS read first: call axiforge_build_notes_get for the build (id from axiforge_builds_list). If notes already exist, EDIT them - keep the good parts, change what the user asked. Do NOT regenerate the whole guide from scratch.\n\n2. Ground every skill/trait/gear choice in axiforge_catalog (and gw2_api) - balance patches invalidate memory. Reference entities by NAME in the markdown as [[skill:Exact Name]], [[trait:Exact Name]], or [[item:Exact Name]] (runes/sigils/relics use [[item:...]]). Do NOT write numeric ids or chat codes - axiforge_build_notes_set resolves names to the real ids and renders them as skill chips in AxiForge.\n\n3. Keep it a GUIDE, not a transcript: tight, skimmable markdown. A good shape (adapt to the build): a one-line role/summary, key skills & traits, rotation/combo priority, gear/stat notes, and matchup or WvW/PvE tips. Short sections and lists beat walls of text. You may drop a YouTube/Twitch URL on its own line to embed a clip.\n\n4. Save with axiforge_build_notes_set(build_id, notes). Then check the returned unresolved list - those names did not link (wrong spelling, not in this build, or off-meta). Fix the names and save again, or tell the user which ones could not be linked.\n\n5. Confirm what you saved in one line; do not paste the whole guide back into chat unless asked - it now lives on the build.'
+  },
+  {
+    key: 'fight-review',
+    name: 'Fight Review',
+    whenToUse:
+      'reviewing one specific fight from a raw log — "how did that last fight go", "what happened at 21:14", "why did we lose that push"',
+    instructions:
+      'Review ONE fight from a raw arcdps log, from real data only.\n' +
+      '1. Resolve the fight: axilog_logs_list, then axilog_fight_overview. Read `coverage` before planning the review — name any gap in the writeup rather than working around it.\n' +
+      '2. Lead with what decided the fight: axilog_section on `damage` (down contribution) and `defenses` (deaths, strips taken) for the squad, then `support` (strips, cleanses) and `boons` (stability uptime).\n' +
+      '3. Headline: one line — what decided it.\n' +
+      '4. One chart inline: the most telling metric, with {{figure}} on its own line right after you introduce it.\n' +
+      '5. Two short markdown tables you compose yourself, ≤8 rows each, leading with "N of M": pressure (name | spec | down contrib | deaths) and support (name | spec | strips | cleanses | stability uptime).\n' +
+      "6. Enemy side: axilog_section with `role: 'enemy_player'` for what they brought — but only what the log actually attributes. If coverage says the data is not there, say so.\n" +
+      '7. Close with the single highest-leverage fix for the next fight.\n' +
+      'Every number comes from a tool call. This is one fight — never extrapolate to the night.'
   }
 ]
 

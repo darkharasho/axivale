@@ -661,6 +661,9 @@ app.whenReady().then(async () => {
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),
     pinnedMemory: () => memoryStore.list().facts.filter((f) => f.pinned),
+    axilogAvailable: () =>
+      axilogService !== null &&
+      (axilogWatcher.list().length > 0 || detectLogDir(app.getPath('home')) !== null),
     config: providerConfig,
     loadSession: (conversationId: string): SessionState =>
       conversations.get(conversationId)?.session ?? {},

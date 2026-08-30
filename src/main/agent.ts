@@ -5,6 +5,7 @@ import { buildMetaReference } from './metaPrompt'
 import { buildPlaybookReference } from './playbookPrompt'
 import { buildMemoryReference } from './memoryPrompt'
 import { buildGlossaryReference } from './glossaryPrompt'
+import { buildAxilogReference } from './axilogPrompt'
 import type { MetaMode } from './metaStore'
 import type { MemoryFact } from './memory/types'
 import { MCP_PREFIX, type AgentEvent, type ProviderConfig, type ProviderName } from './providers/types'
@@ -322,6 +323,9 @@ export interface AgentDeps {
   meta: () => MetaMode[]
   /** Pinned durable memory facts, read fresh per turn (cloud-only context). */
   pinnedMemory: () => MemoryFact[]
+  /** Whether the raw-log tools have anything to work with (parser present and
+   *  at least one known log), read fresh per turn — gates the AxiLog prompt block. */
+  axilogAvailable: () => boolean
 }
 
 interface LiveAdapter {
@@ -406,7 +410,8 @@ export class AgentService {
             buildGlossaryReference() +
             buildMetaReference(this.deps.meta()) +
             buildPlaybookReference(this.deps.meta()) +
-            buildMemoryReference(this.deps.pinnedMemory())) +
+            buildMemoryReference(this.deps.pinnedMemory()) +
+            buildAxilogReference(this.deps.axilogAvailable())) +
         dateLine
       const turn = adapter.runTurn({
         prompt: promptText,
