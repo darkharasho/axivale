@@ -107,6 +107,28 @@ export class EntityIndex {
   }
 
   /**
+   * Spec histogram for one role, highest count first: `{ Luminary: 4, ... }`.
+   *
+   * The class question a player actually asks is "what were they running",
+   * and the only place an enemy roster was reachable before this was a raw jq
+   * filter over `entities[]` -- where `profession` is the BASE class and the
+   * spec sits in a sibling field. A model that grouped by `.profession` got
+   * "Guardian x8" and reasonably concluded the log had no specs. Answering it
+   * here, pre-folded, is what keeps that inference from being available.
+   *
+   * Entities with no class at all (NPCs) are omitted rather than bucketed
+   * under "".
+   */
+  professionCounts(role: EntityRole): Record<string, number> {
+    const counts: Record<string, number> = {}
+    for (const r of this.byRole(role)) {
+      if (!r.profession) continue
+      counts[r.profession] = (counts[r.profession] ?? 0) + 1
+    }
+    return Object.fromEntries(Object.entries(counts).sort((a, b) => b[1] - a[1]))
+  }
+
+  /**
    * Two-stage resolution, exact before partial, honest about ambiguity at
    * both stages:
    *

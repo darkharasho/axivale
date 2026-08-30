@@ -191,3 +191,28 @@ describe('profession', () => {
     expect(index.get(0)!.profession).toBe('Guardian')
   })
 })
+
+describe('professionCounts', () => {
+  it('counts elite specs per role, highest first', () => {
+    const counts = buildEntityIndex(report).professionCounts('enemy_player')
+    const keys = Object.keys(counts)
+    expect(keys.length).toBeGreaterThan(0)
+    // The reported bug in histogram form: an enemy side of Luminaries and
+    // Dragonhunters must not collapse into a single "Guardian" bucket.
+    expect(keys).toContain('Luminary')
+    expect(keys).toContain('Dragonhunter')
+    const values = Object.values(counts)
+    expect(values).toEqual([...values].sort((a, b) => b - a))
+  })
+
+  it('omits entities with no class rather than bucketing them under ""', () => {
+    const counts = buildEntityIndex({
+      ...report,
+      entities: [
+        { id: 1, role: 'squad', character: 'A', profession: 'Guardian', elite_spec: 'Firebrand' },
+        { id: 2, role: 'squad', character: 'B' }
+      ]
+    } as AxilogReport).professionCounts('squad')
+    expect(counts).toEqual({ Firebrand: 1 })
+  })
+})

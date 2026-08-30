@@ -20,6 +20,12 @@ export interface AxilogDeps {
 
 const SCHEMA_MAP =
   'Document shape: entities[] is the roster (roles: squad | friendly_player | enemy_player | npc); ' +
+  'a player entity carries BOTH `profession` (the base class, e.g. "Guardian") and `elite_spec` ' +
+  '(the elite specialization, e.g. "Luminary"; empty string when the player has no elite spec). ' +
+  'The class name to report is `(.elite_spec // "" | select(. != "")) // .profession` — grouping on ' +
+  '`.profession` alone collapses every spec into its base class, and an all-base-class result is an ' +
+  'artifact of that filter, NEVER evidence the log did not record specs. Prefer axilog_fight_overview, ' +
+  'whose `composition` already folds them per role. ' +
   'per-entity stats live at blocks.<name>.by_entity keyed by entities[].id AS STRINGS; ' +
   'names for skills/buffs/minions live in catalogs.<kind>[<id>].name; ' +
   'coverage maps each block to present | empty | not_computed | unsupported. ' +
@@ -114,7 +120,7 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
 
     tool(
       'axilog_fight_overview',
-      'Parse a fight and return its encounter, team composition, squad roster, and COVERAGE. Call this first for any log. `coverage` is authoritative: a block marked not_computed or unsupported cannot be answered from this log — say so rather than guessing.',
+      'Parse a fight and return its encounter, COVERAGE, the squad roster, and `composition`: a per-role spec histogram (squad / friendly_player / enemy_player) naming the ELITE SPEC wherever the log records one. Use `composition` to answer "what were we/they running" — do not re-derive it with jq. Call this first for any log. `coverage` is authoritative: a block marked not_computed or unsupported cannot be answered from this log — say so rather than guessing.',
       { logId: z.string().describe('from axilog_logs_list') },
       safe(async (args: { logId: string }) => {
         const { entry, service, label } = resolve(deps(), args.logId)

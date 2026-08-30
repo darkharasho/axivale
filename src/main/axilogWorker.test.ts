@@ -116,6 +116,19 @@ describeNative('axilogWorker (needs the @axiapps/axilog native binary)', () => {
     expect((overview.squad as unknown[]).length).toBeGreaterThan(0)
   })
 
+  it('reports both sides as elite specs in the overview composition', async () => {
+    // Without this the enemy side was only reachable through a raw jq filter
+    // over entities[].profession, which reports every spec as its base class.
+    const overview = (await handle({
+      id: 11,
+      kind: 'overview',
+      logId: 'fx',
+      path: FIXTURE
+    })) as { composition: Record<string, Record<string, number>> }
+    expect(Object.keys(overview.composition.enemy_player)).toContain('Luminary')
+    expect(Object.keys(overview.composition.squad)).toContain('Firebrand')
+  })
+
   it('resolves by_entity ids in a jq result instead of handing the model bare ids', async () => {
     const res = (await handle({
       id: 4,

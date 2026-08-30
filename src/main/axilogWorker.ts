@@ -169,6 +169,15 @@ export async function handle(req: WorkerRequest): Promise<unknown> {
       durationMs: report.encounter?.duration_ms ?? 0,
       recordedBy: report.encounter?.recorded_by ?? '',
       roleCounts: index.roleCounts(),
+      // Spec histograms for BOTH sides. The squad roster below names every
+      // friendly individually, but the enemy side had no shaped route at all
+      // -- asking what the enemy ran meant a raw jq filter over `entities[]`,
+      // which is how a fight full of Luminaries got reported as "Guardians".
+      composition: {
+        squad: index.professionCounts('squad'),
+        friendly_player: index.professionCounts('friendly_player'),
+        enemy_player: index.professionCounts('enemy_player')
+      },
       squad: index.byRole('squad').map((e) => ({
         name: e.name,
         account: e.account,

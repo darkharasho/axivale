@@ -30,6 +30,8 @@ export interface FightOverview {
   durationMs: number
   recordedBy: string
   roleCounts: Record<string, number>
+  /** Per-role spec histogram, elite spec where the log names one. */
+  composition: Record<'squad' | 'friendly_player' | 'enemy_player', Record<string, number>>
   squad: Array<{ name: string; account: string; profession: string; subgroup: number | null }>
   coverage: Record<string, CoverageState>
   warnings: string[]
