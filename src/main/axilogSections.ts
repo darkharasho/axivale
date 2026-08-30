@@ -340,7 +340,208 @@ const contributionSection: SectionDescriptor = {
   }
 }
 
-export const SECTIONS: SectionDescriptor[] = [damageSection, defensesSection, contributionSection]
+/** Duration fields in this module are milliseconds unless noted otherwise. */
+const msToSec = (ms: unknown): number => Math.round(num(ms) / 100) / 10
+
+const supportSection: SectionDescriptor = {
+  key: 'support',
+  title: 'Support output',
+  aliases: [
+    'support',
+    'strips',
+    'boon strips',
+    'stripped',
+    'cleanses',
+    'condi cleanse',
+    'cleansing',
+    'resurrects',
+    'rezzes',
+    'how were our strips'
+  ],
+  summary:
+    'Per-entity boon strips, condition cleanses, and resurrects, with strip duration alongside strip count.',
+  block: 'support',
+  passes: {},
+  granularities: ['entity', 'squad'],
+  fields: [
+    { key: 'strips', label: 'Strips' },
+    {
+      key: 'stripDurationSec',
+      label: 'Strip dur (s)',
+      help: 'boon duration removed, not just count'
+    },
+    { key: 'cleanses', label: 'Cleanses' },
+    { key: 'cleansesSelf', label: 'Self cleanses' },
+    { key: 'resurrects', label: 'Resurrects' }
+  ],
+  shape(report, index, opts) {
+    return shapeByEntity(report, index, opts, supportSection, (s) => ({
+      strips: num(s.strips),
+      stripDurationSec: msToSec(s.strips_duration_ms),
+      cleanses: num(s.cleanses),
+      cleansesSelf: num(s.cleanses_self),
+      resurrects: num(s.resurrects)
+    }))
+  }
+}
+
+const ccSection: SectionDescriptor = {
+  key: 'cc',
+  title: 'Crowd control',
+  aliases: [
+    'cc',
+    'crowd control',
+    'hard cc',
+    'stuns',
+    'pulls',
+    'knockdowns',
+    'stunbreaks',
+    'breakbar',
+    'lockdown'
+  ],
+  summary: 'Per-entity crowd control applied, in seconds, plus stun breaks used.',
+  block: 'cc',
+  passes: {},
+  granularities: ['entity', 'squad'],
+  fields: [
+    { key: 'ccSec', label: 'CC applied (s)' },
+    { key: 'stunBreaks', label: 'Stun breaks' }
+  ],
+  shape(report, index, opts) {
+    return shapeByEntity(report, index, opts, ccSection, (s) => ({
+      ccSec: msToSec(s.applied_duration_ms),
+      stunBreaks: num(s.stun_breaks)
+    }))
+  }
+}
+
+/**
+ * Boons are one row PER ENTITY PER BOON rather than one row per entity: a
+ * single wide row of 20 boon columns is unreadable in a chat table and
+ * answers fewer questions than a filterable long form. That shape doesn't fit
+ * `shapeByEntity`'s one-row-per-id contract, so this section walks
+ * `by_entity` itself — but it reuses the same coverage gate, entity
+ * resolution, and filtering rules so the two shapers stay in lockstep.
+ *
+ * `generation.squad_pct` is the only squad-generation figure the block
+ * carries (there is no seconds-valued generation field), so `squadGenPct` is
+ * a percentage and is averaged, not summed, at squad granularity.
+ * `generation.squad_wasted`, when present, is already expressed in seconds
+ * (values top out at ~47s against a ~49s encounter) — unlike every other
+ * duration in this module it is not a `_ms` field. It is absent when zero.
+ */
+const boonsSection: SectionDescriptor = {
+  key: 'boons',
+  title: 'Boon generation and uptime',
+  aliases: [
+    'boons',
+    'boon',
+    'uptime',
+    'stability',
+    'stab',
+    'quickness',
+    'alacrity',
+    'might',
+    'fury',
+    'protection',
+    'resistance',
+    'aegis',
+    'who gave stability',
+    'boon gen'
+  ],
+  summary:
+    'Per-entity, per-boon generation and uptime. One row per entity per boon — filter with `sort` to rank a single metric.',
+  block: 'boons',
+  passes: {},
+  granularities: ['entity', 'squad'],
+  fields: [
+    { key: 'boon', label: 'Boon', aggregate: 'none' },
+    { key: 'uptimePct', label: 'Uptime %', aggregate: 'mean' },
+    { key: 'squadGenPct', label: 'Squad gen %', aggregate: 'mean' },
+    { key: 'wasteSec', label: 'Wasted (s)', help: 'absent in the source when zero' }
+  ],
+  shape(report, index, opts) {
+    const coverage = report.coverage?.boons
+    const byEntity = report.blocks?.boons?.by_entity
+    if (!byEntity || coverage === 'not_computed' || coverage === 'unsupported') {
+      return {
+        rows: [],
+        columns: [],
+        note: `This log does not carry boon generation (coverage: ${coverage ?? 'absent'}).`
+      }
+    }
+
+    let only: EntityRef | null = null
+    if (opts.entity) {
+      only = index.resolveName(opts.entity)
+      if (!only) {
+        return {
+          rows: [],
+          columns: [],
+          note: `Could not resolve "${opts.entity}" to exactly one entity in this log. Use the exact character name or account handle from the overview.`
+        }
+      }
+    }
+
+    const catalog = report.catalogs?.buffs ?? {}
+    const warnings: string[] = []
+    const rows: Array<Record<string, string | number>> = []
+    for (const [id, perBoon] of Object.entries(byEntity)) {
+      const ref = index.get(id)
+      if (!ref) {
+        warnings.push(`Skipped statistics for unresolved entity id ${id}.`)
+        continue
+      }
+      if (!matchesFilters(ref, opts, only)) continue
+      for (const [buffId, stats] of Object.entries(
+        (perBoon ?? {}) as Record<string, Record<string, unknown>>
+      )) {
+        const generation = (stats.generation ?? {}) as Record<string, unknown>
+        rows.push({
+          name: ref.name,
+          profession: ref.profession,
+          subgroup: ref.subgroup ?? '',
+          boon: catalog[buffId]?.name ?? `buff#${buffId}`,
+          uptimePct: round1(num(stats.uptime_pct)),
+          squadGenPct: round1(num(generation.squad_pct)),
+          wasteSec: round1(num(generation.squad_wasted))
+        })
+      }
+    }
+
+    const columns = [
+      ...IDENTITY_COLUMNS,
+      ...boonsSection.fields.map((f) => ({ key: f.key, label: f.label }))
+    ]
+    const warningsPart = warnings.length ? { warnings } : {}
+
+    if (rows.length === 0) {
+      const filters = describeFilters(opts, only)
+      const note = `No entities matched${filters ? ` (${filters})` : ''}. This block covers ${Object.keys(byEntity).length} of the log's ${index.all().length} entities.`
+      return { rows: [], columns, note, ...warningsPart }
+    }
+
+    const sortKey = opts.sort ?? 'squadGenPct'
+    rows.sort((a, b) => num(b[sortKey]) - num(a[sortKey]))
+    const limit = opts.limit ?? DEFAULT_ROW_LIMIT
+    const limited = rows.slice(0, limit)
+    const note =
+      rows.length > limited.length
+        ? `Showing ${limited.length} of ${rows.length} entity-boon rows (raise \`limit\`, or set \`entity\` to focus one player).`
+        : undefined
+
+    return { rows: limited, columns, ...(note ? { note } : {}), ...warningsPart }
+  }
+}
+
+export const SECTIONS: SectionDescriptor[] = [
+  damageSection,
+  defensesSection,
+  contributionSection,
+  supportSection,
+  boonsSection,
+  ccSection
+]
 
 export const getSection = (key: string): SectionDescriptor | undefined =>
   SECTIONS.find((s) => s.key === key)

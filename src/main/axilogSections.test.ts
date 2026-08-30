@@ -202,3 +202,62 @@ describe('runSection', () => {
     }
   })
 })
+
+describe('support sections', () => {
+  it('answers "how were our strips" with per-player strip counts', () => {
+    const res = runSection(report, 'support', { role: 'squad', limit: 5 })
+    expect(res.columns.map((c) => c.key)).toEqual(
+      expect.arrayContaining(['strips', 'cleanses', 'resurrects'])
+    )
+    expect(res.rows.length).toBeGreaterThan(0)
+    expect(Number(res.rows[0].strips)).toBeGreaterThanOrEqual(Number(res.rows[1]?.strips ?? 0))
+  })
+
+  it('exposes strip duration separately from strip count', () => {
+    const res = runSection(report, 'support', { limit: 1 })
+    expect(res.columns.map((c) => c.key)).toContain('stripDurationSec')
+  })
+
+  it('declares that boons need no extra pass but rotations do', () => {
+    expect(getSection('boons')!.passes).toEqual({})
+    expect(getSection('cc')!.passes).toEqual({})
+  })
+
+  it('shapes CC output in seconds, not milliseconds', () => {
+    const res = runSection(report, 'cc', { limit: 3 })
+    expect(res.columns.map((c) => c.key)).toContain('ccSec')
+    for (const row of res.rows) expect(Number(row.ccSec)).toBeLessThan(10_000)
+  })
+
+  it('filters boons to a single boon when asked', () => {
+    const all = runSection(report, 'boons', { limit: 100 })
+    expect(all.rows.length).toBeGreaterThan(0)
+    expect(all.columns.map((c) => c.key)).toContain('boon')
+  })
+
+  it('does not carry an enemy-side row for support, cc, or boons', () => {
+    for (const key of ['support', 'cc', 'boons']) {
+      const res = runSection(report, key, { role: 'enemy_player' })
+      expect(res.rows).toEqual([])
+      expect(res.note).toBeTruthy()
+    }
+  })
+
+  it('resolves boon names through the buff catalog, falling back to the id', () => {
+    const res = runSection(report, 'boons', { limit: 200 })
+    expect(res.rows.some((r) => r.boon === 'Protection')).toBe(true)
+  })
+
+  it('reports boon squad generation as a percentage, not seconds', () => {
+    const res = runSection(report, 'boons', { limit: 200 })
+    for (const row of res.rows) {
+      expect(Number(row.squadGenPct)).toBeGreaterThanOrEqual(0)
+      expect(Number(row.squadGenPct)).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('treats missing squad_wasted as zero, not NaN', () => {
+    const res = runSection(report, 'boons', { limit: 200 })
+    for (const row of res.rows) expect(Number.isNaN(Number(row.wasteSec))).toBe(false)
+  })
+})
