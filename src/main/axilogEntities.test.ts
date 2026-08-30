@@ -170,3 +170,24 @@ describe('buildEntityIndex', () => {
     expect(index.resolveName('non10')!.id).toBe('2')
   })
 })
+
+describe('profession', () => {
+  // The reported bug: the app answered a "what classes were there" question
+  // with core professions and blamed the log for not capturing elite specs.
+  // The log captured them fine -- buildEntityIndex read `profession` and threw
+  // `elite_spec` away.
+  it('reports the elite spec, not the base profession', () => {
+    const index = buildEntityIndex(report)
+    const spec = report.entities.find((e) => e.elite_spec)!
+    expect(index.get(spec.id)!.profession).toBe(spec.elite_spec)
+    expect(index.get(spec.id)!.profession).not.toBe(spec.profession)
+  })
+
+  it('falls back to the base profession when no elite spec is named', () => {
+    const index = buildEntityIndex({
+      ...report,
+      entities: [{ id: 0, character: 'A', profession: 'Guardian', elite_spec: '', role: 'squad' }]
+    })
+    expect(index.get(0)!.profession).toBe('Guardian')
+  })
+})

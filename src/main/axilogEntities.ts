@@ -27,6 +27,11 @@ export interface AxilogEntity {
   /** Player roles only (`squad` / `friendly_player`). */
   account?: string
   profession?: string
+  /**
+   * The elite spec display name (`"Firebrand"`), empty when the agent has no
+   * elite spec or axilog cannot name its id. Never a numeric spec id.
+   */
+  elite_spec?: string
   role: EntityRole
   subgroup?: number
 }
@@ -53,6 +58,13 @@ export interface EntityRef {
   id: string
   name: string
   account: string
+  /**
+   * What a player would call the class: the elite spec when the log names one,
+   * falling back to the base profession. axilog reports these as two separate
+   * fields and only the base is guaranteed present, so folding them here is
+   * what keeps every consumer from having to remember the fallback -- and from
+   * silently reporting "Guardian" for a roster full of Firebrands.
+   */
   profession: string
   role: EntityRole
   subgroup: number | null
@@ -137,7 +149,7 @@ export function buildEntityIndex(report: AxilogReport): EntityIndex {
       id: String(e.id),
       name: e.character?.trim() || e.name?.trim() || `Unknown #${e.id}`,
       account: e.account?.trim() ?? '',
-      profession: e.profession?.trim() ?? '',
+      profession: e.elite_spec?.trim() || e.profession?.trim() || '',
       role: e.role,
       subgroup: typeof e.subgroup === 'number' ? e.subgroup : null
     }))
