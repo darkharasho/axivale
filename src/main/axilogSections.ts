@@ -106,6 +106,55 @@ function describeFilters(opts: SectionQuery, only: EntityRef | null): string {
 }
 
 /**
+ * Validates a requested sort key against a field list and falls back rather
+ * than silently no-op-sorting: an unrecognized key must never reach
+ * `Array.sort` unnoticed, or every row compares equal and the caller believes
+ * it got a sorted result when it got iteration order. Shared by every shaper
+ * so this check can't drift out of sync between them.
+ */
+function resolveSortKey(
+  fields: SectionField[],
+  sort: string | undefined,
+  defaultKey: string = fields[0].key
+): { sortKey: string; note?: string } {
+  const metricKeys = fields.map((f) => f.key)
+  const sortKey = sort && metricKeys.includes(sort) ? sort : defaultKey
+  const note =
+    sort && !metricKeys.includes(sort)
+      ? `Unknown sort key "${sort}"; sorted by ${sortKey} instead.`
+      : undefined
+  return { sortKey, note }
+}
+
+/**
+ * Collapses a group of rows into one aggregated row for the given fields:
+ * sum by default, mean for rate/percentage fields (never sum a percentage
+ * across entities), '—' for fields marked 'none'. Shared by every
+ * squad-granularity rollup for the same reason as `resolveSortKey`.
+ */
+function aggregateFields(
+  rows: Array<Record<string, string | number>>,
+  fields: SectionField[]
+): { values: Record<string, string | number>; meanLabels: string[] } {
+  const values: Record<string, string | number> = {}
+  const meanLabels: string[] = []
+  for (const f of fields) {
+    if (f.aggregate === 'none') {
+      values[f.key] = '—'
+      continue
+    }
+    const sum = rows.reduce((acc, r) => acc + num(r[f.key]), 0)
+    if (f.aggregate === 'mean') {
+      values[f.key] = round1(sum / rows.length)
+      meanLabels.push(f.label)
+    } else {
+      values[f.key] = round1(sum)
+    }
+  }
+  return { values, meanLabels }
+}
+
+/**
  * The shared entity-granular shaper: walk `by_entity`, resolve each id, project
  * the descriptor's metrics, filter, sort, limit. Every entity section is this
  * plus a metric projection, which is why they stay a few lines each.
@@ -174,43 +223,26 @@ function shapeByEntity(
   }
 
   if (opts.granularity === 'squad') {
+    const { values, meanLabels } = aggregateFields(rows, descriptor.fields)
     const total: Record<string, string | number> = {
       name: `${rows.length} entities`,
       profession: '—',
-      subgroup: ''
-    }
-    const means: string[] = []
-    for (const f of descriptor.fields) {
-      if (f.aggregate === 'none') {
-        total[f.key] = '—'
-        continue
-      }
-      const sum = rows.reduce((acc, r) => acc + num(r[f.key]), 0)
-      if (f.aggregate === 'mean') {
-        total[f.key] = round1(sum / rows.length)
-        means.push(f.label)
-      } else {
-        total[f.key] = round1(sum)
-      }
+      subgroup: '',
+      ...values
     }
     return {
       rows: [total],
       columns,
       note: joinNotes(
         `Summed across ${rows.length} matching entities.`,
-        means.length ? `${means.join(', ')} is a mean, not a sum.` : undefined,
+        meanLabels.length ? `${meanLabels.join(', ')} is a mean, not a sum.` : undefined,
         extraNote
       ),
       ...warningsPart
     }
   }
 
-  const metricKeys = descriptor.fields.map((f) => f.key)
-  const sortKey = opts.sort && metricKeys.includes(opts.sort) ? opts.sort : descriptor.fields[0].key
-  const sortNote =
-    opts.sort && !metricKeys.includes(opts.sort)
-      ? `Unknown sort key "${opts.sort}"; sorted by ${sortKey} instead.`
-      : undefined
+  const { sortKey, note: sortNote } = resolveSortKey(descriptor.fields, opts.sort)
   rows.sort((a, b) => num(b[sortKey]) - num(a[sortKey]))
   const limit = opts.limit ?? DEFAULT_ROW_LIMIT
   const limited = rows.slice(0, limit)
@@ -514,21 +546,73 @@ const boonsSection: SectionDescriptor = {
       ...boonsSection.fields.map((f) => ({ key: f.key, label: f.label }))
     ]
     const warningsPart = warnings.length ? { warnings } : {}
+    const emptyBlockNote =
+      coverage === 'empty' ? 'This block is present but empty for this fight.' : undefined
 
     if (rows.length === 0) {
       const filters = describeFilters(opts, only)
       const note = `No entities matched${filters ? ` (${filters})` : ''}. This block covers ${Object.keys(byEntity).length} of the log's ${index.all().length} entities.`
-      return { rows: [], columns, note, ...warningsPart }
+      return { rows: [], columns, note: joinNotes(note, emptyBlockNote), ...warningsPart }
     }
 
-    const sortKey = opts.sort ?? 'squadGenPct'
+    // Squad granularity for a per-entity-per-boon table means one row PER
+    // BOON, aggregated across the matching entities — not one row per entity
+    // (that's the entity granularity above it) and not a single flattened
+    // total (a mean stability uptime and a mean might uptime averaged
+    // together would be meaningless). Group by the already-resolved boon
+    // name and reuse the same `aggregateFields` every other section's squad
+    // rollup uses, so mean-marked fields stay means here too.
+    if (opts.granularity === 'squad') {
+      const groups = new Map<string, Array<Record<string, string | number>>>()
+      for (const row of rows) {
+        const key = String(row.boon)
+        const group = groups.get(key)
+        if (group) group.push(row)
+        else groups.set(key, [row])
+      }
+      const perBoonFields = boonsSection.fields.filter((f) => f.key !== 'boon')
+      let meanLabels: string[] = []
+      const aggregated: Array<Record<string, string | number>> = []
+      for (const [boon, groupRows] of groups) {
+        const { values, meanLabels: labels } = aggregateFields(groupRows, perBoonFields)
+        meanLabels = labels
+        aggregated.push({
+          name: `${groupRows.length} entities`,
+          profession: '—',
+          subgroup: '',
+          boon,
+          ...values
+        })
+      }
+      const { sortKey, note: sortNote } = resolveSortKey(
+        boonsSection.fields,
+        opts.sort,
+        'squadGenPct'
+      )
+      aggregated.sort((a, b) => num(b[sortKey]) - num(a[sortKey]))
+      const limit = opts.limit ?? DEFAULT_ROW_LIMIT
+      const limited = aggregated.slice(0, limit)
+      const note = joinNotes(
+        `Aggregated across ${rows.length} matching entity-boon rows, one row per boon (${aggregated.length} boons).`,
+        meanLabels.length ? `${meanLabels.join(', ')} is a mean, not a sum.` : undefined,
+        sortNote,
+        aggregated.length > limited.length
+          ? `Showing ${limited.length} of ${aggregated.length} boons (raise \`limit\` for more).`
+          : undefined,
+        emptyBlockNote
+      )
+      return { rows: limited, columns, note, ...warningsPart }
+    }
+
+    const { sortKey, note: sortNote } = resolveSortKey(boonsSection.fields, opts.sort, 'squadGenPct')
     rows.sort((a, b) => num(b[sortKey]) - num(a[sortKey]))
     const limit = opts.limit ?? DEFAULT_ROW_LIMIT
     const limited = rows.slice(0, limit)
-    const note =
+    const truncatedNote =
       rows.length > limited.length
         ? `Showing ${limited.length} of ${rows.length} entity-boon rows (raise \`limit\`, or set \`entity\` to focus one player).`
         : undefined
+    const note = joinNotes(sortNote, truncatedNote, emptyBlockNote)
 
     return { rows: limited, columns, ...(note ? { note } : {}), ...warningsPart }
   }

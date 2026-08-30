@@ -218,7 +218,7 @@ describe('support sections', () => {
     expect(res.columns.map((c) => c.key)).toContain('stripDurationSec')
   })
 
-  it('declares that boons need no extra pass but rotations do', () => {
+  it('declares that boons and cc need no extra parse passes', () => {
     expect(getSection('boons')!.passes).toEqual({})
     expect(getSection('cc')!.passes).toEqual({})
   })
@@ -259,5 +259,44 @@ describe('support sections', () => {
   it('treats missing squad_wasted as zero, not NaN', () => {
     const res = runSection(report, 'boons', { limit: 200 })
     for (const row of res.rows) expect(Number.isNaN(Number(row.wasteSec))).toBe(false)
+  })
+
+  it('collapses support and cc to one squad row, not a per-entity dump', () => {
+    for (const key of ['support', 'cc']) {
+      const res = runSection(report, key, { granularity: 'squad', limit: 200 })
+      expect(res.rows).toHaveLength(1)
+      expect(res.note).toMatch(/matching entities/)
+    }
+  })
+
+  it('falls back and notes an unknown sort key for support and cc, instead of silently no-op-sorting', () => {
+    for (const key of ['support', 'cc']) {
+      const res = runSection(report, key, { sort: 'not_a_real_field', limit: 5 })
+      expect(res.note).toMatch(/Unknown sort key "not_a_real_field"/)
+    }
+  })
+
+  it('collapses boon squad granularity to one row per boon, not a raw per-entity-per-boon dump', () => {
+    const res = runSection(report, 'boons', { granularity: 'squad', limit: 200 })
+    expect(res.rows.length).toBeGreaterThan(0)
+    expect(res.rows.length).toBeLessThan(200)
+    const boonNames = new Set(res.rows.map((r) => r.boon))
+    expect(boonNames.size).toBe(res.rows.length)
+    expect(res.note).toMatch(/one row per boon/)
+    for (const row of res.rows) {
+      expect(Number(row.squadGenPct)).toBeGreaterThanOrEqual(0)
+      expect(Number(row.squadGenPct)).toBeLessThanOrEqual(100)
+    }
+  })
+
+  it('never fabricates a boon squad summary when nothing matched', () => {
+    const res = runSection(report, 'boons', { granularity: 'squad', role: 'enemy_player' })
+    expect(res.rows).toEqual([])
+    expect(res.note).toBeTruthy()
+  })
+
+  it('falls back and notes an unknown sort key for boons, instead of silently no-op-sorting', () => {
+    const res = runSection(report, 'boons', { sort: 'not_a_real_field', limit: 5 })
+    expect(res.note).toMatch(/Unknown sort key "not_a_real_field"/)
   })
 })
