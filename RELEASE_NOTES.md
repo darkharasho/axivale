@@ -1,5 +1,13 @@
 # Release Notes
 
+## Version v1.4.0 — August 30, 2026
+
+### Drop in a single fight and talk about it
+AxiVale can now open one raw arcdps log directly — drag a `.zevtc` file into the chat, or just ask about your "last fight" and it lists recent logs straight from your arcdps folder. Once a log is open, ask it anything you'd ask about a full report: damage, boons, cleanses, crowd control, who carried and who got carried. There's also a Fight Review skill for a quick rundown the moment you drop a log in. One important boundary: a raw log is one fight, not a whole night — for trends across a full raid, keep using your regular AxiBridge reports.
+
+### Honest when it can't read a log
+Not every install has what this needs. If the log reader isn't available on your machine, AxiVale says so plainly instead of guessing at numbers or pretending the file opened.
+
 ## Version v1.3.5 — July 8, 2026
 
 ### Closing AxiVale actually closes it
