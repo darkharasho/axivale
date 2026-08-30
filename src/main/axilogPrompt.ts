@@ -23,6 +23,10 @@ export function buildAxilogReference(available: boolean): string {
     `not_computed, and unsupported. A block marked not_computed or unsupported means this ` +
     `log does not carry that data — say so plainly, and never infer a player's or enemy's ` +
     `build from it. Never present a not_computed/unsupported metric as zero.\n` +
+    `Coverage is also the ONLY licence to say WHY something is missing. If coverage does ` +
+    `not mark a block absent, never tell the user the log "did not record" or "did not ` +
+    `capture" it — an empty, flat, or all-identical result is your own filter until ` +
+    `coverage says otherwise. Re-read the tool's schema and query it another way instead.\n` +
     `SCOPE: one .zevtc is ONE FIGHT, not a night. Never generalize a single skirmish into ` +
     `a trend — night-level and multi-run questions belong to the axibridge_* tools.`
   )

@@ -33,6 +33,16 @@ describe('buildAxilogReference', () => {
     expect(block.slice(formatIdx, formatIdx + 40)).toContain('axilog_query')
   })
 
+  it('makes coverage the only licence to explain WHY data is missing', () => {
+    // The reported bug in prompt form: the agent grouped a roster by the base
+    // profession field, got one bucket, and explained its own filter's output by
+    // asserting the log had not captured elite specs. Nothing in coverage said so.
+    const block = buildAxilogReference(true)
+    expect(block).toMatch(/only licence to say WHY/i)
+    expect(block).toMatch(/did not record|did not capture/i)
+    expect(block).toMatch(/your own filter/i)
+  })
+
   it('teaches the empty coverage state alongside not_computed/unsupported', () => {
     const block = buildAxilogReference(true)
     expect(block).toMatch(/\bempty\b/)

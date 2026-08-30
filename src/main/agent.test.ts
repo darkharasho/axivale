@@ -13,6 +13,18 @@ describe('AXIVALE_SYSTEM_PROMPT', () => {
   })
 })
 
+describe('missing-data rule', () => {
+  it('forbids explaining WHY data is absent without a tool saying so', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toContain('No fabricated CAUSES for missing data')
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/coverage map is the only thing that licenses/i)
+  })
+
+  it('names the uniform-result-is-your-query heuristic that the spec bug hit', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/collapsed into one bucket/i)
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/re-read the tool's\s+schema/i)
+  })
+})
+
 describe('toolsForProvider', () => {
   const all = [
     { name: 'meta_search' },
