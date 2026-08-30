@@ -23,7 +23,7 @@ import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridg
 import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeResilient } from './axibridgeSummarize'
-import { AxilogWatcher, resolveAxilogDir, computeAxilogAvailable, hasLogExtension } from './axilogWatcher'
+import { AxilogWatcher, resolveAxilogDir, computeAxilogAvailable, hasLogExtension, logLabel } from './axilogWatcher'
 import { AxilogService } from './axilogService'
 import { axilogUnavailableReason } from './axilogNative'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
@@ -667,7 +667,7 @@ app.whenReady().then(async () => {
           conversations.addLogRef(conversationId, {
             logId: entry.logId,
             path: entry.path,
-            label: `${entry.mapFolder} ${entry.startedAt.replace('T', ' ')}`
+            label: logLabel(entry)
           })
       })
     }),

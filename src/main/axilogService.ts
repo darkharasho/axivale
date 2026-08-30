@@ -15,6 +15,7 @@ import type {
 } from './axilogWorker'
 import type { SectionQuery, SectionResult } from './axilogSections'
 import type { CoverageState } from './axilogEntities'
+import { logGoneMessage } from './axilogWatcher'
 
 /** jq rows plus, when the result contains entity-id keys, the id->name map. */
 export type QueryResult = { rows: unknown[]; truncated: boolean } & Partial<QueryEntityAnnotation>
@@ -93,18 +94,19 @@ export class AxilogService {
     return this.worker !== null
   }
 
-  async overview(logId: string, path: string): Promise<FightOverview> {
-    return (await this.send(path, { kind: 'overview', logId, path })) as FightOverview
+  async overview(logId: string, path: string, label: string): Promise<FightOverview> {
+    return (await this.send(path, label, { kind: 'overview', logId, path })) as FightOverview
   }
 
   async section(
     logId: string,
     path: string,
+    label: string,
     section: string,
     opts: SectionQuery,
     passes: PassFlags = {}
   ): Promise<SectionResult> {
-    return (await this.send(path, {
+    return (await this.send(path, label, {
       kind: 'section',
       logId,
       path,
@@ -117,10 +119,17 @@ export class AxilogService {
   async query(
     logId: string,
     path: string,
+    label: string,
     filter: string,
     limit: number
   ): Promise<QueryResult> {
-    return (await this.send(path, { kind: 'query', logId, path, filter, limit })) as QueryResult
+    return (await this.send(path, label, {
+      kind: 'query',
+      logId,
+      path,
+      filter,
+      limit
+    })) as QueryResult
   }
 
   dispose(): void {
@@ -135,12 +144,17 @@ export class AxilogService {
     this.worker = null
   }
 
-  private guard(path: string): void {
+  /**
+   * `label`, never `path`: every throw from here reaches the model verbatim via
+   * safe()/safeRich(), so a deleted log must not ship the user's absolute
+   * filesystem path to the inference provider.
+   */
+  private guard(path: string, label: string): void {
     let size: number
     try {
       size = this.statSize(path)
     } catch {
-      throw new Error(`log no longer at ${path}`)
+      throw new Error(logGoneMessage(label))
     }
     if (size > this.maxLogBytes) {
       const mb = Math.round(size / 1024 / 1024)
@@ -207,8 +221,8 @@ export class AxilogService {
     this.idleTimer.unref?.()
   }
 
-  private send(path: string, req: Unidentified<WorkerRequest>): Promise<unknown> {
-    this.guard(path)
+  private send(path: string, label: string, req: Unidentified<WorkerRequest>): Promise<unknown> {
+    this.guard(path, label)
     const worker = this.ensureWorker()
     const id = this.nextId++
     return new Promise((resolve, reject) => {

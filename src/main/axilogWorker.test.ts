@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadAxilog } from './axilogNative'
-import { handle, annotateQueryEntities, QUERY_ENTITY_NOTE } from './axilogWorker'
+import {
+  handle,
+  annotateQueryEntities,
+  redactReportPaths,
+  QUERY_ENTITY_NOTE
+} from './axilogWorker'
 import { EntityIndex, type AxilogReport } from './axilogEntities'
 
 const index = new EntityIndex([
@@ -23,6 +28,37 @@ const index = new EntityIndex([
     subgroup: 2
   }
 ])
+
+// C1 guard, jq channel: jqEngine.run() runs against the WHOLE report, which
+// carries `axilog.generated_from` — the absolute path parseFile was handed. A
+// model probing with `keys` or `.axilog` would get it straight back, so it is
+// reduced to a basename at load, before any filter can see it.
+describe('redactReportPaths', () => {
+  it('reduces generated_from to a basename so a jq probe cannot read the path', () => {
+    const posix = {
+      axilog: {
+        schema: 's',
+        version: '1',
+        generated_from: '/home/realuser/Documents/Guild Wars 2/logs/20260830-211432.zevtc'
+      }
+    } as never
+    expect(redactReportPaths(posix).axilog.generated_from).toBe('20260830-211432.zevtc')
+
+    const win = {
+      axilog: {
+        schema: 's',
+        version: '1',
+        generated_from: 'C:\\Users\\realname\\Documents\\logs\\20260830-211432.zevtc'
+      }
+    } as never
+    expect(redactReportPaths(win).axilog.generated_from).toBe('20260830-211432.zevtc')
+  })
+
+  it('leaves a report with no axilog header alone rather than throwing', () => {
+    expect(() => redactReportPaths({} as never)).not.toThrow()
+    expect(() => redactReportPaths({ axilog: {} } as never)).not.toThrow()
+  })
+})
 
 describe('annotateQueryEntities', () => {
   it('resolves numeric-string object keys anywhere in an arbitrarily shaped result', () => {
@@ -104,6 +140,19 @@ describeNative('axilogWorker (needs the @axiapps/axilog native binary)', () => {
     expect(Object.keys(res.entities).length).toBeGreaterThan(0)
     // The name map counts against the cap, it is not appended after it.
     expect(JSON.stringify(res).length).toBeLessThanOrEqual(70_000)
+  })
+
+  it('hands a jq probe of .axilog no filesystem path', async () => {
+    const res = (await handle({
+      id: 5,
+      kind: 'query',
+      logId: 'fx-redact',
+      path: FIXTURE,
+      filter: '.axilog',
+      limit: 50
+    })) as { rows: unknown[] }
+    expect(res.rows).toHaveLength(1)
+    expect(JSON.stringify(res)).not.toMatch(/[/\\]/)
   })
 
   it('caps a runaway jq filter by serialized size', async () => {

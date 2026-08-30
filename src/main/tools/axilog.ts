@@ -2,7 +2,7 @@ import { tool, type SdkMcpToolDefinition } from '@anthropic-ai/claude-agent-sdk'
 import { z } from 'zod'
 import { safe, safeRich } from './shared'
 import type { AxilogService } from '../axilogService'
-import type { AxilogWatcher, LogEntry } from '../axilogWatcher'
+import { logLabel, logGoneMessage, type AxilogWatcher, type LogEntry } from '../axilogWatcher'
 import { findSections, getSection, DEFAULT_ROW_LIMIT } from '../axilogSections'
 
 export interface AxilogDeps {
@@ -25,8 +25,12 @@ const SCHEMA_MAP =
   'coverage maps each block to present | empty | not_computed | unsupported. ' +
   'There is no players[] and no schema_version.'
 
-/** Resolve a logId to its registry entry and a live service, or throw for the model. */
-function resolve(deps: AxilogDeps, logId: string): { entry: LogEntry; service: AxilogService } {
+/** Resolve a logId to its registry entry, a live service and the log's
+ *  model-facing label, or throw for the model. */
+function resolve(
+  deps: AxilogDeps,
+  logId: string
+): { entry: LogEntry; service: AxilogService; label: string } {
   if (!deps.service) {
     throw new Error(
       'AxiLog is not available on this install (the native parser failed to load) — see the Logs panel for details.'
@@ -39,16 +43,11 @@ function resolve(deps: AxilogDeps, logId: string): { entry: LogEntry; service: A
     // an answer from memory about a fight nothing can see any more. The label
     // (map + time), never the path, is what the model is given.
     const gone = deps.watcher.missingRef(logId)
-    if (gone) {
-      throw new Error(
-        `The log file for "${gone.label}" is no longer on disk, so it cannot be analyzed. ` +
-          'Tell the user the file is gone — do not answer about that fight from earlier context.'
-      )
-    }
+    if (gone) throw new Error(logGoneMessage(gone.label))
     throw new Error(`Unknown log "${logId}". Call axilog_logs_list to see the available fights.`)
   }
   deps.onLogUsed?.(entry)
-  return { entry, service: deps.service }
+  return { entry, service: deps.service, label: logLabel(entry) }
 }
 
 /**
@@ -118,8 +117,8 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
       'Parse a fight and return its encounter, team composition, squad roster, and COVERAGE. Call this first for any log. `coverage` is authoritative: a block marked not_computed or unsupported cannot be answered from this log — say so rather than guessing.',
       { logId: z.string().describe('from axilog_logs_list') },
       safe(async (args: { logId: string }) => {
-        const { entry, service } = resolve(deps(), args.logId)
-        return service.overview(entry.logId, entry.path)
+        const { entry, service, label } = resolve(deps(), args.logId)
+        return service.overview(entry.logId, entry.path, label)
       })
     ),
 
@@ -162,7 +161,7 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
           sort?: string
           limit?: number
         }) => {
-          const { entry, service } = resolve(deps(), args.logId)
+          const { entry, service, label } = resolve(deps(), args.logId)
           const descriptor = getSection(args.section)
           if (!descriptor) {
             throw new Error(
@@ -173,6 +172,7 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
           const result = await service.section(
             entry.logId,
             entry.path,
+            label,
             args.section,
             opts,
             descriptor.passes
@@ -203,8 +203,14 @@ export function buildAxilogTools(deps: () => AxilogDeps): Array<SdkMcpToolDefini
         limit: z.number().optional().describe('max jq outputs to keep (default 50)')
       },
       safe(async (args: { logId: string; filter: string; limit?: number }) => {
-        const { entry, service } = resolve(deps(), args.logId)
-        const res = await service.query(entry.logId, entry.path, args.filter, args.limit ?? 50)
+        const { entry, service, label } = resolve(deps(), args.logId)
+        const res = await service.query(
+          entry.logId,
+          entry.path,
+          label,
+          args.filter,
+          args.limit ?? 50
+        )
         // The worker may already have attached an entity-id note; keep it and
         // append the truncation warning rather than clobbering one with the other.
         const notes = [

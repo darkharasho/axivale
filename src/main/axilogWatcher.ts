@@ -52,6 +52,29 @@ const LOG_EXT = /\.(zevtc|evtc(\.zip)?)$/i
 const SETTLE_AGE_MS = 60_000
 export const MAX_REGISTRY_ENTRIES = 100
 
+/**
+ * How a log is named to the MODEL and in the UI: map folder + local start time.
+ * The single derivation — the conversation-ref label, the tool layer's
+ * gone-file error and the service's guard all use this one, so a log is never
+ * identified to a third-party inference API by its absolute path.
+ */
+export function logLabel(entry: Pick<LogEntry, 'mapFolder' | 'startedAt'>): string {
+  return `${entry.mapFolder} ${entry.startedAt.replace('T', ' ')}`
+}
+
+/**
+ * The one wording for "that log file is gone". Shared by the tool layer (a
+ * logId rehydrated from a conversation whose file vanished) and the service
+ * guard (the file vanished between listing and parsing) so the two cannot
+ * drift — and so neither can reintroduce a path into a model-facing message.
+ */
+export function logGoneMessage(label: string): string {
+  return (
+    `The log file for "${label}" is no longer on disk, so it cannot be analyzed. ` +
+    'Tell the user the file is gone — do not answer about that fight from earlier context.'
+  )
+}
+
 /** Extension-only check for the axilog:open-file trust boundary in main —
  *  a renderer-supplied path must at least look like a combat log before it's
  *  registered and later handed to the parser worker. */

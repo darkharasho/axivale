@@ -16,7 +16,7 @@ afterEach(() => {
 describe('AxilogService', () => {
   it('rejects a path over the size ceiling without spawning a worker', async () => {
     service = new AxilogService({ workerPath: WORKER, statSize: () => MAX_LOG_BYTES + 1 })
-    await expect(service.overview('abc', FIXTURE)).rejects.toThrow(/too large/i)
+    await expect(service.overview('abc', FIXTURE, 'WvW 21:14')).rejects.toThrow(/too large/i)
     expect(service.workerIsRunning()).toBe(false)
   })
 
@@ -27,14 +27,25 @@ describe('AxilogService', () => {
         throw new Error('ENOENT')
       }
     })
-    await expect(service.overview('abc', '/nope/gone.zevtc')).rejects.toThrow(
-      /log no longer at \/nope\/gone\.zevtc/
-    )
+    // N1 — guard() runs on every send() and safe()/safeRich() puts err.message
+    // verbatim into the model's tool result, so this message must identify the
+    // log by LABEL and never by path, matching how the tool layer reports a
+    // gone file one layer up.
+    const err = await service
+      .overview('abc', '/home/realuser/logs/gone.zevtc', 'World vs World 21:14')
+      .then(
+        () => null,
+        (e: Error) => e
+      )
+    expect(err).toBeTruthy()
+    expect(err!.message).toMatch(/no longer on disk/i)
+    expect(err!.message).toContain('World vs World 21:14')
+    expect(err!.message).not.toMatch(/[/\\]/)
   })
 
   it('reports the worker bundle missing rather than hanging', async () => {
     service = new AxilogService({ workerPath: '/nonexistent/axilogWorker.js', statSize: () => 10 })
-    await expect(service.overview('abc', FIXTURE)).rejects.toThrow(/worker bundle/i)
+    await expect(service.overview('abc', FIXTURE, 'WvW 21:14')).rejects.toThrow(/worker bundle/i)
   })
 
   it('times out a wedged parse and kills the worker', async () => {
@@ -48,7 +59,7 @@ describe('AxilogService', () => {
         on: () => {}
       })
     })
-    await expect(service.overview('abc', FIXTURE)).rejects.toThrow(/timed out after 50ms/)
+    await expect(service.overview('abc', FIXTURE, 'WvW 21:14')).rejects.toThrow(/timed out after 50ms/)
     expect(service.workerIsRunning()).toBe(false)
   })
 
@@ -63,7 +74,7 @@ describe('AxilogService', () => {
 
   itReal('parses the fixture through a real worker and reports the roster', async () => {
     service = new AxilogService({ workerPath: WORKER })
-    const overview = await service.overview('fx', FIXTURE)
+    const overview = await service.overview('fx', FIXTURE, 'WvW 21:14')
     expect(service.workerIsRunning()).toBe(true)
     expect(overview.roleCounts).toEqual({
       squad: 38,

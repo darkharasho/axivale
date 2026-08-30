@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildAxilogTools } from './axilog'
 import { AxilogWatcher } from '../axilogWatcher'
+import { AxilogService } from '../axilogService'
 
 function deps(overrides: Record<string, unknown> = {}) {
   const watcher = new AxilogWatcher({ dir: () => null, now: () => 0 })
@@ -76,6 +77,45 @@ describe('axilog tools', () => {
     expect(logs).toHaveLength(1)
     expect(logs[0].logId).toEqual(expect.any(String))
     expect(logs[0].path).toBeUndefined()
+  })
+
+  // C1 guard, error channel: a deleted/moved log makes the service's guard()
+  // throw, and safe()/safeRich() put err.message verbatim into the model's
+  // tool result. The whole serialized result must still carry no path.
+  it('never sends a filesystem path to the model when the log file is gone', async () => {
+    const watcher = new AxilogWatcher({ dir: () => null, now: () => 0 })
+    const entry = watcher.registerOpened(
+      '/home/realuser/Documents/Guild Wars 2/logs/20260830-211432.zevtc'
+    )
+    const service = new AxilogService({
+      workerPath: '/tmp/axilogWorker.js',
+      spawn: () => ({
+        postMessage: () => {},
+        terminate: async () => 0,
+        on: () => {}
+      }),
+      statSize: () => {
+        throw new Error('ENOENT')
+      }
+    })
+    const tools = buildAxilogTools(() => ({ watcher, service }))
+    for (const [name, args] of [
+      ['axilog_fight_overview', { logId: entry.logId }],
+      ['axilog_section', { logId: entry.logId, section: 'support' }],
+      ['axilog_query', { logId: entry.logId, filter: '.encounter' }]
+    ] as const) {
+      const res = await call(tools, name, args)
+      expect(res.isError, name).toBe(true)
+      expect(res.content[0].text, name).toMatch(/no longer on disk/i)
+      // The model-facing message carries neither separator...
+      expect(res.content[0].text, name).not.toMatch(/[/\\]/)
+      // ...and nothing path-like survives anywhere in the serialized result.
+      // (Checked on '/' alone: JSON.stringify's own quote escaping introduces
+      // backslashes that have nothing to do with a filesystem path.)
+      expect(JSON.stringify(res), name).not.toContain('/')
+      expect(JSON.stringify(res), name).not.toContain('realuser')
+    }
+    service.dispose()
   })
 
   it('never sends a filesystem path to the model in the parsing tools', async () => {

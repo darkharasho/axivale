@@ -65,6 +65,25 @@ function covers(have: PassFlags, want: PassFlags): boolean {
   return (Object.keys(want) as Array<keyof PassFlags>).every((k) => !want[k] || have[k])
 }
 
+/**
+ * `axilog.generated_from` is the absolute path parseFile was handed, and
+ * jqEngine.run() runs a model-supplied filter against the WHOLE report — so a
+ * probe as ordinary as `keys` or `.axilog` would hand the user's home-directory
+ * layout and OS account name back to the inference provider. Reduced to a
+ * basename at load, before any filter can reach it, and mutated in place so the
+ * LRU-cached report carries the redacted value too. Nothing else in the tree
+ * reads this field (grepped), so basename is a lossless-enough identifier.
+ */
+export function redactReportPaths(report: AxilogReport): AxilogReport {
+  const from = report?.axilog?.generated_from
+  if (typeof from === 'string') {
+    // Handle both separators explicitly: node:path's basename() is
+    // platform-specific, and a Windows-produced path can be parsed on Linux.
+    report.axilog.generated_from = from.split(/[/\\]/).pop() ?? from
+  }
+  return report
+}
+
 function load(logId: string, path: string, passes: PassFlags): AxilogReport {
   const hit = lru.get(logId)
   if (hit && covers(hit.passes, passes)) {
@@ -77,7 +96,7 @@ function load(logId: string, path: string, passes: PassFlags): AxilogReport {
   // Union with what is already loaded: a re-parse never LOSES a pass, so a
   // section that needed rotations does not force the next one to re-parse.
   const merged: PassFlags = { ...(hit?.passes ?? {}), ...passes }
-  const report = native.parseFile(path, merged) as AxilogReport
+  const report = redactReportPaths(native.parseFile(path, merged) as AxilogReport)
   lru.delete(logId)
   lru.set(logId, { report, passes: merged })
   while (lru.size > REPORT_LRU_SIZE) lru.delete(lru.keys().next().value as string)
