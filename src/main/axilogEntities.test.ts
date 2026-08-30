@@ -136,4 +136,37 @@ describe('buildEntityIndex', () => {
     const target = index.byRole('squad')[0]
     expect(index.resolveName(`  ${target.name}  `)!.id).toBe(target.id)
   })
+
+  it('falls back to a unique substring match when no exact match exists', () => {
+    // "133" is a unique substring across every entity's name+account in the
+    // committed fixture -- it only matches entity id 1 ("Anon133" /
+    // "Anon133.5921"), so a query for it should still resolve.
+    const index = buildEntityIndex(report)
+    const target = index.get(1)!
+    expect(target.name).toBe('Anon133')
+    expect(index.resolveName('133')!.id).toBe('1')
+  })
+
+  it('returns null for a substring shared by many entities', () => {
+    // "Anon" is a prefix of dozens of entities' names in the fixture, so a
+    // partial match must not silently pick one.
+    const index = buildEntityIndex(report)
+    expect(index.resolveName('Anon')).toBeNull()
+  })
+
+  it('prefers an exact match over being a substring of another entity', () => {
+    const index = buildEntityIndex({
+      ...report,
+      entities: [
+        { id: 1, role: 'squad', character: 'Anon1', account: 'Anon1.1111' },
+        { id: 2, role: 'squad', character: 'Anon10', account: 'Anon10.2222' }
+      ]
+    } as AxilogReport)
+    // "Anon1" is an exact match for entity 1 even though it is ALSO a
+    // substring of entity 2's "Anon10" -- exact must win outright, not just
+    // be preferred among ties.
+    expect(index.resolveName('Anon1')!.id).toBe('1')
+    // Its true substring-only counterpart still resolves via stage 2.
+    expect(index.resolveName('non10')!.id).toBe('2')
+  })
 })

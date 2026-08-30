@@ -95,21 +95,39 @@ export class EntityIndex {
   }
 
   /**
-   * Exact (case-insensitive) match against a name or account handle.
+   * Two-stage resolution, exact before partial, honest about ambiguity at
+   * both stages:
    *
-   * Tie-breaking rule: NONE — an ambiguous query returns null rather than
-   * silently picking a winner. Two different accounts can legitimately share
-   * a character name (`Anon133` on one account, someone else's alt also
-   * named `Anon133`), and a chat command that misidentifies a player is
-   * worse than one that says "not sure, be more specific." Substring/partial
-   * matching is deliberately NOT implemented here for the same reason: a
-   * partial match against a 122-entity roster is far more likely to resolve
-   * ambiguously (or to the wrong person) than to help, so this method only
-   * ever matches a full name or account string, case-insensitively.
+   * 1. Trim the query. Exact, case-insensitive match against display name or
+   *    account handle. Exactly one match -> return it. More than one -> null
+   *    (an exact match is never overridden by stage 2, so a query that
+   *    exactly names one player is never hijacked by being a substring of
+   *    another).
+   * 2. Only when stage 1 finds nothing: case-insensitive SUBSTRING match
+   *    against display name or account handle. Exactly one candidate ->
+   *    return it. Zero or more-than-one -> null.
+   *
+   * This exists because the primary caller is an LLM agent turning a chat
+   * message ("how were Anon133's strips last fight?") into a tool call — it
+   * cannot be relied on to echo a roster string verbatim, and a unique
+   * substring candidate is a real answer, not a guess. Ambiguity is still
+   * never silently resolved: two different accounts can legitimately share a
+   * character name, and a fragment shared by several roster entries (e.g. a
+   * short "Anon" prefix matching dozens of players) must still return null
+   * rather than pick one.
    */
   resolveName(loose: string): EntityRef | null {
-    const hits = this.byLowerName.get(loose.trim().toLowerCase()) ?? []
-    return hits.length === 1 ? hits[0] : null
+    const query = loose.trim().toLowerCase()
+    if (!query) return null
+
+    const exact = this.byLowerName.get(query) ?? []
+    if (exact.length === 1) return exact[0]
+    if (exact.length > 1) return null
+
+    const partial = this.all().filter(
+      (r) => r.name.toLowerCase().includes(query) || r.account.toLowerCase().includes(query)
+    )
+    return partial.length === 1 ? partial[0] : null
   }
 }
 
