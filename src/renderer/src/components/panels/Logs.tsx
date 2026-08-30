@@ -17,7 +17,14 @@ function fmtBytes(bytes: number): string {
  *  a native binary AND has no detected folder must be told both things, and
  *  picking a folder must never be the only visible action when it can't fix
  *  the real problem. The folder picker itself is always reachable, in every
- *  state, so an auto-detected-wrong or since-deleted folder is recoverable. */
+ *  state, so an auto-detected-wrong or since-deleted folder is recoverable.
+ *
+ *  The detail pane is gated on nothing but `current`, deliberately: displaying
+ *  a fight needs neither the watched folder (that is only needed to DISCOVER
+ *  logs) nor the native parser (nothing here is parsed) — it is four strings
+ *  out of the registry. A user with no arcdps install who drops a friend's log
+ *  must see it. LogsNav lists every registry entry, so gating the pane on the
+ *  folder would make the rail offer clicks that lead nowhere. */
 export default function Logs({ ctl }: { ctl: LogsController }): ReactElement {
   const { status, error, current, pickDir, refresh } = ctl
 
@@ -43,7 +50,6 @@ export default function Logs({ ctl }: { ctl: LogsController }): ReactElement {
   const folderMissing = status.dir === null
   const folderGone = !folderMissing && !status.dirExists
   const needsFolder = folderMissing || folderGone
-  const canShowFights = status.available && !needsFolder
 
   return (
     <div className="sk2-detail">
@@ -62,26 +68,25 @@ export default function Logs({ ctl }: { ctl: LogsController }): ReactElement {
           Choose folder
         </button>
       </div>
-      {canShowFights &&
-        (current ? (
-          <div className="sk2-body">
-            <div className="sk2-head">
-              <div className="sk2-head-txt">
-                <div className="sk2-name-in">{current.mapFolder}</div>
-                <div className="sk2-when-in">{current.startedAt.replace('T', ' ')}</div>
-              </div>
-            </div>
-            <div className="sk2-preview prose">
-              <p>Path: {current.path}</p>
-              <p>Size: {fmtBytes(current.bytes)}</p>
-              <p>Source: {current.source === 'watched' ? 'watched folder' : 'opened manually'}</p>
+      {current ? (
+        <div className="sk2-body">
+          <div className="sk2-head">
+            <div className="sk2-head-txt">
+              <div className="sk2-name-in">{current.mapFolder}</div>
+              <div className="sk2-when-in">{current.startedAt.replace('T', ' ')}</div>
             </div>
           </div>
-        ) : (
-          <div className="sk2-blank">
-            <div className="panel-empty">Select a fight, or drop a .zevtc file into the composer.</div>
+          <div className="sk2-preview prose">
+            <p>Path: {current.path}</p>
+            <p>Size: {fmtBytes(current.bytes)}</p>
+            <p>Source: {current.source === 'watched' ? 'watched folder' : 'opened manually'}</p>
           </div>
-        ))}
+        </div>
+      ) : (
+        <div className="sk2-blank">
+          <div className="panel-empty">Select a fight, or drop a .zevtc file into the composer.</div>
+        </div>
+      )}
     </div>
   )
 }

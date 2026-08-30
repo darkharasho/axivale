@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // src/renderer/src/components/panels/Logs.test.tsx
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
 import type { ReactElement } from 'react'
 import Logs from './Logs'
 import LogsNav from './LogsNav'
@@ -133,6 +133,64 @@ describe('Logs panel', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /choose folder/i })).toBeTruthy()
     )
+  })
+
+  // Important — displaying a fight needs neither the watched folder nor the
+  // parser: it is four strings out of the registry. A user with no arcdps
+  // install who drops a friend's log must see it, not "No arcdps log folder
+  // found." forever. The rail and the detail pane must agree: anything the rail
+  // lists must be clickable to something.
+  it('shows a dropped fight even when there is no watched folder', async () => {
+    ;(window as unknown as { officer: unknown }).officer = officer({
+      axilogStatus: vi
+        .fn()
+        .mockResolvedValue({ dir: null, dirExists: false, available: true, reason: null }),
+      axilogList: vi.fn().mockResolvedValue([
+        {
+          logId: 'abc12345',
+          path: '/drops/theirfight.zevtc',
+          startedAt: '2026-08-30T21:14:32',
+          mapFolder: 'drops',
+          bytes: 1_500_000,
+          source: 'opened'
+        }
+      ])
+    })
+    const { container } = render(<Harness />)
+    const nav = within(await screen.findByRole('navigation'))
+    fireEvent.click(await nav.findByText('drops'))
+    const detail = within(container.querySelector('.sk2-detail') as HTMLElement)
+    expect(await detail.findByText(/theirfight\.zevtc/)).toBeTruthy()
+    expect(detail.getByText(/opened manually/i)).toBeTruthy()
+    // The folder message is still shown — the two facts are independent.
+    expect(detail.getByText(/no arcdps log folder found/i)).toBeTruthy()
+  })
+
+  it('shows the selected fight even when the native parser is unavailable', async () => {
+    ;(window as unknown as { officer: unknown }).officer = officer({
+      axilogStatus: vi.fn().mockResolvedValue({
+        dir: '/logs',
+        dirExists: true,
+        available: false,
+        reason: 'no prebuilt binary for linux-arm64'
+      }),
+      axilogList: vi.fn().mockResolvedValue([
+        {
+          logId: 'abc12345',
+          path: '/logs/20260830-211432.zevtc',
+          startedAt: '2026-08-30T21:14:32',
+          mapFolder: 'World vs World',
+          bytes: 1_500_000,
+          source: 'watched'
+        }
+      ])
+    })
+    const { container } = render(<Harness />)
+    const nav = within(await screen.findByRole('navigation'))
+    fireEvent.click(await nav.findByText('World vs World'))
+    const detail = within(container.querySelector('.sk2-detail') as HTMLElement)
+    expect(await detail.findByText(/20260830-211432\.zevtc/)).toBeTruthy()
+    expect(detail.getByText(/no prebuilt binary/i)).toBeTruthy()
   })
 
   // Important 3 — a rejecting axilogStatus() must render as a failure, not as
