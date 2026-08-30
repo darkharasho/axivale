@@ -121,6 +121,26 @@ produce wrong code if assumed away:
   referenced by id from `blocks`. No block inlines a human-readable name.
 - `coverage` reports each block as `present`, `empty`, `not_computed`, or
   `unsupported`.
+- `parseFile(path, opts?)` / `parseBuffer(buf, opts?)` return `ReportV1`
+  synchronously (`@axiapps/axilog@1.10.0`, `index.d.ts`). `ParseOptions` (Task
+  0 spike, verified against `node_modules/@axiapps/axilog/index.d.ts`) is
+  **camelCase**, confirming the plan's assumption — a later task's
+  `PassFlags` interface should be built directly from this field list, not
+  guessed:
+  ```ts
+  export interface ParseOptions {
+    replay?: boolean
+    skillDamage?: boolean
+    timeseries?: boolean
+    missiles?: boolean
+    rotation?: boolean
+    modifiers?: boolean
+    everything?: boolean // union with the individual options, never an override
+  }
+  ```
+  Note `blocks.minions` is gated on `skillDamage`, not a separate `minions`
+  flag — see the "Parse passes" section's flag list below, which needs the
+  same correction.
 
 ### Packaging
 
@@ -284,20 +304,25 @@ esbuild transform passes type errors through, and CI will not. Plus a case in
 `__evals__/agent/cases.ts`: a fight-review question against the fixture,
 asserting the agent calls `overview` before `section` and invents no numbers.
 
-## Open question, resolved by a spike before implementation
+## Open question, resolved by a spike (Task 0)
 
 **Can enemy builds be inferred — e.g. "are their necros running minions?"**
 
-`blocks.minions.by_entity` is documented upstream as "one entry per *player*
-that has minions", and it is an optional pass. Whether it populates for
-`enemy_player` entities in a WvW log is unverified: arcdps observes enemies only
-through what it sees, and enemy minions may land as unattributed NPCs.
+**Resolved: no.** A spike (`scripts/spike-axilog-coverage.mjs`, deleted after
+recording this finding) ran `parseFile(fixture, { everything: true })` against
+the anonymized WvW fixture `../axilog/fixtures/wvw-small.anon.zevtc`.
+`coverage.minions` reports `"present"` and `blocks.minions.by_entity` is
+populated, but every key in it resolves to an entity with `role: 'squad'` —
+zero keys resolve to `role: 'enemy_player'` (32 `enemy_player` entities and 48
+`npc` entities in this fixture, none carrying minion rows). arcdps observes
+enemies only through what it sees, and enemy minions land as unattributed NPCs,
+exactly as the open question anticipated.
 
-Step 0 of the build order dumps `coverage` and `blocks.minions.by_entity`
-filtered to `role: 'enemy_player'` from the fixture. If enemy minions are not
-attributable, the honest answer to that class of question is "the log cannot
-tell us" — surfaced through the coverage mechanism, never guessed. The finding
-shapes which sections expose enemy-side data.
+Enemy build inference (via minions) is therefore **out of scope**. Task 5's
+`minions` section is squad-only: its descriptor does not accept `role:
+'enemy_player'`/`role: 'friendly_player'` as a meaningful filter, and any
+enemy-scoped minion query gets back a `note`, not an empty or guessed result:
+`"This log does not attribute minions to enemy players."` No approximation.
 
 ## Build order
 
