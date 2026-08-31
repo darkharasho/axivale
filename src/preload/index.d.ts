@@ -226,6 +226,25 @@ export interface RendererRosterLink {
   createdAt: string
 }
 
+export interface RendererLogEntry {
+  logId: string
+  path: string
+  /** Local wall-clock ISO-ish string parsed from the filename (no zone). */
+  startedAt: string
+  mapFolder: string
+  bytes: number
+  source: 'watched' | 'opened'
+}
+
+export interface AxilogStatus {
+  dir: string | null
+  /** Whether `dir` (when set) still exists on disk — false means the
+   *  configured folder was renamed/deleted/unmounted since it was chosen. */
+  dirExists: boolean
+  available: boolean
+  reason: string | null
+}
+
 export interface OfficerApi {
   getSetting(key: string): Promise<string | null>
   setSetting(key: string, value: string): Promise<void>
@@ -336,6 +355,15 @@ export interface OfficerApi {
     patch: Partial<{ name: string; whenToUse: string; instructions: string; enabled: boolean }>
   ): Promise<RendererSkill | null>
   skillsDelete(id: string): Promise<void>
+  axilogList(filter?: { since?: string; limit?: number; map?: string }): Promise<RendererLogEntry[]>
+  axilogStatus(): Promise<AxilogStatus>
+  /** Opens the native folder picker and persists the choice; null when cancelled. */
+  axilogPickDir(): Promise<string | null>
+  /** Registers a manually-opened/dropped log file in the watcher's registry.
+   *  Null when main rejects the path (wrong extension, doesn't exist, or not a string). */
+  axilogOpenFile(path: string): Promise<RendererLogEntry | null>
+  /** Resolves a dropped renderer File to its real filesystem path (preload-only). */
+  axilogPathForFile(file: File): string
   rosterAnnotationsList(): Promise<RendererRosterAnnotation[]>
   rosterAnnotationUpsert(
     memberId: string,

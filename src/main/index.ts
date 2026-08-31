@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Notification, clipboard, ipcMain, screen, shell } from 'electron'
+import { app, BrowserWindow, Notification, clipboard, dialog, ipcMain, screen, shell } from 'electron'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
 import { join, dirname } from 'path'
@@ -23,6 +23,9 @@ import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from './axibridg
 import { AxibridgeService } from './axibridgeService'
 import { listLinkedRepos, serializeLinkedRepos, parseRepoRef } from './axibridgeRepos'
 import { summarizeResilient } from './axibridgeSummarize'
+import { AxilogWatcher, resolveAxilogDir, computeAxilogAvailable, hasLogExtension, logLabel } from './axilogWatcher'
+import { AxilogService } from './axilogService'
+import { axilogUnavailableReason } from './axilogNative'
 import { ForgeCatalogCache, type ForgeUpgradeCatalog } from './forgeCatalog'
 import {
   GITHUB_DEVICE_CLIENT_ID,
@@ -487,6 +490,7 @@ app.whenReady().then(async () => {
       wikiAbort.abort() // stop the wiki crawl mid-run; it resumes next launch
       metaFetcher.destroy()
       ollama.stopServer()
+      axilogService?.dispose()
     } catch (err) {
       console.error('[quit] cleanup error (quitting anyway):', err)
     }
@@ -529,6 +533,26 @@ app.whenReady().then(async () => {
     }
   })
 
+  // AxiLog raw-log tools: watcher is filesystem-only and always available; the
+  // parse service is null when the native module failed to load (unsupported
+  // platform/arch), so every axilog_* tool degrades to an actionable error.
+  const axilogWatcher = new AxilogWatcher({
+    dir: () => resolveAxilogDir(store.getSetting('axilogDir'), app.getPath('home'))
+  })
+  // axilogUnavailableReason() calls the same memoized loadAxilog() internally,
+  // so this gate is equivalent without index.ts holding its own (unused) reference
+  // to the native module object.
+  const axilogService = axilogUnavailableReason() === null
+    ? new AxilogService({
+        // Pass the worker path explicitly: axilogService lives in a module that
+        // electron-vite code-splits into out/main/chunks/, so its own
+        // import.meta.url resolves to the wrong dir. __dirname here is
+        // out/main, where the worker emits.
+        workerPath: join(__dirname, 'axilogWorker.js'),
+        maxLogBytes: Number(store.getSetting('axilogMaxBytes')) || undefined
+      })
+    : null
+
   const PROVIDER_MODEL_SETTING: Record<ProviderName, SettingKey> = {
     claude: 'model',
     gemini: 'geminiModel',
@@ -555,7 +579,7 @@ app.whenReady().then(async () => {
   }
 
   const agent = new AgentService({
-    toolDeps: () => ({
+    toolDeps: (conversationId: string) => ({
       axitools: buildAxitools(),
       axivaleServers: () =>
         store.listKeyLabels('axivale').map((k) => ({
@@ -631,11 +655,32 @@ app.whenReady().then(async () => {
       rosterAnnotations: () => rosterAnnotations.list(),
       rosterLinks: () => rosterLinks.list(),
       memory: () => memoryService,
-      resolveEntityKey
+      resolveEntityKey,
+      axilog: () => ({
+        watcher: axilogWatcher,
+        service: axilogService,
+        // Persist the fight this turn touched onto the conversation record, so
+        // reopening the thread tomorrow still resolves the same logId (the
+        // watcher registry is in-memory and empty at every launch). Metadata
+        // only — {logId, path, label} — never anything parsed.
+        onLogUsed: (entry) =>
+          conversations.addLogRef(conversationId, {
+            logId: entry.logId,
+            path: entry.path,
+            label: logLabel(entry)
+          })
+      })
     }),
     skills: () => skills.list().filter((s) => s.enabled),
     meta: () => meta.list(),
     pinnedMemory: () => memoryStore.list().facts.filter((f) => f.pinned),
+    axilogAvailable: () =>
+      computeAxilogAvailable({
+        serviceAvailable: axilogService !== null,
+        hasRegisteredLogs: axilogWatcher.list().length > 0,
+        configuredDir: store.getSetting('axilogDir'),
+        home: app.getPath('home')
+      }),
     config: providerConfig,
     loadSession: (conversationId: string): SessionState =>
       conversations.get(conversationId)?.session ?? {},
@@ -1111,6 +1156,10 @@ app.whenReady().then(async () => {
         return
       }
     }
+    // Replay this conversation's persisted log refs into the watcher before the
+    // turn runs, so a logId from an earlier session still resolves — and one
+    // whose file is gone reports as gone rather than as an unknown log.
+    axilogWatcher.rehydrate(conversations.get(conversationId)?.logRefs ?? [])
     await agent.runTurn(conversationId, prompt, (agentEvent) => {
       if (!event.sender.isDestroyed()) {
         event.sender.send('agent:event', { ...agentEvent, conversationId })
@@ -1129,6 +1178,39 @@ app.whenReady().then(async () => {
       skills.update(id, patch)
   )
   ipcMain.handle('skills:delete', (_e, id: string) => skills.remove(id))
+
+  // AxiLog panel: read-only filesystem metadata — nothing here parses a log
+  // or touches a log file on disk. Both axilog:pick-dir (below) and the
+  // generic settings:set handler (which has no per-key allowlist, and
+  // 'axilogDir' is a valid SettingKey) can write axilogDir; pick-dir is just
+  // the one that does so from a trusted, renderer-uncontrolled value (the
+  // native dialog's own result).
+  ipcMain.handle('axilog:list', (_e, filter?: { since?: string; limit?: number; map?: string }) => {
+    axilogWatcher.scan()
+    return axilogWatcher.list(filter ?? {})
+  })
+  ipcMain.handle('axilog:status', () => {
+    const dir = resolveAxilogDir(store.getSetting('axilogDir'), app.getPath('home'))
+    return {
+      dir,
+      dirExists: dir !== null && existsSync(dir),
+      available: axilogService !== null,
+      reason: axilogUnavailableReason()
+    }
+  })
+  ipcMain.handle('axilog:pick-dir', async () => {
+    const res = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+    if (res.canceled || !res.filePaths[0]) return null
+    store.setSetting('axilogDir', res.filePaths[0])
+    return res.filePaths[0]
+  })
+  // The renderer is nominally trusted, but this is the trust boundary before
+  // a path reaches the parser worker (via tools/axilog.ts's resolve()) — so
+  // it gets its own checks rather than relying on the drop handler's filter.
+  ipcMain.handle('axilog:open-file', (_e, path: unknown) => {
+    if (typeof path !== 'string' || !hasLogExtension(path) || !existsSync(path)) return null
+    return axilogWatcher.registerOpened(path)
+  })
 
   ipcMain.handle('roster:annotations:list', () => rosterAnnotations.list())
   ipcMain.handle(

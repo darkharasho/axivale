@@ -417,7 +417,11 @@ td.nm2{color:var(--ink)}
 .inputzone::before{content:'';position:absolute;top:-8px;left:0;right:0;height:8px;background:var(--paper);
   clip-path:polygon(0 100%,2% 10%,5% 80%,8% 25%,12% 95%,15% 15%,19% 75%,23% 30%,27% 90%,31% 10%,35% 70%,39% 20%,43% 95%,47% 35%,51% 80%,55% 12%,59% 88%,63% 28%,67% 92%,71% 18%,75% 70%,79% 32%,83% 94%,87% 14%,91% 78%,95% 26%,98% 85%,100% 0,100% 100%,0 100%)}
 .inputbar{padding:16px 30px}
-.inwrap{display:flex;align-items:flex-end;gap:14px;max-width:980px;margin:0 auto}
+.inwrap{display:flex;align-items:flex-end;gap:14px;max-width:980px;margin:0 auto;border:1px solid transparent}
+.inwrap.drag-over{border-color:var(--focus);background:rgba(224,90,80,.06)}
+.drop-error{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--accent-b);max-width:980px;margin:6px auto 0;padding:0 30px}
+.lg-status{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:16px}
+.lg-folder-path{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.03em;color:var(--faint)}
 .prompt{font-family:'IBM Plex Mono',monospace;color:var(--accent-b);font-size:15px}
 /* the field rides over a mirror that paints the skill-token highlights, so it's
    transparent-backed and shares the mirror's exact box + typography */

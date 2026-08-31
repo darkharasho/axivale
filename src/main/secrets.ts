@@ -42,6 +42,10 @@ export type SettingKey =
   /** JSON map of AxiVale key label -> { comp: string[]; build: string[] } webhook ids
    *  tied to that server for routing AxiForge shares. */
   | 'discordWebhookTie'
+  /** Absolute path to the arcdps log folder; '' or unset = auto-detect. */
+  | 'axilogDir'
+  /** Max compressed log size to attempt, in bytes (default 157286400 = 150 MB). */
+  | 'axilogMaxBytes'
 
 /** Services that hold a ring of labeled keys with one active. */
 export type KeyService = 'gw2' | 'axivale' | 'gemini' | 'openai' | 'github'

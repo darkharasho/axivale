@@ -12,6 +12,7 @@ import { AxibridgeClient } from '../../../axibridgeClient'
 import { AxibridgeCache, DEFAULT_CACHE_CAP_BYTES, META_TTL_MS } from '../../../axibridgeCache'
 import { listLinkedRepos } from '../../../axibridgeRepos'
 import { summarizeResilient } from '../../../axibridgeSummarize'
+import { AxilogWatcher } from '../../../axilogWatcher'
 
 export interface TurnRunner {
   runTurn(
@@ -87,9 +88,22 @@ export function buildEvalAxibridge(env: NodeJS.ProcessEnv = process.env): Axibri
   })
 }
 
+/**
+ * A real AxilogWatcher seeded with the committed fixture so axilog_logs_list has
+ * something to resolve. registerOpened() is pure filesystem metadata (no parse),
+ * and tolerates the fixture's non-arcdps-shaped filename. The parse service stays
+ * null — see the eval case's comment for why.
+ */
+function buildEvalAxilogWatcher(): AxilogWatcher {
+  const watcher = new AxilogWatcher({ dir: () => null })
+  watcher.registerOpened(join(__dirname, '../../../__fixtures__/wvw-small.anon.zevtc'))
+  return watcher
+}
+
 /** ToolDeps with a real AxiBridge service and benign stubs for every other group. */
 function buildEvalToolDeps(env: NodeJS.ProcessEnv): ToolDeps {
   const axibridge = buildEvalAxibridge(env)
+  const axilogWatcher = buildEvalAxilogWatcher()
   return {
     axitools: {} as never,
     axivaleServers: () => [],
@@ -113,7 +127,8 @@ function buildEvalToolDeps(env: NodeJS.ProcessEnv): ToolDeps {
     discordWebhookTie: () => ({ comp: [], build: [] }),
     wikiFacts: {} as never,
     fetchBuildPage: async () => null,
-    fetchBuildPageRaw: async () => null
+    fetchBuildPageRaw: async () => null,
+    axilog: () => ({ watcher: axilogWatcher, service: null })
   }
 }
 
@@ -145,7 +160,12 @@ export function buildEvalAgentService(
     },
     skills: () => [],
     meta: () => [],
-    pinnedMemory: () => []
+    pinnedMemory: () => [],
+    // Deliberately `true` even though buildEvalToolDeps sets `service: null` — production never
+    // reaches this combination (axilogAvailable ANDs axilogService !== null), but the eval cases
+    // need the prompt block present to grade routing/ordering. The tools error independently of
+    // this flag, so the "reports unavailable" half of the rubric is still graded faithfully.
+    axilogAvailable: () => true
   }
   return new AgentService(deps)
 }

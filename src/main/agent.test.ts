@@ -13,6 +13,18 @@ describe('AXIVALE_SYSTEM_PROMPT', () => {
   })
 })
 
+describe('missing-data rule', () => {
+  it('forbids explaining WHY data is absent without a tool saying so', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toContain('No fabricated CAUSES for missing data')
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/coverage map is the only thing that licenses/i)
+  })
+
+  it('names the uniform-result-is-your-query heuristic that the spec bug hit', () => {
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/collapsed into one bucket/i)
+    expect(AXIVALE_SYSTEM_PROMPT).toMatch(/re-read the tool's\s+schema/i)
+  })
+})
+
 describe('toolsForProvider', () => {
   const all = [
     { name: 'meta_search' },
@@ -164,8 +176,10 @@ describe('AgentService turn serialization', () => {
     const { AgentService } = await import('./agent')
     vi.spyOn(await import('./tools'), 'buildOfficerTools').mockReturnValue([])
 
-    const mockDeps = {
-      toolDeps: () => ({
+    // I5 — tools are built per turn, so this is the one seam that knows which
+    // conversation a tool call belongs to. Asserting the id reaches toolDeps
+    // is what keeps the log-ref recording wired.
+    const toolDeps = vi.fn(() => ({
         axitools: {} as never,
         gw2: {} as never,
         discordGuildId: () => '1',
@@ -182,12 +196,15 @@ describe('AgentService turn serialization', () => {
         wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
         fetchBuildPage: async () => null,
         fetchBuildPageRaw: async () => null,
+        axilog: () => ({ watcher: {} as never, service: null }),
         memory: () => ({}) as never,
         resolveEntityKey: async () => null,
         axivaleServers: () => [],
         resolveAxitoolsServer: async () => ({ client: {} as never, guildId: '', name: null, label: '' }),
         discordWebhookTie: () => ({ comp: [], build: [] })
-      }),
+    }))
+    const mockDeps = {
+      toolDeps,
       config: () => ({
         provider: 'claude' as const,
         model: null,
@@ -200,7 +217,8 @@ describe('AgentService turn serialization', () => {
       saveSession: vi.fn(),
       skills: () => [],
       meta: () => [],
-      pinnedMemory: () => []
+      pinnedMemory: () => [],
+      axilogAvailable: () => false
     }
 
     const agent = new AgentService(mockDeps)
@@ -222,6 +240,8 @@ describe('AgentService turn serialization', () => {
       kind: 'done',
       error: expect.stringContaining('already in progress')
     })
+
+    expect(toolDeps).toHaveBeenCalledWith('c1')
 
     _releaseTurn!()
     _turnGate.held = null
@@ -253,6 +273,7 @@ describe('AgentService turn serialization', () => {
         wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
         fetchBuildPage: async () => null,
         fetchBuildPageRaw: async () => null,
+        axilog: () => ({ watcher: {} as never, service: null }),
         memory: () => ({}) as never,
         resolveEntityKey: async () => null,
         axivaleServers: () => [],
@@ -271,7 +292,8 @@ describe('AgentService turn serialization', () => {
       saveSession: vi.fn(),
       skills: () => [],
       meta: () => [],
-      pinnedMemory: () => []
+      pinnedMemory: () => [],
+      axilogAvailable: () => false
     }
     const agent = new AgentService(deps)
 
@@ -316,6 +338,7 @@ describe('AgentService persistence', () => {
         wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
         fetchBuildPage: async () => null,
         fetchBuildPageRaw: async () => null,
+        axilog: () => ({ watcher: {} as never, service: null }),
         memory: () => ({}) as never,
         resolveEntityKey: async () => null,
         axivaleServers: () => [],
@@ -334,7 +357,8 @@ describe('AgentService persistence', () => {
       saveSession,
       skills: () => [],
       meta: () => [],
-      pinnedMemory: () => []
+      pinnedMemory: () => [],
+      axilogAvailable: () => false
     }
     const agent = new AgentService(deps)
     await agent.runTurn('c9', 'hello', () => {})

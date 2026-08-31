@@ -58,6 +58,7 @@ function makeDeps(): ToolDeps {
     wikiFacts: { lookup: async () => ({ name: '', found: false, hasSplit: false, pve: [], wvw: [], pvp: [], recharge: { pve: null, wvw: null, pvp: null }, activation: { pve: null, wvw: null, pvp: null } }) },
     fetchBuildPage: vi.fn().mockResolvedValue(null),
     fetchBuildPageRaw: vi.fn().mockResolvedValue(null),
+    axilog: () => ({ watcher: {} as never, service: null }),
     memory: () => ({}) as never,
     resolveEntityKey: async () => null,
     axivaleServers: () => [],

@@ -47,7 +47,7 @@ jobs:
         working-directory: axivale
       - run: npx electron-builder --win --dir
         working-directory: axivale
-      - name: Verify codex binary + officer proxy are asar-unpacked
+      - name: Verify codex binary + officer proxy + axilog binary are asar-unpacked
         working-directory: axivale
         shell: pwsh
         run: |
@@ -57,4 +57,6 @@ jobs:
           }
           $codex = Get-ChildItem -Recurse -Path $unpacked -Filter codex.exe -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $codex) { throw "codex.exe was not asar-unpacked" }
-          Write-Host "OK: officer proxy + codex.exe unpacked ($($codex.FullName))"
+          $axilog = Get-ChildItem -Recurse -Path $unpacked -Filter "axilog.*.node" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $axilog) { throw "axilog native binary was not asar-unpacked" }
+          Write-Host "OK: officer proxy + codex.exe + axilog native binary unpacked ($($codex.FullName), $($axilog.FullName))"

@@ -10,11 +10,18 @@ describe('source-labeling eval', () => {
   const live = evalMode() === 'replay' ? undefined : liveModel()
 
   for (const c of sourceCases) {
-    it(c.id, async () => {
-      const model = fixtureModel('source-labeling', c.id, live)
-      const out = await distill(c.mode, c.excerpts, model, c.specMap ?? {}, c.today ?? '')
-      expect(out, 'distill returned null').toBeTruthy()
-      gradeSource(out as string, c.expect)
-    })
+    // Timeout, not the 5s default: replay is instant, but EVAL_LIVE=1 bypasses
+    // the fixture and makes a real model call, which cannot finish in 5s. The
+    // whole live suite failed here on a default-timeout timeout, not on grading.
+    it(
+      c.id,
+      async () => {
+        const model = fixtureModel('source-labeling', c.id, live)
+        const out = await distill(c.mode, c.excerpts, model, c.specMap ?? {}, c.today ?? '')
+        expect(out, 'distill returned null').toBeTruthy()
+        gradeSource(out as string, c.expect)
+      },
+      120_000
+    )
   }
 })

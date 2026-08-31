@@ -1,5 +1,25 @@
 # Release Notes
 
+## Version v1.4.0 — August 30, 2026
+
+### Drop in a single fight and talk about it
+AxiVale can now open one raw arcdps log directly — drag a `.zevtc` file into the chat, or just ask about your "last fight" and it lists recent logs straight from your arcdps folder. Once a log is open, ask it anything you'd ask about a full report: damage, boons, cleanses, crowd control, who carried and who got carried. There's also a Fight Review skill for a quick rundown the moment you drop a log in. One important boundary: a raw log is one fight, not a whole night — for trends across a full raid, keep using your regular AxiBridge reports.
+
+### Honest when it can't read a log
+Not every install has what this needs. If the log reader isn't available on your machine, AxiVale says so plainly instead of guessing at numbers or pretending the file opened.
+
+### Finds your logs on Linux and Steam
+Log detection only looked in the standard Documents folder, so a Steam install with its library on another drive came up empty — AxiVale would report no raw logs and quietly fall back to your published AxiBridge runs. It now searches Steam's library folders too, including libraries on other drives, so "my last fight" finds the fight.
+
+### Tells Firebrands from Luminaries
+Asking what everyone was running came back as base professions — a line of Luminaries and Dragonhunters all collapsed into "Guardian" — and AxiVale then blamed the log for not recording elite specs. The log had them the whole time. Elite specs are now reported for both your side and the enemy's, so "what were they running?" gets Luminary, Spellbreaker, Ritualist, not a list of core classes.
+
+### No more invented explanations for missing data
+When a number wasn't in the log, AxiVale would sometimes explain *why* it was missing — "this fight didn't record elite specs" — with nothing backing the claim. It now says only what a tool actually told it: the data isn't there, full stop, without a made-up reason attached.
+
+### Under the hood
+The eval judge that grades agent answers before release was failing correct ones — it scored an answer as hallucinated for naming a real elite spec released after its own training, and for citing numbers that sat outside the slice of tool output it could see. Both are fixed, so real regressions aren't buried under false alarms.
+
 ## Version v1.3.5 — July 8, 2026
 
 ### Closing AxiVale actually closes it

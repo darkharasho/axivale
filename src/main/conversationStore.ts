@@ -3,6 +3,15 @@ import { dirname } from 'path'
 import { randomUUID } from 'crypto'
 import type { ProviderName, SessionState, Turn } from './providers/types'
 
+/** A raw log this conversation has discussed. Kept so reopening the thread still
+ *  resolves the same fight; a since-deleted file shows as unavailable, never
+ *  silently vanishes. */
+export interface ConversationLogRef {
+  logId: string
+  path: string
+  label: string
+}
+
 export interface Conversation {
   id: string
   title: string | null
@@ -12,6 +21,7 @@ export interface Conversation {
   provider: ProviderName
   session: SessionState
   seenTurnCount: number
+  logRefs?: ConversationLogRef[]
 }
 
 interface FileShape {
@@ -138,6 +148,15 @@ export class ConversationStore {
     const conv = this.get(id)
     if (!conv) return
     conv.seenTurnCount = count
+    this.scheduleWrite()
+  }
+
+  addLogRef(id: string, ref: ConversationLogRef): void {
+    const conv = this.get(id)
+    if (!conv) return
+    const refs = conv.logRefs ?? []
+    if (refs.some((r) => r.logId === ref.logId)) return
+    conv.logRefs = [...refs, ref]
     this.scheduleWrite()
   }
 }

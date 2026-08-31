@@ -49,6 +49,17 @@ function buildPrompt(input: JudgeInput): string {
     '',
     `GRADING RUBRIC:\n${input.rubric}`,
     '',
+    // The judge's own GW2 knowledge lags the game. A real run was scored 0.05
+    // partly because the judge asserted "Paragon is not a real Guild Wars 2
+    // profession" -- it is; it postdates the judge's training. Grade against the
+    // tool results shown above, never against recalled game trivia.
+    'IMPORTANT: GW2 ships expansions and elite specs after your training cutoff. Names like ' +
+      'Amalgam, Luminary, Paragon, and Ritualist are REAL elite specs. Never score an answer ' +
+      'as hallucinated because a profession, spec, or skill name is unfamiliar to you -- judge ' +
+      'only against the tool results above. Where a tool result is marked [truncated N chars], ' +
+      'you cannot see all of it: do not call a cited name or number fabricated merely because ' +
+      'it is absent from the portion you were shown.',
+    '',
     'Respond with ONLY a JSON object, no prose, no code fences:',
     '{"pass": <boolean>, "score": <number 0..1>, "reasoning": "<one or two sentences>"}'
   ].join('\n')

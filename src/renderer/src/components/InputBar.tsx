@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent,
   type KeyboardEvent,
   type ReactElement,
   type ReactNode
@@ -34,6 +35,9 @@ function slugify(name: string): string {
 // A "/token" is a slash at the start or after whitespace, then word chars.
 const TOKEN_RE = /(^|\s)\/([\w-]+)/g
 
+// arcdps raw combat logs — the only file types the composer accepts a drop of.
+const LOG_EXT_RE = /\.(zevtc|evtc(\.zip)?)$/i
+
 export default function InputBar({
   disabled,
   onSubmit,
@@ -44,8 +48,93 @@ export default function InputBar({
   const [caret, setCaret] = useState(0)
   const [hi, setHi] = useState(0)
   const [dismissed, setDismissed] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [dropError, setDropError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const mirrorRef = useRef<HTMLDivElement>(null)
+
+  function seedText(seeds: string[]): void {
+    setValue((v) => {
+      const joined = seeds.join(' ')
+      return v.trim() ? `${v.trim()} ${joined}` : joined
+    })
+    requestAnimationFrame(() => {
+      const el = inputRef.current
+      if (!el) return
+      el.focus()
+      const len = el.value.length
+      try {
+        el.setSelectionRange(len, len)
+      } catch {
+        /* ignore */
+      }
+      setCaret(len)
+    })
+  }
+
+  // Every dropped .zevtc/.evtc is registered with the log watcher (so it
+  // shows up in the Logs panel too) and its id is seeded into the message so
+  // the agent can act on it right away. Each file is handled independently —
+  // one failing to resolve or register never silently drops the rest, and
+  // every failure mode ends in a visible message rather than a no-op.
+  async function registerLogFiles(files: File[]): Promise<void> {
+    const seeds: string[] = []
+    let failures = 0
+    for (const file of files) {
+      const path = window.officer.axilogPathForFile(file)
+      if (!path) {
+        failures++
+        continue
+      }
+      try {
+        const entry = await window.officer.axilogOpenFile(path)
+        if (!entry) {
+          failures++
+          continue
+        }
+        seeds.push(`log ${entry.logId} (${entry.mapFolder})`)
+      } catch {
+        failures++
+      }
+    }
+    if (seeds.length) seedText(seeds)
+    setDropError(
+      failures === 0
+        ? null
+        : failures === files.length
+          ? `Couldn't add ${failures > 1 ? 'those logs' : 'that log'} — try again.`
+          : `Added ${seeds.length} log${seeds.length === 1 ? '' : 's'}; couldn't add ${failures} more.`
+    )
+  }
+
+  // Only a real OS-backed file drop (dataTransfer.files is non-empty) risks
+  // Electron navigating the window away, so only that case is ever
+  // cancelled. A text/URL drag has no files entry — letting it through
+  // unmolested is what makes a normal text/link drop into the textarea keep
+  // working (an ancestor's preventDefault() would otherwise cancel the
+  // default action for the whole bubbling drop, including the textarea's own
+  // insert-dropped-text behaviour).
+  function onDrop(e: DragEvent<HTMLDivElement>): void {
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 0) return
+    e.preventDefault()
+    if (disabled) return
+    const logFiles = files.filter((f) => LOG_EXT_RE.test(f.name))
+    if (logFiles.length === 0) {
+      setDropError('Drop a .zevtc or .evtc combat log.')
+      return
+    }
+    setDropError(null)
+    void registerLogFiles(logFiles)
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>): void {
+    if (disabled) return
+    if (!Array.from(e.dataTransfer.items ?? []).some((it) => it.kind === 'file')) return
+    e.preventDefault()
+    setDragOver(true)
+  }
 
   // Grow the textarea to fit its content (up to the CSS max-height, past which it
   // scrolls), so multi-line orders are composed in full instead of one scrolling
@@ -230,8 +319,14 @@ export default function InputBar({
 
   return (
     <div className="inputzone">
+      {dropError && <div className="drop-error">{dropError}</div>}
       <div className="inputbar">
-        <div className="inwrap">
+        <div
+          className={`inwrap${dragOver ? ' drag-over' : ''}`}
+          onDragOver={handleDragOver}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+        >
           <span className="prompt">&gt;</span>
           <div className="field-wrap">
             <div className="field-mirror" ref={mirrorRef} aria-hidden="true">

@@ -5,7 +5,7 @@ import { join } from 'path'
 import { SkillStore, SKILLS } from './skillStore'
 
 // Names of the skills shipped as defaults (see DEFAULT_SEED in skillStore.ts).
-const SEEDED_NAMES = ['Build Guide', 'Commander Review', 'WvW Report', 'WvW Trends']
+const SEEDED_NAMES = ['Build Guide', 'Commander Review', 'Fight Review', 'WvW Report', 'WvW Trends']
 
 let dir: string
 let path: string
@@ -20,6 +20,14 @@ describe('SKILLS (default seed)', () => {
     const keys = Object.fromEntries(SKILLS.map((s) => [s.key, s.instructions]))
     expect(keys['commander-review']).toMatch(/axibridge_positioning/)
     expect(keys['wvw-report']).toMatch(/axibridge_positioning/)
+  })
+
+  it('fight-review points down contribution at the contribution section and names the chart tool', () => {
+    const keys = Object.fromEntries(SKILLS.map((s) => [s.key, s.instructions]))
+    // "down contribution" lives in the `contribution` section, not `damage` (axilogSections.ts).
+    expect(keys['fight-review']).toMatch(/`contribution`[^.]*down contribution/)
+    expect(keys['fight-review']).not.toMatch(/`damage`[^.]*down contribution/)
+    expect(keys['fight-review']).toMatch(/axibridge_render_chart/)
   })
 })
 
@@ -90,6 +98,18 @@ describe('SkillStore', () => {
       expect(reopened.getByName('WvW Report')).toBeNull()
       expect(reopened.list().map((sk) => sk.name).sort()).toEqual(
         SEEDED_NAMES.filter((n) => n !== 'WvW Report')
+      )
+    })
+
+    it('seeds fight-review once and it stays deleted after removal', () => {
+      const s = new SkillStore(path)
+      const review = s.getByName('Fight Review')!
+      s.remove(review.id)
+      s.flush()
+      const reopened = new SkillStore(path)
+      expect(reopened.getByName('Fight Review')).toBeNull()
+      expect(reopened.list().map((sk) => sk.name).sort()).toEqual(
+        SEEDED_NAMES.filter((n) => n !== 'Fight Review')
       )
     })
 
