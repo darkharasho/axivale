@@ -73,7 +73,7 @@ body{color:var(--ink);overflow:hidden;background:var(--axi-ground)}
 /* no-drag is load-bearing: the menu overlaps the masthead's drag region, and
    Electron resolves drag-vs-click by element bounds, not stacking order —
    without it the overlapping strip of the first option window-drags. */
-.earsw-menu{position:absolute;z-index:30;top:140%;min-width:150px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);text-align:left;text-transform:none;letter-spacing:normal;-webkit-app-region:no-drag}
+.earsw-menu{position:absolute;z-index:30;top:140%;min-width:150px;text-align:left;text-transform:none;letter-spacing:normal;-webkit-app-region:no-drag;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .earsw-menu.left{left:0}
 .earsw-menu.right{right:0}
 .earsw-opt{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);cursor:pointer;text-align:left;border-bottom:var(--axi-border-hairline) solid var(--line)}
@@ -472,7 +472,7 @@ td.nm2{color:var(--ink)}
 /* axibridge fetch progress — faint ticker above the input */
 .bridge-progress{padding:4px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border-top:var(--axi-border-hairline) solid var(--rule);background:var(--bg2)}
 /* right-click context menu — themed, context-aware */
-.ctx-menu{position:fixed;z-index:60;min-width:200px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.45);padding:5px 0;font-family:'IBM Plex Mono',monospace;user-select:none}
+.ctx-menu{position:fixed;z-index:60;min-width:200px;padding:5px 0;font-family:'IBM Plex Mono',monospace;user-select:none;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .ctx-item{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;background:none;border:none;padding:7px 14px;font-size:11px;letter-spacing:.04em;color:var(--ink-dim);cursor:pointer;text-align:left}
 .ctx-item:hover{background:rgba(200,66,58,.16);color:var(--ink)}
 .ctx-item.dis{color:var(--faint);opacity:.5;cursor:default}
@@ -482,7 +482,7 @@ td.nm2{color:var(--ink)}
 .ctx-sc{color:var(--faint);font-size:9px;letter-spacing:.08em}
 .ctx-sep{height:1px;background:var(--line);margin:5px 0}
 /* confirm dialog — public notice */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:50}
 .notice{background:var(--paper);border:var(--axi-border-control) solid var(--accent);max-width:560px;width:90%;box-shadow:6px 6px 0 rgba(0,0,0,.4)}
 .notice .nh{font-family:'Playfair Display',serif;font-weight:900;font-size:22px;color:var(--accent-b);text-align:center;padding:16px 20px 8px;letter-spacing:.04em}
 .notice .nsub{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint);text-align:center;padding-bottom:14px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
@@ -534,7 +534,7 @@ td.nm2{color:var(--ink)}
 .ssel-btn{display:flex;align-items:center;gap:8px;width:100%;height:100%;border:var(--axi-border-hairline) solid var(--rule2);background:rgba(0,0,0,.22);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);cursor:pointer;text-align:left}
 .ssel-btn .ph{color:var(--faint)}
 .ssel-btn .caret{margin-left:auto;color:var(--faint);font-size:11px;display:inline-flex;align-items:center}
-.ssel-menu{position:absolute;z-index:20;top:100%;left:0;right:0;margin-top:2px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4)}
+.ssel-menu{position:absolute;z-index:20;top:100%;left:0;right:0;margin-top:2px;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .ssel-search{width:100%;border:none;border-bottom:var(--axi-border-hairline) solid var(--rule2);background:rgba(0,0,0,.25);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
 .ssel-search::placeholder{color:var(--faint)}
 .ssel-list{max-height:260px;overflow-y:auto}
@@ -554,7 +554,7 @@ td.nm2{color:var(--ink)}
 .clspick-btn .ph{color:var(--faint)}
 .clspick-btn .classicon{color:var(--accent-b)}
 .clspick-btn .caret{margin-left:auto;color:var(--faint);font-size:11px;display:inline-flex;align-items:center}
-.clspick-menu{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:320px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);margin-top:2px}
+.clspick-menu{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:320px;overflow-y:auto;margin-top:2px;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .clspick-group{border-bottom:var(--axi-border-hairline) solid var(--line)}
 .clspick-group:last-child{border-bottom:none}
 .clspick-opt{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:6px 12px;font-family:'Source Serif 4',serif;font-size:13px;color:var(--ink-dim);cursor:pointer;text-align:left}
@@ -790,7 +790,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .share-msg-btn:hover{color:var(--accent-b)}
 
 /* ---- Share dialog — newspaper "Special Edition" clipping ---- */
-.share-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.share-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1000}
 .share-dialog{position:relative;background:var(--paper);border:1px solid var(--rule);width:min(440px,92vw);box-shadow:0 18px 50px rgba(0,0,0,.55)}
 .share-dialog::before{content:"";position:absolute;inset:5px;border:1px solid var(--line);pointer-events:none}
 .sd-head{text-align:center;padding:18px 26px 12px}
@@ -934,7 +934,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* ---- InputBar /skill typeahead ---- */
 /* Opens above the field as you type a "/token"; anchored to the field's left so
    it reads as a continuation of what's being typed. */
-.skill-typeahead{position:absolute;bottom:100%;left:0;margin-bottom:8px;min-width:240px;max-height:280px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);z-index:40;-webkit-app-region:no-drag}
+.skill-typeahead{position:absolute;bottom:100%;left:0;margin-bottom:8px;min-width:240px;max-height:280px;overflow-y:auto;z-index:40;-webkit-app-region:no-drag;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .skill-ta-head{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);padding:8px 12px 6px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
 .skill-opt{display:flex;align-items:baseline;gap:12px;width:100%;text-align:left;background:none;border:none;border-bottom:var(--axi-border-hairline) solid var(--line);padding:8px 12px;cursor:pointer}
 .skill-opt:last-child{border-bottom:none}
@@ -948,10 +948,9 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:1px solid rgba(224,90,80,.45);padding:1px 6px;letter-spacing:.12em}
 
 /* ---- Action modal — a filed-dispatch dossier (opened from a notice card) ---- */
-.action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
-.action-modal{position:relative;display:flex;flex-direction:column;width:min(1080px,94vw);min-height:360px;max-height:90vh;background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.action-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
+.action-modal{position:relative;display:flex;flex-direction:column;width:min(1080px,94vw);min-height:360px;max-height:90vh;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 /* inner hairline mat, the same "matted clipping" device as the share dialog */
-.action-modal::before{content:"";position:absolute;inset:5px;border:1px solid var(--line);pointer-events:none}
 .action-modal__x{position:absolute;top:10px;right:10px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;line-height:1;padding:0;z-index:2}
 .action-modal__x:hover{color:var(--accent-b)}
 .action-modal__head{padding:20px 24px 0}
@@ -959,10 +958,10 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .action-modal__headrow{display:flex;align-items:flex-start;gap:16px;padding-right:28px}
 .action-modal__title{font-family:'Playfair Display',serif;font-weight:700;font-size:25px;line-height:1.12;color:var(--ink);margin:0;flex:1;min-width:0}
 /* status as a rubber stamp, cocked a few degrees like an inked seal */
-.action-modal__stamp{flex:none;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;border:1.5px solid;padding:5px 12px;transform:rotate(-3deg);margin-top:3px;white-space:nowrap}
-.action-modal__stamp.ok{color:var(--green);border-color:rgba(111,174,111,.6)}
-.action-modal__stamp.fail{color:var(--accent-b);border-color:var(--accent-b)}
-.action-modal__stamp.work{color:var(--faint);border-color:var(--rule2)}
+.action-modal__stamp{flex:none;font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;border:var(--axi-border-hairline) solid currentColor;padding:5px 12px;transform:rotate(-3deg);margin-top:3px;white-space:nowrap}
+.action-modal__stamp.ok{color:var(--axi-ok)}
+.action-modal__stamp.fail{color:var(--axi-danger)}
+.action-modal__stamp.work{color:var(--axi-text-faint)}
 .action-modal__rule{border:none;border-top:var(--axi-border-control) solid var(--rule2);margin:16px 24px 0}
 .action-modal__filed{padding:14px 24px 0}
 .action-modal__filed-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
@@ -1556,8 +1555,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* Top-anchored below the masthead: a tall modal centred over the window would
    overlap the masthead's -webkit-app-region:drag zone, where the OS drag region
    hijacks clicks (grab cursor, dead close button). Starting below it avoids that. */
-.wnm-scrim{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.62);display:flex;align-items:flex-start;justify-content:center;padding:124px 34px 34px;backdrop-filter:blur(1.5px);-webkit-app-region:no-drag}
-.wnm{width:680px;max-width:100%;max-height:calc(100vh - 158px);display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--rule2);box-shadow:8px 8px 0 rgba(0,0,0,.5);-webkit-app-region:no-drag}
+.wnm-scrim{position:fixed;inset:0;z-index:1100;background:var(--axi-scrim);display:flex;align-items:flex-start;justify-content:center;padding:124px 34px 34px;-webkit-app-region:no-drag}
+.wnm{width:680px;max-width:100%;max-height:calc(100vh - 158px);display:flex;flex-direction:column;-webkit-app-region:no-drag;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .wnm-rule{display:flex;align-items:center;padding:9px 18px;border-bottom:var(--axi-border-control) solid var(--rule2);background:rgba(0,0,0,.18);-webkit-app-region:no-drag}
 .wnm-ear{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint)}
 .wnm-x{margin-left:auto;margin-right:-6px;margin-top:-4px;margin-bottom:-4px;display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:none;border:none;color:var(--faint);cursor:pointer;padding:0;-webkit-app-region:no-drag}

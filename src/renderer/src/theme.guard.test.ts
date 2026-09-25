@@ -173,3 +173,62 @@ describe('line vocabulary', () => {
     expect(themeCss).toMatch(/\.folio-act:hover\{[^}]*box-shadow:var\(--axi-offset-control\)/)
   })
 })
+
+/** Pulls a single rule block out by selector, for the per-selector checks. */
+function ruleFor(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return themeCss.match(new RegExp(escaped + '\\{[^}]*\\}'))?.[0] ?? ''
+}
+
+describe('raised surfaces', () => {
+  // These were nine hand-copied implementations of one idea: background
+  // var(--paper), 1px solid var(--rule2), 4px 4px 0 rgba(0,0,0,.4) — which is
+  // an axi panel, copied eight times at the wrong border weight.
+  const POPOVERS = [
+    '.earsw-menu',
+    '.ctx-menu',
+    '.ssel-menu',
+    '.clspick-menu',
+    '.skill-typeahead',
+    '.wnm'
+  ]
+
+  it.each(POPOVERS)('%s is drawn at panel weight on the ink line', (sel) => {
+    const rule = ruleFor(sel)
+    expect(rule, sel + ' not found').not.toBe('')
+    expect(rule, sel + ' border').toMatch(
+      /border:var\(--axi-border-panel\) solid var\(--axi-ink-line\)/
+    )
+    expect(rule, sel + ' block').toMatch(
+      /box-shadow:var\(--axi-offset-panel\) var\(--axi-offset-panel\) 0 var\(--axi-ink-line\)/
+    )
+  })
+
+  const SCRIMS = ['.overlay', '.share-overlay', '.action-overlay', '.wnm-scrim']
+
+  it.each(SCRIMS)('%s uses the shared scrim token', (sel) => {
+    const rule = ruleFor(sel)
+    expect(rule, sel + ' not found').not.toBe('')
+    expect(rule, sel).toMatch(/background:var\(--axi-scrim\)/)
+  })
+
+  it('draws no blur anywhere - rule 3 replaces depth cues with a block', () => {
+    expect(themeCss).not.toMatch(/backdrop-filter|filter:\s*blur/)
+  })
+
+  it('gives the action modal panel weight and drops its inset newsprint frame', () => {
+    const modal = ruleFor('.action-modal')
+    expect(modal).toMatch(/border:var\(--axi-border-panel\) solid var\(--axi-ink-line\)/)
+    expect(modal).toMatch(
+      /box-shadow:var\(--axi-offset-panel\) var\(--axi-offset-panel\) 0 var\(--axi-ink-line\)/
+    )
+    // The inset 1px frame was a newsprint device standing in for the outline
+    // axi now draws properly.
+    expect(themeCss).not.toMatch(/\.action-modal::before/)
+  })
+
+  it('draws the stamp statuses in status inks, not translucent washes', () => {
+    expect(themeCss).toMatch(/\.action-modal__stamp\.ok\{color:var\(--axi-ok\)\}/)
+    expect(themeCss).toMatch(/\.action-modal__stamp\.fail\{color:var\(--axi-danger\)\}/)
+  })
+})
