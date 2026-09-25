@@ -6,6 +6,11 @@ import ReactDOM from 'react-dom/client'
 import '@axiapps/axi-design/axi.css'
 import '@axiapps/axi-design/accents.css'
 import App from './App'
+import { applyTheme, readAccent } from './themes/applyTheme'
+
+// Synchronous, from the mirror — the store reconciles in Settings once IPC
+// answers. This runs before render so the first paint is already correct.
+applyTheme(readAccent())
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

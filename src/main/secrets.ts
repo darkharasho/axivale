@@ -32,6 +32,9 @@ export type SettingKey =
   | 'axibridgeRepos'
   | 'axibridgeCacheCapBytes'
   | 'windowBounds'
+  /** One of @axiapps/axi-design's 11 accent ids; unknown values resolve to
+   *  crimson-red in the renderer. Mirrored to localStorage for first paint. */
+  | 'accent'
   | 'wikiIngestedAt'
   /** 'true'/'false' (default on): desktop notifications + app-icon unread badge. */
   | 'notifySystem'
