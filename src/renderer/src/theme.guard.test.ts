@@ -514,7 +514,19 @@ describe('the form steps', () => {
   it('raises a panel off the page rather than sinking a well into it', () => {
     // The bug the redo fixed: a card drawn darker than --axi-ground reads as
     // a hole, so a screen of cards reads as mostly background.
-    for (const sel of ['.spcard', '.bcard', '.ccard', '.scard', '.share-dialog']) {
+    // .sgroup, .panel-empty and .deskset joined the list once it was clear
+    // the panel *bodies* were still bare page: a form ruled off with a
+    // hairline is not a card, it is dark on dark.
+    for (const sel of [
+      '.spcard',
+      '.bcard',
+      '.ccard',
+      '.scard',
+      '.share-dialog',
+      '.sgroup',
+      '.panel-empty',
+      '.deskset'
+    ]) {
       const rule = ruleFor(sel)
       expect(rule, `${sel} not found`).not.toBe('')
       expect(rule, sel).toMatch(/background:var\(--axi-surface\)/)
@@ -524,7 +536,7 @@ describe('the form steps', () => {
   })
 
   it('sinks the fields into the card they sit on', () => {
-    for (const sel of ['.sfield-input', '.sfield-area', '.rst-input', '.mem-add-input']) {
+    for (const sel of ['.sfield-input', '.sfield-area', '.rst-input', '.mem-add-input', '.sinput', '.clspick-btn']) {
       const rule = ruleFor(sel)
       expect(rule, `${sel} not found`).not.toBe('')
       expect(rule, sel).toMatch(/background:var\(--axi-ground\)/)

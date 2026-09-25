@@ -554,8 +554,7 @@ td.nm2{color:var(--ink)}
 .wt-empty{font-size:12px;color:var(--faint);font-style:italic}
 /* settings */
 .settings{padding:22px 0;overflow-y:auto;flex:1}
-.sgroup{margin-bottom:26px;padding-bottom:22px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
-.sgroup:last-child{border-bottom:none}
+.sgroup{margin-bottom:26px;padding:18px 20px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .sgroup h2{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:10px}
 .slabel{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
 .sinput{width:100%;padding:11px 12px;background:var(--axi-ground);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);color:var(--axi-text);outline:none;font:var(--axi-t-label);font-size:14px;margin-bottom:12px;box-sizing:border-box}
@@ -591,7 +590,8 @@ td.nm2{color:var(--ink)}
 .chtag.none{color:var(--faint)}
 /* class/spec dropdown */
 .clspick{position:relative}
-.clspick-btn{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;border-bottom:var(--axi-border-hairline) solid var(--rule2);padding:7px 2px;font-family:'Source Serif 4',serif;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+.clspick-btn{display:flex;align-items:center;gap:8px;width:100%;background:var(--axi-ground);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-offset-control) var(--axi-offset-control) 0 var(--axi-ink-line);padding:11px 12px;margin-bottom:12px;font-family:'Source Serif 4',serif;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+.clspick-btn:hover{box-shadow:var(--axi-offset-control-hover) var(--axi-offset-control-hover) 0 var(--axi-ink-line)}
 .clspick-btn .ph{color:var(--faint)}
 .clspick-btn .classicon{color:var(--accent-b)}
 .clspick-btn .caret{margin-left:auto;color:var(--faint);font-size:11px;display:inline-flex;align-items:center}
@@ -632,7 +632,8 @@ td.nm2{color:var(--ink)}
 /* panels */
 .notconn{margin:24px 0;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line);padding:26px 20px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);line-height:2.2}
 .notconn b{color:var(--accent-b);font-weight:500}
-.panel-empty{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:12px 0;border-top:var(--axi-border-hairline) solid var(--axi-rule);border-bottom:var(--axi-border-hairline) solid var(--line);margin-bottom:14px}
+.panel-empty{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:20px;text-align:center;margin-bottom:14px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
+.sgroup .panel-empty{padding:16px;box-shadow:none;background:var(--axi-ground);border:var(--axi-border-control) solid var(--axi-ink-line)}
 .settings table{margin-bottom:16px}
 td.mono{font-family:'IBM Plex Mono',monospace;font-size:11.5px}
 th.act{text-align:right;padding-right:0}
@@ -735,7 +736,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .ssignclass{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b);min-width:96px}
 .ssignnames{font-size:12.5px;color:var(--ink-dim)}
 /* panel settings strips */
-.deskset{background:var(--axi-surface);border:var(--axi-border-control) solid var(--axi-ink-line);margin-bottom:22px}
+.deskset{margin-bottom:22px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line)}
 .deskset-head{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:10px 14px;cursor:pointer;text-align:left}
 .deskset-tog{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-b);width:12px;display:inline-flex;align-items:center;justify-content:center}
 .deskset-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim)}
@@ -751,8 +752,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .snav-h{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-dim);border-bottom:var(--axi-border-hairline) solid var(--rule2);padding-bottom:6px;margin-bottom:10px}
 .snav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);cursor:pointer;border-left:2px solid transparent}
 .snav-item .no{color:var(--faint);font-size:9px}
-.snav-item:hover{color:var(--ink);background:rgba(228,227,220,.04)}
-.snav-item.on{color:var(--ink);border-left-color:var(--accent);background:color-mix(in srgb, var(--axi-accent) 8%, transparent)}
+.snav-item:hover{color:var(--ink);background:var(--axi-surface)}
+.snav-item.on{color:var(--ink);border-left-color:var(--axi-accent);background:var(--axi-surface)}
 .snav-item.on .no{color:var(--accent-b)}
 .snav-item .dot{margin-left:auto;font-size:7px;color:var(--green);display:inline-flex;align-items:center}
 .snav-item .dot.off{color:var(--faint)}
@@ -1401,7 +1402,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   background: var(--axi-series, var(--axi-accent));
   transition: width 0.4s ease;
 }
-.mi-inspector { margin-top: 14px; border-top: var(--axi-border-hairline) solid var(--rule2); padding-top: 10px; }
+.mi-inspector { margin-top: 14px; }
 .mi-dev { font-size: 10px; text-transform: uppercase; color: var(--accent-b); border: var(--axi-border-hairline) solid var(--accent-b); padding: 0 4px; }
 /* on the red .sbtn the accent-b badge clashes (red on red) — use a light chip instead */
 .sbtn .mi-dev { font-size: 9px; letter-spacing: .12em; color: var(--axi-accent-ink); background: none; border: var(--axi-border-hairline) solid var(--axi-accent-ink); padding: 1px 5px; }
