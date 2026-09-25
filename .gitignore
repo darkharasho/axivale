@@ -15,3 +15,7 @@ release/
 
 # Playwright MCP scratch output
 .playwright-mcp/
+
+# Claude Code worktrees and scratch state
+.claude/worktrees/
+.superpowers/
