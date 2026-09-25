@@ -232,3 +232,57 @@ describe('raised surfaces', () => {
     expect(themeCss).toMatch(/\.action-modal__stamp\.fail\{color:var\(--axi-danger\)\}/)
   })
 })
+
+describe('controls', () => {
+  it.each(['.btn-stamp', '.btn-out'])('%s is outlined on the ink line at control weight', (sel) => {
+    const rule = ruleFor(sel)
+    expect(rule, sel + ' not found').not.toBe('')
+    expect(rule, sel).toMatch(/border:var\(--axi-border-control\) solid var\(--axi-ink-line\)/)
+  })
+
+  it('gives the primary button the accent ink rather than white', () => {
+    const rule = ruleFor('.btn-stamp')
+    expect(rule).toMatch(/color:var\(--axi-accent-ink\)/)
+    expect(rule).not.toMatch(/#fff/)
+  })
+
+  // Rule 4: hover lifts. The primary button rests with a block already under
+  // it, so it deepens the block rather than gaining one — translating both
+  // together would leave the lower-right edge where it started, which reads
+  // as growing rather than lifting.
+  it('lifts the buttons on hover rather than fading them', () => {
+    expect(themeCss).toMatch(
+      /\.btn-stamp:hover\{[^}]*box-shadow:var\(--axi-offset-control-hover\)[^}]*transform:translate\(-2px,-2px\)/
+    )
+    expect(themeCss).toMatch(
+      /\.btn-out:hover\{[^}]*box-shadow:var\(--axi-offset-control\)[^}]*transform:translate\(-2px,-2px\)/
+    )
+  })
+
+  it('drops the outline the stamp button used as a second border', () => {
+    expect(themeCss).not.toMatch(/outline-color:var\(--accent-b\)/)
+    expect(themeCss).not.toMatch(/outline:3px solid var\(--accent\)/)
+  })
+
+  // Anything filled with the accent takes --axi-accent-ink on top, never a
+  // hardcoded white. The accent is now user-chosen, and four of the eleven
+  // (axi-gold, amber-warm, emerald-mint, slate-silver) are light enough that
+  // white-on-accent is unreadable. This was invisible while the accent was
+  // always AxiVale's dark red.
+  it('never prints white on an accent fill', () => {
+    expect(themeCss).not.toMatch(/color:#fff;background:var\(--accent\)/)
+    expect(themeCss).not.toMatch(/background:var\(--accent\);color:#fff/)
+  })
+
+  // Rule 5 and rule 6: the accent is not a status. Close is the one
+  // destructive control in the chrome.
+  it('fills the close button with the danger ink, not the accent', () => {
+    expect(themeCss).toMatch(/\.winctl button\.close:hover\{[^}]*background:var\(--axi-danger\)/)
+  })
+
+  it('hovers icon buttons on the neutral ramp, not a translucent wash', () => {
+    const hover = ruleFor('.edition .ed-acts button:hover')
+    expect(hover).toMatch(/background:var\(--axi-surface-raised\)/)
+    expect(hover).not.toMatch(/rgba/)
+  })
+})
