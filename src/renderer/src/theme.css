@@ -110,7 +110,7 @@ body{color:var(--ink);overflow:hidden;background:var(--axi-ground)}
 /* user clipping with torn bottom edge */
 .msg.user{align-self:flex-end;max-width:660px;margin-bottom:4px}
 .msg.user .kick{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;text-align:right;margin-bottom:6px}
-.msg.user .body{position:relative;background:var(--paper);border:1px solid var(--line);padding:13px 18px 16px;font-size:15px;line-height:1.55;box-shadow:3px 3px 0 rgba(0,0,0,.3);overflow-wrap:break-word;word-break:break-word}
+.msg.user .body{position:relative;font-family:'Source Serif 4',serif;background:var(--paper);border:1px solid var(--line);padding:13px 18px 16px;font-size:15px;line-height:1.55;box-shadow:3px 3px 0 rgba(0,0,0,.3);overflow-wrap:break-word;word-break:break-word}
 /* markdown children: tighten block spacing so a single-paragraph order reads
    like the plain text it replaces, while multi-block orders still breathe */
 .msg.user .body>:first-child{margin-top:0}
@@ -134,7 +134,7 @@ body{color:var(--ink);overflow:hidden;background:var(--axi-ground)}
    stretches word-spacing into rivers, badly so around long URLs and inline
    tokens. text-wrap:pretty tidies the rag; long links break instead of forcing
    a sparse line. */
-.prose{font-size:15px;line-height:1.65;text-align:left;text-wrap:pretty;overflow-wrap:break-word}
+.prose{font-family:'Source Serif 4',serif;font-size:15px;line-height:1.65;text-align:left;text-wrap:pretty;overflow-wrap:break-word}
 .prose p{margin-bottom:10px}
 .prose p:last-child{margin-bottom:0}
 .prose > p:first-child::first-letter{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;float:left;line-height:.82;padding:4px 8px 0 0;color:var(--accent-b)}

@@ -83,3 +83,42 @@ describe('sanctioned departures', () => {
     expect(themeCss).not.toMatch(/\.inputzone::before\{[^}]*var\(--paper\)/)
   })
 })
+
+describe('editorial typography', () => {
+  // body is sans now, so anything that used to inherit its serif has to say so
+  // itself. These two are the reading column: the AI article and the user's
+  // clipping sit side by side, and one of them turning sans is the bug this
+  // pins. .prose in particular inherited serif and declared nothing.
+  it.each(['.prose', '.msg.user .body'])('%s declares its serif rather than inheriting it', (sel) => {
+    const rule = themeCss.match(new RegExp(`\\${sel.replace(/ /g, ' ')}\\{[^}]*\\}`))?.[0] ?? ''
+    expect(rule).not.toBe('')
+    expect(rule).toMatch(/font-family:\s*'Source Serif 4'/)
+  })
+
+  it('keeps Playfair on the selectors the spec names', () => {
+    for (const sel of ['.lede', '.folio h1', '.action-modal__title']) {
+      const rule = themeCss.match(new RegExp(`\\${sel}\\{[^}]*\\}`))?.[0] ?? ''
+      expect(rule, sel).toMatch(/font-family:\s*'Playfair Display'/)
+    }
+    expect(themeCss).toMatch(
+      /\.prose > p:first-child::first-letter\{[^}]*'Playfair Display'/
+    )
+    expect(themeCss).toMatch(/\.prose h1,\.prose h2,\.prose h3,\.prose h4\{[^}]*'Playfair Display'/)
+  })
+
+  // Inventory pin, not a target. The spec named five Playfair selectors from
+  // memory of the article surface; the file has 27, and they include the
+  // masthead nameplate and every panel headline. A headline is editorial
+  // wherever it sits, so they stay — but a new one has to change this number
+  // deliberately rather than drift in. See ledger Ruling T4.
+  it('pins the Playfair inventory so new display type is a deliberate choice', () => {
+    expect(themeCss.match(/'Playfair Display'/g)).toHaveLength(27)
+  })
+
+  // --axi-t-* shorthands resolve var(--axi-mono) at :root and inherit already
+  // substituted, so overriding the token here would re-font nothing while
+  // looking like it should. IBM Plex Mono is applied by name instead.
+  it('never overrides the --axi-mono token', () => {
+    expect(themeCss).not.toMatch(/--axi-mono\s*:/)
+  })
+})
