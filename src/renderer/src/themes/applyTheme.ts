@@ -27,3 +27,31 @@ export function readAccent(): string {
     return DEFAULT_ACCENT_ID
   }
 }
+
+/**
+ * Applies an accent optimistically and writes it through to the settings
+ * store, rolling back if the store refuses.
+ *
+ * The optimism is the point: the store is encrypted and answers over IPC, and
+ * a picker that waits for the round-trip feels broken. The rollback is the
+ * other half — leaving the window showing an accent the store does not hold
+ * would survive until the next boot and then silently revert, which reads as
+ * the app forgetting rather than as the write having failed.
+ *
+ * Resolves to the accent that actually stands, so the caller can settle its
+ * own state on it. Never rejects.
+ */
+export async function applyAccent(
+  id: string,
+  previous: string,
+  persist: (id: string) => Promise<unknown>
+): Promise<string> {
+  applyTheme(id)
+  try {
+    await persist(id)
+    return id
+  } catch {
+    applyTheme(previous)
+    return previous
+  }
+}

@@ -7,6 +7,9 @@ import AxiForge from './settings/AxiForge'
 import ReportRepos from './settings/ReportRepos'
 import Dispatches from './settings/Dispatches'
 import Notifications from './settings/Notifications'
+import Appearance from './settings/Appearance'
+import { resolveAccentId } from '../themes/accents'
+import { applyAccent, applyTheme, readAccent } from '../themes/applyTheme'
 import About from './settings/About'
 
 type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
@@ -115,6 +118,10 @@ export default function Settings({
   // App / updates
   const [version, setVersion] = useState('')
   const [updateMsg, setUpdateMsg] = useState('')
+
+  // Appearance. readAccent() is the localStorage mirror main.tsx already
+  // painted from, so this starts on the right swatch before IPC answers.
+  const [accent, setAccent] = useState(readAccent)
 
   // Notifications (default on; stored as 'true'/'false')
   const [notifySystem, setNotifySystem] = useState(true)
@@ -322,6 +329,10 @@ export default function Settings({
       setLocalEndpoint((await window.officer.getSetting('localEndpoint')) ?? '')
       setLocalModel((await window.officer.getSetting('localModel')) ?? '')
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
+      // Reconcile the mirror against the store, which is the source of truth.
+      const storedAccent = resolveAccentId(await window.officer.getSetting('accent'))
+      setAccent(storedAccent)
+      applyTheme(storedAccent)
       setNotifySystem((await window.officer.getSetting('notifySystem')) !== 'false')
       setNotifyBadge((await window.officer.getSetting('notifyBadge')) !== 'false')
       setVersion(await window.officer.appVersion())
@@ -416,6 +427,13 @@ export default function Settings({
   async function checkUpdates(): Promise<void> {
     setUpdateMsg('checking…')
     await window.officer.checkUpdates()
+  }
+
+  async function chooseAccent(id: string): Promise<void> {
+    // Optimistic with rollback: the store is encrypted and answers over IPC,
+    // so waiting for it feels broken, but a UI left ahead of the store would
+    // silently revert at the next boot.
+    setAccent(await applyAccent(id, accent, (next) => window.officer.setSetting('accent', next)))
   }
 
   async function toggleNotifySystem(value: boolean): Promise<void> {
@@ -722,6 +740,7 @@ export default function Settings({
           onToggleBadge={toggleNotifyBadge}
         />
       )}
+      {section === 'appearance' && <Appearance accent={accent} onSelect={chooseAccent} />}
       {section === 'about' && (
         <About version={version} updateMsg={updateMsg} onCheckUpdates={checkUpdates} />
       )}

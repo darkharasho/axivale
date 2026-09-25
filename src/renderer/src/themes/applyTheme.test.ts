@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ACCENT_STORAGE_KEY, applyTheme, readAccent } from './applyTheme'
+import { ACCENT_STORAGE_KEY, applyAccent, applyTheme, readAccent } from './applyTheme'
 import { DEFAULT_ACCENT_ID } from './accents'
 
 afterEach(() => {
@@ -56,5 +56,40 @@ describe('readAccent', () => {
       throw new DOMException('SecurityError')
     })
     expect(readAccent()).toBe(DEFAULT_ACCENT_ID)
+  })
+})
+
+describe('applyAccent', () => {
+  it('applies the accent and persists it', async () => {
+    const persist = vi.fn().mockResolvedValue(undefined)
+    const settled = await applyAccent('emerald-mint', DEFAULT_ACCENT_ID, persist)
+    expect(persist).toHaveBeenCalledWith('emerald-mint')
+    expect(settled).toBe('emerald-mint')
+    expect(document.documentElement.getAttribute('data-axi-accent')).toBe('emerald-mint')
+  })
+
+  it('applies optimistically, before the store answers', async () => {
+    let release: () => void = () => {}
+    const persist = vi.fn(() => new Promise<void>((r) => (release = r)))
+    const pending = applyAccent('rose-pink', DEFAULT_ACCENT_ID, persist)
+    // The swatch should already be live while the IPC round-trip is outstanding.
+    expect(document.documentElement.getAttribute('data-axi-accent')).toBe('rose-pink')
+    release()
+    await pending
+  })
+
+  // Review Focus 4: the store is encrypted and answers over IPC. If the write
+  // fails, the UI must not keep showing an accent the store does not hold —
+  // that survives until the next boot and then silently reverts.
+  it('rolls back to the previous accent when the store rejects', async () => {
+    const persist = vi.fn().mockRejectedValue(new Error('store locked'))
+    const settled = await applyAccent('violet-purple', 'teal-ocean', persist)
+    expect(settled).toBe('teal-ocean')
+    expect(document.documentElement.getAttribute('data-axi-accent')).toBe('teal-ocean')
+  })
+
+  it('does not reject when the store rejects', async () => {
+    const persist = vi.fn().mockRejectedValue(new Error('store locked'))
+    await expect(applyAccent('violet-purple', 'teal-ocean', persist)).resolves.toBeDefined()
   })
 })

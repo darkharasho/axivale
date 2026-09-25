@@ -1584,3 +1584,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sf-step-d{font-size:11.5px;line-height:1.4;color:var(--ink-dim);margin:0}
 .sf-arrow{display:flex;align-items:center;justify-content:center;flex:0 0 30px;font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--accent-b)}
 @media (max-width:720px){.sf-row{grid-template-columns:1fr}.sf-pipe{flex-direction:column}.sf-arrow{flex:0 0 24px;transform:rotate(90deg)}}
+
+/* ---- accent picker (Settings -> Appearance) ---- */
+/* Rule 5: the filled swatch IS the status, so the chosen one needs no tick —
+   it is the one wearing its colour and its block. */
+.accent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.accent-swatch{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--axi-ground);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);color:var(--axi-text-dim);font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;cursor:pointer;transition:transform .1s,box-shadow .1s}
+.accent-swatch:hover{color:var(--axi-text);box-shadow:var(--axi-offset-control) var(--axi-offset-control) 0 var(--axi-ink-line);transform:translate(-2px,-2px)}
+/* The family diamond, inked in the accent it selects. */
+.accent-swatch__chip{flex:none;width:16px;height:16px;background:var(--swatch);border:var(--axi-border-hairline) solid var(--axi-ink-line);transform:rotate(45deg)}
+.accent-swatch[aria-pressed="true"]{color:var(--axi-text);box-shadow:var(--axi-offset-control) var(--axi-offset-control) 0 var(--axi-ink-line)}
