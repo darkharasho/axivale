@@ -1,11 +1,32 @@
 *{margin:0;padding:0;box-sizing:border-box}
+/* Token bridge to @axiapps/axi-design. These names are AxiVale's own history:
+   821 references across this file still use them, so they are kept as aliases
+   rather than renamed. Change a value in axi-design and it lands here.
+   --rule, --rule2 and --line all collapse onto --axi-rule: AxiVale drew three
+   rule colours, axi draws one colour at two weights (--axi-border-control 3px
+   structural, --axi-border-hairline 2px subordinate). Weight carries the
+   hierarchy now, not hue. */
 :root{
-  --bg:#16171a; --bg2:#1b1c20; --paper:#1f2025; --line:#2e3036; --rule:#3a3d44; --rule2:#46494f;
-  --ink:#e4e3dc; --ink-dim:#a6a69e; --faint:#6a6b6e;
-  --accent:#c8423a; --accent-b:#e05a50; --green:#6fae6f; --amber:#c9a227;
-  /* muted accent for focus rings + input focus borders — the brand red held
-     back so an active field reads as "ready," not alarmed */
-  --focus:rgba(224,90,80,.55);
+  --bg: var(--axi-ground);
+  --bg2: var(--axi-ground);
+  --paper: var(--axi-surface);
+  --line: var(--axi-rule);
+  --rule: var(--axi-rule);
+  --rule2: var(--axi-rule);
+  --ink: var(--axi-text);
+  --ink-dim: var(--axi-text-dim);
+  --faint: var(--axi-text-faint);
+  --accent: var(--axi-accent);
+  /* LOCAL EXTENSION: axi-design defines no accent-bright token. AxiVale's
+     two-tone red is load-bearing across 125 references, so it survives here,
+     derived by color-mix so it tracks whichever of the 11 accents is live.
+     The 82% is tuned by eye. Delete this in favour of the real token if
+     axi-design ever formalises an accent-bright. */
+  --accent-b: color-mix(in srgb, var(--axi-accent) 82%, white);
+  --green: var(--axi-ok);
+  --amber: var(--axi-warn);
+  /* The accent held back, so an active field reads as "ready," not alarmed. */
+  --focus: color-mix(in srgb, var(--axi-accent) 55%, transparent);
 }
 html,body,#root{height:100%}
 body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
