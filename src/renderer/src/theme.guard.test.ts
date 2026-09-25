@@ -271,9 +271,38 @@ describe('controls', () => {
   // (axi-gold, amber-warm, emerald-mint, slate-silver) are light enough that
   // white-on-accent is unreadable. This was invisible while the accent was
   // always AxiVale's dark red.
+  // Whitespace-tolerant and order-independent, and it covers --accent-b too:
+  // --accent-b is the accent mixed TOWARD white, so white on it is strictly
+  // worse than white on the accent. Half this file is minified and half is
+  // prettier-formatted, and the first version of this assertion could only
+  // match the minified half — which is how .mi-tab.sel and .mi-pill.sel
+  // survived the first sweep.
   it('never prints white on an accent fill', () => {
-    expect(themeCss).not.toMatch(/color:#fff;background:var\(--accent\)/)
-    expect(themeCss).not.toMatch(/background:var\(--accent\);color:#fff/)
+    const offenders = (themeCss.match(/[^{}]+\{[^}]*\}/g) ?? []).filter((rule) => {
+      const filled = /background(?:-color)?:\s*var\(--(?:axi-)?accent(?:-b)?\)/.test(rule)
+      const white = /color:\s*(?:#fff(?:fff)?\b|white\b|rgba\(\s*255\s*,\s*255\s*,\s*255)/.test(rule)
+      return filled && white
+    })
+    expect(offenders.map((r) => r.slice(0, r.indexOf('{')).trim())).toEqual([])
+  })
+
+  // The inverse pattern: accent-coloured text on a white fill. axi-gold on
+  // white is 1.58:1 — the update banner's action button disappears.
+  it('never prints the accent on a white fill', () => {
+    const offenders = (themeCss.match(/[^{}]+\{[^}]*\}/g) ?? []).filter(
+      (rule) =>
+        /background(?:-color)?:\s*(?:#fff(?:fff)?\b|white\b)/.test(rule) &&
+        /color:\s*var\(--(?:axi-)?accent(?:-b)?\)/.test(rule)
+    )
+    expect(offenders.map((r) => r.slice(0, r.indexOf('{')).trim())).toEqual([])
+  })
+
+  // Translucent white borders and text read as "white" against whatever is
+  // under them, and every one of these sits on an accent fill.
+  it('draws nothing in translucent white on the update banner', () => {
+    for (const sel of ['.ub-flag', '.ub-dismiss', '.ub-dismiss:hover', '.ub-btn', '.sbtn']) {
+      expect(ruleFor(sel), sel).not.toMatch(/rgba\(\s*255\s*,\s*255\s*,\s*255|#fff\b/)
+    }
   })
 
   // Rule 5 and rule 6: the accent is not a status. Close is the one
@@ -415,5 +444,40 @@ describe('the gradient allowlist', () => {
 
   it('draws no radial gradient at all', () => {
     expect(themeCss).not.toMatch(/radial-gradient/)
+  })
+})
+
+describe('accent propagation', () => {
+  // The picker is only as good as the rules that follow it. These washes were
+  // written when the accent was always AxiVale's crimson, so they were spelled
+  // as literal rgba of that colour — pick teal-ocean and the chrome goes teal
+  // while every hover, the selection colour and the active row stay red.
+  it('hardcodes the legacy crimson nowhere', () => {
+    expect(themeCss).not.toMatch(/rgba\(\s*200\s*,\s*66\s*,\s*58/)
+    expect(themeCss).not.toMatch(/rgba\(\s*224\s*,\s*90\s*,\s*80/)
+  })
+})
+
+describe('reduced motion', () => {
+  // The file had already decided to suppress the tactile nudge; the hover
+  // lifts added later have to answer to the same decision.
+  it('suppresses every hover translate it introduces', () => {
+    const block =
+      themeCss.match(/@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\n\}/)?.[0] ?? ''
+    expect(block).not.toBe('')
+    for (const sel of ['.btn-stamp', '.btn-out', '.folio-act', '.accent-swatch']) {
+      expect(block, sel + ' not suppressed').toContain(sel)
+    }
+    expect(block).toMatch(/transform:\s*none/)
+  })
+})
+
+describe('entity autolinks', () => {
+  // .axi-entity is a <span>, not an <a>, so it has no UA underline to fall
+  // back on. Stripping its text-decoration left it visually identical to
+  // every other accent-coloured run of text, and the hover-card affordance
+  // undiscoverable.
+  it('keeps an underline on the entity autolink', () => {
+    expect(ruleFor('.axi-entity')).toMatch(/text-decoration:/)
   })
 })
