@@ -40,7 +40,10 @@ body{color:var(--ink);overflow:hidden;background:var(--axi-ground)}
 /* masthead */
 .masthead{border-bottom:var(--axi-border-control) solid var(--axi-rule);background:rgba(0,0,0,.18)}
 .mtop{display:flex;align-items:center;padding:7px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;border-bottom:var(--axi-border-control) solid var(--axi-rule);-webkit-app-region:drag}
-.mtop .r{margin-left:auto}
+/* the edition line is the flourish, so it is the first thing to go when the
+   titlebar runs out of room for the ears */
+.mtop .r{margin-left:16px}
+@media (max-width:1180px){.mtop .r{display:none}}
 /* window controls — quiet typeset glyphs tucked into the corner; a solid
    ink block appears only on hover (close stamps accent red). Negative margin
    eats most of .mtop's 30px edge padding so they sit ~8px from the frame
@@ -49,19 +52,28 @@ body{color:var(--ink);overflow:hidden;background:var(--axi-ground)}
 .winctl button{width:22px;height:20px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1;padding:0;cursor:pointer}
 .winctl button:hover{color:var(--ink);background:rgba(228,227,220,.12)}
 .winctl button.close:hover{color:var(--axi-ink-line);background:var(--axi-danger)}
-/* one chrome row: nameplate, sections, status ears */
-.mbar{display:flex;align-items:center;gap:22px;height:52px;padding:0 30px;-webkit-app-region:drag}
-.mbar .title{font-family:'Playfair Display',serif;font-weight:900;font-size:24px;line-height:1;flex:0 0 auto;white-space:nowrap}
+/* the chrome row: nameplate and sections, nothing else */
+.mbar{display:flex;align-items:center;gap:20px;height:48px;padding:0 30px;-webkit-app-region:drag}
+.mbar .title{font-family:'Playfair Display',serif;font-weight:900;font-size:22px;line-height:1;flex:0 0 auto;white-space:nowrap}
 .mbar .title em{color:var(--accent-b);font-style:normal}
-/* The ears shrink before the sections do: which guild you are in is worth
-   less than being able to reach a section, so the chips ellipsis away first. */
-.ears{display:flex;align-items:center;gap:7px;margin-left:auto;min-width:0;-webkit-app-region:no-drag}
-.ear-chip,.ears .earsw-btn{display:inline-flex;align-items:center;gap:5px;max-width:170px;overflow:hidden;
-  white-space:nowrap;text-overflow:ellipsis;padding:4px 9px;
+/* Status ears, riding the titlebar row. Each one has a floor of 84px so a
+   truncated chip still shows a readable stem plus its ellipsis rather than a
+   single letter; past that the edition flourish is what gives way. */
+.ears{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 1 auto;min-width:0;-webkit-app-region:no-drag}
+/* every ear is shrinkable; the label inside it does the ellipsis, because a bare
+   text node in a flex box is an anonymous item and text-overflow cannot reach it.
+   No overflow:hidden on .ears itself — that would clip the switcher dropdowns. */
+.ears>*{min-width:0}
+.ears .earsw{display:flex;flex:0 1 auto;min-width:84px}
+.ears .earsw-btn{width:100%;cursor:pointer}
+.ear-chip,.ears .earsw-btn{display:inline-flex;align-items:center;gap:5px;
+  max-width:170px;min-width:84px;overflow:hidden;
+  white-space:nowrap;padding:3px 8px;
   font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;
   color:var(--axi-text-dim);background:var(--axi-surface);
   border:var(--axi-border-hairline) solid var(--axi-rule)}
-.ears .earsw-btn{cursor:pointer}
+.ear-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ears .earsw-caret{flex:0 0 auto}
 .ears .earsw-btn:hover{color:var(--ink);border-color:var(--axi-accent)}
 .ear-chip.ok{color:var(--green);border-color:var(--green)}
 .ear-chip.meta{color:var(--axi-meta);border-color:var(--axi-meta)}
@@ -99,7 +111,7 @@ body{color:var(--ink);overflow:hidden;background:var(--axi-ground)}
    stacked nav they were a folio, inline they are just noise beside the label.
    The active section is a filled block rather than an underline — at this
    height an underline sat too close to the row's own bottom rule to read. */
-.mnav{display:flex;align-items:center;gap:4px;min-width:0;-webkit-app-region:no-drag}
+.mnav{display:flex;align-items:center;gap:4px;flex:0 0 auto;-webkit-app-region:no-drag}
 .mnav a,.mnav button{font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-text-dim);text-decoration:none;padding:6px 11px;display:flex;align-items:center;border:none;cursor:pointer;background:none;white-space:nowrap}
 .mnav a:hover,.mnav button:hover{color:var(--ink)}
 .mnav a.on,.mnav button.on{color:var(--axi-accent-ink);background:var(--axi-accent)}
@@ -460,30 +472,30 @@ td.nm2{color:var(--ink)}
    go — the card's accent strip is the top edge now, and a panel that carries
    its own offset block does not also need a glow to sit above the page.
    (The user clipping keeps its torn edge; that one is the signature.) */
-.inputzone{position:relative;background:var(--paper)}
-.inputbar{padding:12px 30px 16px}
+.inputzone{position:relative;background:transparent}
+.inputbar{padding:8px 30px 14px}
 .inwrap{max-width:980px;margin:0 auto;position:relative;
   background:var(--axi-surface-raised);
   border:var(--axi-border-panel) solid var(--axi-ink-line);
   box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line);
   cursor:text}
 /* the accent strip reads the same here as on a card: this surface is yours */
-.inwrap::before{content:'';position:absolute;top:0;left:0;right:0;height:5px;background:var(--axi-accent)}
+.inwrap::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--axi-accent)}
 /* focus deepens the block the way a panel lifts — the package's own form
    vocabulary, rather than a glow bolted onto it */
 .inwrap:focus-within{box-shadow:var(--axi-offset-panel-hover) var(--axi-offset-panel-hover) 0 var(--axi-ink-line)}
 .inwrap.drag-over{border-color:var(--axi-accent);background:color-mix(in srgb, var(--axi-accent) 10%, var(--axi-surface-raised))}
-.infoot{display:flex;align-items:center;gap:10px;padding:0 11px 10px}
+.infoot{display:flex;align-items:center;gap:10px;padding:0 10px 7px}
 .inhint{font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;color:var(--faint)}
-.infoot .filebtn{margin-left:auto}
+.infoot .filebtn{margin-left:auto;padding:5px 12px}
 .drop-error{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--accent-b);max-width:980px;margin:6px auto 0;padding:0 30px}
 .lg-status{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:16px}
 .lg-folder-path{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.03em;color:var(--faint)}
 /* the field rides over a mirror that paints the skill-token highlights, so it's
    transparent-backed and shares the mirror's exact box + typography */
-.field-wrap{position:relative;min-width:0;display:flex;padding:13px 11px 9px}
-.field{width:100%;border:none;padding:0;font-size:15px;line-height:1.5;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b);position:relative;z-index:1;resize:none;white-space:pre-wrap;overflow-wrap:break-word;display:block;max-height:160px;overflow-y:auto}
-.field-mirror{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;padding:13px 11px 9px;font-size:15px;line-height:1.5;font-family:'Source Serif 4',serif;color:transparent}
+.field-wrap{position:relative;min-width:0;display:flex;padding:10px 12px 5px}
+.field{width:100%;border:none;padding:0;font-size:15px;line-height:1.5;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b);position:relative;z-index:1;resize:none;white-space:pre-wrap;overflow-wrap:break-word;display:block;max-height:132px;overflow-y:auto}
+.field-mirror{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;padding:10px 12px 5px;font-size:15px;line-height:1.5;font-family:'Source Serif 4',serif;color:transparent}
 /* a recognized /skill reads as a valid token: a faint vermilion wash under the
    real (visible) glyphs, underlined in the muted focus accent. No horizontal
    padding — that would shift the mirror out of step with the input. */

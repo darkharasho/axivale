@@ -106,7 +106,7 @@ function EarSwitcher({
   return (
     <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
       <button className="earsw-btn" title={title} onClick={() => void toggle()}>
-        {display}
+        <span className="ear-lbl">{display}</span>
         <span className="earsw-caret"><ChevronDown size={11} /></span>
       </button>
       {open && (
@@ -203,7 +203,7 @@ export function Gw2GuildSwitcher({ onSwitched }: { onSwitched: () => void }): Re
   return (
     <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
       <button className="earsw-btn" onClick={() => void toggle()}>
-        {display}
+        <span className="ear-lbl">{display}</span>
         <span className="earsw-caret"><ChevronDown size={11} /></span>
       </button>
       {open && (
@@ -261,9 +261,48 @@ export default function Masthead(props: MastheadProps): ReactElement {
 
   return (
     <div className="masthead">
+      {/* The titlebar row carries the status ears now. They had to leave the
+          chrome row: at the window's 940px minimum the nameplate, seven
+          sections and five chips cannot share one line, and the chips were the
+          ones being cut off. This row is already the metadata row — folio,
+          edition line — so the ears read as of a piece with it, and the chrome
+          row below is left to do one job. */}
       <div className="mtop">
         <span>{versionFolio(version)}</span>
         <span className="r">Final Edition · Free to Members</span>
+        {/* Each ear's colour already says connected-or-not, so the "AxiTools
+            connected" style label it used to carry is dropped as redundant.
+            The word that survives is the one the colour cannot say: which
+            account, which guild, which provider. */}
+        <div className="ears">
+          <span
+            className={`ear-chip ${axiConnected ? 'ok' : 'off'}`}
+            title={`AxiTools ${axiConnected ? 'connected' : 'offline'}`}
+          >
+            <Circle size={7} fill="currentColor" strokeWidth={0} />
+            <span className="ear-lbl">AxiTools</span>
+          </span>
+          <EarSwitcher
+            service="gw2"
+            display={gw2AccountName ?? 'no key'}
+            align="right"
+            onSwitched={onSwitched}
+          />
+          <Gw2GuildSwitcher onSwitched={onSwitched} />
+          <EarSwitcher
+            service="axivale"
+            display={guildName ?? 'Guild'}
+            align="right"
+            title={guildDetail}
+            onSwitched={onSwitched}
+          />
+          <span
+            className={`ear-chip ${providerReady ? 'meta' : 'off'}`}
+            title={providerReady ? 'Provider connected' : 'Provider not configured'}
+          >
+            <span className="ear-lbl">{PROVIDER_LABELS[provider] ?? 'Claude'}</span>
+          </span>
+        </div>
         <span className="winctl">
           <button title="Minimize" onClick={() => window.officer.windowControl('minimize')}>
             <Minus size={13} />
@@ -283,9 +322,7 @@ export default function Masthead(props: MastheadProps): ReactElement {
           </button>
         </span>
       </div>
-      {/* One chrome row. The nameplate, the sections and the status ears used to
-          be three stacked bands; the app is a reading surface, so the chrome
-          that frames it earns a single row, not a third of the window. */}
+      {/* One chrome row: the nameplate and the sections. */}
       <div className="mbar">
         <div className="title">
           AxiVale<em>.</em>
@@ -311,39 +348,6 @@ export default function Masthead(props: MastheadProps): ReactElement {
               {label}
             </button>
           ))}
-        </div>
-        {/* Each ear's colour already says connected-or-not, so the "AxiTools
-            connected" style label it used to carry is dropped as redundant.
-            The word that survives is the one the colour cannot say: which
-            account, which guild, which provider. */}
-        <div className="ears">
-          <span
-            className={`ear-chip ${axiConnected ? 'ok' : 'off'}`}
-            title={`AxiTools ${axiConnected ? 'connected' : 'offline'}`}
-          >
-            <Circle size={7} fill="currentColor" strokeWidth={0} />
-            AxiTools
-          </span>
-          <EarSwitcher
-            service="gw2"
-            display={gw2AccountName ?? 'no key'}
-            align="right"
-            onSwitched={onSwitched}
-          />
-          <Gw2GuildSwitcher onSwitched={onSwitched} />
-          <EarSwitcher
-            service="axivale"
-            display={guildName ?? 'Guild'}
-            align="right"
-            title={guildDetail}
-            onSwitched={onSwitched}
-          />
-          <span
-            className={`ear-chip ${providerReady ? 'meta' : 'off'}`}
-            title={providerReady ? 'Provider connected' : 'Provider not configured'}
-          >
-            {PROVIDER_LABELS[provider] ?? 'Claude'}
-          </span>
         </div>
       </div>
     </div>
