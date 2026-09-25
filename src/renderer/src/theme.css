@@ -612,9 +612,11 @@ td.nm2{color:var(--ink)}
 .sstatus{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--ink-dim);margin-top:8px}
 .sstatus.ok{color:var(--green)}
 .sstatus.err{color:var(--accent-b)}
-.sbtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--axi-accent-ink);background:var(--axi-accent);padding:7px 14px;text-transform:uppercase;font-weight:500;border:none;cursor:pointer}
-.sbtn.out{color:var(--ink-dim);background:transparent;border:1px solid var(--rule2);outline:none}
-.sbtn:disabled{opacity:.4;cursor:default}
+.sbtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--axi-accent-ink);background:var(--axi-accent);padding:7px 14px;text-transform:uppercase;font-weight:500;border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-offset-control) var(--axi-offset-control) 0 var(--axi-ink-line);cursor:pointer}
+.sbtn.out{color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);outline:none}
+/* axi's hover lift: the block lengthens, the outline stays put. */
+.sbtn:hover:not(:disabled){box-shadow:var(--axi-offset-control-hover) var(--axi-offset-control-hover) 0 var(--axi-ink-line)}
+.sbtn:disabled{opacity:.4;cursor:default;box-shadow:none}
 .picker{margin-top:10px;display:flex;flex-direction:column;gap:4px}
 /* keyring list sits above an "Add a key" form — give the label room */
 .picker + .slabel{margin-top:18px}
@@ -765,49 +767,49 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-note{font-size:12px;line-height:1.55;color:var(--ink-dim)}
 
 /* pane header */
-.spane{padding:22px 0;max-width:620px}
+.spane{padding:22px 0;max-width:720px}
 .spane-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--accent-b);margin-bottom:5px}
 .spane-h{font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-bottom:4px}
 .spane-sub{font-size:13.5px;color:var(--ink-dim);margin-bottom:22px;line-height:1.5}
 
 /* grouping card (settings-pane card; named distinctly to avoid the comps .scard) */
-.spcard{border:1px solid var(--line);background:rgba(0,0,0,.14);margin-bottom:18px}
-.spcard-h{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.18)}
+.spcard{border:var(--axi-border-panel) solid var(--axi-ink-line);background:var(--axi-surface);box-shadow:var(--axi-offset-panel) var(--axi-offset-panel) 0 var(--axi-ink-line);margin-bottom:26px}
+.spcard-h{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-surface-raised)}
 .spcard-t{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
 .spcard-s{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ink-dim);display:flex;align-items:center;gap:6px}
 .spcard-s.ok{color:var(--green)}
 .spcard-s.err{color:var(--accent-b)}
-.spcard-s .led{width:6px;height:6px;border-radius:50%;background:currentColor}
-.spcard-b{padding:16px}
+.spcard-s .led{width:7px;height:7px;background:currentColor}
+.spcard-b{padding:18px}
 
 /* field */
 .sfield{margin-bottom:14px}
 .sfield:last-child{margin-bottom:0}
 .sfield .slabel{margin-bottom:6px}
-.sfield-input{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none}
-.sfield-input:focus{border-color:var(--focus)}
+.sfield-input{width:100%;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-ground);box-shadow:var(--axi-offset-control) var(--axi-offset-control) 0 var(--axi-ink-line);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none}
+.sfield-input:focus{border-color:var(--axi-accent);box-shadow:var(--axi-offset-control-hover) var(--axi-offset-control-hover) 0 var(--axi-ink-line)}
 .sfield-input::placeholder{color:var(--faint)}
-.sfield-area{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none;line-height:1.5;min-height:84px;resize:vertical}
-.sfield-area:focus{border-color:var(--focus)}
+.sfield-area{width:100%;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-ground);box-shadow:var(--axi-offset-control) var(--axi-offset-control) 0 var(--axi-ink-line);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none;line-height:1.5;min-height:84px;resize:vertical}
+.sfield-area:focus{border-color:var(--axi-accent);box-shadow:var(--axi-offset-control-hover) var(--axi-offset-control-hover) 0 var(--axi-ink-line)}
 
 /* segmented toggle */
 .sseg{display:inline-flex;gap:6px}
 
 /* chip group */
 .schips{display:flex;flex-wrap:wrap;gap:7px}
-.schip{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);border:1px solid var(--rule2);background:rgba(0,0,0,.22);padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
-.schip.on{color:var(--axi-accent-ink);background:var(--axi-accent);border-color:var(--accent)}
+.schip{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-surface-raised);padding:6px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+.schip.on{color:var(--axi-accent-ink);background:var(--axi-accent);border-color:var(--axi-ink-line)}
 .schip:disabled{opacity:.5;cursor:default}
 
 /* keyring rows */
-.skeys{display:flex;flex-direction:column;border:1px solid var(--line);margin-bottom:14px}
-.skey{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);border:none;border-bottom:1px solid var(--line);background:none;cursor:pointer}
+.skeys{display:flex;flex-direction:column;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-ground);margin-bottom:14px}
+.skey{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);border:none;border-bottom:var(--axi-border-hairline) solid var(--axi-rule);background:none;cursor:pointer}
 .skey:last-child{border-bottom:none}
 .skey.on{color:var(--ink);background:color-mix(in srgb, var(--axi-accent) 6%, transparent)}
-.skey .rad{width:7px;height:7px;border-radius:50%;border:1px solid var(--rule2);flex:none}
+.skey .rad{width:7px;height:7px;border:var(--axi-border-hairline) solid var(--axi-rule);flex:none}
 .skey.on .rad{background:var(--accent);border-color:var(--accent)}
 .skey .badge{margin-left:auto;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b)}
-.skey .kmeta{font-size:9.5px;letter-spacing:.04em;color:var(--faint);padding:1px 6px;border:1px solid var(--line);border-radius:3px}
+.skey .kmeta{font-size:9.5px;letter-spacing:.04em;color:var(--faint);padding:1px 6px;border:var(--axi-border-hairline) solid var(--axi-rule)}
 .skey .badge+.kx,.skey .kmeta~.kx{padding-left:6px}
 .skey:not(:has(.badge)) .kx{margin-left:auto}
 .skey .kx{color:var(--faint);cursor:pointer;padding-left:6px;display:inline-flex;align-items:center}
@@ -815,8 +817,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 
 /* action row + ghost button */
 .sactions{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap}
-.sbtn.ghost{color:var(--ink-dim);background:transparent;border:1px solid var(--rule2);outline:none;display:inline-flex;align-items:center;gap:4px}
-.sbtn.ghost:hover{color:var(--ink);border-color:var(--ink-dim)}
+.sbtn.ghost{color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);outline:none;display:inline-flex;align-items:center;gap:4px}
+.sbtn.ghost:hover{color:var(--ink)}
 
 /* ---- Share controls ---- */
 /* Sits just left of the .clip-img-btn camera button (which is right:0, width:22px),
@@ -1576,8 +1578,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* Press the stamp: a 1px sink, like inking a date stamp onto the page. */
 .filebtn:active:not(:disabled),
 .btn-stamp:active,
-.sbtn:active:not(:disabled),
 .sd-copy:active { transform: translateY(1px) }
+/* The stamp buttons now carry an offset block: pressing drives the button
+   down onto it, so the block disappears rather than the button nudging. */
+.sbtn:active:not(:disabled) {
+  transform: translate(var(--axi-offset-control), var(--axi-offset-control));
+  box-shadow: none;
+}
 
 /* ── What's New: in-app "Special Edition" release notes (About pane) ── */
 .wn{margin-top:2px}
