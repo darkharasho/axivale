@@ -753,10 +753,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sfield-area:focus{border-color:var(--focus)}
 
 /* segmented toggle */
-.sseg{display:inline-flex;border:1px solid var(--rule2);margin-bottom:22px}
-.sseg button{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);background:transparent;border:none;border-right:1px solid var(--rule2);padding:8px 16px;cursor:pointer}
-.sseg button:last-child{border-right:none}
-.sseg button.on{color:var(--axi-accent-ink);background:var(--axi-accent)}
+.sseg{display:inline-flex;gap:6px}
 
 /* chip group */
 .schips{display:flex;flex-wrap:wrap;gap:7px}
@@ -856,9 +853,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sk2-name-in::placeholder{color:var(--faint)}
 .sk2-when-in{width:100%;box-sizing:border-box;background:none;border:none;color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.03em;padding:9px 0 0;outline:none}
 .sk2-when-in::placeholder{color:var(--faint)}
-.sk2-toggle{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);background:rgba(0,0,0,.2);border:1px solid var(--line);padding:6px 11px;cursor:pointer;flex:none}
-.sk2-toggle.off{color:var(--faint)}
-.sk2-toggle .led{width:6px;height:6px;border-radius:50%;background:currentColor}
+.sk2-toggle{display:inline-flex;align-items:center;gap:9px;flex:none}
+.sk2-toggle__lbl{font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;color:var(--axi-text-dim)}
 .sk2-tabs{display:flex;align-items:center;border-bottom:1px solid var(--line)}
 .sk2-tab{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:none;border-bottom:2px solid transparent;padding:9px 4px;margin-right:22px;cursor:pointer}
 .sk2-tab.on{color:var(--ink);border-bottom-color:var(--accent)}

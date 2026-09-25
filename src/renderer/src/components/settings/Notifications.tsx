@@ -17,11 +17,22 @@ function Toggle({
   on: boolean
   onChange: (value: boolean) => void
 }): ReactElement {
+  // The track holds nothing but the knob: the knob's travel is a calc over the
+  // track's own width and border tokens, so a label inside it would push the
+  // slug through the right-hand edge. The label sits beside it instead.
   return (
-    <button className={`sk2-toggle${on ? '' : ' off'}`} onClick={() => onChange(!on)}>
-      <span className="led" />
-      {on ? 'Enabled' : 'Disabled'}
-    </button>
+    <span className="sk2-toggle">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        className="axi-switch"
+        onClick={() => onChange(!on)}
+      >
+        <span className="axi-switch__knob" />
+      </button>
+      <span className="sk2-toggle__lbl">{on ? 'Enabled' : 'Disabled'}</span>
+    </span>
   )
 }
 
