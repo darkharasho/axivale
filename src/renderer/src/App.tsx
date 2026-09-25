@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import './theme.css'
 import { applyEvent, type AgentEvent, type Turn } from './state'
-import Masthead, { type Section, type ProviderName } from './components/Masthead'
+import Masthead, { type Section } from './components/Masthead'
 import MetaLearningBanner from './components/MetaLearningBanner'
 import Operations from './components/panels/Operations'
 import OperationsNav, { type OperationsSection } from './components/panels/OperationsNav'
@@ -147,8 +147,6 @@ export default function App(): ReactElement {
   const [axiConnected, setAxiConnected] = useState(false)
   const [guildName, setGuildName] = useState<string | null>(null)
   const [gw2AccountName, setGw2AccountName] = useState<string | null>(null)
-  const [provider, setProvider] = useState<ProviderName>('claude')
-  const [providerReady, setProviderReady] = useState(false)
   const [providerNote, setProviderNote] = useState<string | null>(null)
 
   const chatRef = useRef<HTMLDivElement>(null)
@@ -190,11 +188,8 @@ export default function App(): ReactElement {
   async function refreshStatus(): Promise<void> {
     try {
       const status = await window.officer.providerStatus()
-      setProvider(status.provider)
-      setProviderReady(status.ready)
       setProviderNote(status.ready ? status.note : (status.note ?? 'Configure a provider in Settings.'))
     } catch {
-      setProviderReady(false)
       setProviderNote(null)
     }
     setGw2AccountName(await window.officer.getSetting('gw2AccountName'))
@@ -465,8 +460,6 @@ export default function App(): ReactElement {
         guildName={guildName}
         guildTag={null}
         memberCount={memberCount}
-        provider={provider}
-        providerReady={providerReady}
         section={section}
         onSection={setSection}
         onSwitched={refreshStatus}

@@ -76,7 +76,6 @@ body{color:var(--ink);overflow:hidden;background:var(--axi-ground)}
 .ears .earsw-caret{flex:0 0 auto}
 .ears .earsw-btn:hover{color:var(--ink);border-color:var(--axi-accent)}
 .ear-chip.ok{color:var(--green);border-color:var(--green)}
-.ear-chip.meta{color:var(--axi-meta);border-color:var(--axi-meta)}
 .ear-chip.off{color:var(--faint)}
 /* update banner */
 .updatebar{display:flex;align-items:center;gap:14px;padding:8px 30px;background:var(--axi-accent);color:var(--axi-accent-ink);font-family:'IBM Plex Mono',monospace;font-size:11px}

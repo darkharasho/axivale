@@ -5,15 +5,6 @@ export type Section = 'dispatches' | 'operations' | 'roster' | 'skills' | 'logs'
 
 export type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
 
-const PROVIDER_LABELS: Record<ProviderName, string> = {
-  claude: 'Claude',
-  gemini: 'Gemini',
-  openai: 'OpenAI',
-  codex: 'ChatGPT',
-  antigravity: 'Gemini (Antigravity)',
-  local: 'Local'
-}
-
 /** 0 has no Roman numeral, so keep it literal; otherwise standard Roman. */
 function toRoman(n: number): string {
   if (n <= 0) return '0'
@@ -44,8 +35,6 @@ export interface MastheadProps {
   guildName: string | null
   guildTag: string | null
   memberCount: number | null
-  provider: ProviderName
-  providerReady: boolean
   section: Section
   onSection: (s: Section) => void
   onSwitched: () => void
@@ -246,8 +235,6 @@ export default function Masthead(props: MastheadProps): ReactElement {
     guildName,
     guildTag,
     memberCount,
-    provider,
-    providerReady,
     section,
     onSection,
     onSwitched
@@ -296,12 +283,6 @@ export default function Masthead(props: MastheadProps): ReactElement {
             title={guildDetail}
             onSwitched={onSwitched}
           />
-          <span
-            className={`ear-chip ${providerReady ? 'meta' : 'off'}`}
-            title={providerReady ? 'Provider connected' : 'Provider not configured'}
-          >
-            <span className="ear-lbl">{PROVIDER_LABELS[provider] ?? 'Claude'}</span>
-          </span>
         </div>
         <span className="winctl">
           <button title="Minimize" onClick={() => window.officer.windowControl('minimize')}>
