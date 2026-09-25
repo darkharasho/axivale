@@ -314,3 +314,39 @@ describe('fields', () => {
     expect(ruleFor('.wt-opt input::after')).toMatch(/opacity:0/)
   })
 })
+
+describe('tables', () => {
+  // Rule 8: the panel is the raised thing and the table is what is inside it.
+  // The header rule is the control weight so the head reads as a lid on the
+  // column; the row rules are the hairline, which is the case that token
+  // exists for — a line inside running content.
+  it('wraps the table in the panel and leaves the table itself unoutlined', () => {
+    const wrap = ruleFor('.dtable')
+    expect(wrap).toMatch(/border:var\(--axi-border-panel\) solid var\(--axi-ink-line\)/)
+    expect(wrap).toMatch(/background:var\(--axi-surface\)/)
+  })
+
+  it('gives the header the control weight and the rows the hairline', () => {
+    expect(ruleFor('.dtable th')).toMatch(
+      /border-bottom:var\(--axi-border-control\) solid var\(--axi-rule\)/
+    )
+    expect(ruleFor('.dtable td')).toMatch(
+      /border-bottom:var\(--axi-border-hairline\) solid var\(--axi-rule\)/
+    )
+  })
+
+  it('hovers a row on the neutral ramp, not an ink', () => {
+    expect(ruleFor('.dtable tbody tr:hover td')).toMatch(/background:var\(--axi-surface-raised\)/)
+  })
+
+  // Zebra striping and a hover highlight answer the same question. axi answers
+  // it with the hover, and forty rows each carrying a translucent wash is the
+  // tinted-everything failure rule 2 is about.
+  it('does not stripe rows with a translucent wash', () => {
+    expect(themeCss).not.toMatch(/nth-child\(even\)\{[^}]*rgba/)
+  })
+
+  it('keeps the sortable-header affordance', () => {
+    expect(ruleFor('.richtable th')).toMatch(/cursor:pointer/)
+  })
+})

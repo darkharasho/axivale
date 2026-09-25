@@ -199,20 +199,19 @@ td.nm2{color:var(--ink)}
    horizontally scrollable so a wide result keeps its columns instead of
    crushing them; each cell stays on one line and ellipsizes (full value on
    hover / in Show raw) instead of breaking mid-word. Zebra + hover to scan. */
-.dtable{margin-top:10px;border:1px solid var(--line);background:rgba(0,0,0,.14);overflow-x:auto}
-.dtable table{width:max-content;min-width:100%;margin:0;border-collapse:collapse}
-.dtable th{background:rgba(0,0,0,.28);font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;text-align:left;white-space:nowrap;padding:9px 14px;border-bottom:1px solid var(--rule)}
-.dtable td{font-size:12.5px;color:var(--ink-dim);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;padding:7px 14px;border-bottom:var(--axi-border-hairline) solid var(--line)}
+.dtable{margin-top:10px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);border-radius:var(--axi-radius);overflow-x:auto}
+.dtable table{width:max-content;min-width:100%;margin:0;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.dtable th{background:none;font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;color:var(--axi-text-faint);text-align:left;white-space:nowrap;padding:0 10px 10px;border-bottom:var(--axi-border-control) solid var(--axi-rule)}
+.dtable td{font:var(--axi-t-small);font-weight:700;color:var(--axi-text-dim);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;padding:9px 10px;border-bottom:var(--axi-border-hairline) solid var(--axi-rule)}
 .dtable td a,.manifest .v a,.copy a{color:var(--accent-b);text-underline-offset:2px;overflow-wrap:anywhere}
 .dtable td a:hover,.manifest .v a:hover,.copy a:hover{color:var(--ink)}
 /* custom hover tooltip — full contents of a truncated cell, as a small clipping
    (fixed so the table's overflow never clips it; pointer-events:none so it
    never eats the click that opens a link) */
 .cell-tip{position:fixed;z-index:1200;max-width:520px;pointer-events:none;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.45);padding:7px 11px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.5;color:var(--ink-dim);white-space:normal;overflow-wrap:anywhere}
-.dtable tbody tr:nth-child(even){background:rgba(255,255,255,.018)}
-.dtable tbody tr:hover{background:rgba(228,227,220,.05)}
+.dtable tbody tr:hover td{background:var(--axi-surface-raised);color:var(--axi-text)}
 .dtable tbody tr:last-child td{border-bottom:none}
-.dtable td.nm2{color:var(--ink)}
+.dtable td.nm2{color:var(--axi-text)}
 /* base "+N more" caption (the coupon's .tool .more overrides in that context) */
 .more{display:block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding-top:8px}
 .endmark{color:var(--accent-b);font-size:13px}
@@ -230,7 +229,7 @@ td.nm2{color:var(--ink)}
 .rich .rich-title-bar .rich-title{border-bottom:0;padding-bottom:0;margin-bottom:0}
 .rich .rich-stale-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:var(--axi-border-hairline) solid var(--rule2);background:rgba(0,0,0,.22);padding:3px 7px;white-space:nowrap}
 .richtable th{cursor:pointer;user-select:none}
-.richtable th:hover{color:var(--ink)}
+.richtable th:hover{color:var(--axi-text)}
 .richtable th .arr{color:var(--accent-b);margin-left:5px;font-size:8px;display:inline-flex;align-items:center}
 .richcode pre{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5;color:var(--ink-dim);background:var(--bg);border:1px solid var(--rule);padding:10px 12px;margin:0;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
 .richchart{overflow-x:auto}
