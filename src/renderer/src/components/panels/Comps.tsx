@@ -347,7 +347,7 @@ export default function Comps(): ReactElement {
           <div className="deskset-body">
             <label className="slabel">Posting channel</label>
             <select
-              className="sselect"
+              className="sselect axi-select"
               value={cfg.channel_id ?? ''}
               onChange={(e) => setCfg((c) => ({ ...c, channel_id: e.target.value }))}
             >
@@ -360,7 +360,7 @@ export default function Comps(): ReactElement {
             </select>
             <label className="slabel">Ping role</label>
             <select
-              className="sselect"
+              className="sselect axi-select"
               value={cfg.ping_role_id ?? ''}
               onChange={(e) => setCfg((c) => ({ ...c, ping_role_id: e.target.value }))}
             >
@@ -407,7 +407,7 @@ export default function Comps(): ReactElement {
             </div>
             <label className="slabel">Active preset</label>
             <select
-              className="sselect"
+              className="sselect axi-select"
               value={cfg.active_preset ?? ''}
               onChange={(e) => setCfg((c) => ({ ...c, active_preset: e.target.value }))}
             >

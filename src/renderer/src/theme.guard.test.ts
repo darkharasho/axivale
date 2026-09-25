@@ -286,3 +286,31 @@ describe('controls', () => {
     expect(hover).not.toMatch(/rgba/)
   })
 })
+
+describe('fields', () => {
+  // The underlined field was the last newsprint device left in the chrome.
+  // axi boxes its fields, so an input reads as a control rather than as a
+  // ruled line someone happens to type on.
+  it.each(['.sinput', '.ed-search'])('%s is boxed rather than underlined', (sel) => {
+    const rule = ruleFor(sel)
+    expect(rule, sel + ' not found').not.toBe('')
+    expect(rule, sel).toMatch(/border:var\(--axi-border-control\) solid var\(--axi-ink-line\)/)
+    expect(rule, sel + ' still underlined').not.toMatch(/border-bottom:/)
+  })
+
+  it('sits fields on the ground, not on a translucent black wash', () => {
+    for (const sel of ['.sinput', '.ed-search']) {
+      expect(ruleFor(sel), sel).toMatch(/background:var\(--axi-ground\)/)
+    }
+  })
+
+  // The checkbox mark is always in the DOM and revealed with opacity, so the
+  // box never changes size as it toggles.
+  it('draws the checkbox in axi terms, with the mark in the accent ink', () => {
+    expect(ruleFor('.wt-opt input')).toMatch(
+      /border:var\(--axi-border-control\) solid var\(--axi-ink-line\)/
+    )
+    expect(ruleFor('.wt-opt input::after')).toMatch(/var\(--axi-accent-ink\)/)
+    expect(ruleFor('.wt-opt input::after')).toMatch(/opacity:0/)
+  })
+})

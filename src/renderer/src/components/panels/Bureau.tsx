@@ -204,7 +204,7 @@ export default function Bureau(): ReactElement {
     onChange: (v: string) => void,
     placeholder = 'choose a channel…'
   ): ReactElement => (
-    <select className="sselect" value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="sselect axi-select" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{placeholder}</option>
       {channels.map((c) => (
         <option key={c.id} value={c.id}>
@@ -273,7 +273,7 @@ export default function Bureau(): ReactElement {
             <div>
               <label className="slabel">Platform</label>
               <select
-                className="sselect"
+                className="sselect axi-select"
                 value={streamForm.platform}
                 onChange={(e) => setStreamForm({ ...streamForm, platform: e.target.value })}
               >
@@ -300,7 +300,7 @@ export default function Bureau(): ReactElement {
           </div>
           <label className="slabel">Ping role (optional)</label>
           <select
-            className="sselect"
+            className="sselect axi-select"
             value={streamForm.ping_role_id}
             onChange={(e) => setStreamForm({ ...streamForm, ping_role_id: e.target.value })}
           >
@@ -426,7 +426,7 @@ export default function Bureau(): ReactElement {
           <div>
             <label className="slabel">Prediction day</label>
             <select
-              className="sselect"
+              className="sselect axi-select"
               value={alliance.prediction_day ?? ''}
               onChange={(e) => setAl('prediction_day', e.target.value)}
             >
@@ -450,7 +450,7 @@ export default function Bureau(): ReactElement {
           <div>
             <label className="slabel">Current-link day</label>
             <select
-              className="sselect"
+              className="sselect axi-select"
               value={alliance.current_day ?? ''}
               onChange={(e) => setAl('current_day', e.target.value)}
             >

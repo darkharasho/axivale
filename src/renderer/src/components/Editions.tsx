@@ -173,7 +173,7 @@ export default function Editions({
         </button>
       </div>
       <input
-        className="ed-search"
+        className="ed-search axi-input"
         placeholder="Search editions"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
