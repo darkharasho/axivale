@@ -176,8 +176,10 @@ describe('line vocabulary', () => {
 
 /** Pulls a single rule block out by selector, for the per-selector checks. */
 function ruleFor(selector: string): string {
+  // Part of this file is minified and part is prettier-formatted, so the brace
+  // may or may not be preceded by whitespace.
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return themeCss.match(new RegExp(escaped + '\\{[^}]*\\}'))?.[0] ?? ''
+  return themeCss.match(new RegExp(escaped + '\\s*\\{[^}]*\\}'))?.[0] ?? ''
 }
 
 describe('raised surfaces', () => {
@@ -348,5 +350,70 @@ describe('tables', () => {
 
   it('keeps the sortable-header affordance', () => {
     expect(ruleFor('.richtable th')).toMatch(/cursor:pointer/)
+  })
+})
+
+describe('quantities', () => {
+  // Rule 9: a quantity is drawn as length, never intensity. The track is the
+  // ground, the fill is the value, and the fill is one ink at full strength.
+  it('draws the learning meter as a track and a fill', () => {
+    expect(ruleFor('.learn-bar')).toMatch(
+      /border:\s*var\(--axi-border-control\) solid var\(--axi-ink-line\)/
+    )
+    expect(ruleFor('.learn-fill')).toMatch(/background:\s*var\(--axi-series,\s*var\(--axi-accent\)\)/)
+  })
+
+  // MetaLearningBanner.test.tsx reads .learn-fill's inline style.width, so a
+  // competing width declaration here would be a real bug, not a style nit.
+  it('leaves .learn-fill’s width to the component', () => {
+    expect(ruleFor('.learn-fill')).not.toMatch(/[^-]width:/)
+  })
+
+  it('draws the confidence bar in the status inks', () => {
+    expect(ruleFor('.cfillbar')).toMatch(/background:var\(--axi-ok\)/)
+    expect(ruleFor('.csign.partial .cfillbar')).toMatch(/background:var\(--axi-warn\)/)
+  })
+
+  // Rule 11: an indicator of work animates a composited property.
+  // background-position is neither composited nor legal under rule 1.
+  it.each(['.wskel .wbar::after', '.axi-ecard__row::after'])(
+    '%s sweeps with a transform rather than a gradient',
+    (sel) => {
+      expect(ruleFor(sel), sel).toMatch(/animation:/)
+    }
+  )
+
+  it('animates no background-position anywhere', () => {
+    expect(themeCss).not.toMatch(/background-position:\s*-?\d+%/)
+  })
+})
+
+describe('the gradient allowlist', () => {
+  // Ruling P1: an allowlist rather than a count. A count says "three" and
+  // tells a reader nothing about which three are sanctioned; this fails the
+  // moment a gradient appears on a selector nobody argued for.
+  //
+  // - .chatcol                      departure 2 of 2, the halftone scanline
+  // - .edition .ed-acts             a fade-to-transparent MASK over the row
+  // - .meta-summary.collapsed::after the same mask device on clamped text
+  //
+  // The two masks are not surface decoration, and rule 1 governs gradients
+  // *on surfaces*. Removing them would expose the overflow they exist to hide.
+  it('permits gradients only on the scanline and the two overflow masks', () => {
+    const rules = themeCss.match(/[^{}]+\{[^}]*gradient[^}]*\}/g) ?? []
+    const selectors = rules.map((r) => r.slice(0, r.indexOf('{')).trim().split('\n').pop()!.trim())
+    expect(selectors.sort()).toEqual([
+      '.chatcol',
+      '.edition .ed-acts',
+      '.meta-summary.collapsed::after'
+    ])
+  })
+
+  it('uses no repeating gradient but the scanline', () => {
+    expect(themeCss.match(/repeating-linear-gradient/g)).toHaveLength(1)
+  })
+
+  it('draws no radial gradient at all', () => {
+    expect(themeCss).not.toMatch(/radial-gradient/)
   })
 })
