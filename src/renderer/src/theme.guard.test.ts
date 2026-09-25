@@ -528,7 +528,13 @@ describe('the form steps', () => {
       '.deskset',
       // the notices rail: each card was a black wash darker than the rail it
       // sat in, which is the hole again, one column over
-      '.ncard'
+      '.ncard',
+      // the rails' own text had no surface at all: a notice and two empty
+      // states printed straight onto the page beside a column of raised
+      // cards, which made them read as captions rather than as items
+      '.rail .item',
+      '.sk2-empty',
+      '.errnotice'
     ]) {
       const rule = ruleFor(sel)
       expect(rule, `${sel} not found`).not.toBe('')
@@ -552,7 +558,10 @@ describe('the form steps', () => {
       '.tool',
       '.post-figure',
       '.prose pre',
-      '.picker .pi'
+      '.picker .pi',
+      // memory rows: quoted material on the face of the card that holds them,
+      // separated by a hairline and otherwise unset
+      '.mem-row'
     ]) {
       const rule = ruleFor(sel)
       expect(rule, `${sel} not found`).not.toBe('')
@@ -573,6 +582,35 @@ describe('the form steps', () => {
     // a background-image, so it is not caught by this.
     const fills = themeCss.match(/background(?:-color)?:\s*rgba\([^)]*\)/g) ?? []
     expect(fills).toEqual([])
+  })
+
+  it('marks a selected row with a surface step and an edge, not an accent wash', () => {
+    // An 8% accent over the ground is not a colour, it is a smudge: too weak
+    // to read as selection, strong enough to muddy the row. .snav-item settled
+    // this — the selected row steps up to --axi-surface and takes the accent
+    // on its left edge, where it is a line you can actually see.
+    for (const sel of ['.snav-item.on', '.sk2-item.on', '.edition.active']) {
+      const rule = ruleFor(sel)
+      expect(rule, `${sel} not found`).not.toBe('')
+      expect(rule, sel).toMatch(/background:var\(--axi-surface\)/)
+      expect(rule, sel).toMatch(/border-left-color:var\(--axi-accent\)/)
+    }
+  })
+
+  // The same wash by another spelling, and it had spread: eight menu rows,
+  // the active keyring entry and the final forge step all signalled state
+  // with a film of accent instead of a step up the neutral ramp. A state is
+  // a surface step. The exceptions below are highlights over running text,
+  // where a translucent mark over what it marks is the whole point.
+  const ACCENT_WASH_OK = ['::selection', '.skill-token', '.inwrap.drag-over', '.rst-chip']
+
+  it('tints no surface with the accent outside the text highlights', () => {
+    const offenders = themeCss
+      .split('}')
+      .filter((r) => /background(?:-color)?:\s*color-mix\([^)]*--axi-accent/.test(r))
+      .map((r) => r.slice(r.lastIndexOf('\n') + 1, r.indexOf('{')).trim())
+      .filter((sel) => !ACCENT_WASH_OK.some((ok) => sel.includes(ok)))
+    expect(offenders).toEqual([])
   })
 
   it('states a signal colour as a mix of its token, not a raw rgba', () => {
