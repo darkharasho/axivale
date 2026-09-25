@@ -122,3 +122,54 @@ describe('editorial typography', () => {
     expect(themeCss).not.toMatch(/--axi-mono\s*:/)
   })
 })
+
+describe('line vocabulary', () => {
+  // axi draws one rule colour at two weights; AxiVale drew three colours in
+  // three styles. Weight carries the hierarchy now, so the styles go.
+  it.each(['dashed', 'dotted', 'double'])('draws no %s rule anywhere', (style) => {
+    expect(themeCss).not.toMatch(new RegExp(`\\b${style}\\b`))
+  })
+
+  it('converts the structural rules to the control weight', () => {
+    for (const sel of ['.folio', '.mnav', '.prose hr', '.mtop']) {
+      const rule = themeCss.match(new RegExp(`\\${sel}\\{[^}]*\\}`))?.[0] ?? ''
+      expect(rule, `${sel} not found`).not.toBe('')
+      expect(rule, sel).toMatch(/var\(--axi-border-control\) solid var\(--axi-rule\)/)
+    }
+  })
+
+  it('converts the subordinate rules to the hairline weight', () => {
+    for (const sel of ['.byline', '.rip .t']) {
+      const rule = themeCss.match(new RegExp(`\\${sel.replace('.t', '\\.t')}\\{[^}]*\\}`))?.[0] ?? ''
+      expect(rule, `${sel} not found`).not.toBe('')
+      expect(rule, sel).toMatch(/var\(--axi-border-hairline\) solid var\(--axi-rule\)/)
+    }
+  })
+
+  it('deletes the reading column’s side rules rather than thickening them', () => {
+    const chatcol = themeCss.match(/\.chatcol\{[^}]*\}/)?.[0] ?? ''
+    expect(chatcol).not.toMatch(/border-left|border-right/)
+  })
+
+  it('gives prose links axi’s treatment', () => {
+    expect(themeCss).toMatch(/\.prose a\{color:var\(--axi-accent\);font-weight:600;text-underline-offset:2px\}/)
+  })
+
+  it('takes axi’s blockquote: an accent bar on the ground, not a doubled rule', () => {
+    const bq = themeCss.match(/\.prose blockquote\{[^}]*\}/)?.[0] ?? ''
+    expect(bq).toMatch(/border-left:var\(--axi-border-panel\) solid var\(--axi-accent\)/)
+    expect(bq).toMatch(/background:var\(--axi-ground\)/)
+  })
+
+  it('adopts the family diamond as the prose bullet (rule 7)', () => {
+    const bullet = themeCss.match(/\.prose ul > li::before\{[^}]*\}/)?.[0] ?? ''
+    expect(bullet).toMatch(/transform:rotate\(45deg\)/)
+    expect(bullet).toMatch(/background:var\(--axi-accent\)/)
+  })
+
+  it('makes .folio-act a real control rather than a dashed outline', () => {
+    const act = themeCss.match(/\.folio-act\{[^}]*\}/)?.[0] ?? ''
+    expect(act).toMatch(/border:var\(--axi-border-control\) solid var\(--axi-ink-line\)/)
+    expect(themeCss).toMatch(/\.folio-act:hover\{[^}]*box-shadow:var\(--axi-offset-control\)/)
+  })
+})
