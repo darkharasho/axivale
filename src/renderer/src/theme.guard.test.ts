@@ -76,11 +76,14 @@ describe('sanctioned departures', () => {
     expect(themeCss.match(/repeating-linear-gradient/g)).toHaveLength(1)
   })
 
-  // Departure 1 of 2: the torn paper edges, on user clippings and the input.
-  it('keeps exactly two clip-path torn edges, drawn on the axi surface', () => {
-    expect(themeCss.match(/clip-path/g)).toHaveLength(2)
+  // Departure 1 of 2: the torn paper edge on user clippings. The composer used
+  // to carry a second one; it became a card, and a card's accent strip already
+  // draws its top edge — two competing top edges is one too many. One torn
+  // edge left, and it is the one that reads as a clipping.
+  it('keeps exactly one clip-path torn edge, drawn on the axi surface', () => {
+    expect(themeCss.match(/clip-path/g)).toHaveLength(1)
+    expect(themeCss).toMatch(/\.msg\.user \.body::after\{[^}]*clip-path/)
     expect(themeCss).not.toMatch(/\.msg\.user \.body::after\{[^}]*var\(--paper\)/)
-    expect(themeCss).not.toMatch(/\.inputzone::before\{[^}]*var\(--paper\)/)
   })
 })
 
@@ -131,7 +134,7 @@ describe('line vocabulary', () => {
   })
 
   it('converts the structural rules to the control weight', () => {
-    for (const sel of ['.folio', '.mnav', '.prose hr', '.mtop']) {
+    for (const sel of ['.folio', '.masthead', '.prose hr', '.mtop']) {
       const rule = themeCss.match(new RegExp(`\\${sel}\\{[^}]*\\}`))?.[0] ?? ''
       expect(rule, `${sel} not found`).not.toBe('')
       expect(rule, sel).toMatch(/var\(--axi-border-control\) solid var\(--axi-rule\)/)

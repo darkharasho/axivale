@@ -64,11 +64,15 @@ function EarSwitcher({
   service,
   display,
   align = 'left',
+  title,
   onSwitched
 }: {
   service: 'gw2' | 'axivale'
   display: string
   align?: 'left' | 'right'
+  /** Hover detail the chip has no room to print — e.g. the guild's tag and
+   *  member count, which used to sit beside the name in the wide masthead. */
+  title?: string
   onSwitched: () => void
 }): ReactElement {
   const [open, setOpen] = useState(false)
@@ -101,7 +105,7 @@ function EarSwitcher({
 
   return (
     <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
-      <button className="earsw-btn" onClick={() => void toggle()}>
+      <button className="earsw-btn" title={title} onClick={() => void toggle()}>
         {display}
         <span className="earsw-caret"><ChevronDown size={11} /></span>
       </button>
@@ -279,69 +283,68 @@ export default function Masthead(props: MastheadProps): ReactElement {
           </button>
         </span>
       </div>
-      <div className="mmain">
-        <div className="ear">
-          <div>
-            <b>AxiTools</b>{' '}
-            {axiConnected ? (
-              <span className="lit">
-                <Circle size={8} fill="currentColor" strokeWidth={0} /> connected
-              </span>
-            ) : (
-              <span className="off-air">
-                <Circle size={8} fill="currentColor" strokeWidth={0} /> offline
-              </span>
-            )}
-          </div>
-          <div>
-            <b>GW2 API</b>{' '}
-            <EarSwitcher
-              service="gw2"
-              display={gw2AccountName ?? 'no key'}
-              align="left"
-              onSwitched={onSwitched}
-            />
-          </div>
-          <div>
-            <b>GW2 Guild</b> <Gw2GuildSwitcher onSwitched={onSwitched} />
-          </div>
-        </div>
+      {/* One chrome row. The nameplate, the sections and the status ears used to
+          be three stacked bands; the app is a reading surface, so the chrome
+          that frames it earns a single row, not a third of the window. */}
+      <div className="mbar">
         <div className="title">
           AxiVale<em>.</em>
         </div>
-        <div className="ear right">
-          <div>
-            <EarSwitcher
-              service="axivale"
-              display={guildName ?? 'Guild'}
-              align="right"
-              onSwitched={onSwitched}
-            />{' '}
-            {guildDetail}
-          </div>
-          <div>
-            <b>{PROVIDER_LABELS[provider] ?? 'Claude'}</b>{' '}
-            {providerReady ? 'connected' : 'not configured'}
-          </div>
+        <div className="mnav">
+          {(
+            [
+              ['dispatches', 'Dispatches'],
+              ['operations', 'Operations'],
+              ['roster', 'Roster'],
+              ['skills', 'Skills'],
+              ['logs', 'Logs'],
+              ['meta', 'Sources'],
+              ['settings', 'Settings']
+            ] as Array<[Section, string]>
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              className={section === key ? 'on' : ''}
+              aria-current={section === key ? 'page' : undefined}
+              onClick={() => onSection(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      </div>
-      <div className="mnav">
-        {(
-          [
-            ['01', 'dispatches', 'Dispatches'],
-            ['02', 'operations', 'Operations'],
-            ['03', 'roster', 'Roster'],
-            ['04', 'skills', 'Skills'],
-            ['05', 'logs', 'Logs'],
-            ['06', 'meta', 'Sources'],
-            ['07', 'settings', 'Settings']
-          ] as Array<[string, Section, string]>
-        ).map(([no, key, label]) => (
-          <button key={key} className={section === key ? 'on' : ''} onClick={() => onSection(key)}>
-            <span className="no">{no}</span>
-            {label}
-          </button>
-        ))}
+        {/* Each ear's colour already says connected-or-not, so the "AxiTools
+            connected" style label it used to carry is dropped as redundant.
+            The word that survives is the one the colour cannot say: which
+            account, which guild, which provider. */}
+        <div className="ears">
+          <span
+            className={`ear-chip ${axiConnected ? 'ok' : 'off'}`}
+            title={`AxiTools ${axiConnected ? 'connected' : 'offline'}`}
+          >
+            <Circle size={7} fill="currentColor" strokeWidth={0} />
+            AxiTools
+          </span>
+          <EarSwitcher
+            service="gw2"
+            display={gw2AccountName ?? 'no key'}
+            align="right"
+            onSwitched={onSwitched}
+          />
+          <Gw2GuildSwitcher onSwitched={onSwitched} />
+          <EarSwitcher
+            service="axivale"
+            display={guildName ?? 'Guild'}
+            align="right"
+            title={guildDetail}
+            onSwitched={onSwitched}
+          />
+          <span
+            className={`ear-chip ${providerReady ? 'meta' : 'off'}`}
+            title={providerReady ? 'Provider connected' : 'Provider not configured'}
+          >
+            {PROVIDER_LABELS[provider] ?? 'Claude'}
+          </span>
+        </div>
       </div>
     </div>
   )

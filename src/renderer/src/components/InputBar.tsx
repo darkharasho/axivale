@@ -327,7 +327,6 @@ export default function InputBar({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
         >
-          <span className="prompt">&gt;</span>
           <div className="field-wrap">
             <div className="field-mirror" ref={mirrorRef} aria-hidden="true">
               {mirror}
@@ -338,11 +337,7 @@ export default function InputBar({
               value={value}
               disabled={disabled}
               rows={1}
-              placeholder={
-                enabled.length
-                  ? 'File your orders…  ·  type / for a skill  ·  shift+enter for a new line'
-                  : 'File your orders…  ·  shift+enter for a new line'
-              }
+              placeholder="File your orders…"
               role="combobox"
               aria-expanded={open}
               aria-autocomplete="list"
@@ -381,15 +376,24 @@ export default function InputBar({
               </div>
             )}
           </div>
-          {disabled ? (
-            <button className="filebtn stop" onClick={onStop} title="Stop the current dispatch">
-              Stop
-            </button>
-          ) : (
-            <button className="filebtn" onClick={submit}>
-              Send
-            </button>
-          )}
+          {/* The keying hints used to live in the placeholder, where they were
+              a wall of text that vanished the moment you typed — exactly when
+              "shift+enter for a new line" becomes useful. Down here they stay
+              legible while composing. */}
+          <div className="infoot">
+            <span className="inhint">
+              {enabled.length ? '/ for a skill · shift+enter for a new line' : 'shift+enter for a new line'}
+            </span>
+            {disabled ? (
+              <button className="filebtn stop" onClick={onStop} title="Stop the current dispatch">
+                Stop
+              </button>
+            ) : (
+              <button className="filebtn" onClick={submit}>
+                Send
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
