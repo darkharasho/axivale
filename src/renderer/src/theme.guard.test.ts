@@ -425,20 +425,16 @@ describe('the gradient allowlist', () => {
   // tells a reader nothing about which three are sanctioned; this fails the
   // moment a gradient appears on a selector nobody argued for.
   //
-  // - .chatcol                      departure 2 of 2, the halftone scanline
-  // - .edition .ed-acts             a fade-to-transparent MASK over the row
-  // - .meta-summary.collapsed::after the same mask device on clamped text
+  // - .chatcol  departure 2 of 2, the halftone scanline
   //
-  // The two masks are not surface decoration, and rule 1 governs gradients
-  // *on surfaces*. Removing them would expose the overflow they exist to hide.
-  it('permits gradients only on the scanline and the two overflow masks', () => {
+  // The two overflow masks that used to sit here (.edition .ed-acts and
+  // .meta-summary.collapsed::after) are gone: both faded a surface out to
+  // hide an overflow, which is exactly the depth-by-atmosphere effect rule 1
+  // rejects. They are a solid ground and a hairline cut now.
+  it('permits gradients only on the scanline', () => {
     const rules = themeCss.match(/[^{}]+\{[^}]*gradient[^}]*\}/g) ?? []
     const selectors = rules.map((r) => r.slice(0, r.indexOf('{')).trim().split('\n').pop()!.trim())
-    expect(selectors.sort()).toEqual([
-      '.chatcol',
-      '.edition .ed-acts',
-      '.meta-summary.collapsed::after'
-    ])
+    expect(selectors.sort()).toEqual(['.chatcol'])
   })
 
   it('uses no repeating gradient but the scanline', () => {
@@ -482,5 +478,61 @@ describe('entity autolinks', () => {
   // undiscoverable.
   it('keeps an underline on the entity autolink', () => {
     expect(ruleFor('.axi-entity')).toMatch(/text-decoration:/)
+  })
+})
+
+describe('the form steps', () => {
+  // The redo's whole argument in three assertions. Every surface below the
+  // chat column used to draw itself with 1px rules, soft radii and blurred
+  // drops; those are three separate vocabularies axi does not have, and each
+  // one crept back in the last time by being copied from the rule above it.
+  // These fail on the copy, not on the review.
+
+  it('draws no 1px border — axi has no 1px step', () => {
+    // 2px hairline (subordinate), 3px control, 4px panel. Nothing else.
+    expect(themeCss).not.toMatch(/:\s*1px\s+solid/)
+  })
+
+  it('rounds nothing but the spinner', () => {
+    const radii = themeCss.match(/border-radius:\s*[^;}]+/g) ?? []
+    const nonZero = radii.filter((r) => !/:\s*(0|var\(--axi-radius\b)/.test(r))
+    // .meta-spin is a rotating ring: a square one would read as a tumbling
+    // box, which says "broken", not "working".
+    expect(nonZero).toEqual(['border-radius: 50%'])
+  })
+
+  it('lifts with an offset block, never a blur', () => {
+    const shadows = themeCss.match(/box-shadow:\s*[^;}]+/g) ?? []
+    for (const shadow of shadows) {
+      if (/^box-shadow:\s*(none|inset)/.test(shadow)) continue
+      expect(shadow, 'every lift is an axi offset').toMatch(
+        /var\(--axi-offset-(control|panel)(-hover)?\)\s+var\(--axi-offset-(control|panel)(-hover)?\)\s+0\s+var\(--axi-ink-line\)/
+      )
+    }
+  })
+
+  it('raises a panel off the page rather than sinking a well into it', () => {
+    // The bug the redo fixed: a card drawn darker than --axi-ground reads as
+    // a hole, so a screen of cards reads as mostly background.
+    for (const sel of ['.spcard', '.bcard', '.ccard', '.scard', '.share-dialog']) {
+      const rule = ruleFor(sel)
+      expect(rule, `${sel} not found`).not.toBe('')
+      expect(rule, sel).toMatch(/background:var\(--axi-surface\)/)
+      expect(rule, sel).toMatch(/border:var\(--axi-border-panel\) solid var\(--axi-ink-line\)/)
+      expect(rule, sel).toMatch(/box-shadow:var\(--axi-offset-panel\)/)
+    }
+  })
+
+  it('sinks the fields into the card they sit on', () => {
+    for (const sel of ['.sfield-input', '.sfield-area', '.rst-input', '.mem-add-input']) {
+      const rule = ruleFor(sel)
+      expect(rule, `${sel} not found`).not.toBe('')
+      expect(rule, sel).toMatch(/background:var\(--axi-ground\)/)
+      expect(rule, sel).toMatch(/border:var\(--axi-border-control\) solid var\(--axi-ink-line\)/)
+    }
+  })
+
+  it('keeps no hard-coded greys now that the accent drives the palette', () => {
+    expect(themeCss).not.toMatch(/#[0-9a-fA-F]{6}\b/)
   })
 })
