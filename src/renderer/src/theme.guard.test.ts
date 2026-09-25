@@ -525,7 +525,10 @@ describe('the form steps', () => {
       '.share-dialog',
       '.sgroup',
       '.panel-empty',
-      '.deskset'
+      '.deskset',
+      // the notices rail: each card was a black wash darker than the rail it
+      // sat in, which is the hole again, one column over
+      '.ncard'
     ]) {
       const rule = ruleFor(sel)
       expect(rule, `${sel} not found`).not.toBe('')
@@ -536,7 +539,21 @@ describe('the form steps', () => {
   })
 
   it('sinks the fields into the card they sit on', () => {
-    for (const sel of ['.sfield-input', '.sfield-area', '.rst-input', '.mem-add-input', '.sinput', '.clspick-btn']) {
+    // .tool, .post-figure, .prose pre and .picker .pi are the same shape of
+    // thing in the chat column: quoted material, or a row you pick from,
+    // set into the surface around it rather than washed with black.
+    for (const sel of [
+      '.sfield-input',
+      '.sfield-area',
+      '.rst-input',
+      '.mem-add-input',
+      '.sinput',
+      '.clspick-btn',
+      '.tool',
+      '.post-figure',
+      '.prose pre',
+      '.picker .pi'
+    ]) {
       const rule = ruleFor(sel)
       expect(rule, `${sel} not found`).not.toBe('')
       expect(rule, sel).toMatch(/background:var\(--axi-ground\)/)
@@ -546,5 +563,24 @@ describe('the form steps', () => {
 
   it('keeps no hard-coded greys now that the accent drives the palette', () => {
     expect(themeCss).not.toMatch(/#[0-9a-fA-F]{6}\b/)
+  })
+
+  it('fills every surface from a token, never a hand-mixed rgba', () => {
+    // How the holes got in: a card wanting to look recessed was painted
+    // rgba(0,0,0,.16) instead of stepping to --axi-ground, so it came out
+    // darker than the page and read as a gap. Depth is a token step here,
+    // never an opacity. The scanline is the one sanctioned exception and is
+    // a background-image, so it is not caught by this.
+    const fills = themeCss.match(/background(?:-color)?:\s*rgba\([^)]*\)/g) ?? []
+    expect(fills).toEqual([])
+  })
+
+  it('states a signal colour as a mix of its token, not a raw rgba', () => {
+    // rgba(111,174,111,.45) is --axi-ok at 45%, written out by hand: it stops
+    // tracking the token the moment the palette moves.
+    const strays = (themeCss.match(/rgba\([^)]*\)/g) ?? []).filter(
+      (c) => !/rgba\(0,0,0,\.05\)/.test(c)
+    )
+    expect(strays).toEqual([])
   })
 })
