@@ -14,9 +14,10 @@ body {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg, #16171a)
-    radial-gradient(1100px 500px at 50% -15%, rgba(255, 255, 255, 0.03), transparent);
-  color: var(--ink, #e4e3dc);
+  /* Flat. The radial glow was generic dark-app sheen — rule 1. The hardcoded
+     fallbacks are gone too: the entry imports axi.css, so these resolve. */
+  background: var(--axi-ground);
+  color: var(--axi-text);
 }
 #root {
   display: block;
