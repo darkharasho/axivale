@@ -57,7 +57,12 @@ describe('sanctioned departures', () => {
   })
 
   it('draws the body on the flat ground, with no gradient', () => {
-    expect(bodyRule).toMatch(/background:\s*var\(--axi-ground\)/)
+    // background-color + background-image (not the background shorthand) so
+    // glass's --axi-ground-image atmosphere is not discarded; both still
+    // resolve to var(--axi-ground) / var(--axi-ground-image), and the latter
+    // is 'none' outside glass, so this is inert everywhere else.
+    expect(bodyRule).toMatch(/background-color:\s*var\(--axi-ground\)/)
+    expect(bodyRule).toMatch(/background-image:\s*var\(--axi-ground-image\)/)
     expect(bodyRule).not.toMatch(/gradient/)
   })
 

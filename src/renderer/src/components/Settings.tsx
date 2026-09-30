@@ -9,7 +9,15 @@ import Dispatches from './settings/Dispatches'
 import Notifications from './settings/Notifications'
 import Appearance from './settings/Appearance'
 import { resolveAccentId } from '../themes/accents'
-import { applyAccent, applyTheme, readAccent } from '../themes/applyTheme'
+import {
+  applyAccent,
+  applySurface,
+  applySurfaceSetting,
+  applyTheme,
+  readAccent,
+  readSurface,
+  resolveSurfaceId
+} from '../themes/applyTheme'
 import About from './settings/About'
 
 type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
@@ -128,6 +136,12 @@ export default function Settings({
   // the reconcile and the live previous-value for rollback, which the render
   // closure cannot supply when two clicks land in the same tick.
   const chosenAccent = useRef<string | null>(null)
+
+  const [surface, setSurface] = useState<string>(readSurface)
+  // Same latch as chosenAccent: the load effect awaits a dozen serial IPC calls
+  // before it reads the surface, so a button clicked in that window would
+  // otherwise be reverted by a store value that is already stale.
+  const chosenSurface = useRef<string | null>(null)
 
   // Notifications (default on; stored as 'true'/'false')
   const [notifySystem, setNotifySystem] = useState(true)
@@ -343,6 +357,11 @@ export default function Settings({
         setAccent(storedAccent)
         applyTheme(storedAccent)
       }
+      const storedSurface = resolveSurfaceId(await window.officer.getSetting('surface'))
+      if (chosenSurface.current === null) {
+        setSurface(storedSurface)
+        applySurface(storedSurface)
+      }
       setNotifySystem((await window.officer.getSetting('notifySystem')) !== 'false')
       setNotifyBadge((await window.officer.getSetting('notifyBadge')) !== 'false')
       setVersion(await window.officer.appVersion())
@@ -450,6 +469,16 @@ export default function Settings({
     )
     chosenAccent.current = settled
     setAccent(settled)
+  }
+
+  async function chooseSurface(id: string): Promise<void> {
+    const previous = chosenSurface.current ?? surface
+    chosenSurface.current = id
+    const settled = await applySurfaceSetting(id, previous, (next) =>
+      window.officer.setSetting('surface', next)
+    )
+    chosenSurface.current = settled
+    setSurface(settled)
   }
 
   async function toggleNotifySystem(value: boolean): Promise<void> {
@@ -756,7 +785,14 @@ export default function Settings({
           onToggleBadge={toggleNotifyBadge}
         />
       )}
-      {section === 'appearance' && <Appearance accent={accent} onSelect={chooseAccent} />}
+      {section === 'appearance' && (
+        <Appearance
+          accent={accent}
+          onSelect={chooseAccent}
+          surface={surface}
+          onSelectSurface={chooseSurface}
+        />
+      )}
       {section === 'about' && (
         <About version={version} updateMsg={updateMsg} onCheckUpdates={checkUpdates} />
       )}

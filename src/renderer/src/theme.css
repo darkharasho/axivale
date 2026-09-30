@@ -19,7 +19,7 @@
   --accent: var(--axi-accent);
   /* LOCAL EXTENSION: axi-design defines no accent-bright token. AxiVale's
      two-tone red is load-bearing across 125 references, so it survives here,
-     derived by color-mix so it tracks whichever of the 11 accents is live.
+     derived by color-mix so it tracks whichever of the 12 accents is live.
      The 82% is tuned by eye. Delete this in favour of the real token if
      axi-design ever formalises an accent-bright. */
   --accent-b: color-mix(in srgb, var(--axi-accent) 82%, white);
@@ -40,14 +40,6 @@
     color 0.2s ease,
     box-shadow 0.4s ease,
     outline-color 0.4s ease !important;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .theme-transitioning *,
-  .theme-transitioning *::before,
-  .theme-transitioning *::after {
-    transition: none !important;
-  }
 }
 
 html,body,#root{height:100%}
@@ -1579,6 +1571,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
      deepens, which is what the lift reads as, but the element stays put. */
   .btn-stamp:hover, .btn-out:hover, .folio-act:hover, .accent-swatch:hover,
   .axi-btn:hover, .axi-pill:hover, .axi-select:hover { transform: none }
+  /* The accent/surface crossfade repaints the whole window at once, which is
+     exactly the motion a reader who asked for less of it does not want. */
+  .theme-transitioning *,
+  .theme-transitioning *::before,
+  .theme-transitioning *::after {
+    transition: none !important;
+  }
 }
 
 /* ──────────────────────── tactile + selection ────────────────────────
@@ -1671,3 +1670,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* The family diamond, inked in the accent it selects. */
 .accent-swatch__chip{flex:none;width:16px;height:16px;background:var(--swatch);border:var(--axi-border-hairline) solid var(--axi-ink-line);transform:rotate(45deg)}
 .accent-swatch[aria-pressed="true"]{color:var(--axi-text);box-shadow:var(--axi-offset-control) var(--axi-offset-control) 0 var(--axi-ink-line)}
+
+/* ---- surface picker (Settings -> Appearance) ---- */
+/* Three .axi-btn instances from axi-design itself; this app has no Tailwind,
+   so the row just needs to wrap and space them, not restyle the buttons. */
+.surface-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}

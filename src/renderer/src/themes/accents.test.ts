@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { ACCENTS, DEFAULT_ACCENT_ID, resolveAccentId } from './accents'
 
 describe('ACCENTS', () => {
-  it('ships all 11 official accents with id, label and hex', () => {
-    expect(ACCENTS).toHaveLength(11)
+  it('ships all 12 official accents with id, label and hex', () => {
+    expect(ACCENTS).toHaveLength(12)
     for (const a of ACCENTS) {
       expect(a.id).toMatch(/^[a-z-]+$/)
       expect(a.label.length).toBeGreaterThan(0)
