@@ -70,6 +70,7 @@ describe('resolveSurfaceId', () => {
     expect(resolveSurfaceId('')).toBe('axi')
     expect(resolveSurfaceId('constructor')).toBe('axi')
     expect(resolveSurfaceId('__proto__')).toBe('axi')
+    expect(resolveSurfaceId('toString')).toBe('axi')
   })
 })
 
