@@ -15,8 +15,13 @@ body {
   margin: 0;
   min-height: 100vh;
   /* Flat. The radial glow was generic dark-app sheen — rule 1. The hardcoded
-     fallbacks are gone too: the entry imports axi.css, so these resolve. */
-  background: var(--axi-ground);
+     fallbacks are gone too: the entry imports axi.css, so these resolve.
+     background-color + background-image rather than the shorthand: the
+     shorthand resets background-image to none, which would discard glass's
+     --axi-ground-image atmosphere. It is 'none' on every other surface, so this
+     is inert there — the same split theme.css draws the app's body with. */
+  background-color: var(--axi-ground);
+  background-image: var(--axi-ground-image);
   color: var(--axi-text);
 }
 #root {

@@ -2,6 +2,10 @@
 /* Token bridge to @axiapps/axi-design. These names are AxiVale's own history:
    821 references across this file still use them, so they are kept as aliases
    rather than renamed. Change a value in axi-design and it lands here.
+   --bg and --bg2 are the exception that proves the rule: every site that used
+   them was a recess painted with the page colour, and those ask for
+   --axi-well-fill now, so the two aliases have no users left. They stay
+   declared because the bridge is the whole table, not the rows still in use.
    --rule, --rule2 and --line all collapse onto --axi-rule: AxiVale drew three
    rule colours, axi draws one colour at two weights (--axi-border-control 3px
    structural, --axi-border-hairline 2px subordinate). Weight carries the
@@ -60,7 +64,16 @@ body{color:var(--ink);overflow:hidden;background-color:var(--axi-ground);backgro
 ::-webkit-scrollbar-thumb:hover{background:var(--axi-accent)}
 *{scrollbar-width:thin;scrollbar-color:var(--axi-rule) transparent}
 /* masthead */
-.masthead{border-bottom:var(--axi-border-control) solid var(--axi-rule);background:var(--axi-ground)}
+/* The masthead is this app's titlebar: it carries the window controls and the
+   OS drag region, and it is the one strip a reader never scrolls away from. So
+   it takes --axi-ground-deep, the deep-chrome token the package's own
+   .axi-titlebar uses, rather than --axi-ground. Painting it the page was the
+   problem twice over: the `background` shorthand threw away glass's
+   --axi-ground-image atmosphere, and re-adding that image here would re-anchor
+   three 900px radials inside a 90px band — a pink smear across the nameplate.
+   Glass restates ground-deep translucent, so the band now sits *over* the
+   atmosphere, which is what the package draws a titlebar as. */
+.masthead{border-bottom:var(--axi-border-control) solid var(--axi-rule);background:var(--axi-ground-deep)}
 .mtop{display:flex;align-items:center;padding:7px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;border-bottom:var(--axi-border-control) solid var(--axi-rule);-webkit-app-region:drag}
 /* the edition line is the flourish, so it is the first thing to go when the
    titlebar runs out of room for the ears */
@@ -540,8 +553,11 @@ td.nm2{color:var(--ink)}
 .filebtn.stop:hover{background:var(--axi-accent);color:var(--axi-accent-ink)}
 .folio-act{align-self:center;margin-left:16px;font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-text-dim);background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);padding:4px 10px;cursor:pointer;transition:transform .1s,box-shadow .1s}
 .folio-act:hover{color:var(--axi-text);box-shadow:var(--axi-shadow-control);transform:translate(-2px,-2px)}
-/* axibridge fetch progress — faint ticker above the input */
-.bridge-progress{padding:4px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border-top:var(--axi-border-hairline) solid var(--rule);background:var(--bg2)}
+/* axibridge fetch progress — faint ticker above the input. No fill: it is a
+   line of text sitting on the page, and the page is already painted. Repainting
+   it with the ground was a no-op on an opaque surface and, on glass, a strip of
+   opaque black laid over the atmosphere. */
+.bridge-progress{padding:4px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border-top:var(--axi-border-hairline) solid var(--rule)}
 /* right-click context menu — themed, context-aware */
 .ctx-menu{position:fixed;z-index:60;min-width:200px;padding:5px 0;font-family:'IBM Plex Mono',monospace;user-select:none;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 .ctx-item{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;background:none;border:none;padding:7px 14px;font-size:11px;letter-spacing:.04em;color:var(--ink-dim);cursor:pointer;text-align:left}

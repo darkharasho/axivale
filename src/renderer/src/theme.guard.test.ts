@@ -66,6 +66,21 @@ describe('sanctioned departures', () => {
     expect(bodyRule).not.toMatch(/gradient/)
   })
 
+  // The counterpart to the rule above: --axi-ground is the page, so body is the
+  // only thing allowed to fill with it. Everything that merely *wanted* a dark
+  // fill — a field, a track, a quoted block — asks for --axi-well-fill, and the
+  // masthead, which is this app's titlebar, asks for the deep-chrome token the
+  // package's own .axi-titlebar uses. A page-coloured control is opaque under
+  // every surface, so on glass it is a tile floating on a translucent pane.
+  // (The scrollbar thumb's --axi-ground *border* is the page showing through
+  // the gap around the thumb, which is the one honest page-coloured edge.)
+  it('fills nothing but the body with the page colour', () => {
+    const fills = (themeCss.match(/[^{}]+\{[^}]*\}/g) ?? []).filter((rule) =>
+      /background(?:-color)?:\s*var\(--axi-ground\)/.test(rule)
+    )
+    expect(fills.map((r) => r.slice(0, r.indexOf('{')).trim())).toEqual(['body'])
+  })
+
   it('does not set a serif body font', () => {
     expect(bodyRule).not.toMatch(/font-family/)
   })
