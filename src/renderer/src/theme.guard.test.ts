@@ -319,6 +319,19 @@ describe('controls', () => {
     expect(themeCss).toMatch(/\.winctl button\.close:hover\{[^}]*background:var\(--axi-danger\)/)
   })
 
+  // --axi-ink-line is the *outline* colour. Flat and glass relight it to a
+  // translucent white, so a glyph written in it on a saturated fill washes out
+  // — which is why --axi-ink-on-fill was split out of it. The close button's X
+  // was the live bug: near-black on axi, a ghost on the red under glass.
+  it('writes on a saturated fill with an ink meant for a fill', () => {
+    const offenders = (themeCss.match(/[^{}]+\{[^}]*\}/g) ?? []).filter(
+      (rule) =>
+        /background(?:-color)?:\s*var\(--(?:axi-)?(?:accent|accent-b|danger|ok|warn)\)/.test(rule) &&
+        /[;{]\s*color:\s*var\(--axi-ink-line\)/.test(rule)
+    )
+    expect(offenders.map((r) => r.slice(0, r.indexOf('{')).trim())).toEqual([])
+  })
+
   it('hovers icon buttons on the neutral ramp, not a translucent wash', () => {
     const hover = ruleFor('.edition .ed-acts button:hover')
     expect(hover).toMatch(/background:var\(--axi-surface-raised\)/)

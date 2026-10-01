@@ -59,13 +59,16 @@ body{color:var(--ink);overflow:hidden;background-color:var(--axi-ground);backgro
 .mtop .r{margin-left:16px}
 @media (max-width:1180px){.mtop .r{display:none}}
 /* window controls — quiet typeset glyphs tucked into the corner; a solid
-   ink block appears only on hover (close stamps accent red). Negative margin
-   eats most of .mtop's 30px edge padding so they sit ~8px from the frame
-   while the Final Edition text keeps its alignment. */
+   ink block appears only on hover (close stamps danger red; the glyph on that
+   fill is --axi-ink-on-fill, never --axi-ink-line: the line token is the
+   outline colour, and flat and glass relight it to a translucent white, which
+   washes the X out on the red). Negative margin eats most of .mtop's 30px edge
+   padding so they sit ~8px from the frame while the Final Edition text keeps
+   its alignment. */
 .winctl{display:flex;gap:2px;margin-left:18px;margin-right:-24px;-webkit-app-region:no-drag}
 .winctl button{width:22px;height:20px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1;padding:0;cursor:pointer}
 .winctl button:hover{color:var(--ink);background:var(--axi-surface-raised)}
-.winctl button.close:hover{color:var(--axi-ink-line);background:var(--axi-danger)}
+.winctl button.close:hover{color:var(--axi-ink-on-fill);background:var(--axi-danger)}
 /* the chrome row: nameplate and sections, nothing else */
 .mbar{display:flex;align-items:center;gap:20px;height:48px;padding:0 30px;-webkit-app-region:drag}
 .mbar .title{font-family:'Playfair Display',serif;font-weight:900;font-size:22px;line-height:1;flex:0 0 auto;white-space:nowrap}
@@ -92,14 +95,20 @@ body{color:var(--ink);overflow:hidden;background-color:var(--axi-ground);backgro
 .ear-chip.ok{color:var(--green);border-color:var(--green)}
 .ear-chip.off{color:var(--faint)}
 /* update banner */
+/* The banner is an accent fill, so everything drawn on it takes an ink meant
+   for a fill: --axi-accent-ink for the glyphs, --axi-ink-on-fill for the
+   inverse stamp. --axi-ink-line is the outline colour — flat and glass relight
+   it to a translucent white, which on a saturated band is a smudge, not a
+   chip. The dismiss fades rather than recolouring for the same reason: there
+   is no second ink on this fill to hover to. */
 .updatebar{display:flex;align-items:center;gap:14px;padding:8px 30px;background:var(--axi-accent);color:var(--axi-accent-ink);font-family:'IBM Plex Mono',monospace;font-size:11px}
 .ub-flag{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;border:var(--axi-border-hairline) solid var(--axi-accent-ink);padding:3px 8px}
 .ub-msg{font-family:'Source Serif 4',serif;font-size:13px}
 .ub-msg b{font-weight:600}
-.ub-btn{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--axi-accent);background:var(--axi-ink-line);border:none;padding:6px 14px;cursor:pointer}
-.ub-btn:hover{background:var(--axi-ground)}
-.ub-dismiss{background:none;border:none;color:var(--axi-accent-ink);cursor:pointer;font-size:12px;padding:2px 4px}
-.ub-dismiss:hover{color:var(--axi-ink-line)}
+.ub-btn{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--axi-accent);background:var(--axi-ink-on-fill);border:none;padding:6px 14px;cursor:pointer}
+.ub-btn:hover{background:var(--axi-surface-raised)}
+.ub-dismiss{background:none;border:none;color:var(--axi-accent-ink);opacity:.7;cursor:pointer;font-size:12px;padding:2px 4px}
+.ub-dismiss:hover{color:var(--axi-accent-ink);opacity:1}
 /* masthead quick-swap switcher */
 .earsw{position:relative;display:inline-block;-webkit-app-region:no-drag}
 .earsw-btn{font-family:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--faint);background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px}
