@@ -47,8 +47,16 @@
 }
 
 html,body,#root{height:100%}
-body{color:var(--ink);overflow:hidden;background-color:var(--axi-ground);background-image:var(--axi-ground-image)}
-#root{display:flex;flex-direction:column}
+/* The page paints nothing and #root paints everything. The window is
+   transparent (see createWindow in src/main/index.ts) so that a rounded corner
+   has something to show through, and a radius can only do that if the layer
+   carrying it is the only layer there: painted on <body>, the ground sat behind
+   #root with no radius of its own and filled the corners straight back in. This
+   app has no .axi-window element, so #root is the shell - it takes the ground,
+   the radius and the clip, and every band inside it (the masthead above all)
+   gets its corners cut by that clip instead of squaring them off. */
+body{color:var(--ink);overflow:hidden;background-color:transparent;background-image:none}
+#root{display:flex;flex-direction:column;background-color:var(--axi-ground);background-image:var(--axi-ground-image);border-radius:var(--axi-radius);overflow:hidden}
 /* --axi-ground is the *page*, and it is opaque under every surface. Only the
    three things that genuinely are the page name it: body, the gap the scrollbar
    thumb is cut out of, and the masthead band. Everything that used to paint
@@ -176,10 +184,18 @@ body{color:var(--ink);overflow:hidden;background-color:var(--axi-ground);backgro
 .rip{display:flex;align-items:center;gap:12px;margin:22px 0;color:var(--faint)}
 .rip .t{flex:1;border-bottom:var(--axi-border-hairline) solid var(--axi-rule)}
 .rip .lbl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase}
-/* user clipping with torn bottom edge */
+/* user clipping with torn bottom edge.
+
+   No block under this one. Every other raised thing in the app answers with
+   --axi-shadow-control, which on the default surface is a 3px near-black square
+   offset down and right -- and a square block has a straight bottom edge, so
+   it sat behind the teeth and showed through every gap in the tear as a dark
+   scallop. The two shapes cannot both be right: a clipping is paper lying on
+   the desk, not a card standing off it, and the tear is what gives it its
+   edge. */
 .msg.user{align-self:flex-end;max-width:660px;margin-bottom:4px}
 .msg.user .kick{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;text-align:right;margin-bottom:6px}
-.msg.user .body{position:relative;font-family:'Source Serif 4',serif;background:var(--axi-surface);border:var(--axi-border-control) solid var(--axi-ink-line);padding:13px 18px 16px;font-size:15px;line-height:1.55;box-shadow:var(--axi-shadow-control);overflow-wrap:break-word;word-break:break-word}
+.msg.user .body{position:relative;font-family:'Source Serif 4',serif;background:var(--axi-surface-paint);border:var(--axi-border-control) solid var(--axi-ink-line);border-bottom:0;padding:13px 18px 16px;font-size:15px;line-height:1.55;overflow-wrap:break-word;word-break:break-word}
 /* markdown children: tighten block spacing so a single-paragraph order reads
    like the plain text it replaces, while multi-block orders still breathe */
 .msg.user .body>:first-child{margin-top:0}
@@ -191,9 +207,25 @@ body{color:var(--ink);overflow:hidden;background-color:var(--axi-ground);backgro
 .msg.user .body pre{margin:0 0 8px;padding:8px 10px;background:var(--axi-well-fill);overflow-x:auto}
 .msg.user .body pre code{font-size:12px}
 /* SANCTIONED DEPARTURE 1 of 2 — breaks no rule literally; it is simply not a
-   shape axi-design would draw. The most characteristic thing in the app. */
-.msg.user .body::after{content:'';position:absolute;left:-1px;right:-1px;bottom:-7px;height:7px;background:var(--axi-surface);
-  clip-path:polygon(0 0,3% 90%,6% 20%,10% 100%,14% 30%,18% 85%,23% 10%,27% 95%,32% 35%,36% 80%,41% 15%,45% 100%,50% 25%,55% 90%,60% 10%,64% 75%,69% 30%,73% 95%,78% 15%,82% 85%,87% 40%,91% 90%,95% 20%,98% 70%,100% 0)}
+   shape axi-design would draw. The most characteristic thing in the app.
+
+   Two things keep the tear reading as one piece of paper rather than a fringe
+   hung under a closed box. The clipping drops its bottom border, because the
+   teeth ARE its bottom edge and paper cannot be intact and torn at once. And
+   both the body and the teeth fill with --axi-surface-paint, not --axi-surface:
+   flat and glass make the surface a gradient, and a gradient re-anchors inside
+   every box it is given, so the strip redrew the whole 145deg ramp and landed
+   a visibly different tone directly under the one it is torn from. The paint
+   companion is the flat colour that gradient averages to, and it is the plain
+   surface colour on the default theme, so this costs axi nothing.
+
+   The polygon is deliberately irregular. It used to alternate high and low at
+   near-uniform 3-5% intervals, which reads as pinking shears rather than a
+   tear - paper does not come apart periodically. Forty-one points at varying
+   spacing and varying depth, over 9px rather than 7 so the deep notches have
+   somewhere to go. */
+.msg.user .body::after{content:'';position:absolute;left:-1px;right:-1px;bottom:-9px;height:9px;background:var(--axi-surface-paint);
+  clip-path:polygon(0 0,2.5% 72%,4% 18%,7% 95%,9.5% 40%,11% 88%,14.5% 12%,16% 66%,19% 100%,21.5% 35%,23% 80%,26.5% 22%,29% 93%,31% 48%,33.5% 70%,36% 15%,39.5% 86%,41% 30%,44% 97%,46.5% 55%,48% 25%,51.5% 90%,54% 42%,56% 75%,59.5% 10%,62% 68%,64.5% 98%,67% 33%,69.5% 82%,72% 20%,75.5% 92%,78% 50%,80% 28%,83.5% 85%,86% 38%,88.5% 96%,91% 16%,93.5% 74%,96% 45%,98% 88%,100% 0)}
 /* officer article */
 .msg.off{max-width:760px}
 .lede{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1.3;margin-bottom:4px;padding-right:28px}
@@ -569,7 +601,7 @@ td.nm2{color:var(--ink)}
 .ctx-sc{color:var(--faint);font-size:9px;letter-spacing:.08em}
 .ctx-sep{height:1px;background:var(--line);margin:5px 0}
 /* confirm dialog — public notice */
-.overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:50;border-radius:var(--axi-radius)}
 .notice{background:var(--paper);border:var(--axi-border-control) solid var(--accent);max-width:560px;width:90%;box-shadow:var(--axi-shadow-panel)}
 .notice .nh{font-family:'Playfair Display',serif;font-weight:900;font-size:22px;color:var(--accent-b);text-align:center;padding:16px 20px 8px;letter-spacing:.04em}
 .notice .nsub{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint);text-align:center;padding-bottom:14px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
@@ -879,7 +911,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .share-msg-btn:hover{color:var(--accent-b)}
 
 /* ---- Share dialog — newspaper "Special Edition" clipping ---- */
-.share-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1000}
+.share-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1000;border-radius:var(--axi-radius)}
 .share-dialog{position:relative;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);width:min(440px,92vw);box-shadow:var(--axi-shadow-panel)}
 /* The 4px outline now does what the inner mat was drawn to do, so the mat
    goes: two rules 5px apart read as a mistake next to axi's single edge. */
@@ -1037,7 +1069,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:var(--axi-border-hairline) solid color-mix(in srgb, var(--axi-accent) 45%, transparent);padding:1px 6px;letter-spacing:.12em}
 
 /* ---- Action modal — a filed-dispatch dossier (opened from a notice card) ---- */
-.action-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
+.action-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag;border-radius:var(--axi-radius)}
 .action-modal{position:relative;display:flex;flex-direction:column;width:min(1080px,94vw);min-height:360px;max-height:90vh;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 /* inner hairline mat, the same "matted clipping" device as the share dialog */
 .action-modal__x{position:absolute;top:10px;right:10px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;line-height:1;padding:0;z-index:2}
@@ -1666,7 +1698,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* Top-anchored below the masthead: a tall modal centred over the window would
    overlap the masthead's -webkit-app-region:drag zone, where the OS drag region
    hijacks clicks (grab cursor, dead close button). Starting below it avoids that. */
-.wnm-scrim{position:fixed;inset:0;z-index:1100;background:var(--axi-scrim);display:flex;align-items:flex-start;justify-content:center;padding:124px 34px 34px;-webkit-app-region:no-drag}
+.wnm-scrim{position:fixed;inset:0;z-index:1100;background:var(--axi-scrim);display:flex;align-items:flex-start;justify-content:center;padding:124px 34px 34px;-webkit-app-region:no-drag;border-radius:var(--axi-radius)}
 .wnm{width:680px;max-width:100%;max-height:calc(100vh - 158px);display:flex;flex-direction:column;-webkit-app-region:no-drag;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 .wnm-rule{display:flex;align-items:center;padding:9px 18px;border-bottom:var(--axi-border-control) solid var(--axi-rule);background:var(--axi-well-fill);-webkit-app-region:no-drag}
 .wnm-ear{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint)}

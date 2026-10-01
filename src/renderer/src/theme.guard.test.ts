@@ -46,8 +46,15 @@ describe('token bridge', () => {
   })
 })
 
-/** The `body{...}` rule, which is where the app's ground is drawn. */
+/** The `body{...}` rule, which must now draw nothing at all. */
 const bodyRule = themeCss.match(/(?:^|\n)body\{[^}]*\}/)?.[0] ?? ''
+
+/** The `#root{...}` rule, which is where the app's ground is drawn. The window
+ *  is transparent so its rounded corner has something to show through, and a
+ *  radius only reads if the layer carrying it is the only layer painting: on
+ *  <body> the ground sat behind #root with no radius of its own and filled the
+ *  corners back in. This app has no .axi-window element, so #root is the shell. */
+const rootRule = themeCss.match(/(?:^|\n)#root\{[^}]*\}/)?.[0] ?? ''
 
 describe('sanctioned departures', () => {
   // Without this, an extraction that silently matches nothing turns every
@@ -56,29 +63,49 @@ describe('sanctioned departures', () => {
     expect(bodyRule).toMatch(/^\nbody\{/)
   })
 
-  it('draws the body on the flat ground, with no gradient', () => {
+  it('extracts a non-empty #root rule to assert against', () => {
+    expect(rootRule).toMatch(/^\n#root\{/)
+  })
+
+  it('draws the shell on the flat ground, with no gradient', () => {
     // background-color + background-image (not the background shorthand) so
     // glass's --axi-ground-image atmosphere is not discarded; both still
     // resolve to var(--axi-ground) / var(--axi-ground-image), and the latter
     // is 'none' outside glass, so this is inert everywhere else.
-    expect(bodyRule).toMatch(/background-color:\s*var\(--axi-ground\)/)
-    expect(bodyRule).toMatch(/background-image:\s*var\(--axi-ground-image\)/)
-    expect(bodyRule).not.toMatch(/gradient/)
+    expect(rootRule).toMatch(/background-color:\s*var\(--axi-ground\)/)
+    expect(rootRule).toMatch(/background-image:\s*var\(--axi-ground-image\)/)
+    expect(rootRule).not.toMatch(/gradient/)
   })
 
-  // The counterpart to the rule above: --axi-ground is the page, so body is the
-  // only thing allowed to fill with it. Everything that merely *wanted* a dark
+  // The shell's corner is the window's corner, and it has to clip: every band
+  // inside it (the masthead above all) paints to the edge and would square the
+  // corners off otherwise.
+  it('rounds and clips the shell', () => {
+    expect(rootRule).toMatch(/border-radius:\s*var\(--axi-radius\)/)
+    expect(rootRule).toMatch(/overflow:\s*hidden/)
+  })
+
+  // The page itself paints nothing: a second opaque layer behind the shell has
+  // no radius of its own and is exactly what the radius was cutting a hole onto.
+  it('leaves the page unpainted behind the shell', () => {
+    expect(bodyRule).toMatch(/background-color:\s*transparent/)
+    expect(bodyRule).toMatch(/background-image:\s*none/)
+  })
+
+  // The counterpart to the rule above: --axi-ground is the page, so #root -- the
+  // window shell, the one thing that IS the page -- is the only thing allowed to
+  // fill with it. Everything that merely *wanted* a dark
   // fill — a field, a track, a quoted block — asks for --axi-well-fill, and the
   // masthead, which is this app's titlebar, asks for the deep-chrome token the
   // package's own .axi-titlebar uses. A page-coloured control is opaque under
   // every surface, so on glass it is a tile floating on a translucent pane.
   // (The scrollbar thumb's --axi-ground *border* is the page showing through
   // the gap around the thumb, which is the one honest page-coloured edge.)
-  it('fills nothing but the body with the page colour', () => {
+  it('fills nothing but the shell with the page colour', () => {
     const fills = (themeCss.match(/[^{}]+\{[^}]*\}/g) ?? []).filter((rule) =>
       /background(?:-color)?:\s*var\(--axi-ground\)/.test(rule)
     )
-    expect(fills.map((r) => r.slice(0, r.indexOf('{')).trim())).toEqual(['body'])
+    expect(fills.map((r) => r.slice(0, r.indexOf('{')).trim())).toEqual(['#root'])
   })
 
   it('does not set a serif body font', () => {
