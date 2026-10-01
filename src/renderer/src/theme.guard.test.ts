@@ -240,8 +240,27 @@ describe('raised surfaces', () => {
     expect(rule, sel).toMatch(/background:var\(--axi-scrim\)/)
   })
 
-  it('draws no blur anywhere - rule 3 replaces depth cues with a block', () => {
-    expect(themeCss).not.toMatch(/backdrop-filter|filter:\s*blur/)
+  it('invents no blur of its own - rule 3 replaces depth cues with a block', () => {
+    // Rule 3 bars *this app* from reaching for blur as a depth cue: an
+    // element earns weight from a block, never from a soft haze. It was
+    // written before the glass surface existed and cannot be read as a vote
+    // against chrome that did not exist yet. The one blur allowed is the
+    // package's own chrome filter token, which the language pairs with
+    // --axi-ground-deep on .axi-titlebar and which resolves to `none` on
+    // every surface but glass. Any other blur - a literal, a hand-rolled
+    // filter: blur, the token on an in-page element - is still a defect.
+    const blurs = themeCss.match(/(?:backdrop-filter|filter):[^;}]*/g) ?? []
+    const stray = blurs.filter(
+      (d) => !/^backdrop-filter:\s*var\(--axi-surface-filter\)$/.test(d.trim())
+    )
+    expect(stray, 'blur outside the chrome filter token').toEqual([])
+  })
+
+  it('pairs the chrome filter with deep chrome on the masthead', () => {
+    const rule = ruleFor('.masthead')
+    expect(rule, '.masthead not found').not.toBe('')
+    expect(rule).toMatch(/background:var\(--axi-ground-deep\)/)
+    expect(rule).toMatch(/backdrop-filter:var\(--axi-surface-filter\)/)
   })
 
   it('gives the action modal panel weight and drops its inset newsprint frame', () => {

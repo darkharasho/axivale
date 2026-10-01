@@ -73,7 +73,7 @@ body{color:var(--ink);overflow:hidden;background-color:var(--axi-ground);backgro
    three 900px radials inside a 90px band — a pink smear across the nameplate.
    Glass restates ground-deep translucent, so the band now sits *over* the
    atmosphere, which is what the package draws a titlebar as. */
-.masthead{border-bottom:var(--axi-border-control) solid var(--axi-rule);background:var(--axi-ground-deep)}
+.masthead{border-bottom:var(--axi-border-control) solid var(--axi-rule);background:var(--axi-ground-deep);backdrop-filter:var(--axi-surface-filter)}
 .mtop{display:flex;align-items:center;padding:7px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;border-bottom:var(--axi-border-control) solid var(--axi-rule);-webkit-app-region:drag}
 /* the edition line is the flourish, so it is the first thing to go when the
    titlebar runs out of room for the ears */
