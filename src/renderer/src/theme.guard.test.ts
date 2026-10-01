@@ -178,7 +178,7 @@ describe('line vocabulary', () => {
   it('makes .folio-act a real control rather than a dashed outline', () => {
     const act = themeCss.match(/\.folio-act\{[^}]*\}/)?.[0] ?? ''
     expect(act).toMatch(/border:var\(--axi-border-control\) solid var\(--axi-ink-line\)/)
-    expect(themeCss).toMatch(/\.folio-act:hover\{[^}]*box-shadow:var\(--axi-offset-control\)/)
+    expect(themeCss).toMatch(/\.folio-act:hover\{[^}]*box-shadow:var\(--axi-shadow-control\)/)
   })
 })
 
@@ -210,7 +210,7 @@ describe('raised surfaces', () => {
       /border:var\(--axi-border-panel\) solid var\(--axi-ink-line\)/
     )
     expect(rule, sel + ' block').toMatch(
-      /box-shadow:var\(--axi-offset-panel\) var\(--axi-offset-panel\) 0 var\(--axi-ink-line\)/
+      /box-shadow:var\(--axi-shadow-panel\)/
     )
   })
 
@@ -230,7 +230,7 @@ describe('raised surfaces', () => {
     const modal = ruleFor('.action-modal')
     expect(modal).toMatch(/border:var\(--axi-border-panel\) solid var\(--axi-ink-line\)/)
     expect(modal).toMatch(
-      /box-shadow:var\(--axi-offset-panel\) var\(--axi-offset-panel\) 0 var\(--axi-ink-line\)/
+      /box-shadow:var\(--axi-shadow-panel\)/
     )
     // The inset 1px frame was a newsprint device standing in for the outline
     // axi now draws properly.
@@ -262,10 +262,10 @@ describe('controls', () => {
   // as growing rather than lifting.
   it('lifts the buttons on hover rather than fading them', () => {
     expect(themeCss).toMatch(
-      /\.btn-stamp:hover\{[^}]*box-shadow:var\(--axi-offset-control-hover\)[^}]*transform:translate\(-2px,-2px\)/
+      /\.btn-stamp:hover\{[^}]*box-shadow:var\(--axi-shadow-control-hover\)[^}]*transform:translate\(-2px,-2px\)/
     )
     expect(themeCss).toMatch(
-      /\.btn-out:hover\{[^}]*box-shadow:var\(--axi-offset-control\)[^}]*transform:translate\(-2px,-2px\)/
+      /\.btn-out:hover\{[^}]*box-shadow:var\(--axi-shadow-control\)[^}]*transform:translate\(-2px,-2px\)/
     )
   })
 
@@ -506,12 +506,19 @@ describe('the form steps', () => {
     expect(nonZero).toEqual(['border-radius: 50%'])
   })
 
-  it('lifts with an offset block, never a blur', () => {
+  // Every lift asks the language for its relief instead of spelling one out.
+  // Hand-composing `var(--axi-offset-panel) var(--axi-offset-panel) 0
+  // var(--axi-ink-line)` pinned this app to the default surface's hard step:
+  // flat and glass zero the offsets and restate --axi-shadow-* as a soft drop,
+  // so a hand-assembled block simply vanished under them. --axi-shadow-* is
+  // the one token a theme repaints to say what "raised" means in its material,
+  // which is why this now pins the composed token and nothing else.
+  it('lifts with the theme’s composed block, never a hand-assembled one', () => {
     const shadows = themeCss.match(/box-shadow:\s*[^;}]+/g) ?? []
     for (const shadow of shadows) {
       if (/^box-shadow:\s*(none|inset)/.test(shadow)) continue
-      expect(shadow, 'every lift is an axi offset').toMatch(
-        /var\(--axi-offset-(control|panel)(-hover)?\)\s+var\(--axi-offset-(control|panel)(-hover)?\)\s+0\s+var\(--axi-ink-line\)/
+      expect(shadow, 'every lift asks for the composed block').toMatch(
+        /^box-shadow:\s*var\(--axi-shadow-(control|panel)(-hover)?\)\s*$/
       )
     }
   })
@@ -545,7 +552,7 @@ describe('the form steps', () => {
       expect(rule, `${sel} not found`).not.toBe('')
       expect(rule, sel).toMatch(/background:var\(--axi-surface\)/)
       expect(rule, sel).toMatch(/border:var\(--axi-border-panel\) solid var\(--axi-ink-line\)/)
-      expect(rule, sel).toMatch(/box-shadow:var\(--axi-offset-panel\)/)
+      expect(rule, sel).toMatch(/box-shadow:var\(--axi-shadow-panel\)/)
     }
   })
 
