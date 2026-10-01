@@ -163,10 +163,13 @@ describe('line vocabulary', () => {
     expect(themeCss).toMatch(/\.prose a\{color:var\(--axi-accent\);font-weight:600;text-underline-offset:2px\}/)
   })
 
-  it('takes axi’s blockquote: an accent bar on the ground, not a doubled rule', () => {
+  it('takes axi’s blockquote: an accent bar on a recess, not a doubled rule', () => {
+    // The fill is --axi-well-fill, not --axi-ground: a quote is set *into* the
+    // page, and --axi-ground is the page itself — opaque under every surface,
+    // so under glass it reads as a hole rather than as a recess.
     const bq = themeCss.match(/\.prose blockquote\{[^}]*\}/)?.[0] ?? ''
     expect(bq).toMatch(/border-left:var\(--axi-border-panel\) solid var\(--axi-accent\)/)
-    expect(bq).toMatch(/background:var\(--axi-ground\)/)
+    expect(bq).toMatch(/background:var\(--axi-well-fill\)/)
   })
 
   it('adopts the family diamond as the prose bullet (rule 7)', () => {
@@ -350,9 +353,14 @@ describe('fields', () => {
     expect(rule, sel + ' still underlined').not.toMatch(/border-bottom:/)
   })
 
-  it('sits fields on the ground, not on a translucent black wash', () => {
+  // Not a hand-mixed wash, and not the page either: --axi-well-fill is the
+  // token for a recess, and a field is the archetype of one. It resolves to
+  // --axi-ground on the default surface — so this is the same colour the rule
+  // used to name — while flat and glass restate it as their own recess (glass
+  // as a translucent darkening) instead of an opaque tile on a glass pane.
+  it('sinks fields into a recess, not onto the page or a translucent wash', () => {
     for (const sel of ['.sinput', '.ed-search']) {
-      expect(ruleFor(sel), sel).toMatch(/background:var\(--axi-ground\)/)
+      expect(ruleFor(sel), sel).toMatch(/background:var\(--axi-well-fill\)/)
     }
   })
 
@@ -404,8 +412,9 @@ describe('tables', () => {
 })
 
 describe('quantities', () => {
-  // Rule 9: a quantity is drawn as length, never intensity. The track is the
-  // ground, the fill is the value, and the fill is one ink at full strength.
+  // Rule 9: a quantity is drawn as length, never intensity. The track is a
+  // recess (--axi-well-fill), the fill is the value, and the fill is one ink at
+  // full strength.
   it('draws the learning meter as a track and a fill', () => {
     expect(ruleFor('.learn-bar')).toMatch(
       /border:\s*var\(--axi-border-control\) solid var\(--axi-ink-line\)/
@@ -573,6 +582,10 @@ describe('the form steps', () => {
     // .tool, .post-figure, .prose pre and .picker .pi are the same shape of
     // thing in the chat column: quoted material, or a row you pick from,
     // set into the surface around it rather than washed with black.
+    // The fill is --axi-well-fill rather than --axi-ground: same colour on the
+    // default surface, but it is the token that *means* recess, so flat and
+    // glass can restate it. --axi-ground is the page, and a page-coloured
+    // control on glass is an opaque tile floating on a translucent pane.
     for (const sel of [
       '.sfield-input',
       '.sfield-area',
@@ -590,7 +603,7 @@ describe('the form steps', () => {
     ]) {
       const rule = ruleFor(sel)
       expect(rule, `${sel} not found`).not.toBe('')
-      expect(rule, sel).toMatch(/background:var\(--axi-ground\)/)
+      expect(rule, sel).toMatch(/background:var\(--axi-well-fill\)/)
       expect(rule, sel).toMatch(/border:var\(--axi-border-control\) solid var\(--axi-ink-line\)/)
     }
   })
