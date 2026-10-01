@@ -34,6 +34,11 @@ jobs:
   release:
     needs: test
     strategy:
+      # One platform's failure must not cancel the others. mac signing and
+      # notarization depend on Apple-side state that can lapse (an expired
+      # agreement returns 403 from notarytool); with fail-fast the windows build
+      # got cancelled mid-flight and the release shipped linux-only.
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
