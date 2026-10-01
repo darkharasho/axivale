@@ -1,52 +1,143 @@
 *{margin:0;padding:0;box-sizing:border-box}
+/* Token bridge to @axiapps/axi-design. These names are AxiVale's own history:
+   821 references across this file still use them, so they are kept as aliases
+   rather than renamed. Change a value in axi-design and it lands here.
+   --bg and --bg2 are the exception that proves the rule: every site that used
+   them was a recess painted with the page colour, and those ask for
+   --axi-well-fill now, so the two aliases have no users left. They stay
+   declared because the bridge is the whole table, not the rows still in use.
+   --rule, --rule2 and --line all collapse onto --axi-rule: AxiVale drew three
+   rule colours, axi draws one colour at two weights (--axi-border-control 3px
+   structural, --axi-border-hairline 2px subordinate). Weight carries the
+   hierarchy now, not hue. */
 :root{
-  --bg:#16171a; --bg2:#1b1c20; --paper:#1f2025; --line:#2e3036; --rule:#3a3d44; --rule2:#46494f;
-  --ink:#e4e3dc; --ink-dim:#a6a69e; --faint:#6a6b6e;
-  --accent:#c8423a; --accent-b:#e05a50; --green:#6fae6f; --amber:#c9a227;
-  /* muted accent for focus rings + input focus borders — the brand red held
-     back so an active field reads as "ready," not alarmed */
-  --focus:rgba(224,90,80,.55);
+  --bg: var(--axi-ground);
+  --bg2: var(--axi-ground);
+  --paper: var(--axi-surface);
+  --line: var(--axi-rule);
+  --rule: var(--axi-rule);
+  --rule2: var(--axi-rule);
+  --ink: var(--axi-text);
+  --ink-dim: var(--axi-text-dim);
+  --faint: var(--axi-text-faint);
+  --accent: var(--axi-accent);
+  /* LOCAL EXTENSION: axi-design defines no accent-bright token. AxiVale's
+     two-tone red is load-bearing across 125 references, so it survives here,
+     derived by color-mix so it tracks whichever of the 12 accents is live.
+     The 82% is tuned by eye. Delete this in favour of the real token if
+     axi-design ever formalises an accent-bright. */
+  --accent-b: color-mix(in srgb, var(--axi-accent) 82%, white);
+  --green: var(--axi-ok);
+  --amber: var(--axi-warn);
+  /* The accent held back, so an active field reads as "ready," not alarmed. */
+  --focus: color-mix(in srgb, var(--axi-accent) 55%, transparent);
 }
+/* --- accent and surface crossfade --- */
+/* One class, held for 500ms by applyTheme/applySurface, so the whole window
+   repaints together instead of each element snapping on its own next frame. */
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition:
+    background-color 0.4s ease,
+    border-color 0.4s ease,
+    color 0.2s ease,
+    box-shadow 0.4s ease,
+    outline-color 0.4s ease !important;
+}
+
 html,body,#root{height:100%}
-body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
-  background:
-    radial-gradient(1100px 500px at 50% -15%, rgba(255,255,255,.03), transparent),
-    repeating-linear-gradient(0deg, transparent 0 1px, rgba(0,0,0,.05) 1px 2px),
-    linear-gradient(180deg,#17181c,#121316)}
-#root{display:flex;flex-direction:column}
+/* The page paints nothing and #root paints everything. The window is
+   transparent (see createWindow in src/main/index.ts) so that a rounded corner
+   has something to show through, and a radius can only do that if the layer
+   carrying it is the only layer there: painted on <body>, the ground sat behind
+   #root with no radius of its own and filled the corners straight back in. This
+   app has no .axi-window element, so #root is the shell - it takes the ground,
+   the radius and the clip, and every band inside it (the masthead above all)
+   gets its corners cut by that clip instead of squaring them off. */
+body{color:var(--ink);overflow:hidden;background-color:transparent;background-image:none}
+#root{display:flex;flex-direction:column;background-color:var(--axi-ground);background-image:var(--axi-ground-image);border-radius:var(--axi-radius);overflow:hidden}
+/* --axi-ground is the *page*, and it is opaque under every surface. Only the
+   three things that genuinely are the page name it: body, the gap the scrollbar
+   thumb is cut out of, and the masthead band. Everything that used to paint
+   itself with it — a field, a track, a quoted block, a hollow button — asks for
+   --axi-well-fill instead. On the default surface the two are the same colour,
+   so nothing moves; under flat and glass well-fill is a recess (glass restates
+   it as a translucent darkening) while ground stays an opaque black tile, which
+   on a translucent pane reads as a hole punched through the window. */
 /* styled scrollbar */
 ::-webkit-scrollbar{width:8px}
-::-webkit-scrollbar-track{background:transparent;border-left:1px dashed var(--line)}
-::-webkit-scrollbar-thumb{background:var(--rule);border-radius:0;border:2px solid #16171a}
-::-webkit-scrollbar-thumb:hover{background:var(--accent)}
-*{scrollbar-width:thin;scrollbar-color:#3a3d44 transparent}
+::-webkit-scrollbar-track{background:transparent;border-left:var(--axi-border-hairline) solid var(--axi-rule)}
+::-webkit-scrollbar-thumb{background:var(--axi-rule);border-radius:0;border:var(--axi-border-hairline) solid var(--axi-ground)}
+::-webkit-scrollbar-thumb:hover{background:var(--axi-accent)}
+*{scrollbar-width:thin;scrollbar-color:var(--axi-rule) transparent}
 /* masthead */
-.masthead{border-bottom:1px solid var(--rule2);background:rgba(0,0,0,.18)}
-.mtop{display:flex;align-items:center;padding:7px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;border-bottom:1px dashed var(--rule);-webkit-app-region:drag}
-.mtop .r{margin-left:auto}
+/* The masthead is this app's titlebar: it carries the window controls and the
+   OS drag region, and it is the one strip a reader never scrolls away from. So
+   it takes --axi-ground-deep, the deep-chrome token the package's own
+   .axi-titlebar uses, rather than --axi-ground. Painting it the page was the
+   problem twice over: the `background` shorthand threw away glass's
+   --axi-ground-image atmosphere, and re-adding that image here would re-anchor
+   three 900px radials inside a 90px band — a pink smear across the nameplate.
+   Glass restates ground-deep translucent, so the band now sits *over* the
+   atmosphere, which is what the package draws a titlebar as. */
+.masthead{border-bottom:var(--axi-border-control) solid var(--axi-rule);background:var(--axi-ground-deep);backdrop-filter:var(--axi-surface-filter)}
+.mtop{display:flex;align-items:center;padding:7px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;border-bottom:var(--axi-border-control) solid var(--axi-rule);-webkit-app-region:drag}
+/* the edition line is the flourish, so it is the first thing to go when the
+   titlebar runs out of room for the ears */
+.mtop .r{margin-left:16px}
+@media (max-width:1180px){.mtop .r{display:none}}
 /* window controls — quiet typeset glyphs tucked into the corner; a solid
-   ink block appears only on hover (close stamps accent red). Negative margin
-   eats most of .mtop's 30px edge padding so they sit ~8px from the frame
-   while the Final Edition text keeps its alignment. */
+   ink block appears only on hover (close stamps danger red; the glyph on that
+   fill is --axi-ink-on-fill, never --axi-ink-line: the line token is the
+   outline colour, and flat and glass relight it to a translucent white, which
+   washes the X out on the red). Negative margin eats most of .mtop's 30px edge
+   padding so they sit ~8px from the frame while the Final Edition text keeps
+   its alignment. */
 .winctl{display:flex;gap:2px;margin-left:18px;margin-right:-24px;-webkit-app-region:no-drag}
 .winctl button{width:22px;height:20px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1;padding:0;cursor:pointer}
-.winctl button:hover{color:var(--ink);background:rgba(228,227,220,.12)}
-.winctl button.close:hover{color:#fff;background:var(--accent)}
-.mmain{display:flex;align-items:center;padding:15px 30px 13px;gap:24px;-webkit-app-region:drag}
-.mmain .title{font-family:'Playfair Display',serif;font-weight:900;font-size:33px;line-height:1;flex:0 0 auto;white-space:nowrap}
-.mmain .title em{color:var(--accent-b);font-style:normal}
-.ear{flex:1 1 0;min-width:0;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase;line-height:1.9}
-.ear b{color:var(--ink-dim);font-weight:500}
-.ear.right{text-align:right}
+.winctl button:hover{color:var(--ink);background:var(--axi-surface-raised)}
+.winctl button.close:hover{color:var(--axi-ink-on-fill);background:var(--axi-danger)}
+/* the chrome row: nameplate and sections, nothing else */
+.mbar{display:flex;align-items:center;gap:20px;height:48px;padding:0 30px;-webkit-app-region:drag}
+.mbar .title{font-family:'Playfair Display',serif;font-weight:900;font-size:22px;line-height:1;flex:0 0 auto;white-space:nowrap}
+.mbar .title em{color:var(--accent-b);font-style:normal}
+/* Status ears, riding the titlebar row. Each one has a floor of 84px so a
+   truncated chip still shows a readable stem plus its ellipsis rather than a
+   single letter; past that the edition flourish is what gives way. */
+.ears{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 1 auto;min-width:0;-webkit-app-region:no-drag}
+/* every ear is shrinkable; the label inside it does the ellipsis, because a bare
+   text node in a flex box is an anonymous item and text-overflow cannot reach it.
+   No overflow:hidden on .ears itself — that would clip the switcher dropdowns. */
+.ears>*{min-width:0}
+.ears .earsw{display:flex;flex:0 1 auto;min-width:84px}
+.ears .earsw-btn{width:100%;cursor:pointer}
+.ear-chip,.ears .earsw-btn{display:inline-flex;align-items:center;gap:5px;
+  max-width:170px;min-width:84px;overflow:hidden;
+  white-space:nowrap;padding:3px 8px;
+  font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;
+  color:var(--axi-text-dim);background:var(--axi-surface);
+  border:var(--axi-border-hairline) solid var(--axi-rule)}
+.ear-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ears .earsw-caret{flex:0 0 auto}
+.ears .earsw-btn:hover{color:var(--ink);border-color:var(--axi-accent)}
+.ear-chip.ok{color:var(--green);border-color:var(--green)}
+.ear-chip.off{color:var(--faint)}
 /* update banner */
-.updatebar{display:flex;align-items:center;gap:14px;padding:8px 30px;background:var(--accent);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:11px}
-.ub-flag{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;border:1px dashed rgba(255,255,255,.6);padding:3px 8px}
+/* The banner is an accent fill, so everything drawn on it takes an ink meant
+   for a fill: --axi-accent-ink for the glyphs, --axi-ink-on-fill for the
+   inverse stamp. --axi-ink-line is the outline colour — flat and glass relight
+   it to a translucent white, which on a saturated band is a smudge, not a
+   chip. The dismiss fades rather than recolouring for the same reason: there
+   is no second ink on this fill to hover to. */
+.updatebar{display:flex;align-items:center;gap:14px;padding:8px 30px;background:var(--axi-accent);color:var(--axi-accent-ink);font-family:'IBM Plex Mono',monospace;font-size:11px}
+.ub-flag{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;border:var(--axi-border-hairline) solid var(--axi-accent-ink);padding:3px 8px}
 .ub-msg{font-family:'Source Serif 4',serif;font-size:13px}
 .ub-msg b{font-weight:600}
-.ub-btn{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);background:#fff;border:none;padding:6px 14px;cursor:pointer}
-.ub-btn:hover{background:var(--ink)}
-.ub-dismiss{background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;font-size:12px;padding:2px 4px}
-.ub-dismiss:hover{color:#fff}
+.ub-btn{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--axi-accent);background:var(--axi-ink-on-fill);border:none;padding:6px 14px;cursor:pointer}
+.ub-btn:hover{background:var(--axi-surface-raised)}
+.ub-dismiss{background:none;border:none;color:var(--axi-accent-ink);opacity:.7;cursor:pointer;font-size:12px;padding:2px 4px}
+.ub-dismiss:hover{color:var(--axi-accent-ink);opacity:1}
 /* masthead quick-swap switcher */
 .earsw{position:relative;display:inline-block;-webkit-app-region:no-drag}
 .earsw-btn{font-family:inherit;font-size:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--faint);background:none;border:none;cursor:pointer;padding:0;display:inline-flex;align-items:center;gap:4px}
@@ -56,39 +147,55 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 /* no-drag is load-bearing: the menu overlaps the masthead's drag region, and
    Electron resolves drag-vs-click by element bounds, not stacking order —
    without it the overlapping strip of the first option window-drags. */
-.earsw-menu{position:absolute;z-index:30;top:140%;min-width:150px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);text-align:left;text-transform:none;letter-spacing:normal;-webkit-app-region:no-drag}
+.earsw-menu{position:absolute;z-index:30;top:140%;min-width:150px;text-align:left;text-transform:none;letter-spacing:normal;-webkit-app-region:no-drag;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 .earsw-menu.left{left:0}
 .earsw-menu.right{right:0}
-.earsw-opt{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);cursor:pointer;text-align:left;border-bottom:1px dotted var(--line)}
+.earsw-opt{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);cursor:pointer;text-align:left;border-bottom:var(--axi-border-hairline) solid var(--line)}
 .earsw-opt:last-child{border-bottom:none}
-.earsw-opt:hover{background:rgba(200,66,58,.12);color:var(--ink)}
+.earsw-opt:hover{background:var(--axi-surface-raised);color:var(--ink)}
 .earsw-opt.sel{color:var(--ink)}
 .earsw-opt .dot{margin-left:auto;color:var(--green);font-size:8px;display:inline-flex;align-items:center}
 .earsw-empty{padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
 .lit{color:var(--green);display:inline-flex;align-items:center;gap:4px}
 .off-air{color:var(--accent-b);display:inline-flex;align-items:center;gap:4px}
-.mnav{display:flex;border-top:3px double var(--rule2);padding:0 30px}
-.mnav a,.mnav button{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim);text-decoration:none;padding:9px 0;margin-right:34px;display:flex;gap:8px;border:none;border-bottom:2px solid transparent;cursor:pointer;background:none}
-.mnav a .no,.mnav button .no{color:var(--faint)}
-.mnav a.on,.mnav button.on{color:var(--ink);border-bottom-color:var(--accent)}
-.mnav a.on .no,.mnav button.on .no{color:var(--accent-b)}
+/* Sections ride in the chrome row now, so the 01..07 numerals are gone: in a
+   stacked nav they were a folio, inline they are just noise beside the label.
+   The active section is a filled block rather than an underline — at this
+   height an underline sat too close to the row's own bottom rule to read. */
+.mnav{display:flex;align-items:center;gap:4px;flex:0 0 auto;-webkit-app-region:no-drag}
+.mnav a,.mnav button{font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-text-dim);text-decoration:none;padding:6px 11px;display:flex;align-items:center;border:none;cursor:pointer;background:none;white-space:nowrap}
+.mnav a:hover,.mnav button:hover{color:var(--ink)}
+.mnav a.on,.mnav button.on{color:var(--axi-accent-ink);background:var(--axi-accent)}
 .mnav button.dis{opacity:.4;cursor:default}
 /* sheet */
 .sheet{flex:1;display:flex;min-height:0;padding:0 30px}
-.chatcol{flex:1;display:flex;flex-direction:column;min-width:0;border-left:1px dashed var(--rule);border-right:1px dashed var(--rule);padding:0 30px}
-.folio{display:flex;align-items:baseline;padding:12px 0 10px;border-bottom:3px double var(--rule)}
+/* SANCTIONED DEPARTURE 2 of 2 — breaks rule 1 (no gradients on surfaces).
+   Scoped to the reading column rather than painted across the app. In form
+   this is a gradient; in intent it is halftone paper texture, not a depth
+   cue. Rule 1 exists to stop surfaces pretending to be lit. This does not
+   pretend to be lit. */
+.chatcol{flex:1;display:flex;flex-direction:column;min-width:0;padding:0 30px;background-image:repeating-linear-gradient(0deg,transparent 0 1px,rgba(0,0,0,.05) 1px 2px)}
+.folio{display:flex;align-items:baseline;padding:12px 0 10px;border-bottom:var(--axi-border-control) solid var(--axi-rule)}
 .folio h1{font-family:'Playfair Display',serif;font-size:16px;font-weight:700}
 .folio .d{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.18em;color:var(--faint);margin-left:auto;text-transform:uppercase}
 .chat{flex:1;overflow-y:auto;padding:22px 12px 22px 0;display:flex;flex-direction:column}
 .empty{margin:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;text-align:center}
 /* rip separator (NO scissor icon) */
 .rip{display:flex;align-items:center;gap:12px;margin:22px 0;color:var(--faint)}
-.rip .t{flex:1;border-bottom:1.5px dashed var(--rule2)}
+.rip .t{flex:1;border-bottom:var(--axi-border-hairline) solid var(--axi-rule)}
 .rip .lbl{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase}
-/* user clipping with torn bottom edge */
+/* user clipping with torn bottom edge.
+
+   No block under this one. Every other raised thing in the app answers with
+   --axi-shadow-control, which on the default surface is a 3px near-black square
+   offset down and right -- and a square block has a straight bottom edge, so
+   it sat behind the teeth and showed through every gap in the tear as a dark
+   scallop. The two shapes cannot both be right: a clipping is paper lying on
+   the desk, not a card standing off it, and the tear is what gives it its
+   edge. */
 .msg.user{align-self:flex-end;max-width:660px;margin-bottom:4px}
 .msg.user .kick{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;color:var(--faint);text-transform:uppercase;text-align:right;margin-bottom:6px}
-.msg.user .body{position:relative;background:var(--paper);border:1px solid var(--line);padding:13px 18px 16px;font-size:15px;line-height:1.55;box-shadow:3px 3px 0 rgba(0,0,0,.3);overflow-wrap:break-word;word-break:break-word}
+.msg.user .body{position:relative;font-family:'Source Serif 4',serif;background:var(--axi-surface-paint);border:var(--axi-border-control) solid var(--axi-ink-line);border-bottom:0;padding:13px 18px 16px;font-size:15px;line-height:1.55;overflow-wrap:break-word;word-break:break-word}
 /* markdown children: tighten block spacing so a single-paragraph order reads
    like the plain text it replaces, while multi-block orders still breathe */
 .msg.user .body>:first-child{margin-top:0}
@@ -97,20 +204,38 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .msg.user .body ul,.msg.user .body ol{margin:0 0 8px;padding-left:20px}
 .msg.user .body a{color:var(--accent-b);text-decoration:underline}
 .msg.user .body code{font-family:'IBM Plex Mono',monospace;font-size:13px}
-.msg.user .body pre{margin:0 0 8px;padding:8px 10px;background:var(--bg2);overflow-x:auto}
+.msg.user .body pre{margin:0 0 8px;padding:8px 10px;background:var(--axi-well-fill);overflow-x:auto}
 .msg.user .body pre code{font-size:12px}
-.msg.user .body::after{content:'';position:absolute;left:-1px;right:-1px;bottom:-7px;height:7px;background:var(--paper);
-  clip-path:polygon(0 0,3% 90%,6% 20%,10% 100%,14% 30%,18% 85%,23% 10%,27% 95%,32% 35%,36% 80%,41% 15%,45% 100%,50% 25%,55% 90%,60% 10%,64% 75%,69% 30%,73% 95%,78% 15%,82% 85%,87% 40%,91% 90%,95% 20%,98% 70%,100% 0)}
+/* SANCTIONED DEPARTURE 1 of 2 — breaks no rule literally; it is simply not a
+   shape axi-design would draw. The most characteristic thing in the app.
+
+   Two things keep the tear reading as one piece of paper rather than a fringe
+   hung under a closed box. The clipping drops its bottom border, because the
+   teeth ARE its bottom edge and paper cannot be intact and torn at once. And
+   both the body and the teeth fill with --axi-surface-paint, not --axi-surface:
+   flat and glass make the surface a gradient, and a gradient re-anchors inside
+   every box it is given, so the strip redrew the whole 145deg ramp and landed
+   a visibly different tone directly under the one it is torn from. The paint
+   companion is the flat colour that gradient averages to, and it is the plain
+   surface colour on the default theme, so this costs axi nothing.
+
+   The polygon is deliberately irregular. It used to alternate high and low at
+   near-uniform 3-5% intervals, which reads as pinking shears rather than a
+   tear - paper does not come apart periodically. Forty-one points at varying
+   spacing and varying depth, over 9px rather than 7 so the deep notches have
+   somewhere to go. */
+.msg.user .body::after{content:'';position:absolute;left:-1px;right:-1px;bottom:-9px;height:9px;background:var(--axi-surface-paint);
+  clip-path:polygon(0 0,2.5% 72%,4% 18%,7% 95%,9.5% 40%,11% 88%,14.5% 12%,16% 66%,19% 100%,21.5% 35%,23% 80%,26.5% 22%,29% 93%,31% 48%,33.5% 70%,36% 15%,39.5% 86%,41% 30%,44% 97%,46.5% 55%,48% 25%,51.5% 90%,54% 42%,56% 75%,59.5% 10%,62% 68%,64.5% 98%,67% 33%,69.5% 82%,72% 20%,75.5% 92%,78% 50%,80% 28%,83.5% 85%,86% 38%,88.5% 96%,91% 16%,93.5% 74%,96% 45%,98% 88%,100% 0)}
 /* officer article */
 .msg.off{max-width:760px}
 .lede{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1.3;margin-bottom:4px;padding-right:28px}
-.byline{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.byline{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin-bottom:12px;padding-bottom:10px;border-bottom:var(--axi-border-hairline) solid var(--axi-rule)}
 .byline b{color:var(--ink-dim);font-weight:500}
 /* Ragged-right, not justified: on screen (no real hyphenation engine) justify
    stretches word-spacing into rivers, badly so around long URLs and inline
    tokens. text-wrap:pretty tidies the rag; long links break instead of forcing
    a sparse line. */
-.prose{font-size:15px;line-height:1.65;text-align:left;text-wrap:pretty;overflow-wrap:break-word}
+.prose{font-family:'Source Serif 4',serif;font-size:15px;line-height:1.65;text-align:left;text-wrap:pretty;overflow-wrap:break-word}
 .prose p{margin-bottom:10px}
 .prose p:last-child{margin-bottom:0}
 .prose > p:first-child::first-letter{font-family:'Playfair Display',serif;font-size:44px;font-weight:700;float:left;line-height:.82;padding:4px 8px 0 0;color:var(--accent-b)}
@@ -125,26 +250,31 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .prose ul,.prose ol{margin:0 0 10px;padding-left:22px;text-align:left}
 .prose li{margin-bottom:4px}
 .prose li::marker{color:var(--accent-b)}
-.prose code{font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:rgba(0,0,0,.3);padding:1px 5px;border:1px solid var(--line)}
-.prose pre{background:rgba(0,0,0,.3);border:1px dashed var(--rule);padding:10px 14px;margin:0 0 10px;overflow-x:auto;text-align:left}
+.prose code{font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:var(--axi-well-fill);padding:1px 5px;border:var(--axi-border-hairline) solid var(--axi-rule)}
+.prose pre{background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);padding:10px 14px;margin:0 0 10px;overflow-x:auto;text-align:left}
 .prose pre code{background:none;border:none;padding:0;font-size:12px;line-height:1.5}
-.prose blockquote{border-left:3px double var(--rule2);margin:0 0 10px;padding:2px 0 2px 14px;color:var(--ink-dim)}
-.prose a{color:var(--accent-b);text-decoration:underline dotted}
-.prose hr{border:none;border-top:1px dashed var(--rule);margin:12px 0}
+/* Rule 7: the diamond is the family motif, and the cheapest resemblance win
+   available. Copied from .axi-prose ul > li::before. */
+.prose ul{list-style:none;padding-left:20px}
+.prose ul > li{position:relative}
+.prose ul > li::before{content:"";position:absolute;left:-20px;top:.55em;width:7px;height:7px;transform:rotate(45deg);background:var(--axi-accent);border:var(--axi-border-hairline) solid var(--axi-ink-line)}
+.prose blockquote{margin:0 0 18px;padding:11px 13px;border-left:var(--axi-border-panel) solid var(--axi-accent);background:var(--axi-well-fill);border-radius:0}
+.prose blockquote p{margin:0;font-style:italic}
+.prose a{color:var(--axi-accent);font-weight:600;text-underline-offset:2px}
+.prose a:hover{color:var(--axi-text)}
+.prose hr{border:none;border-top:var(--axi-border-control) solid var(--axi-rule);margin:30px 0}
 /* emoji → accent-red icons */
 .axi-emoji-icon{display:inline-block;width:1.1em;height:1.1em;vertical-align:-0.2em;margin:0 .1em;color:var(--accent-b)}
 .axi-emoji-mask{display:inline-block;width:1.1em;height:1.1em;vertical-align:-0.2em;margin:0 .1em;background-color:var(--accent-b);-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
 /* Markdown data tables render as a boxed "tool card" (matching .post-figure) so
    a per-player stat block reads as its own card, not plain inline text. */
-.prose table{border-collapse:collapse;width:100%;margin:16px 0;font-size:13px;text-align:left;background:rgba(0,0,0,.12);border:1px solid var(--line)}
-.prose thead th{background:rgba(0,0,0,.18)}
-.prose th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);font-weight:500}
-.prose th,.prose td{border-bottom:1px dotted var(--line);padding:6px 14px}
-.prose tr:last-child td{border-bottom:none}
+.prose table{width:100%;margin:0 0 18px;border-collapse:collapse;border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);overflow:hidden;font-size:13.5px;text-align:left}
+.prose th{text-align:left;padding:10px 12px;background:var(--axi-surface-raised);color:var(--axi-text);font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase}
+.prose td{padding:10px 12px;border-top:var(--axi-border-hairline) solid var(--axi-rule)}
 /* coupon tool card */
-.tool{margin:16px 0;border:1.5px dashed var(--rule2);background:rgba(0,0,0,.16);max-width:620px}
+.tool{margin:16px 0;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);max-width:620px}
 .tool.work{opacity:.78}
-.tool .th{display:flex;align-items:baseline;gap:10px;padding:9px 14px;border-bottom:1px dotted var(--rule)}
+.tool .th{display:flex;align-items:baseline;gap:10px;padding:9px 14px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
 .tool .th .nm{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-b)}
 .tool .th .st{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;color:var(--green);display:inline-flex;align-items:center;gap:4px}
 .tool .th .st.work{color:var(--faint)}
@@ -154,7 +284,7 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .tool .tin{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
 .tool .err{color:var(--accent-b)}
 /* humanized receipt content */
-.manifest .kv{display:flex;gap:10px;align-items:baseline;padding:4px 0;border-bottom:1px dotted var(--line)}
+.manifest .kv{display:flex;gap:10px;align-items:baseline;padding:4px 0;border-bottom:var(--axi-border-hairline) solid var(--line)}
 .manifest .kv:last-child{border-bottom:none}
 .manifest .k{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);flex-shrink:0}
 .manifest .v{font-size:13px;color:var(--ink-dim);overflow-wrap:anywhere}
@@ -163,27 +293,26 @@ body{font-family:'Source Serif 4',serif;color:var(--ink);overflow:hidden;
 .tool pre{font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.55;color:var(--ink-dim);max-height:200px;overflow:auto;white-space:pre-wrap;word-break:break-word;margin-top:4px}
 .tool .more{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:var(--faint);text-transform:uppercase;padding-top:6px}
 table{border-collapse:collapse;margin-top:8px;width:100%}
-th{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);text-align:left;padding:0 18px 5px 0;border-bottom:1px solid var(--rule);font-weight:500}
-td{padding:6px 18px 6px 0;font-size:13px;border-bottom:1px dotted var(--line);color:var(--ink-dim);vertical-align:top;overflow-wrap:anywhere;word-break:break-word;max-width:340px}
+th{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);text-align:left;padding:0 18px 5px 0;border-bottom:var(--axi-border-hairline) solid var(--rule);font-weight:500}
+td{padding:6px 18px 6px 0;font-size:13px;border-bottom:var(--axi-border-hairline) solid var(--line);color:var(--ink-dim);vertical-align:top;overflow-wrap:anywhere;word-break:break-word;max-width:340px}
 td.nm2{color:var(--ink)}
 /* Generic data table (tool results in the coupon + action modal). Framed and
    horizontally scrollable so a wide result keeps its columns instead of
    crushing them; each cell stays on one line and ellipsizes (full value on
    hover / in Show raw) instead of breaking mid-word. Zebra + hover to scan. */
-.dtable{margin-top:10px;border:1px solid var(--line);background:rgba(0,0,0,.14);overflow-x:auto}
-.dtable table{width:max-content;min-width:100%;margin:0;border-collapse:collapse}
-.dtable th{background:rgba(0,0,0,.28);font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);font-weight:500;text-align:left;white-space:nowrap;padding:9px 14px;border-bottom:1px solid var(--rule)}
-.dtable td{font-size:12.5px;color:var(--ink-dim);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;padding:7px 14px;border-bottom:1px dotted var(--line)}
-.dtable td a,.manifest .v a,.copy a{color:var(--accent-b);text-decoration:underline dotted;text-underline-offset:2px;overflow-wrap:anywhere}
+.dtable{margin-top:10px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);border-radius:var(--axi-radius);overflow-x:auto}
+.dtable table{width:max-content;min-width:100%;margin:0;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.dtable th{background:none;font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;color:var(--axi-text-faint);text-align:left;white-space:nowrap;padding:0 10px 10px;border-bottom:var(--axi-border-control) solid var(--axi-rule)}
+.dtable td{font:var(--axi-t-small);font-weight:700;color:var(--axi-text-dim);white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis;padding:9px 10px;border-bottom:var(--axi-border-hairline) solid var(--axi-rule)}
+.dtable td a,.manifest .v a,.copy a{color:var(--accent-b);text-underline-offset:2px;overflow-wrap:anywhere}
 .dtable td a:hover,.manifest .v a:hover,.copy a:hover{color:var(--ink)}
 /* custom hover tooltip — full contents of a truncated cell, as a small clipping
    (fixed so the table's overflow never clips it; pointer-events:none so it
    never eats the click that opens a link) */
-.cell-tip{position:fixed;z-index:1200;max-width:520px;pointer-events:none;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.45);padding:7px 11px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.5;color:var(--ink-dim);white-space:normal;overflow-wrap:anywhere}
-.dtable tbody tr:nth-child(even){background:rgba(255,255,255,.018)}
-.dtable tbody tr:hover{background:rgba(228,227,220,.05)}
+.cell-tip{position:fixed;z-index:1200;max-width:520px;pointer-events:none;background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);padding:7px 11px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.5;color:var(--ink-dim);white-space:normal;overflow-wrap:anywhere}
+.dtable tbody tr:hover td{background:var(--axi-surface-raised);color:var(--axi-text)}
 .dtable tbody tr:last-child td{border-bottom:none}
-.dtable td.nm2{color:var(--ink)}
+.dtable td.nm2{color:var(--axi-text)}
 /* base "+N more" caption (the coupon's .tool .more overrides in that context) */
 .more{display:block;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding-top:8px}
 .endmark{color:var(--accent-b);font-size:13px}
@@ -196,22 +325,22 @@ td.nm2{color:var(--ink)}
 .clip-img-btn.err{color:var(--accent-b)}
 /* rich display blocks inside tool coupons */
 .rich{margin-top:6px}
-.rich .rich-title{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:8px}
-.rich .rich-title-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--rule);padding-bottom:5px;margin-bottom:8px}
+.rich .rich-title{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);border-bottom:var(--axi-border-hairline) solid var(--rule);padding-bottom:5px;margin-bottom:8px}
+.rich .rich-title-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:var(--axi-border-hairline) solid var(--rule);padding-bottom:5px;margin-bottom:8px}
 .rich .rich-title-bar .rich-title{border-bottom:0;padding-bottom:0;margin-bottom:0}
-.rich .rich-stale-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:3px 7px;white-space:nowrap}
+.rich .rich-stale-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:var(--axi-border-hairline) solid var(--axi-rule);background:var(--axi-well-fill);padding:3px 7px;white-space:nowrap}
 .richtable th{cursor:pointer;user-select:none}
-.richtable th:hover{color:var(--ink)}
+.richtable th:hover{color:var(--axi-text)}
 .richtable th .arr{color:var(--accent-b);margin-left:5px;font-size:8px;display:inline-flex;align-items:center}
-.richcode pre{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5;color:var(--ink-dim);background:var(--bg);border:1px solid var(--rule);padding:10px 12px;margin:0;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+.richcode pre{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.5;color:var(--ink-dim);background:var(--axi-well-fill);border:var(--axi-border-hairline) solid var(--rule);padding:10px 12px;margin:0;max-height:320px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}
 .richchart{overflow-x:auto}
 .richchart .recharts-legend-item-text{color:var(--ink-dim) !important}
 .richchart .recharts-text{fill:var(--faint)}
 /* Rich figures embedded in the main article column (charts/tables/cards). */
-.post-figure{margin:16px 0;padding:14px 16px;border:1px solid var(--line);background:rgba(0,0,0,.12);overflow-x:auto}
+.post-figure{margin:16px 0;padding:14px 16px;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);overflow-x:auto}
 /* A figure that already wraps a self-framed block — the comp sketch, a forge
    card, or a rich table (its <table> inherits the boxed .prose table frame) —
-   would double up two outlines: the figure mat plus the inner border. Drop the
+   would stack two outlines: the figure mat plus the inner border. Drop the
    mat there so only the inner frame shows. Charts keep the mat; they carry no
    border of their own. The rich root's own top margin goes too, so the block
    sits flush; the caption stays, nudged off the right edge. */
@@ -227,7 +356,7 @@ td.nm2{color:var(--ink)}
 /* ─────────────────────── AxiForge cards, reskinned ───────────────────────
    The @axiapps/forge-render package ships its own dark design system (rounded
    corners, gold/purple accents, sans-serif) scoped under .forge-render. Here we
-   bring its build- and comp-cards into the gazette: square frames, dashed
+   bring its build- and comp-cards into the gazette: square frames, hairline
    rules, serif/mono type, the vermilion + amber palette — without touching the
    package, so all its behaviour (rune/relic hovers, chat-copy, source links)
    stays intact. Every selector qualifies with BOTH wrapper classes
@@ -239,12 +368,12 @@ td.nm2{color:var(--ink)}
    forge's profession colour — we set only the other three borders so the
    .lib-prof--* accent survives. */
 .forge-render.forgecard .mini-card{
-  background:rgba(0,0,0,.16);border-radius:0;cursor:default;gap:13px;
-  border-top:1.5px dashed var(--rule2);border-right:1.5px dashed var(--rule2);
-  border-bottom:1.5px dashed var(--rule2)}
-.forge-render.forgecard .mini-card:hover{background:rgba(0,0,0,.22)}
+  background:var(--axi-surface);border-radius:0;cursor:default;gap:13px;
+  box-shadow:var(--axi-shadow-panel);
+  border-top:var(--axi-border-panel) solid var(--axi-ink-line);border-right:var(--axi-border-panel) solid var(--axi-ink-line);
+  border-bottom:var(--axi-border-panel) solid var(--axi-ink-line)}
 .forge-render.forgecard .mini-card__icon{
-  border-radius:0;background:var(--bg2);border:1px solid var(--rule);margin-top:1px}
+  border-radius:0;background:var(--axi-well-fill);border:var(--axi-border-hairline) solid var(--axi-rule);margin-top:1px}
 
 /* Title in the display serif; the open-in-new arrow picks up the accent. */
 .forge-render.forgecard .mini-card__name{
@@ -258,37 +387,37 @@ td.nm2{color:var(--ink)}
   font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;
   color:var(--faint);min-width:50px}
 
-/* Tag + mode pills → dashed mono chips, like .spill. */
+/* Tag + mode pills → outlined mono chips, like .spill. */
 .forge-render.forgecard .mini-card__tag,
 .forge-render.forgecard .mini-card__mode{
   font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;font-weight:400;
-  color:var(--faint);background:rgba(0,0,0,.22);border:1px dashed var(--rule2);
+  color:var(--faint);background:var(--axi-well-fill);border:var(--axi-border-hairline) solid var(--axi-rule);
   border-radius:0;padding:2px 7px}
 
 /* Source badge (MetaBattle/Snowcrows/…) → accent reference stamp. */
 .forge-render.forgecard .mini-card__link-badge{
   font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--accent-b);background:none;border:1px dashed rgba(224,90,80,.4);border-radius:0;padding:2px 7px}
-.forge-render.forgecard a.mini-card__link-badge:hover{color:var(--ink);background:rgba(200,66,58,.1)}
+  color:var(--accent-b);background:none;border:var(--axi-border-hairline) solid color-mix(in srgb, var(--axi-accent) 4%, transparent);border-radius:0;padding:2px 7px}
+.forge-render.forgecard a.mini-card__link-badge:hover{color:var(--axi-accent-ink);background:var(--axi-accent)}
 
 /* Role badge → mono outline pill; collapse forge's six tints onto the gazette's
    three signals: support=green, dps=vermilion, hybrid=amber, unknown=faint. */
 .forge-render.forgecard .role-badge{
   font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.12em;font-weight:400;
-  border-radius:0;border:1px solid;padding:2px 7px;background:none}
+  border-radius:0;border:var(--axi-border-hairline) solid;padding:2px 7px;background:none}
 .forge-render.forgecard .role-badge--heal-support,
-.forge-render.forgecard .role-badge--boon-support{color:var(--green);border-color:rgba(111,174,111,.45)}
+.forge-render.forgecard .role-badge--boon-support{color:var(--green);border-color:color-mix(in srgb, var(--axi-ok) 45%, transparent)}
 .forge-render.forgecard .role-badge--power-dps,
-.forge-render.forgecard .role-badge--condi-dps{color:var(--accent-b);border-color:rgba(224,90,80,.45)}
-.forge-render.forgecard .role-badge--hybrid{color:var(--amber);border-color:rgba(201,162,39,.5)}
+.forge-render.forgecard .role-badge--condi-dps{color:var(--accent-b);border-color:color-mix(in srgb, var(--axi-accent) 45%, transparent)}
+.forge-render.forgecard .role-badge--hybrid{color:var(--amber);border-color:color-mix(in srgb, var(--axi-warn) 50%, transparent)}
 .forge-render.forgecard .role-badge--unknown{color:var(--faint);border-color:var(--rule2)}
 
 /* Spec pips → square hairline tiles; elite reads in amber, the gazette's
    utility/warning gold. */
 .forge-render.forgecard .mini-card__spec-pip{
-  border-radius:0;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--faint)}
+  border-radius:0;background:var(--axi-well-fill);border:var(--axi-border-hairline) solid var(--axi-rule);color:var(--faint)}
 .forge-render.forgecard .mini-card__spec-pip--elite{
-  background:rgba(201,162,39,.12);border-color:rgba(201,162,39,.4);color:var(--amber)}
+  background:color-mix(in srgb, var(--axi-warn) 12%, transparent);border-color:color-mix(in srgb, var(--axi-warn) 40%, transparent);color:var(--amber)}
 .forge-render.forgecard .mini-card__spec-name{color:var(--ink-dim)}
 .forge-render.forgecard .mini-card__spec-name--elite{color:var(--amber)}
 .forge-render.forgecard .mini-card__trait-icon{border-radius:0;border-color:var(--rule)}
@@ -312,32 +441,32 @@ td.nm2{color:var(--ink)}
 
 /* Chat-code bar → the gazette .bcode treatment. */
 .forge-render.forgecard .mini-card__chatbar{
-  background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:0;padding:8px 11px}
+  background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:0;padding:8px 11px}
 .forge-render.forgecard .mini-card__chatcode{
   font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim)}
 .forge-render.forgecard .mini-card__chatcopy{
   font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;
-  color:var(--faint);background:none;border:1px dashed var(--rule);border-radius:0;padding:4px 10px}
-.forge-render.forgecard .mini-card__chatcopy:hover{color:var(--ink);border-color:var(--rule2)}
+  color:var(--faint);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);border-radius:0;padding:4px 10px}
+.forge-render.forgecard .mini-card__chatcopy:hover{color:var(--ink);box-shadow:var(--axi-shadow-control-hover)}
 
 /* Comp card — same vocabulary as the build card. */
 .forge-render.forgecard .comp-card__name{
   font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--ink)}
 .forge-render.forgecard .comp-card__tag{
   font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--faint);border:1px dashed var(--rule2);border-radius:0}
+  color:var(--faint);border:var(--axi-border-hairline) solid var(--rule2);border-radius:0}
 .forge-render.forgecard .comp-line__label,
 .forge-render.forgecard .comp-line__num,
 .forge-render.forgecard .comp-line__count{font-family:'IBM Plex Mono',monospace;color:var(--faint)}
 .forge-render.forgecard .comp-slot{
-  border-radius:0;background:var(--bg2);border:1px solid var(--rule)}
+  border-radius:0;background:var(--axi-well-fill);border:var(--axi-border-hairline) solid var(--rule)}
 .forge-render.forgecard .comp-slot__tag-text{
   font-family:'IBM Plex Mono',monospace;color:var(--faint)}
 
 /* Rune/relic hover tooltip → paper clipping, square, in palette. */
 .forge-render .hover-preview{
-  border-radius:0;border:1px solid var(--rule);background:var(--paper);
-  box-shadow:0 16px 44px rgba(0,0,0,.6)}
+  border-radius:0;border:var(--axi-border-panel) solid var(--axi-ink-line);background:var(--axi-surface);
+  box-shadow:var(--axi-shadow-panel)}
 .forge-render .hover-preview__icon{border-radius:0;border-color:var(--rule)}
 .forge-render .hover-preview__title{font-family:'Playfair Display',serif;color:var(--ink)}
 .forge-render .hover-preview__meta{font-family:'IBM Plex Mono',monospace;color:var(--faint)}
@@ -347,7 +476,7 @@ td.nm2{color:var(--ink)}
 .wline{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .wsig{display:flex;align-items:center;gap:5px}
 .wsig .dot,.wsig .dash{height:4px;background:var(--accent-b);opacity:.2;animation:wire-pulse 1.25s infinite}
-.wsig .dot{width:4px;border-radius:50%}
+.wsig .dot{width:4px}
 .wsig .dash{width:12px}
 .wsig > :nth-child(1){animation-delay:0s}
 .wsig > :nth-child(2){animation-delay:.15s}
@@ -356,13 +485,14 @@ td.nm2{color:var(--ink)}
 .wsig > :nth-child(5){animation-delay:.6s}
 @keyframes wire-pulse{0%,100%{opacity:.2}30%{opacity:1}}
 .wmsg{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-b)}
-.wskel .wbar{height:11px;margin-bottom:9px;background:linear-gradient(90deg,var(--line) 0%,var(--rule) 45%,var(--line) 60%);background-size:200% 100%;animation:wire-sheen 1.6s linear infinite}
+.wskel .wbar{position:relative;height:11px;margin-bottom:9px;background:var(--axi-well-fill);border:var(--axi-border-hairline) solid var(--axi-ink-line);overflow:hidden}
+.wskel .wbar::after{content:"";position:absolute;inset:0;width:35%;background:var(--axi-rule);animation:wbar-sweep 1.6s ease-in-out infinite}
 .wskel .wbar:first-child{height:20px;width:62%}
-@keyframes wire-sheen{0%{background-position:120% 0}100%{background-position:-80% 0}}
+@keyframes wbar-sweep{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
 /* streaming — type-bar cursor at the end of incoming prose */
 .typebar{display:inline-block;width:9px;height:15px;background:var(--accent-b);vertical-align:text-bottom;margin-left:3px;animation:typebar-blink 1s steps(1) infinite}
 @keyframes typebar-blink{50%{opacity:0}}
-.errnotice{margin:14px 0;border:1px solid var(--accent);background:rgba(200,66,58,.08);padding:11px 14px;color:var(--accent-b);font-size:13.5px;line-height:1.5}
+.errnotice{margin:14px 0;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel);padding:11px 14px;color:var(--accent-b);font-size:13.5px;line-height:1.5}
 .errnotice .h{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
 /* rails */
 .rail{width:170px;flex-shrink:0;padding:18px 0;font-family:'IBM Plex Mono',monospace;color:var(--faint)}
@@ -372,11 +502,11 @@ td.nm2{color:var(--ink)}
 /* The whole card is one click target → opens the ActionModal. A status LED
    carries filed/working/failed; the "open ⤢" hint + left accent edge light up
    on hover so the affordance is obvious without a tiny button to aim at. */
-.ncard{border:1px dashed var(--rule2);background:rgba(0,0,0,.16);margin-bottom:10px;padding:9px 11px;cursor:pointer;transition:background .12s ease,border-color .12s ease}
-.ncard:hover{background:rgba(228,227,220,.05);border-left:2px solid var(--accent);padding-left:10px}
+.ncard{background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel);margin-bottom:14px;padding:9px 11px;cursor:pointer;transition:box-shadow .12s ease,border-color .12s ease}
+.ncard:hover{border-color:var(--axi-accent);box-shadow:var(--axi-shadow-panel-hover)}
 .ncard.dim{opacity:.55}
 .ncard .th{display:flex;align-items:center;gap:8px;margin-bottom:5px}
-.ncard .led{width:6px;height:6px;border-radius:50%;flex:none;background:var(--green)}
+.ncard .led{width:6px;height:6px;flex:none;background:var(--green)}
 .ncard .led.work{background:var(--faint)}
 .ncard .led.fail{background:var(--accent-b)}
 .ncard .nm{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-b);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -384,68 +514,86 @@ td.nm2{color:var(--ink)}
 .ncard .foot{display:flex;align-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--faint)}
 .ncard .open{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);opacity:.5;transition:opacity .12s ease,color .12s ease}
 .ncard:hover .open{opacity:1;color:var(--accent-b)}
-.rail .h{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;border-bottom:1px dashed var(--rule2);padding-bottom:6px;margin-bottom:10px;color:var(--ink-dim)}
-.rail .item{font-size:10px;line-height:1.7;margin-bottom:11px;padding-bottom:11px;border-bottom:1px dotted var(--line)}
-.rail .item:last-child{border-bottom:none}
+.rail .h{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;border-bottom:var(--axi-border-hairline) solid var(--rule2);padding-bottom:6px;margin-bottom:10px;color:var(--ink-dim)}
+.rail .item{font-size:10px;line-height:1.7;margin-bottom:14px;padding:9px 11px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 .rail .item b{color:var(--ink-dim);font-weight:500;display:block}
 .rail .qty{color:var(--accent-b)}
 .rail .ok{color:var(--green)}
 .rail .no{color:var(--accent-b)}
 .editions{overflow-y:auto}
-.ed-head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px dashed var(--rule2);padding-bottom:6px;margin-bottom:10px}
+.ed-head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:var(--axi-border-hairline) solid var(--rule2);padding-bottom:6px;margin-bottom:10px}
 .ed-head .h{border:none;padding:0;margin:0}
-.ed-new{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-b);background:none;border:none;cursor:pointer;padding:0}
-.ed-new:hover{color:var(--ink)}
-.ed-search{width:100%;background:rgba(0,0,0,.2);border:1px solid var(--line);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:5px 7px;margin-bottom:12px;box-sizing:border-box}
+.ed-new{--axi-t-label:500 8.5px/1 var(--axi-mono);padding:5px 9px}
+
+.ed-search{width:100%;padding:9px 11px;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);color:var(--axi-text);outline:none;font:var(--axi-t-label);font-size:11px;margin-bottom:12px;box-sizing:border-box}
 .ed-group{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);margin:10px 0 6px}
-.edition{position:relative;padding:5px 6px 6px 7px;margin-bottom:2px;border-left:2px solid transparent;cursor:pointer}
-.edition:hover{background:rgba(228,227,220,.05)}
-.edition.active{border-left-color:var(--accent);background:rgba(200,66,58,.08)}
+.edition{position:relative;padding:5px 6px 6px 7px;margin-bottom:2px;border-left:var(--axi-border-hairline) solid transparent;cursor:pointer}
+.edition:hover{background:var(--axi-surface)}
+.edition.active{border-left-color:var(--axi-accent);background:var(--axi-surface)}
 .edition .ed-headline{font-family:'Playfair Display',serif;font-size:13px;line-height:1.3;color:var(--ink-dim);margin-bottom:3px}
 .edition.active .ed-headline,.edition.fresh .ed-headline{color:var(--ink)}
 .edition .ed-meta{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.1em;color:var(--faint)}
 .edition .kick{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-b);margin-bottom:3px}
-.edition .ed-rename{width:100%;background:var(--paper);border:1px solid var(--rule2);color:var(--ink);font-family:'Playfair Display',serif;font-size:13px;padding:2px 4px;margin-bottom:3px;box-sizing:border-box}
-.edition .ed-acts{position:absolute;top:4px;right:4px;display:none;gap:1px;background:linear-gradient(90deg,transparent,var(--bg2) 28%);padding-left:14px}
+.edition .ed-rename{width:100%;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);color:var(--ink);font-family:'Playfair Display',serif;font-size:13px;padding:2px 4px;margin-bottom:3px;box-sizing:border-box}
+/* the acts strip overlays the headline to hide what runs under it, so it paints
+   the hovered row's own surface — it used to paint the page, which left a seam
+   one step darker than the row it sat on */
+.edition .ed-acts{position:absolute;top:4px;right:4px;display:none;gap:1px;background:var(--axi-surface);padding-left:8px}
 .edition:hover .ed-acts{display:flex}
-.edition .ed-acts button{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);cursor:pointer;padding:0;border-radius:3px}
-.edition .ed-acts button:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+.edition .ed-acts button{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;color:var(--axi-text-faint);cursor:pointer;padding:0;border-radius:var(--axi-radius-sm)}
+.edition .ed-acts button:hover{color:var(--axi-text);background:var(--axi-surface-raised)}
 .edition .ed-acts button.share:hover{color:var(--accent-b)}
 .edition .ed-acts svg{display:block}
-/* input with torn top edge */
-.inputzone{position:relative;background:var(--paper);box-shadow:0 -14px 24px rgba(0,0,0,.45)}
-.inputzone::before{content:'';position:absolute;top:-8px;left:0;right:0;height:8px;background:var(--paper);
-  clip-path:polygon(0 100%,2% 10%,5% 80%,8% 25%,12% 95%,15% 15%,19% 75%,23% 30%,27% 90%,31% 10%,35% 70%,39% 20%,43% 95%,47% 35%,51% 80%,55% 12%,59% 88%,63% 28%,67% 92%,71% 18%,75% 70%,79% 32%,83% 94%,87% 14%,91% 78%,95% 26%,98% 85%,100% 0,100% 100%,0 100%)}
-.inputbar{padding:16px 30px}
-.inwrap{display:flex;align-items:flex-end;gap:14px;max-width:980px;margin:0 auto;border:1px solid transparent}
-.inwrap.drag-over{border-color:var(--focus);background:rgba(224,90,80,.06)}
+/* The composer is a card: the panel border is the field, rather than a field
+   sitting inside a zone. The zone's torn top edge and its upward shadow both
+   go — the card's accent strip is the top edge now, and a panel that carries
+   its own offset block does not also need a glow to sit above the page.
+   (The user clipping keeps its torn edge; that one is the signature.) */
+.inputzone{position:relative;background:transparent}
+.inputbar{padding:8px 30px 14px}
+.inwrap{max-width:980px;margin:0 auto;position:relative;
+  background:var(--axi-surface-raised);
+  border:var(--axi-border-panel) solid var(--axi-ink-line);
+  box-shadow:var(--axi-shadow-panel);
+  cursor:text}
+/* the accent strip reads the same here as on a card: this surface is yours */
+.inwrap::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--axi-accent)}
+/* focus deepens the block the way a panel lifts — the package's own form
+   vocabulary, rather than a glow bolted onto it */
+.inwrap:focus-within{box-shadow:var(--axi-shadow-panel-hover)}
+.inwrap.drag-over{border-color:var(--axi-accent);background:color-mix(in srgb, var(--axi-accent) 10%, var(--axi-surface-raised))}
+.infoot{display:flex;align-items:center;gap:10px;padding:0 10px 7px}
+.inhint{font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;color:var(--faint)}
+.infoot .filebtn{margin-left:auto;padding:5px 12px}
 .drop-error{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;color:var(--accent-b);max-width:980px;margin:6px auto 0;padding:0 30px}
 .lg-status{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:16px}
 .lg-folder-path{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.03em;color:var(--faint)}
-.prompt{font-family:'IBM Plex Mono',monospace;color:var(--accent-b);font-size:15px}
 /* the field rides over a mirror that paints the skill-token highlights, so it's
    transparent-backed and shares the mirror's exact box + typography */
-.field-wrap{position:relative;flex:1;min-width:0;display:flex}
-.field{width:100%;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-size:15px;line-height:1.5;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b);position:relative;z-index:1;resize:none;white-space:pre-wrap;overflow-wrap:break-word;display:block;max-height:160px;overflow-y:auto}
-.field-mirror{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;border-bottom:1.5px dashed transparent;padding:7px 2px;font-size:15px;line-height:1.5;font-family:'Source Serif 4',serif;color:transparent}
+.field-wrap{position:relative;min-width:0;display:flex;padding:10px 12px 5px}
+.field{width:100%;border:none;padding:0;font-size:15px;line-height:1.5;color:var(--ink);background:transparent;font-family:'Source Serif 4',serif;outline:none;caret-color:var(--accent-b);position:relative;z-index:1;resize:none;white-space:pre-wrap;overflow-wrap:break-word;display:block;max-height:132px;overflow-y:auto}
+.field-mirror{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:break-word;padding:10px 12px 5px;font-size:15px;line-height:1.5;font-family:'Source Serif 4',serif;color:transparent}
 /* a recognized /skill reads as a valid token: a faint vermilion wash under the
    real (visible) glyphs, underlined in the muted focus accent. No horizontal
    padding — that would shift the mirror out of step with the input. */
-.skill-token{background:rgba(200,66,58,.16);border-radius:2px;box-shadow:inset 0 -1.5px 0 var(--focus);color:transparent}
+.skill-token{background:color-mix(in srgb, var(--axi-accent) 16%, transparent);box-shadow:inset 0 -2px 0 var(--focus);color:transparent}
 .field::placeholder{color:var(--faint)}
 .field:disabled{opacity:.5}
-.filebtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:8px 18px;text-transform:uppercase;font-weight:500;border:1px dashed rgba(255,255,255,.4);outline:3px solid var(--accent);cursor:pointer}
+.filebtn{font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-accent-ink);background:var(--axi-accent);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);box-shadow:var(--axi-shadow-control);padding:7px 14px;cursor:pointer}
 .filebtn:disabled{opacity:.4;cursor:default}
-.filebtn.stop{background:transparent;color:var(--accent-b);outline-color:var(--accent-b)}
-.filebtn.stop:hover{background:var(--accent);color:#fff}
-.folio-act{align-self:center;margin-left:16px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:1px dashed var(--rule2);padding:4px 10px;cursor:pointer}
-.folio-act:hover{color:var(--ink);border-color:var(--accent-b)}
-/* axibridge fetch progress — faint ticker above the input */
-.bridge-progress{padding:4px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border-top:1px dashed var(--rule);background:var(--bg2)}
+.filebtn.stop{background:var(--axi-well-fill);color:var(--axi-text-dim);box-shadow:none}
+.filebtn.stop:hover{background:var(--axi-accent);color:var(--axi-accent-ink)}
+.folio-act{align-self:center;margin-left:16px;font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-text-dim);background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);padding:4px 10px;cursor:pointer;transition:transform .1s,box-shadow .1s}
+.folio-act:hover{color:var(--axi-text);box-shadow:var(--axi-shadow-control);transform:translate(-2px,-2px)}
+/* axibridge fetch progress — faint ticker above the input. No fill: it is a
+   line of text sitting on the page, and the page is already painted. Repainting
+   it with the ground was a no-op on an opaque surface and, on glass, a strip of
+   opaque black laid over the atmosphere. */
+.bridge-progress{padding:4px 30px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);border-top:var(--axi-border-hairline) solid var(--rule)}
 /* right-click context menu — themed, context-aware */
-.ctx-menu{position:fixed;z-index:60;min-width:200px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.45);padding:5px 0;font-family:'IBM Plex Mono',monospace;user-select:none}
+.ctx-menu{position:fixed;z-index:60;min-width:200px;padding:5px 0;font-family:'IBM Plex Mono',monospace;user-select:none;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 .ctx-item{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;background:none;border:none;padding:7px 14px;font-size:11px;letter-spacing:.04em;color:var(--ink-dim);cursor:pointer;text-align:left}
-.ctx-item:hover{background:rgba(200,66,58,.16);color:var(--ink)}
+.ctx-item:hover{background:var(--axi-surface-raised);color:var(--ink)}
 .ctx-item.dis{color:var(--faint);opacity:.5;cursor:default}
 .ctx-item.dis:hover{background:none;color:var(--faint)}
 .ctx-k{display:flex;align-items:center;gap:10px}
@@ -453,42 +601,44 @@ td.nm2{color:var(--ink)}
 .ctx-sc{color:var(--faint);font-size:9px;letter-spacing:.08em}
 .ctx-sep{height:1px;background:var(--line);margin:5px 0}
 /* confirm dialog — public notice */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50}
-.notice{background:var(--paper);border:3px double var(--accent);max-width:560px;width:90%;box-shadow:6px 6px 0 rgba(0,0,0,.4)}
+.overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:50;border-radius:var(--axi-radius)}
+.notice{background:var(--paper);border:var(--axi-border-control) solid var(--accent);max-width:560px;width:90%;box-shadow:var(--axi-shadow-panel)}
 .notice .nh{font-family:'Playfair Display',serif;font-weight:900;font-size:22px;color:var(--accent-b);text-align:center;padding:16px 20px 8px;letter-spacing:.04em}
-.notice .nsub{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint);text-align:center;padding-bottom:14px;border-bottom:1px dashed var(--rule)}
+.notice .nsub{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint);text-align:center;padding-bottom:14px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
 .notice .nbody{padding:18px 22px}
 .notice .nask{font-size:14.5px;color:var(--ink-dim);margin-top:14px;text-align:center}
 .notice .nact{display:flex;gap:14px;justify-content:center;padding:6px 22px 20px}
-.btn-stamp{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:9px 22px;text-transform:uppercase;font-weight:500;border:1px dashed rgba(255,255,255,.4);outline:3px solid var(--accent);cursor:pointer}
-.btn-out{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--ink-dim);background:transparent;padding:9px 22px;text-transform:uppercase;font-weight:500;border:1px solid var(--rule2);cursor:pointer}
+.btn-stamp{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-accent-ink);background:var(--axi-accent);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);box-shadow:var(--axi-shadow-control);cursor:pointer;transition:transform .1s,box-shadow .1s}
+.btn-out{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-text-dim);background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);cursor:pointer;transition:transform .1s,box-shadow .1s}
+.btn-stamp:hover{color:var(--axi-accent-ink);box-shadow:var(--axi-shadow-control-hover);transform:translate(-2px,-2px)}
+.btn-out:hover{color:var(--axi-text);box-shadow:var(--axi-shadow-control);transform:translate(-2px,-2px)}
 /* non-destructive approval (publish/send): same notice, without the alarm —
    neutral border + title, and a calm (non-red) approve stamp. */
 .notice--safe{border-color:var(--rule2)}
 .notice--safe .nh{color:var(--ink)}
-.notice--safe .btn-stamp{background:var(--accent-b);outline-color:var(--accent-b)}
+.notice--safe .btn-stamp{background:var(--accent-b)}
 /* per-server Discord webhook routing (Settings → AxiTools) */
 .webhook-tie{display:flex;flex-direction:column;gap:14px}
-.wt-server{border:1px dashed var(--rule2);padding:10px 12px}
+.wt-server{border:var(--axi-border-hairline) solid var(--rule2);padding:10px 12px}
 .wt-server-name{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-b);margin-bottom:8px}
 .wt-group{margin-bottom:8px}
 .wt-group:last-child{margin-bottom:0}
 .wt-group-label{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
 .wt-opt{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--ink-dim);padding:3px 0;cursor:pointer}
 .wt-opt:hover{color:var(--ink)}
-.wt-opt input{appearance:none;-webkit-appearance:none;margin:0;flex:none;width:15px;height:15px;border:1.5px solid var(--rule2);background:rgba(0,0,0,.25);position:relative;cursor:pointer;transition:border-color .12s,background .12s}
-.wt-opt:hover input{border-color:var(--ink-dim)}
-.wt-opt input:checked{background:var(--accent);border-color:var(--accent)}
-.wt-opt input:checked::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #f4f1ea;border-width:0 2px 2px 0;transform:rotate(43deg)}
-.wt-opt input:focus-visible{outline:1px solid var(--accent-b);outline-offset:2px}
+.wt-opt input{appearance:none;-webkit-appearance:none;margin:0;flex:none;width:var(--axi-check-size,22px);height:var(--axi-check-size,22px);display:inline-grid;place-items:center;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);cursor:pointer}
+.wt-opt input::after{content:"";width:55%;height:30%;opacity:0;border-left:var(--axi-border-control) solid var(--axi-accent-ink);border-bottom:var(--axi-border-control) solid var(--axi-accent-ink);transform:translateY(-12%) rotate(-45deg)}
+
+.wt-opt input:checked{background:var(--axi-check-fill,var(--axi-accent))}
+.wt-opt input:checked::after{opacity:1}
+.wt-opt input:focus-visible{outline:var(--axi-border-hairline) solid var(--axi-accent);outline-offset:2px}
 .wt-empty{font-size:12px;color:var(--faint);font-style:italic}
 /* settings */
 .settings{padding:22px 0;overflow-y:auto;flex:1}
-.sgroup{margin-bottom:26px;padding-bottom:22px;border-bottom:1px dashed var(--rule)}
-.sgroup:last-child{border-bottom:none}
+.sgroup{margin-bottom:26px;padding:18px 20px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 .sgroup h2{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-bottom:10px}
 .slabel{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
-.sinput{width:100%;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-size:14px;color:var(--ink);background:transparent;font-family:'IBM Plex Mono',monospace;outline:none;margin-bottom:12px}
+.sinput{width:100%;padding:11px 12px;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);color:var(--axi-text);outline:none;font:var(--axi-t-label);font-size:14px;margin-bottom:12px;box-sizing:border-box}
 .sinput::placeholder{color:var(--faint)}
 .pi .kx{margin-left:10px;color:var(--faint);cursor:pointer;display:inline-flex;align-items:center}
 .pi .kx:hover{color:var(--accent-b)}
@@ -496,24 +646,24 @@ td.nm2{color:var(--ink)}
 .guildlines{display:flex;flex-direction:column;gap:2px}
 .roster-table td{vertical-align:top}
 .roster-filters{display:flex;align-items:stretch;gap:10px;margin:8px 0 16px}
-.rfilter-search{flex:1;border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
+.rfilter-search{flex:1;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
 .rfilter-search::placeholder{color:var(--faint)}
 .rfilter-search:focus{border-color:var(--focus)}
-.roster-filters .sbtn{flex:0 0 auto}
+.roster-filters .sbtn{font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;color:var(--axi-accent-ink);background:var(--axi-accent);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);box-shadow:var(--axi-shadow-control);flex:0 0 auto}
 /* custom searchable dropdown */
 .ssel{position:relative;flex:0 0 auto;min-width:190px}
-.ssel-btn{display:flex;align-items:center;gap:8px;width:100%;height:100%;border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);cursor:pointer;text-align:left}
+.ssel-btn{display:flex;align-items:center;gap:8px;width:100%;height:100%;background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);cursor:pointer;text-align:left}
 .ssel-btn .ph{color:var(--faint)}
 .ssel-btn .caret{margin-left:auto;color:var(--faint);font-size:11px;display:inline-flex;align-items:center}
-.ssel-menu{position:absolute;z-index:20;top:100%;left:0;right:0;margin-top:2px;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4)}
-.ssel-search{width:100%;border:none;border-bottom:1px dashed var(--rule2);background:rgba(0,0,0,.25);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
+.ssel-menu{position:absolute;z-index:20;top:100%;left:0;right:0;margin-top:2px;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
+.ssel-search{width:100%;border:none;border-bottom:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
 .ssel-search::placeholder{color:var(--faint)}
 .ssel-list{max-height:260px;overflow-y:auto}
 .ssel-opt{display:block;width:100%;border:none;background:none;padding:7px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-dim);cursor:pointer;text-align:left}
 .ssel-opt{display:flex;align-items:center;gap:8px}
-.ssel-opt:hover,.ssel-opt.sel,.ssel-opt.hi{background:rgba(200,66,58,.12);color:var(--ink)}
+.ssel-opt:hover,.ssel-opt.sel,.ssel-opt.hi{background:var(--axi-surface-raised);color:var(--ink)}
 .ssel-cur{display:inline-flex;align-items:center;gap:8px;min-width:0}
-.ssel-ava{width:18px;height:18px;border-radius:50%;flex:none;object-fit:cover;background:var(--rule)}
+.ssel-ava{width:18px;height:18px;flex:none;object-fit:cover;background:var(--axi-rule)}
 .ssel-ava-ph{display:inline-flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--ink);background:var(--rule2);text-transform:uppercase}
 .ssel-empty{padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
 .chtag{display:inline-flex;align-items:center;gap:3px}
@@ -521,19 +671,20 @@ td.nm2{color:var(--ink)}
 .chtag.none{color:var(--faint)}
 /* class/spec dropdown */
 .clspick{position:relative}
-.clspick-btn{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 2px;font-family:'Source Serif 4',serif;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+.clspick-btn{display:flex;align-items:center;gap:8px;width:100%;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);padding:11px 12px;margin-bottom:12px;font-family:'Source Serif 4',serif;font-size:14px;color:var(--ink);cursor:pointer;text-align:left}
+.clspick-btn:hover{box-shadow:var(--axi-shadow-control-hover)}
 .clspick-btn .ph{color:var(--faint)}
 .clspick-btn .classicon{color:var(--accent-b)}
 .clspick-btn .caret{margin-left:auto;color:var(--faint);font-size:11px;display:inline-flex;align-items:center}
-.clspick-menu{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:320px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);margin-top:2px}
-.clspick-group{border-bottom:1px dotted var(--line)}
+.clspick-menu{position:absolute;z-index:20;top:100%;left:0;right:0;max-height:320px;overflow-y:auto;margin-top:2px;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
+.clspick-group{border-bottom:var(--axi-border-hairline) solid var(--line)}
 .clspick-group:last-child{border-bottom:none}
 .clspick-opt{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:6px 12px;font-family:'Source Serif 4',serif;font-size:13px;color:var(--ink-dim);cursor:pointer;text-align:left}
 .clspick-opt .classicon{color:var(--faint)}
 .clspick-opt.prof{color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase}
 .clspick-opt.prof .classicon{color:var(--accent-b)}
 .clspick-opt .core{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.12em;color:var(--faint)}
-.clspick-opt:hover,.clspick-opt.sel{background:rgba(200,66,58,.12);color:var(--ink)}
+.clspick-opt:hover,.clspick-opt.sel{background:var(--axi-surface-raised);color:var(--ink)}
 .clspick-opt:hover .classicon,.clspick-opt.sel .classicon{color:var(--accent-b)}
 .srow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .shelp{font-size:12px;color:var(--faint);line-height:1.5;margin:4px 0 12px}
@@ -542,14 +693,17 @@ td.nm2{color:var(--ink)}
 .sstatus{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--ink-dim);margin-top:8px}
 .sstatus.ok{color:var(--green)}
 .sstatus.err{color:var(--accent-b)}
-.sbtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#fff;background:var(--accent);padding:8px 16px;text-transform:uppercase;font-weight:500;border:none;outline:1px dashed rgba(255,255,255,.5);outline-offset:-5px;cursor:pointer}
-.sbtn.out{color:var(--ink-dim);background:transparent;border:1px solid var(--rule2);outline:none}
-.sbtn:disabled{opacity:.4;cursor:default}
+.sbtn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:var(--axi-accent-ink);background:var(--axi-accent);padding:7px 14px;text-transform:uppercase;font-weight:500;border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);cursor:pointer}
+.sbtn.out{color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);outline:none}
+/* axi's hover lift: the block lengthens, the outline stays put. */
+.sbtn:hover:not(:disabled){box-shadow:var(--axi-shadow-control-hover)}
+.sbtn:disabled{opacity:.4;cursor:default;box-shadow:none}
 .picker{margin-top:10px;display:flex;flex-direction:column;gap:4px}
 /* keyring list sits above an "Add a key" form — give the label room */
 .picker + .slabel{margin-top:18px}
-.picker .pi{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);padding:6px 10px;border:1px dashed var(--rule);cursor:pointer;background:transparent;text-align:left}
-.picker .pi.sel{border-color:var(--accent);color:var(--ink)}
+.picker .pi{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);padding:6px 10px;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);cursor:pointer;text-align:left}
+.picker .pi:hover{box-shadow:var(--axi-shadow-control-hover)}
+.picker .pi.sel{border-color:var(--axi-accent);color:var(--ink)}
 .picker .pi .lead{color:var(--accent-b)}
 .picker .pi.model-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .picker .pi.model-row:disabled{opacity:.6;cursor:default}
@@ -558,22 +712,21 @@ td.nm2{color:var(--ink)}
 .perm{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);margin-top:6px;line-height:1.6}
 .perm .miss{color:var(--accent-b)}
 /* panels */
-.notconn{margin:24px 0;border:1.5px dashed var(--rule2);background:rgba(0,0,0,.16);padding:26px 20px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);line-height:2.2}
+.notconn{margin:24px 0;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel);padding:26px 20px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);line-height:2.2}
 .notconn b{color:var(--accent-b);font-weight:500}
-.panel-empty{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:12px 0;border-top:1px solid var(--rule);border-bottom:1px dotted var(--line);margin-bottom:14px}
+.panel-empty{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);padding:20px;text-align:center;margin-bottom:14px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
+.sgroup .panel-empty{padding:16px;box-shadow:none;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line)}
 .settings table{margin-bottom:16px}
 td.mono{font-family:'IBM Plex Mono',monospace;font-size:11.5px}
 th.act{text-align:right;padding-right:0}
 td.act{text-align:right;white-space:nowrap;padding-right:0}
-.rowbtn,.zap{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:transparent;border:1px dashed var(--rule);color:var(--faint);padding:3px 9px;cursor:pointer;margin-left:6px}
+.rowbtn,.zap{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);color:var(--faint);padding:3px 9px;cursor:pointer;margin-left:6px}
 .zap{display:inline-flex;align-items:center;gap:4px}
-.rowbtn:hover{color:var(--ink);border-color:var(--rule2)}
-.zap:hover{color:var(--accent-b);border-color:var(--accent)}
-.zap.armed{color:#fff;background:var(--accent);border-color:var(--accent)}
-.sselect{width:100%;border:none;border-bottom:1.5px dashed var(--rule2);padding:7px 20px 7px 2px;font-size:12px;color:var(--ink);background-color:transparent;font-family:'IBM Plex Mono',monospace;outline:none;margin-bottom:12px;appearance:none;cursor:pointer;
-  background-image:linear-gradient(45deg,transparent 50%,var(--faint) 50%),linear-gradient(135deg,var(--faint) 50%,transparent 50%);
-  background-position:calc(100% - 11px) 55%,calc(100% - 6px) 55%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
-.sselect option{background:var(--paper);color:var(--ink)}
+.rowbtn:hover{color:var(--ink);box-shadow:var(--axi-shadow-control-hover)}
+.zap:hover{color:var(--accent-b);box-shadow:var(--axi-shadow-control-hover)}
+.zap.armed{color:var(--axi-accent-ink);background:var(--axi-accent);border-color:var(--accent)}
+.sselect{width:100%;margin-bottom:12px}
+.sselect option{background:var(--axi-surface-raised);color:var(--axi-text)}
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 30px}
 .countline{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);margin:2px 0 6px}
 .countline b{color:var(--accent-b);font-weight:500}
@@ -585,10 +738,10 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .bgroup{margin-bottom:26px}
 .bgrouphead{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .bgroupname{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-b);font-weight:500}
-.bgrouprule{flex:1;border-bottom:1.5px dashed var(--rule2)}
+.bgrouprule{flex:1;border-bottom:var(--axi-border-hairline) solid var(--rule2)}
 .bgroupcount{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
 .bgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.bcard{border:1.5px dashed var(--rule2);background:rgba(0,0,0,.16);display:flex;flex-direction:column}
+.bcard{background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel);display:flex;flex-direction:column}
 .bhead{display:flex;align-items:flex-start;gap:11px;padding:13px 14px 10px}
 .bhead .classicon{color:var(--accent-b);margin-top:2px}
 .bheadtext{min-width:0}
@@ -596,12 +749,12 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .bname{font-family:'Playfair Display',serif;font-size:17px;font-weight:700;line-height:1.2}
 .bbody{flex:1;padding:0 14px 11px;font-size:13px;line-height:1.55;color:var(--ink-dim)}
 .bnone{color:var(--faint)}
-.bcode{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px dashed var(--rule);background:rgba(0,0,0,.28)}
+.bcode{display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill)}
 .bcodeval{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-dim);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.clipbtn{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:transparent;border:1px dashed var(--rule);color:var(--faint);padding:4px 10px;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;gap:4px}
-.clipbtn:hover{color:var(--ink);border-color:var(--rule2)}
+.clipbtn{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);color:var(--faint);padding:4px 10px;cursor:pointer;flex-shrink:0;display:inline-flex;align-items:center;gap:4px}
+.clipbtn:hover{color:var(--ink);box-shadow:var(--axi-shadow-control-hover)}
 .clipbtn.done{color:var(--green);border-color:var(--green)}
-.bfoot{display:flex;align-items:center;padding:9px 14px;border-top:1px dotted var(--rule)}
+.bfoot{display:flex;align-items:center;padding:9px 14px;border-top:var(--axi-border-hairline) solid var(--rule)}
 .bfoot .rowbtn{margin-left:0}
 .bfiled{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
 .bform{margin-top:8px}
@@ -612,8 +765,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .cgrouphead{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
 .cgrouphead h2{margin-bottom:0}
 .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px}
-.ccard{border:1.5px dashed var(--rule2);background:rgba(0,0,0,.16);display:flex;flex-direction:column}
-.chead{display:flex;align-items:baseline;gap:10px;padding:11px 14px;border-bottom:1px dotted var(--rule)}
+.ccard{background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel);display:flex;flex-direction:column}
+.chead{display:flex;align-items:baseline;gap:10px;padding:11px 14px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
 .cname{font-family:'Playfair Display',serif;font-size:16px;font-weight:700}
 .cslots{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
 .cbody{padding:9px 14px}
@@ -623,20 +776,20 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .cclass{font-size:13px;color:var(--ink-dim)}
 .csign{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .csignnum{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
-.cfill{width:54px;height:5px;background:rgba(0,0,0,.4);border:1px solid var(--line)}
-.cfillbar{display:block;height:100%;background:var(--green)}
+.cfill{width:54px;height:5px;background:var(--axi-well-fill);border:var(--axi-border-hairline) solid var(--axi-ink-line)}
+.cfillbar{display:block;height:100%;background:var(--axi-ok)}
 /* Encode signup coverage in colour — this panel's job is spotting gaps:
    full=green (the default bar), partial=amber, empty=red cue. At 0% the bar
    has no width, so the empty state recolours the track + count instead. */
-.csign.partial .cfillbar{background:var(--amber)}
+.csign.partial .cfillbar{background:var(--axi-warn)}
 .csign.partial .csignnum{color:var(--amber)}
-.csign.empty .cfill{border-color:rgba(224,90,80,.5)}
+.csign.empty .cfill{border-color:var(--axi-danger)}
 .csign.empty .csignnum{color:var(--accent-b)}
 .csign.full .csignnum{color:var(--green)}
-.cfoot{display:flex;align-items:center;padding:9px 14px;border-top:1px dotted var(--rule)}
+.cfoot{display:flex;align-items:center;padding:9px 14px;border-top:var(--axi-border-hairline) solid var(--rule)}
 .cfoot .rowbtn:first-child{margin-left:0}
 /* comps — preset editor */
-.ceditor{border:1.5px dashed var(--accent);background:rgba(0,0,0,.2);padding:14px 16px;margin-top:6px}
+.ceditor{border:var(--axi-border-control) solid var(--axi-accent);background:var(--axi-well-fill);padding:14px 16px;margin-top:6px}
 .cedithead{margin-bottom:12px}
 .ceditlbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent-b)}
 .editnone{margin-bottom:12px}
@@ -644,33 +797,33 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .cnameinput{flex:1;margin-bottom:0}
 .ceditrow .classicon{color:var(--accent-b);flex-shrink:0}
 .stepper{display:flex;align-items:center;gap:0;flex-shrink:0}
-.stepper button{font-family:'IBM Plex Mono',monospace;font-size:13px;line-height:1;background:transparent;border:1px dashed var(--rule);color:var(--ink-dim);width:24px;height:24px;cursor:pointer}
-.stepper button:hover{color:var(--ink);border-color:var(--rule2)}
+.stepper button{font:var(--axi-t-label);line-height:1;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);color:var(--axi-text-dim);width:24px;height:24px;cursor:pointer}
+.stepper button:hover{color:var(--axi-text)}
 .stepval{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent-b);min-width:28px;text-align:center}
 .editactions{margin-top:6px}
 /* comps — schedule cards */
 .scards{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
-.scard{border:1.5px dashed var(--rule2);background:rgba(0,0,0,.16);padding:12px 14px}
+.scard{background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel);padding:12px 14px}
 .shead{display:flex;align-items:baseline;gap:12px;margin-bottom:10px}
 .sname{font-family:'Playfair Display',serif;font-size:15px;font-weight:700}
 .spreset{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
 .shead .zap{margin-left:auto}
 .spills{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.spill{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:1px dashed var(--rule2);border-radius:0;background:rgba(0,0,0,.22);padding:3px 7px}
-.spill.on{color:#fff;background:var(--accent);border:1px dashed rgba(255,255,255,.5)}
+.spill{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);border:var(--axi-border-hairline) solid var(--axi-rule);background:var(--axi-surface-raised);padding:3px 7px}
+.spill.on{color:var(--axi-accent-ink);background:var(--axi-accent);border:var(--axi-border-hairline) solid color-mix(in srgb, var(--axi-accent-ink) 50%, transparent)}
 .stime{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--ink-dim)}
-.ssignups{margin-top:11px;padding-top:10px;border-top:1px dotted var(--rule);display:flex;flex-direction:column;gap:5px}
+.ssignups{margin-top:11px;padding-top:10px;border-top:var(--axi-border-hairline) solid var(--rule);display:flex;flex-direction:column;gap:5px}
 .ssignrow{display:flex;align-items:center;gap:8px}
 .ssignrow .classicon{color:var(--ink-dim);flex-shrink:0}
 .ssignclass{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b);min-width:96px}
 .ssignnames{font-size:12.5px;color:var(--ink-dim)}
 /* panel settings strips */
-.deskset{border:1.5px dashed var(--rule2);background:rgba(0,0,0,.16);margin-bottom:22px}
+.deskset{margin-bottom:22px;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 .deskset-head{display:flex;align-items:center;gap:9px;width:100%;background:none;border:none;padding:10px 14px;cursor:pointer;text-align:left}
 .deskset-tog{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent-b);width:12px;display:inline-flex;align-items:center;justify-content:center}
 .deskset-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-dim)}
 .deskset-head:hover .deskset-lbl{color:var(--ink)}
-.deskset-body{padding:4px 16px 16px;border-top:1px dotted var(--rule)}
+.deskset-body{padding:4px 16px 16px;border-top:var(--axi-border-control) solid var(--axi-ink-line)}
 .deskset-body .slabel{margin-top:12px}
 .deskset-body .cfgdays{margin-bottom:12px}
 .deskset-body .cfgdays .spill{cursor:pointer}
@@ -678,11 +831,11 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* ---- Settings redesign ---- */
 /* left-rail section nav (replaces editions on the Settings tab) */
 .snav{padding:18px 12px 18px 0;font-family:'IBM Plex Mono',monospace}
-.snav-h{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-dim);border-bottom:1px dashed var(--rule2);padding-bottom:6px;margin-bottom:10px}
-.snav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);cursor:pointer;border-left:2px solid transparent}
+.snav-h{font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-dim);border-bottom:var(--axi-border-hairline) solid var(--rule2);padding-bottom:6px;margin-bottom:10px}
+.snav-item{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);cursor:pointer;border-left:var(--axi-border-hairline) solid transparent}
 .snav-item .no{color:var(--faint);font-size:9px}
-.snav-item:hover{color:var(--ink);background:rgba(228,227,220,.04)}
-.snav-item.on{color:var(--ink);border-left-color:var(--accent);background:rgba(200,66,58,.08)}
+.snav-item:hover{color:var(--ink);background:var(--axi-surface)}
+.snav-item.on{color:var(--ink);border-left-color:var(--axi-accent);background:var(--axi-surface)}
 .snav-item.on .no{color:var(--accent-b)}
 .snav-item .dot{margin-left:auto;font-size:7px;color:var(--green);display:inline-flex;align-items:center}
 .snav-item .dot.off{color:var(--faint)}
@@ -697,52 +850,49 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-note{font-size:12px;line-height:1.55;color:var(--ink-dim)}
 
 /* pane header */
-.spane{padding:22px 0;max-width:620px}
+.spane{padding:22px 0;max-width:720px}
 .spane-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--accent-b);margin-bottom:5px}
 .spane-h{font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin-bottom:4px}
 .spane-sub{font-size:13.5px;color:var(--ink-dim);margin-bottom:22px;line-height:1.5}
 
 /* grouping card (settings-pane card; named distinctly to avoid the comps .scard) */
-.spcard{border:1px solid var(--line);background:rgba(0,0,0,.14);margin-bottom:18px}
-.spcard-h{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.18)}
+.spcard{border:var(--axi-border-panel) solid var(--axi-ink-line);background:var(--axi-surface);box-shadow:var(--axi-shadow-panel);margin-bottom:26px}
+.spcard-h{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-surface-raised)}
 .spcard-t{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim)}
 .spcard-s{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;color:var(--ink-dim);display:flex;align-items:center;gap:6px}
 .spcard-s.ok{color:var(--green)}
 .spcard-s.err{color:var(--accent-b)}
-.spcard-s .led{width:6px;height:6px;border-radius:50%;background:currentColor}
-.spcard-b{padding:16px}
+.spcard-s .led{width:7px;height:7px;background:currentColor}
+.spcard-b{padding:18px}
 
 /* field */
 .sfield{margin-bottom:14px}
 .sfield:last-child{margin-bottom:0}
 .sfield .slabel{margin-bottom:6px}
-.sfield-input{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none}
-.sfield-input:focus{border-color:var(--focus)}
+.sfield-input{width:100%;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill);box-shadow:var(--axi-shadow-control);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none}
+.sfield-input:focus{border-color:var(--axi-accent);box-shadow:var(--axi-shadow-control-hover)}
 .sfield-input::placeholder{color:var(--faint)}
-.sfield-area{width:100%;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none;line-height:1.5;min-height:84px;resize:vertical}
-.sfield-area:focus{border-color:var(--focus)}
+.sfield-area{width:100%;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill);box-shadow:var(--axi-shadow-control);padding:9px 12px;font-size:13px;color:var(--ink);font-family:'IBM Plex Mono',monospace;outline:none;line-height:1.5;min-height:84px;resize:vertical}
+.sfield-area:focus{border-color:var(--axi-accent);box-shadow:var(--axi-shadow-control-hover)}
 
 /* segmented toggle */
-.sseg{display:inline-flex;border:1px solid var(--rule2);margin-bottom:22px}
-.sseg button{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);background:transparent;border:none;border-right:1px solid var(--rule2);padding:8px 16px;cursor:pointer}
-.sseg button:last-child{border-right:none}
-.sseg button.on{color:#fff;background:var(--accent)}
+.sseg{display:inline-flex;gap:6px}
 
 /* chip group */
 .schips{display:flex;flex-wrap:wrap;gap:7px}
-.schip{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);border:1px solid var(--rule2);background:rgba(0,0,0,.22);padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
-.schip.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+.schip{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-surface-raised);padding:6px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+.schip.on{color:var(--axi-accent-ink);background:var(--axi-accent);border-color:var(--axi-ink-line)}
 .schip:disabled{opacity:.5;cursor:default}
 
 /* keyring rows */
-.skeys{display:flex;flex-direction:column;border:1px solid var(--line);margin-bottom:14px}
-.skey{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);border:none;border-bottom:1px solid var(--line);background:none;cursor:pointer}
+.skeys{display:flex;flex-direction:column;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill);margin-bottom:14px}
+.skey{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);border:none;border-bottom:var(--axi-border-hairline) solid var(--axi-rule);background:none;cursor:pointer}
 .skey:last-child{border-bottom:none}
-.skey.on{color:var(--ink);background:rgba(200,66,58,.06)}
-.skey .rad{width:7px;height:7px;border-radius:50%;border:1px solid var(--rule2);flex:none}
+.skey.on{color:var(--ink);background:var(--axi-surface-raised)}
+.skey .rad{width:7px;height:7px;border:var(--axi-border-hairline) solid var(--axi-rule);flex:none}
 .skey.on .rad{background:var(--accent);border-color:var(--accent)}
 .skey .badge{margin-left:auto;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b)}
-.skey .kmeta{font-size:9.5px;letter-spacing:.04em;color:var(--faint);padding:1px 6px;border:1px solid var(--line);border-radius:3px}
+.skey .kmeta{font-size:9.5px;letter-spacing:.04em;color:var(--faint);padding:1px 6px;border:var(--axi-border-hairline) solid var(--axi-rule)}
 .skey .badge+.kx,.skey .kmeta~.kx{padding-left:6px}
 .skey:not(:has(.badge)) .kx{margin-left:auto}
 .skey .kx{color:var(--faint);cursor:pointer;padding-left:6px;display:inline-flex;align-items:center}
@@ -750,8 +900,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 
 /* action row + ghost button */
 .sactions{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap}
-.sbtn.ghost{color:var(--ink-dim);background:transparent;border:1px solid var(--rule2);outline:none;display:inline-flex;align-items:center;gap:4px}
-.sbtn.ghost:hover{color:var(--ink);border-color:var(--ink-dim)}
+.sbtn.ghost{color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);outline:none;display:inline-flex;align-items:center;gap:4px}
+.sbtn.ghost:hover{color:var(--ink)}
 
 /* ---- Share controls ---- */
 /* Sits just left of the .clip-img-btn camera button (which is right:0, width:22px),
@@ -761,20 +911,21 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .share-msg-btn:hover{color:var(--accent-b)}
 
 /* ---- Share dialog — newspaper "Special Edition" clipping ---- */
-.share-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
-.share-dialog{position:relative;background:var(--paper);border:1px solid var(--rule);width:min(440px,92vw);box-shadow:0 18px 50px rgba(0,0,0,.55)}
-.share-dialog::before{content:"";position:absolute;inset:5px;border:1px solid var(--line);pointer-events:none}
+.share-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1000;border-radius:var(--axi-radius)}
+.share-dialog{position:relative;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);width:min(440px,92vw);box-shadow:var(--axi-shadow-panel)}
+/* The 4px outline now does what the inner mat was drawn to do, so the mat
+   goes: two rules 5px apart read as a mistake next to axi's single edge. */
 .sd-head{text-align:center;padding:18px 26px 12px}
 .sd-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--accent-b);margin-bottom:8px}
 .sd-title{font-family:'Playfair Display',serif;font-weight:900;font-size:25px;line-height:1.08;margin:0}
 .sd-rule{display:flex;align-items:center;gap:8px;padding:0 26px;margin:12px 0 16px}
-.sd-rule .ln{flex:1;height:0;border-top:3px double var(--rule2)}
+.sd-rule .ln{flex:1;height:0;border-top:var(--axi-border-control) solid var(--rule2)}
 .sd-rule .dot{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint)}
 .sd-body{padding:0 26px 20px}
 .sd-sub{color:var(--ink-dim);font-size:13px;text-align:center;margin:0 0 16px}
-.sd-urlrow{display:flex;border:1px solid var(--rule);background:var(--bg)}
+.sd-urlrow{display:flex;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill)}
 .sd-url{flex:1;min-width:0;background:none;border:none;color:var(--ink-dim);padding:9px 11px;font-family:'IBM Plex Mono',monospace;font-size:11px;outline:none;text-overflow:ellipsis}
-.sd-copy{border:none;border-left:1px solid var(--rule);background:var(--accent);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding:0 16px;cursor:pointer}
+.sd-copy{border:none;border-left:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-accent);color:var(--axi-accent-ink);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;padding:0 16px;cursor:pointer}
 .sd-copy:hover{background:var(--accent-b)}
 .sd-note{display:flex;gap:7px;align-items:flex-start;margin-top:14px;font-size:11.5px;line-height:1.45;color:var(--faint)}
 .sd-note svg{flex:none;margin-top:1px}
@@ -783,13 +934,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .sd-spin{flex:none;animation:sd-rot 1s linear infinite}
 @keyframes sd-rot{to{transform:rotate(360deg)}}
 .sd-error{color:var(--accent-b);font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.5}
-.sd-acts{display:flex;justify-content:center;border-top:1px dashed var(--rule);padding:12px}
-.sd-btn{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;background:none;border:1px solid var(--rule);color:var(--ink-dim);padding:7px 18px;cursor:pointer}
-.sd-btn:hover{border-color:var(--ink-dim);color:var(--ink)}
+.sd-acts{display:flex;justify-content:center;border-top:var(--axi-border-hairline) solid var(--rule);padding:12px}
+.sd-btn{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);color:var(--ink-dim);padding:7px 18px;cursor:pointer;box-shadow:var(--axi-shadow-control)}
+.sd-btn:hover{color:var(--ink);box-shadow:var(--axi-shadow-control-hover)}
 
 /* ---- Shared list in Settings ---- */
 .share-list{list-style:none;margin:8px 0 0;padding:0}
-.share-list-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--rule)}
+.share-list-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:var(--axi-border-hairline) solid var(--axi-rule)}
 .share-list-meta{display:flex;flex-direction:column;gap:2px;min-width:0}
 .share-list-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:360px}
 .share-list-kind{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.6}
@@ -800,46 +951,45 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .rail.left.sk2-rail{width:236px;display:flex;flex-direction:column;min-height:0;padding:18px 14px 18px 0}
 .sk2-rail-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .sk2-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-b)}
-.sk2-new{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);background:rgba(0,0,0,.2);border:1px solid var(--line);padding:5px 10px;cursor:pointer}
+.sk2-new{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);padding:5px 10px;cursor:pointer}
 .sk2-new:hover{color:var(--ink);border-color:var(--rule2)}
-.sk2-search{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid var(--line);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:7px 10px;margin-bottom:10px;outline:none}
+.sk2-search{width:100%;box-sizing:border-box;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:7px 10px;margin-bottom:10px;outline:none}
 .sk2-search:focus{border-color:var(--focus)}
 .sk2-search::placeholder{color:var(--faint)}
 .sk2-items{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1}
-.sk2-item{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;cursor:pointer;border-left:2px solid transparent}
-.sk2-item:hover{background:rgba(228,227,220,.04)}
-.sk2-item.on{background:rgba(200,66,58,.08);border-left-color:var(--accent)}
+.sk2-item{display:flex;align-items:flex-start;gap:9px;padding:9px 10px;cursor:pointer;border-left:var(--axi-border-hairline) solid transparent}
+.sk2-item:hover{background:var(--axi-surface)}
+.sk2-item.on{background:var(--axi-surface);border-left-color:var(--axi-accent)}
 .sk2-item.off .sk2-item-nm{opacity:.55}
-.sk2-item .led{width:6px;height:6px;border-radius:50%;background:var(--green);margin-top:5px;flex:none}
+.sk2-item .led{width:6px;height:6px;background:var(--green);margin-top:5px;flex:none}
 .sk2-item .led.off{background:var(--faint)}
 .sk2-item-txt{min-width:0}
 .sk2-item-nm{font-family:'Playfair Display',serif;font-size:15px;line-height:1.2}
 .sk2-item-wh{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.03em;color:var(--faint);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
-.sk2-empty{padding:14px 10px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.sk2-empty{padding:16px 12px;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 /* detail: editor + preview — fills the widened column (no right rail on this tab) */
 .sk2-detail{flex:1;display:flex;flex-direction:column;min-width:0;padding:18px 0}
 .sk2-blank{justify-content:center;align-items:center}
 .sk2-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
 .sk2-head-txt{flex:1;min-width:0}
-.sk2-name-in{width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid var(--line);color:var(--ink);font-family:'Playfair Display',serif;font-weight:700;font-size:24px;padding:0 0 6px;outline:none}
+.sk2-name-in{width:100%;box-sizing:border-box;background:none;border:none;border-bottom:var(--axi-border-control) solid var(--axi-ink-line);color:var(--ink);font-family:'Playfair Display',serif;font-weight:700;font-size:24px;padding:0 0 6px;outline:none}
 .sk2-name-in:focus{border-color:var(--focus)}
 .sk2-name-in::placeholder{color:var(--faint)}
 .sk2-when-in{width:100%;box-sizing:border-box;background:none;border:none;color:var(--ink-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.03em;padding:9px 0 0;outline:none}
 .sk2-when-in::placeholder{color:var(--faint)}
-.sk2-toggle{display:inline-flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);background:rgba(0,0,0,.2);border:1px solid var(--line);padding:6px 11px;cursor:pointer;flex:none}
-.sk2-toggle.off{color:var(--faint)}
-.sk2-toggle .led{width:6px;height:6px;border-radius:50%;background:currentColor}
-.sk2-tabs{display:flex;align-items:center;border-bottom:1px solid var(--line)}
-.sk2-tab{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:none;border-bottom:2px solid transparent;padding:9px 4px;margin-right:22px;cursor:pointer}
-.sk2-tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.sk2-toggle{display:inline-flex;align-items:center;gap:9px;flex:none}
+.sk2-toggle__lbl{font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;color:var(--axi-text-dim)}
+.sk2-tabs{display:flex;align-items:center;border-bottom:var(--axi-border-control) solid var(--axi-ink-line)}
+.sk2-tab{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);background:none;border:none;border-bottom:var(--axi-border-hairline) solid transparent;padding:9px 4px;margin-right:22px;cursor:pointer}
+.sk2-tab.on{color:var(--ink);border-bottom-color:var(--axi-accent)}
 .sk2-tab-note{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
-.sk2-body{flex:1;min-height:0;display:flex;border:1px solid var(--line);border-top:none;background:rgba(0,0,0,.16)}
+.sk2-body{flex:1;min-height:0;display:flex;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);border-top:none;box-shadow:var(--axi-shadow-panel)}
 .sk2-editor{flex:1;width:100%;box-sizing:border-box;background:none;border:none;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.65;padding:16px 18px;outline:none;resize:none}
 .sk2-editor::placeholder{color:var(--faint)}
 .sk2-preview{flex:1;overflow-y:auto;padding:4px 20px}
 .sk2-preview-empty{color:var(--faint);font-style:italic}
 .sk2-foot{display:flex;align-items:center;gap:12px;padding-top:14px}
-.sk2-del{color:var(--accent-b);border-color:rgba(224,90,80,.4)}
+.sk2-del{color:var(--accent-b);border-color:color-mix(in srgb, var(--axi-accent) 4%, transparent)}
 .sk2-del:hover{color:var(--accent-b);border-color:var(--accent-b)}
 .sk2-foot-note{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 
@@ -850,18 +1000,18 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .led.r{background:var(--accent-b)}
 /* status filter chips in the rail */
 .rst-fchips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
-.rst-fchip{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);border:1px solid var(--line);background:rgba(0,0,0,.2);padding:4px 8px;cursor:pointer}
+.rst-fchip{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);padding:4px 8px;cursor:pointer}
 .rst-fchip:hover{color:var(--ink);border-color:var(--rule2)}
-.rst-fchip.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+.rst-fchip.on{color:var(--axi-accent-ink);background:var(--axi-accent);border-color:var(--accent)}
 /* detail */
 .rst-detail{overflow-y:auto}
 .rst-name{font-family:'Playfair Display',serif;font-weight:700;font-size:24px;margin:0;line-height:1.1}
 .rst-sub{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);margin-top:5px}
 .rst-badges{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0 18px}
-.rst-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);padding:4px 9px;color:var(--ink-dim)}
-.rst-badge .d{width:6px;height:6px;border-radius:50%;background:currentColor}
-.rst-badge.ok{border-color:rgba(111,174,111,.45);color:var(--green)}
-.rst-badge.warn{border-color:rgba(201,162,39,.5);color:var(--amber)}
+.rst-badge{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;border:var(--axi-border-hairline) solid var(--axi-rule);padding:4px 9px;color:var(--ink-dim)}
+.rst-badge .d{width:6px;height:6px;background:currentColor}
+.rst-badge.ok{border-color:color-mix(in srgb, var(--axi-ok) 45%, transparent);color:var(--green)}
+.rst-badge.warn{border-color:color-mix(in srgb, var(--axi-warn) 50%, transparent);color:var(--amber)}
 .rst-badge.dim{color:var(--faint)}
 /* identity key/value rows */
 .rst-kvs{display:flex;flex-direction:column;gap:2px}
@@ -874,13 +1024,13 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .rst-fields:disabled{opacity:.5}
 .rst-field{margin-bottom:13px}
 .rst-label{display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:6px}
-.rst-input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.25);border:1px solid var(--rule);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 11px;outline:none}
+.rst-input{width:100%;box-sizing:border-box;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:12px;padding:8px 11px;outline:none}
 .rst-input:focus{border-color:var(--focus)}
-.rst-area{width:100%;box-sizing:border-box;min-height:64px;background:rgba(0,0,0,.25);border:1px solid var(--rule);color:var(--ink);font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;padding:9px 11px;outline:none;resize:vertical}
+.rst-area{width:100%;box-sizing:border-box;min-height:64px;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);color:var(--ink);font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;padding:9px 11px;outline:none;resize:vertical}
 .rst-area:focus{border-color:var(--focus)}
 /* chip inputs (aliases / tags) */
-.rst-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:1px solid var(--rule);background:rgba(0,0,0,.25);padding:6px 8px}
-.rst-chip{display:inline-flex;align-items:center;gap:6px;background:rgba(200,66,58,.10);border:1px solid var(--accent);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 4px 3px 9px}
+.rst-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill);padding:6px 8px}
+.rst-chip{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb, var(--axi-accent) 10%, transparent);border:var(--axi-border-hairline) solid var(--accent);color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 4px 3px 9px}
 .rst-chip b{color:var(--accent-b);cursor:pointer;font-weight:400;display:inline-flex;align-items:center}
 .rst-chip-in{flex:1;min-width:90px;background:none;border:none;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 2px;outline:none}
 .rst-chip-in::placeholder{color:var(--faint)}
@@ -893,11 +1043,11 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* per-account cards */
 .rst-section-label{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin:2px 0 8px}
 .rst-acct{text-transform:none;letter-spacing:.02em;color:var(--ink);font-size:11px}
-.rst-unlink{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b);background:none;border:1px solid rgba(224,90,80,.4);padding:3px 9px;cursor:pointer}
-.rst-unlink:hover{border-color:var(--accent-b)}
-.rst-main-badge{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);border:1px solid rgba(111,174,111,.5);padding:3px 9px}
-.rst-setmain{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);background:none;border:1px solid var(--rule2);padding:3px 9px;cursor:pointer}
-.rst-setmain:hover{color:var(--ink);border-color:var(--green)}
+.rst-unlink{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-b);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);padding:3px 9px;cursor:pointer}
+.rst-unlink:hover{box-shadow:var(--axi-shadow-control-hover)}
+.rst-main-badge{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);border:var(--axi-border-hairline) solid color-mix(in srgb, var(--axi-ok) 50%, transparent);padding:3px 9px}
+.rst-setmain{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);padding:3px 9px;cursor:pointer}
+.rst-setmain:hover{color:var(--ink);box-shadow:var(--axi-shadow-control-hover)}
 /* main account card gets a subtle accent edge */
 .rst-acct-main{border-left:2px solid var(--green)}
 /* when both Set-main and Unlink show, only the first gets the auto margin */
@@ -905,24 +1055,23 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* ---- InputBar /skill typeahead ---- */
 /* Opens above the field as you type a "/token"; anchored to the field's left so
    it reads as a continuation of what's being typed. */
-.skill-typeahead{position:absolute;bottom:100%;left:0;margin-bottom:8px;min-width:240px;max-height:280px;overflow-y:auto;background:var(--paper);border:1px solid var(--rule2);box-shadow:4px 4px 0 rgba(0,0,0,.4);z-index:40;-webkit-app-region:no-drag}
-.skill-ta-head{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);padding:8px 12px 6px;border-bottom:1px dashed var(--rule)}
-.skill-opt{display:flex;align-items:baseline;gap:12px;width:100%;text-align:left;background:none;border:none;border-bottom:1px dotted var(--line);padding:8px 12px;cursor:pointer}
+.skill-typeahead{position:absolute;bottom:100%;left:0;margin-bottom:8px;min-width:240px;max-height:280px;overflow-y:auto;z-index:40;-webkit-app-region:no-drag;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
+.skill-ta-head{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);padding:8px 12px 6px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
+.skill-opt{display:flex;align-items:baseline;gap:12px;width:100%;text-align:left;background:none;border:none;border-bottom:var(--axi-border-hairline) solid var(--line);padding:8px 12px;cursor:pointer}
 .skill-opt:last-child{border-bottom:none}
 /* keyboard/mouse highlight share one state so arrowing and hovering match */
-.skill-opt.hi{background:rgba(200,66,58,.12)}
+.skill-opt.hi{background:var(--axi-surface-raised)}
 .skill-opt-nm{font-family:'Source Serif 4',serif;font-size:13px;color:var(--ink-dim)}
 .skill-opt.hi .skill-opt-nm{color:var(--ink)}
 .skill-opt-tk{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--faint);white-space:nowrap}
 .skill-opt.hi .skill-opt-tk{color:var(--accent-b)}
 /* skill badge on a user message */
-.msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:1px solid rgba(224,90,80,.45);padding:1px 6px;letter-spacing:.12em}
+.msg.user .kick-skill{margin-left:8px;color:var(--accent-b);border:var(--axi-border-hairline) solid color-mix(in srgb, var(--axi-accent) 45%, transparent);padding:1px 6px;letter-spacing:.12em}
 
 /* ---- Action modal — a filed-dispatch dossier (opened from a notice card) ---- */
-.action-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag}
-.action-modal{position:relative;display:flex;flex-direction:column;width:min(1080px,94vw);min-height:360px;max-height:90vh;background:var(--paper);border:1px solid var(--rule);box-shadow:0 18px 50px rgba(0,0,0,.55)}
+.action-overlay{position:fixed;inset:0;background:var(--axi-scrim);display:flex;align-items:center;justify-content:center;z-index:1100;-webkit-app-region:no-drag;border-radius:var(--axi-radius)}
+.action-modal{position:relative;display:flex;flex-direction:column;width:min(1080px,94vw);min-height:360px;max-height:90vh;background:var(--axi-surface);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
 /* inner hairline mat, the same "matted clipping" device as the share dialog */
-.action-modal::before{content:"";position:absolute;inset:5px;border:1px solid var(--line);pointer-events:none}
 .action-modal__x{position:absolute;top:10px;right:10px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--faint);cursor:pointer;font-size:13px;line-height:1;padding:0;z-index:2}
 .action-modal__x:hover{color:var(--accent-b)}
 .action-modal__head{padding:20px 24px 0}
@@ -930,22 +1079,22 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .action-modal__headrow{display:flex;align-items:flex-start;gap:16px;padding-right:28px}
 .action-modal__title{font-family:'Playfair Display',serif;font-weight:700;font-size:25px;line-height:1.12;color:var(--ink);margin:0;flex:1;min-width:0}
 /* status as a rubber stamp, cocked a few degrees like an inked seal */
-.action-modal__stamp{flex:none;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;border:1.5px solid;padding:5px 12px;transform:rotate(-3deg);margin-top:3px;white-space:nowrap}
-.action-modal__stamp.ok{color:var(--green);border-color:rgba(111,174,111,.6)}
-.action-modal__stamp.fail{color:var(--accent-b);border-color:var(--accent-b)}
-.action-modal__stamp.work{color:var(--faint);border-color:var(--rule2)}
-.action-modal__rule{border:none;border-top:3px double var(--rule2);margin:16px 24px 0}
+.action-modal__stamp{flex:none;font:var(--axi-t-micro);letter-spacing:var(--axi-ls-micro);text-transform:uppercase;border:var(--axi-border-hairline) solid currentColor;padding:5px 12px;transform:rotate(-3deg);margin-top:3px;white-space:nowrap}
+.action-modal__stamp.ok{color:var(--axi-ok)}
+.action-modal__stamp.fail{color:var(--axi-danger)}
+.action-modal__stamp.work{color:var(--axi-text-faint)}
+.action-modal__rule{border:none;border-top:var(--axi-border-control) solid var(--rule2);margin:16px 24px 0}
 .action-modal__filed{padding:14px 24px 0}
 .action-modal__filed-lbl{font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
 .action-modal__body{flex:1;min-height:0;padding:16px 24px;overflow:auto}
-.action-modal__foot{display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:1px dashed var(--rule);margin-top:auto}
+.action-modal__foot{display:flex;align-items:center;gap:12px;padding:13px 24px;border-top:var(--axi-border-hairline) solid var(--rule);margin-top:auto}
 .action-modal__foot .right{margin-left:auto}
-.action-raw{margin:10px 24px 14px;max-height:280px;overflow:auto;background:var(--bg);border:1px solid var(--rule);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
+.action-raw{margin:10px 24px 14px;max-height:280px;overflow:auto;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-dim);white-space:pre-wrap;word-break:break-word}
 
 /* ---- Comp sketch (rich comp display: grid + per-build list) ---- */
 .comp-sketch {
   max-width: 560px;
-  border: 1px solid var(--rule);
+  border: var(--axi-border-hairline) solid var(--axi-rule);
   background: var(--paper);
   --rc: var(--rule2);
 }
@@ -963,7 +1112,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   align-items: baseline;
   gap: 10px;
   padding: 11px 14px;
-  border-bottom: 3px double var(--rule);
+  border-bottom: var(--axi-border-control) solid var(--rule);
 }
 .cs-title {
   font-family: 'Playfair Display', serif;
@@ -999,8 +1148,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 .cs-icon--missing {
   display: inline-block;
-  border: 1px dashed var(--rule2);
-  border-radius: 50%;
+  border: var(--axi-border-hairline) solid var(--axi-rule);
   opacity: 0.5;
 }
 .cs-grid {
@@ -1031,19 +1179,19 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg2);
-  border: 1px solid var(--rule);
+  background: var(--axi-well-fill);
+  border: var(--axi-border-hairline) solid var(--axi-rule);
   border-bottom: 3px solid var(--rc);
 }
 .cs-builds {
-  border-top: 1px dashed var(--rule);
+  border-top: var(--axi-border-hairline) solid var(--rule);
 }
 .cs-build {
   display: flex;
   gap: 11px;
   align-items: flex-start;
   padding: 10px 14px;
-  border-bottom: 1px dotted var(--line);
+  border-bottom: var(--axi-border-hairline) solid var(--line);
   border-left: 3px solid var(--rc);
 }
 .cs-build:last-child {
@@ -1075,9 +1223,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--rc);
-  border: 1px solid var(--rc);
+  border: var(--axi-border-hairline) solid var(--rc);
   padding: 1px 5px;
-  border-radius: 2px;
 }
 .cs-build-x {
   margin-left: auto;
@@ -1128,8 +1275,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   left: 0;
   right: 0;
   bottom: 0;
-  height: 2.2em;
-  background: linear-gradient(transparent, var(--paper));
+  height: 0;
+  border-bottom: var(--axi-border-hairline) solid var(--axi-rule);
   pointer-events: none;
 }
 .meta-summary.expanded {
@@ -1175,9 +1322,9 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 /* meta source chip with status LED (used in the redesigned Sources card) */
 .meta-srcs{display:flex;flex-wrap:wrap;gap:8px}
-.meta-srcchip{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-dim);border:1px solid var(--rule);padding:3px 9px;text-decoration:none}
-.meta-srcchip:hover{border-color:var(--rule2);color:var(--ink)}
-.meta-srcchip .led{width:5px;height:5px;border-radius:50%;background:var(--green);flex:none}
+.meta-srcchip{display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-dim);background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);padding:3px 9px;text-decoration:none}
+.meta-srcchip:hover{color:var(--ink);box-shadow:var(--axi-shadow-control-hover)}
+.meta-srcchip .led{width:5px;height:5px;background:var(--green);flex:none}
 .meta-srcchip.error{color:var(--accent-b);border-color:var(--accent-b)}
 .meta-srcchip.error .led{background:var(--accent-b)}
 .meta-srcchip.never{opacity:.5}
@@ -1185,9 +1332,11 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .meta-srcchip.fetching{color:var(--accent-b);border-color:var(--accent-b)}
 .meta-srcchip.fetching .led{background:var(--accent-b)}
 /* DEV-only per-source re-crawl button sitting next to a source chip */
-.meta-srcchip-wrap{display:inline-flex;align-items:stretch}
-.meta-srcchip-refresh{border:1px solid var(--rule);border-left:none;background:none;color:var(--ink-dim);font-size:10px;line-height:1;padding:0 7px;cursor:pointer}
-.meta-srcchip-refresh:hover:not(:disabled){border-color:var(--rule2);color:var(--ink)}
+.meta-srcchip-wrap{display:inline-flex;align-items:stretch;box-shadow:var(--axi-shadow-control)}
+.meta-srcchip-wrap .meta-srcchip{box-shadow:none}
+.meta-srcchip-wrap:hover{box-shadow:var(--axi-shadow-control-hover)}
+.meta-srcchip-refresh{border:var(--axi-border-control) solid var(--axi-ink-line);border-left:none;background:var(--axi-surface-raised);color:var(--ink-dim);font-size:10px;line-height:1;padding:0 7px;cursor:pointer}
+.meta-srcchip-refresh:hover:not(:disabled){color:var(--ink)}
 .meta-srcchip-refresh:disabled{opacity:.4;cursor:default}
 /* nav refreshing spinner (reuses meta-spin keyframes) */
 .snav-item .meta-spin{margin-left:auto}
@@ -1249,8 +1398,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 
 .meta-derived {
-  border: 1px dashed var(--rule2);
-  background: rgba(0, 0, 0, 0.16);
+  border: var(--axi-border-control) solid var(--axi-ink-line);
+  background: var(--axi-well-fill);
   padding: 11px 14px;
   margin: 0 0 16px;
 }
@@ -1271,7 +1420,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   flex-direction: column;
   gap: 2px;
   margin-top: 8px;
-  border-top: 1px dotted var(--line);
+  border-top: var(--axi-border-hairline) solid var(--line);
   padding-top: 8px;
 }
 .meta-prof {
@@ -1294,8 +1443,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 .meta-edit {
   width: 100%;
-  background: var(--bg2);
-  border: 1px solid var(--line);
+  background: var(--axi-well-fill);
+  border: var(--axi-border-control) solid var(--axi-ink-line);
   color: var(--ink);
   font-family: 'Source Serif 4', serif;
   font-size: 13px;
@@ -1312,8 +1461,8 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
   align-items: center;
   gap: 10px;
   padding: 4px 12px;
-  background: var(--paper, #f4f1ea);
-  border-bottom: 1px solid var(--rule, #cabfa6);
+  background: var(--axi-surface);
+  border-bottom: var(--axi-border-hairline) solid var(--axi-rule);
   font-size: 11px;
 }
 .learn-label {
@@ -1324,94 +1473,98 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 }
 .learn-bar {
   flex: 1;
-  height: 4px;
-  background: var(--rule2, #e3dcc9);
-  border-radius: 2px;
+  display: flex;
+  height: var(--axi-meter-h, 12px);
+  background: var(--axi-well-fill);
+  border: var(--axi-border-control) solid var(--axi-ink-line);
+  border-radius: var(--axi-radius-sm);
   overflow: hidden;
 }
 .learn-fill {
+  flex: none;
   height: 100%;
-  background: var(--accent-b);
+  background: var(--axi-series, var(--axi-accent));
   transition: width 0.4s ease;
 }
-.mi-inspector { margin-top: 14px; border-top: 1px dashed var(--rule2); padding-top: 10px; }
-.mi-dev { font-size: 10px; text-transform: uppercase; color: var(--accent-b); border: 1px solid var(--accent-b); border-radius: 2px; padding: 0 4px; }
+.mi-inspector { margin-top: 14px; }
+.mi-dev { font-size: 10px; text-transform: uppercase; color: var(--accent-b); border: var(--axi-border-hairline) solid var(--accent-b); padding: 0 4px; }
 /* on the red .sbtn the accent-b badge clashes (red on red) — use a light chip instead */
-.sbtn .mi-dev { font-size: 9px; letter-spacing: .12em; color: #fff; background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.45); padding: 1px 5px; }
+.sbtn .mi-dev { font-size: 9px; letter-spacing: .12em; color: var(--axi-accent-ink); background: none; border: var(--axi-border-hairline) solid var(--axi-accent-ink); padding: 1px 5px; }
 .mi-corpus { display: flex; gap: 0; margin: 0 0 0 6px; }
-.mi-tab { background: rgba(0,0,0,.2); border: 1px solid var(--line); color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 5px 14px; cursor: pointer; }
+.mi-tab { background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line); color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 5px 14px; cursor: pointer; }
 .mi-tab + .mi-tab { border-left: none; }
 .mi-tab:hover { color: var(--ink); }
-.mi-tab.sel { background: var(--accent-b); color: #fff; border-color: var(--accent-b); }
+.mi-tab.sel { background: var(--accent-b); color: var(--axi-accent-ink); border-color: var(--accent-b); }
 .mi-stats { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; margin: 6px 0; color: var(--ink); }
 .mi-stats .mi-sub { opacity: 0.6; flex-basis: 100%; }
-.mi-pill { background: rgba(0,0,0,.2); border: 1px solid var(--line); border-radius: 999px; color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 2px 10px; cursor: pointer; }
+.mi-pill { background:var(--axi-surface-raised);border:var(--axi-border-control) solid var(--axi-ink-line); color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 2px 10px; cursor: pointer; }
 .mi-pill b { color: var(--ink); }
 .mi-pill:hover { border-color: var(--accent-b); color: var(--ink); }
-.mi-pill.sel { background: var(--accent-b); border-color: var(--accent-b); color: #fff; }
-.mi-pill.sel b { color: #fff; }
+.mi-pill.sel { background: var(--accent-b); border-color: var(--accent-b); color: var(--axi-accent-ink); }
+.mi-pill.sel b { color: var(--axi-accent-ink); }
 .mi-row { display: flex; gap: 6px; align-items: center; }
 .mi-row .sinput { flex: 1; }
 /* custom dark mode-dropdown (native <select> popup is unstyled/light) */
 .mi-pick-wrap { position: relative; display: inline-block; flex: 0 0 auto; }
-.mi-pick { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: rgba(0,0,0,.2); border: 1px solid var(--line); color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 6px 10px; cursor: pointer; }
-.mi-pick:hover, .mi-pick.open { color: var(--ink); border-color: var(--rule2); }
+.mi-pick { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: var(--axi-surface-raised); border: var(--axi-border-control) solid var(--axi-ink-line); color: var(--ink-dim); font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 6px 10px; cursor: pointer; }
+.mi-pick:hover, .mi-pick.open { color: var(--ink); }
 .mi-caret { font-size: 8px; opacity: .7; display: inline-flex; align-items: center; }
-.mi-menu { position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 140px; background: var(--paper); border: 1px solid var(--rule2); box-shadow: 4px 4px 0 rgba(0,0,0,.4); z-index: 40; }
-.mi-opt { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px dotted var(--line); padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim); cursor: pointer; }
+.mi-menu { position: absolute; top: 100%; left: 0; margin-top: 4px; min-width: 140px; background: var(--axi-surface-raised); border: var(--axi-border-control) solid var(--axi-ink-line); box-shadow: var(--axi-shadow-control); z-index: 40; }
+.mi-opt { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: var(--axi-border-hairline) solid var(--line); padding: 7px 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--ink-dim); cursor: pointer; }
 .mi-opt:last-child { border-bottom: none; }
-.mi-opt:hover { background: rgba(200,66,58,.12); color: var(--ink); }
+.mi-opt:hover { background:var(--axi-surface-raised); color: var(--ink); }
 .mi-opt.sel { color: var(--ink); }
 .mi-results { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
-.mi-hit { border: 1px solid var(--rule2); border-radius: 3px; padding: 6px 8px; }
+.mi-hit { border: var(--axi-border-hairline) solid var(--axi-rule); padding: 6px 8px; }
 .mi-hit-head { width: 100%; text-align: left; background: none; border: none; cursor: pointer; color: inherit; font-family: inherit; font-size: 12px; display: flex; gap: 6px; align-items: baseline; padding: 0; }
 .mi-hit-head:hover { color: var(--accent-b); }
 .mi-score { color: var(--accent-b); font-variant-numeric: tabular-nums; }
 .mi-src { opacity: 0.6; font-size: 11px; }
 .mi-snip { font-size: 11px; opacity: 0.8; margin-top: 3px; white-space: pre-wrap; }
-.mi-full { font-size: 11.5px; opacity: 0.92; margin-top: 5px; white-space: pre-wrap; line-height: 1.5; border-top: 1px dotted var(--rule2); padding-top: 5px; }
+.mi-full { font-size: 11.5px; opacity: 0.92; margin-top: 5px; white-space: pre-wrap; line-height: 1.5; border-top: var(--axi-border-hairline) solid var(--rule2); padding-top: 5px; }
 .mi-empty { font-size: 12px; opacity: 0.6; }
 /* Inspector modal (reuses .action-overlay) — wider/taller than the action modal */
-.mi-modal { position: relative; display: flex; flex-direction: column; width: min(1180px, 95vw); max-height: 90vh; background: var(--paper); border: 1px solid var(--rule); box-shadow: 0 18px 50px rgba(0,0,0,.55); }
+.mi-modal { position: relative; display: flex; flex-direction: column; width: min(1180px, 95vw); max-height: 90vh; background: var(--axi-surface); border: var(--axi-border-panel) solid var(--axi-ink-line); box-shadow: var(--axi-shadow-panel); }
 .mi-modal .action-modal__head { gap: 8px; }
 .mi-modal__body { overflow: auto; padding: 14px 18px; }
 
 /* --- Entity autolinks --- */
 .axi-entity {
   display: inline-flex; align-items: baseline; gap: .3em;
-  color: var(--accent-b); text-decoration: underline dotted; text-underline-offset: 2px;
+  color: var(--accent-b); text-decoration: underline; text-underline-offset: 2px;
   cursor: pointer;
 }
 .axi-entity:hover { color: var(--ink); }
-.axi-entity__ico { width: 1.2em; height: 1.2em; align-self: center; flex: 0 0 auto; border-radius: 3px; border: 1px solid var(--rule); object-fit: cover; }
+.axi-entity__ico { width: 1.2em; height: 1.2em; align-self: center; flex: 0 0 auto; border: var(--axi-border-hairline) solid var(--axi-rule); object-fit: cover; }
 
 /* --- Hover card --- */
 .axi-ecard-pop { width: 312px; }
 .axi-ecard {
-  background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
-  overflow: hidden; box-shadow: 0 16px 44px rgba(0,0,0,.6); color: var(--ink-dim);
+  background: var(--axi-surface); border: var(--axi-border-panel) solid var(--axi-ink-line);
+  overflow: hidden; box-shadow: var(--axi-shadow-panel); color: var(--ink-dim);
   font-size: 13.5px; line-height: 1.5;
 }
-.axi-ecard__hd { display: flex; gap: 12px; align-items: center; padding: 13px 14px; border-bottom: 1px solid var(--line); }
-.axi-ecard__icon { width: 54px; height: 54px; border-radius: 5px; flex: 0 0 auto; border: 1px solid var(--rule); object-fit: cover; background: #2a2c31; }
+.axi-ecard__hd { display: flex; gap: 12px; align-items: center; padding: 13px 14px; border-bottom: var(--axi-border-control) solid var(--axi-rule); }
+.axi-ecard__icon { width: 54px; height: 54px; flex: 0 0 auto; border: var(--axi-border-control) solid var(--axi-ink-line); object-fit: cover; background: var(--axi-surface-raised); }
 .axi-ecard__nm { font-weight: 600; color: var(--ink); font-size: 16px; }
 .axi-ecard__ty { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--faint); margin-top: 2px; }
 .axi-ecard__body { padding: 12px 14px; color: var(--ink-dim); }
 .axi-ecard__desc { margin: 0 0 11px; color: var(--ink-dim); font-size: 13.5px; line-height: 1.55; }
 .axi-ecard__facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
 .axi-ecard__facts li { display: flex; gap: 8px; align-items: baseline; }
-.axi-ecard__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; transform: translateY(-2px); }
+.axi-ecard__dot { width: 6px; height: 6px; background: var(--accent); flex: 0 0 auto; transform: translateY(-2px); }
 .axi-ecard__facts b { color: var(--ink); font-weight: 600; }
-.axi-ecard__ft { padding: 10px 14px; border-top: 1px solid var(--line); }
+.axi-ecard__ft { padding: 10px 14px; border-top: var(--axi-border-hairline) solid var(--axi-rule); }
 .axi-ecard__ft a { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent-b); text-decoration: none; }
 .axi-ecard--loading { padding: 14px; }
-.axi-ecard__row { height: 11px; border-radius: 5px; margin-bottom: 9px; background: linear-gradient(90deg, var(--bg2) 0%, var(--rule) 45%, var(--bg2) 60%); background-size: 200% 100%; animation: axi-ecard-sh 1.1s infinite; }
+.axi-ecard__row { position: relative; height: 11px; margin-bottom: 9px; background: var(--axi-well-fill); border: var(--axi-border-hairline) solid var(--axi-ink-line); overflow: hidden; }
+.axi-ecard__row::after { content: ""; position: absolute; inset: 0; width: 35%; background: var(--axi-rule); animation: axi-ecard-sh 1.1s ease-in-out infinite; }
 .axi-ecard__row.s { width: 55%; } .axi-ecard__row.m { width: 80%; }
-@keyframes axi-ecard-sh { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes axi-ecard-sh { 0% { transform: translateX(-100%); } 100% { transform: translateX(320%); } }
 
 /* ---- Memory panel ---- */
 .mem-filters{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-.mem-search{flex:1;border:1px dashed var(--rule2);background:rgba(0,0,0,.22);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
+.mem-search{flex:1;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);outline:none}
 .mem-search::placeholder{color:var(--faint)}
 .mem-search:focus{border-color:var(--focus)}
 .mem-arch-toggle{flex:0 0 auto}
@@ -1421,31 +1574,30 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 .mem-chip:hover{border-color:var(--rule2);color:var(--ink)}
 .mem-chip.on{border-color:var(--accent-b);color:var(--ink)}
 /* Fact / artifact rows */
-.mem-list{display:flex;flex-direction:column;gap:0}
-.mem-row{padding:10px 0;border-bottom:1px dotted var(--line)}
-.mem-row:last-of-type{border-bottom:none}
+.mem-list{display:flex;flex-direction:column;gap:10px}
+.mem-row{padding:10px 12px;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line)}
 .mem-row.mem-archived{opacity:.55}
 .mem-body{font-size:13.5px;line-height:1.55;color:var(--ink-dim);margin-bottom:5px}
 .mem-title{color:var(--ink);font-family:'Playfair Display',serif;font-size:14px;font-weight:700;margin-right:8px}
 .mem-abody{font-size:12.5px;color:var(--ink-dim)}
 .mem-meta{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .mem-badges{display:flex;gap:5px;flex-wrap:wrap}
-.mem-badge{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line);padding:2px 7px;color:var(--faint)}
-.mem-badge.pinned{color:var(--accent-b);border-color:rgba(224,90,80,.4)}
-.mem-badge.archived{color:var(--faint);border-style:dashed}
+.mem-badge{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;border:var(--axi-border-hairline) solid var(--axi-rule);padding:2px 7px;color:var(--faint)}
+.mem-badge.pinned{color:var(--accent-b);border-color:color-mix(in srgb, var(--axi-accent) 4%, transparent)}
+.mem-badge.archived{color:var(--faint);border-style:solid}
 .mem-badge.source{color:var(--ink-dim)}
-.mem-badge.entity{color:var(--green);border-color:rgba(111,174,111,.4)}
+.mem-badge.entity{color:var(--green);border-color:color-mix(in srgb, var(--axi-ok) 40%, transparent)}
 .mem-badge.kind{color:var(--accent-b)}
 .mem-prov{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .mem-acts{display:flex;gap:4px}
 /* Add-fact form */
-.mem-add-form{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--rule)}
-.mem-add-input{width:100%;background:rgba(0,0,0,.22);border:1px solid var(--line);color:var(--ink);font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;padding:8px 11px;resize:vertical;outline:none}
+.mem-add-form{display:flex;flex-direction:column;gap:8px;margin-top:14px;padding-top:12px;border-top:var(--axi-border-hairline) solid var(--rule)}
+.mem-add-input{width:100%;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-control);color:var(--ink);font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;padding:8px 11px;resize:vertical;outline:none}
 .mem-add-input:focus{border-color:var(--focus)}
 .mem-add-input::placeholder{color:var(--faint)}
 
 /* Roster rollup — What AxiVale knows */
-.mem-rollup{margin-top:14px;padding-top:12px;border-top:1px dashed var(--rule)}
+.mem-rollup{margin-top:14px;padding-top:12px;border-top:var(--axi-border-hairline) solid var(--rule)}
 .mem-rollup-h{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
 .mem-rollup-list{list-style:none;display:flex;flex-direction:column;gap:5px}
 .mem-rollup-list li{font-size:13px;line-height:1.5;color:var(--ink-dim)}
@@ -1455,14 +1607,14 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
    Keyboard focus + reduced motion. Kept at the end so the focus ring
    wins on equal specificity over the scattered `outline:none` resets. */
 
-/* Visible keyboard focus, set in the gazette's own dashed-rule vocabulary.
+/* Visible keyboard focus, drawn in the accent at the hairline weight.
    :focus-visible only — mouse/touch presses stay quiet; the ring is for
    keyboard and AT users. :where() keeps specificity to the pseudo-class
    alone so it lands without out-shouting component rules. outline (not
    box-shadow) so the ring is never clipped by a scroll/overflow ancestor
    — e.g. an edition row inside the scrolling Editions rail. */
 :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
-  outline: 2px dashed var(--focus);
+  outline: var(--axi-border-hairline) solid var(--focus);
   outline-offset: 2px;
 }
 /* On the solid-accent "stamp" buttons the red-on-red ring would vanish;
@@ -1479,10 +1631,21 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
    they report live work, not ambient atmosphere. */
 @media (prefers-reduced-motion: reduce) {
   .wsig .dot, .wsig .dash { animation: none; opacity: .7 }
-  .wskel .wbar, .axi-ecard__row { animation: none; background-position: 0 0 }
+  .wskel .wbar::after, .axi-ecard__row::after { animation: none; transform: none }
   .typebar { animation: none }
   /* drop the tactile button nudge (movement); colour eases below stay */
   .filebtn:active, .btn-stamp:active, .sbtn:active, .sd-copy:active { transform: none }
+  /* axi's hover lift is the same movement by another name: the block still
+     deepens, which is what the lift reads as, but the element stays put. */
+  .btn-stamp:hover, .btn-out:hover, .folio-act:hover, .accent-swatch:hover,
+  .axi-btn:hover, .axi-pill:hover, .axi-select:hover { transform: none }
+  /* The accent/surface crossfade repaints the whole window at once, which is
+     exactly the motion a reader who asked for less of it does not want. */
+  .theme-transitioning *,
+  .theme-transitioning *::before,
+  .theme-transitioning *::after {
+    transition: none !important;
+  }
 }
 
 /* ──────────────────────── tactile + selection ────────────────────────
@@ -1492,7 +1655,7 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 
 /* Selection reads as ink on a vermilion wash — the masthead's own accent —
    rather than the system blue that clashes with the warm charcoal page. */
-::selection { background: rgba(200, 66, 58, .30); color: var(--ink) }
+::selection { background: color-mix(in srgb, var(--axi-accent) 30%, transparent); color: var(--ink) }
 
 /* Ease colour/border on the controls that change on hover or tab-switch, so
    the nav underline and button fills settle instead of snapping. Movement is
@@ -1505,19 +1668,27 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* Press the stamp: a 1px sink, like inking a date stamp onto the page. */
 .filebtn:active:not(:disabled),
 .btn-stamp:active,
-.sbtn:active:not(:disabled),
 .sd-copy:active { transform: translateY(1px) }
+/* The stamp buttons now carry a block: pressing drives the button down onto
+   it, so the block disappears rather than the button nudging. The offsets are
+   read here as a *distance to travel*, not as a shadow, which is why this one
+   site still names them: flat and glass zero them, so there the press reads as
+   the drop shadow being snuffed out with the button staying put. */
+.sbtn:active:not(:disabled) {
+  transform: translate(var(--axi-offset-control), var(--axi-offset-control));
+  box-shadow: none;
+}
 
 /* ── What's New: in-app "Special Edition" release notes (About pane) ── */
 .wn{margin-top:2px}
-.wn-flag{display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:3px double var(--rule2)}
-.wn-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:#fff;background:var(--accent);padding:3px 9px}
+.wn-flag{display:flex;align-items:center;gap:12px;padding-bottom:8px;border-bottom:var(--axi-border-control) solid var(--rule2)}
+.wn-kick{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--axi-accent-ink);background:var(--axi-accent);padding:3px 9px}
 .wn-date{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-left:auto}
 .wn-masthead{font-family:'Playfair Display',serif;font-weight:900;font-size:26px;line-height:1.05;margin:14px 0 6px}
 .wn-masthead em{color:var(--accent-b);font-style:normal}
-.wn-lede{font-family:'Source Serif 4',serif;font-size:14px;line-height:1.5;color:var(--ink-dim);margin:0 0 14px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-.wn-entries{column-count:2;column-gap:26px;column-rule:1px dashed var(--rule)}
-.wn-entry{break-inside:avoid;margin-bottom:15px;padding-bottom:14px;border-bottom:1px dashed var(--rule)}
+.wn-lede{font-family:'Source Serif 4',serif;font-size:14px;line-height:1.5;color:var(--ink-dim);margin:0 0 14px;padding-bottom:14px;border-bottom:var(--axi-border-hairline) solid var(--axi-rule)}
+.wn-entries{column-count:2;column-gap:26px;column-rule:var(--axi-border-hairline) solid var(--rule)}
+.wn-entry{break-inside:avoid;margin-bottom:15px;padding-bottom:14px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
 .wn-entry:last-child{border-bottom:none;margin-bottom:0}
 .wn-head{font-family:'Playfair Display',serif;font-weight:700;font-size:15px;line-height:1.25;margin:0 0 5px;color:var(--ink)}
 .wn-body{font-family:'Source Serif 4',serif;font-size:13px;line-height:1.5;color:var(--ink-dim);margin:0}
@@ -1527,36 +1698,51 @@ td.act{text-align:right;white-space:nowrap;padding-right:0}
 /* Top-anchored below the masthead: a tall modal centred over the window would
    overlap the masthead's -webkit-app-region:drag zone, where the OS drag region
    hijacks clicks (grab cursor, dead close button). Starting below it avoids that. */
-.wnm-scrim{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.62);display:flex;align-items:flex-start;justify-content:center;padding:124px 34px 34px;backdrop-filter:blur(1.5px);-webkit-app-region:no-drag}
-.wnm{width:680px;max-width:100%;max-height:calc(100vh - 158px);display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--rule2);box-shadow:8px 8px 0 rgba(0,0,0,.5);-webkit-app-region:no-drag}
-.wnm-rule{display:flex;align-items:center;padding:9px 18px;border-bottom:3px double var(--rule2);background:rgba(0,0,0,.18);-webkit-app-region:no-drag}
+.wnm-scrim{position:fixed;inset:0;z-index:1100;background:var(--axi-scrim);display:flex;align-items:flex-start;justify-content:center;padding:124px 34px 34px;-webkit-app-region:no-drag;border-radius:var(--axi-radius)}
+.wnm{width:680px;max-width:100%;max-height:calc(100vh - 158px);display:flex;flex-direction:column;-webkit-app-region:no-drag;background:var(--axi-surface-raised);border:var(--axi-border-panel) solid var(--axi-ink-line);box-shadow:var(--axi-shadow-panel)}
+.wnm-rule{display:flex;align-items:center;padding:9px 18px;border-bottom:var(--axi-border-control) solid var(--axi-rule);background:var(--axi-well-fill);-webkit-app-region:no-drag}
 .wnm-ear{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--faint)}
 .wnm-x{margin-left:auto;margin-right:-6px;margin-top:-4px;margin-bottom:-4px;display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:none;border:none;color:var(--faint);cursor:pointer;padding:0;-webkit-app-region:no-drag}
-.wnm-x:hover{color:var(--ink);background:rgba(228,227,220,.1)}
+.wnm-x:hover{color:var(--ink);background:var(--axi-surface-raised)}
 .wnm-body{padding:22px 26px;overflow:auto}
-.wnm-foot{display:flex;justify-content:flex-end;padding:14px 26px;border-top:1px solid var(--line)}
-.wnm-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:#fff;background:var(--accent);border:none;padding:9px 20px;cursor:pointer}
+.wnm-foot{display:flex;justify-content:flex-end;padding:14px 26px;border-top:var(--axi-border-hairline) solid var(--axi-rule)}
+.wnm-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--axi-accent-ink);background:var(--axi-accent);border:none;padding:9px 20px;cursor:pointer}
 .wnm-btn:hover{background:var(--accent-b)}
 
 /* ── Sources "how it works" diagram (Meta overview) ── */
-.srcflow{margin-top:14px;border:1px solid var(--line);background:var(--paper);box-shadow:4px 4px 0 rgba(0,0,0,.3);padding:20px 20px 24px}
+.srcflow{margin-top:14px;border:var(--axi-border-panel) solid var(--axi-ink-line);background:var(--axi-surface);box-shadow:var(--axi-shadow-panel);padding:20px 20px 24px}
 .srcflow-h{font-family:'Playfair Display',serif;font-weight:700;font-size:18px;margin:0 0 2px}
 .srcflow-sub{font-size:12.5px;color:var(--ink-dim);margin:0 0 18px;line-height:1.45}
 .sf-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-.sf-grp{border:1px solid var(--rule);background:rgba(0,0,0,.14);padding:11px 12px 13px}
-.sf-grp-t{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:9px;padding-bottom:7px;border-bottom:1px dashed var(--rule)}
-.sf-led{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.sf-grp{border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill);padding:11px 12px 13px}
+.sf-grp-t{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:9px;padding-bottom:7px;border-bottom:var(--axi-border-hairline) solid var(--rule)}
+.sf-led{width:6px;height:6px;background:var(--accent)}
 .sf-chips{display:flex;flex-wrap:wrap;gap:6px}
-.sf-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink);background:var(--paper);border:1px solid var(--rule2);padding:3px 8px}
+.sf-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink);background:var(--axi-surface-raised);border:var(--axi-border-hairline) solid var(--axi-rule);padding:3px 8px}
 .sf-note{font-size:11px;color:var(--faint);margin:9px 0 0;line-height:1.4}
 .sf-funnel{display:flex;justify-content:space-around;max-width:70%;margin:6px auto 0}
 .sf-funnel span{font-family:'IBM Plex Mono',monospace;font-size:14px;color:var(--accent-b)}
-.sf-collect{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);border-top:1px dashed var(--rule);padding-top:10px;margin-top:4px}
+.sf-collect{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);border-top:var(--axi-border-hairline) solid var(--rule);padding-top:10px;margin-top:4px}
 .sf-pipe{display:flex;align-items:stretch;margin-top:14px}
-.sf-step{flex:1;border:1px solid var(--rule);background:rgba(0,0,0,.14);padding:12px 13px}
-.sf-step.final{border-color:var(--accent);background:rgba(200,66,58,.08)}
+.sf-step{flex:1;border:var(--axi-border-control) solid var(--axi-ink-line);background:var(--axi-well-fill);padding:12px 13px}
+.sf-step.final{border-color:var(--axi-accent);background:var(--axi-surface)}
 .sf-step-n{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.22em;color:var(--accent-b);text-transform:uppercase}
 .sf-step-t{font-family:'Playfair Display',serif;font-weight:700;font-size:14px;margin:5px 0 5px;line-height:1.2}
 .sf-step-d{font-size:11.5px;line-height:1.4;color:var(--ink-dim);margin:0}
 .sf-arrow{display:flex;align-items:center;justify-content:center;flex:0 0 30px;font-family:'IBM Plex Mono',monospace;font-size:16px;color:var(--accent-b)}
 @media (max-width:720px){.sf-row{grid-template-columns:1fr}.sf-pipe{flex-direction:column}.sf-arrow{flex:0 0 24px;transform:rotate(90deg)}}
+
+/* ---- accent picker (Settings -> Appearance) ---- */
+/* Rule 5: the filled swatch IS the status, so the chosen one needs no tick —
+   it is the one wearing its colour and its block. */
+.accent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:10px}
+.accent-swatch{display:flex;align-items:center;gap:9px;padding:9px 11px;background:var(--axi-well-fill);border:var(--axi-border-control) solid var(--axi-ink-line);border-radius:var(--axi-radius-sm);color:var(--axi-text-dim);font:var(--axi-t-label);letter-spacing:var(--axi-ls-label);text-transform:uppercase;cursor:pointer;transition:transform .1s,box-shadow .1s}
+.accent-swatch:hover{color:var(--axi-text);box-shadow:var(--axi-shadow-control);transform:translate(-2px,-2px)}
+/* The family diamond, inked in the accent it selects. */
+.accent-swatch__chip{flex:none;width:16px;height:16px;background:var(--swatch);border:var(--axi-border-hairline) solid var(--axi-ink-line);transform:rotate(45deg)}
+.accent-swatch[aria-pressed="true"]{color:var(--axi-text);box-shadow:var(--axi-shadow-control)}
+
+/* ---- surface picker (Settings -> Appearance) ---- */
+/* Three .axi-btn instances from axi-design itself; this app has no Tailwind,
+   so the row just needs to wrap and space them, not restyle the buttons. */
+.surface-picker{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}

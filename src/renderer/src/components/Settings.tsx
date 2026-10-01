@@ -7,6 +7,17 @@ import AxiForge from './settings/AxiForge'
 import ReportRepos from './settings/ReportRepos'
 import Dispatches from './settings/Dispatches'
 import Notifications from './settings/Notifications'
+import Appearance from './settings/Appearance'
+import { resolveAccentId } from '../themes/accents'
+import {
+  applyAccent,
+  applySurface,
+  applySurfaceSetting,
+  applyTheme,
+  readAccent,
+  readSurface,
+  resolveSurfaceId
+} from '../themes/applyTheme'
 import About from './settings/About'
 
 type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
@@ -115,6 +126,22 @@ export default function Settings({
   // App / updates
   const [version, setVersion] = useState('')
   const [updateMsg, setUpdateMsg] = useState('')
+
+  // Appearance. readAccent() is the localStorage mirror main.tsx already
+  // painted from, so this starts on the right swatch before IPC answers.
+  const [accent, setAccent] = useState(readAccent)
+  // The load effect below awaits a dozen serial IPC calls before it reads the
+  // accent, so a swatch clicked in that window would otherwise be reverted by
+  // a store value that is already stale. This ref is both the latch that stops
+  // the reconcile and the live previous-value for rollback, which the render
+  // closure cannot supply when two clicks land in the same tick.
+  const chosenAccent = useRef<string | null>(null)
+
+  const [surface, setSurface] = useState<string>(readSurface)
+  // Same latch as chosenAccent: the load effect awaits a dozen serial IPC calls
+  // before it reads the surface, so a button clicked in that window would
+  // otherwise be reverted by a store value that is already stale.
+  const chosenSurface = useRef<string | null>(null)
 
   // Notifications (default on; stored as 'true'/'false')
   const [notifySystem, setNotifySystem] = useState(true)
@@ -322,6 +349,19 @@ export default function Settings({
       setLocalEndpoint((await window.officer.getSetting('localEndpoint')) ?? '')
       setLocalModel((await window.officer.getSetting('localModel')) ?? '')
       setGw2GuildId(await window.officer.getSetting('gw2GuildId'))
+      // Reconcile the mirror against the store, which is the source of truth
+      // — unless the user has since chosen, in which case their choice is the
+      // newer of the two and the stored value is what is out of date.
+      const storedAccent = resolveAccentId(await window.officer.getSetting('accent'))
+      if (chosenAccent.current === null) {
+        setAccent(storedAccent)
+        applyTheme(storedAccent)
+      }
+      const storedSurface = resolveSurfaceId(await window.officer.getSetting('surface'))
+      if (chosenSurface.current === null) {
+        setSurface(storedSurface)
+        applySurface(storedSurface)
+      }
       setNotifySystem((await window.officer.getSetting('notifySystem')) !== 'false')
       setNotifyBadge((await window.officer.getSetting('notifyBadge')) !== 'false')
       setVersion(await window.officer.appVersion())
@@ -416,6 +456,29 @@ export default function Settings({
   async function checkUpdates(): Promise<void> {
     setUpdateMsg('checking…')
     await window.officer.checkUpdates()
+  }
+
+  async function chooseAccent(id: string): Promise<void> {
+    // Optimistic with rollback: the store is encrypted and answers over IPC,
+    // so waiting for it feels broken, but a UI left ahead of the store would
+    // silently revert at the next boot.
+    const previous = chosenAccent.current ?? accent
+    chosenAccent.current = id
+    const settled = await applyAccent(id, previous, (next) =>
+      window.officer.setSetting('accent', next)
+    )
+    chosenAccent.current = settled
+    setAccent(settled)
+  }
+
+  async function chooseSurface(id: string): Promise<void> {
+    const previous = chosenSurface.current ?? surface
+    chosenSurface.current = id
+    const settled = await applySurfaceSetting(id, previous, (next) =>
+      window.officer.setSetting('surface', next)
+    )
+    chosenSurface.current = settled
+    setSurface(settled)
   }
 
   async function toggleNotifySystem(value: boolean): Promise<void> {
@@ -720,6 +783,14 @@ export default function Settings({
           badge={notifyBadge}
           onToggleSystem={toggleNotifySystem}
           onToggleBadge={toggleNotifyBadge}
+        />
+      )}
+      {section === 'appearance' && (
+        <Appearance
+          accent={accent}
+          onSelect={chooseAccent}
+          surface={surface}
+          onSelectSurface={chooseSurface}
         />
       )}
       {section === 'about' && (

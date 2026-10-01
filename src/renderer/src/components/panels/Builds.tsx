@@ -264,7 +264,7 @@ export default function Builds(): ReactElement {
           <div className="deskset-body">
             <label className="slabel">Build posting channel</label>
             <select
-              className="sselect"
+              className="sselect axi-select"
               value={buildChannel}
               onChange={(e) => void saveBuildChannel(e.target.value)}
             >

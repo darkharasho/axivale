@@ -90,7 +90,11 @@ export function Segmented<T extends string>({
       {options.map((o) => (
         <button
           key={o.value}
-          className={value === o.value ? 'on' : ''}
+          type="button"
+          // aria-pressed rather than an .on class: the pressed state belongs
+          // in the accessibility tree, and .axi-pill styles off it directly.
+          aria-pressed={value === o.value}
+          className="axi-pill"
           onClick={() => onChange(o.value)}
         >
           {o.label}

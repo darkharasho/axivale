@@ -46,13 +46,20 @@ export default function Skills({ ctl }: { ctl: SkillsController }): ReactElement
           />
         </div>
         {current && (
-          <button
-            className={`sk2-toggle${current.enabled ? '' : ' off'}`}
-            onClick={() => void toggle(current)}
-          >
-            <span className="led" />
-            {current.enabled ? 'Enabled' : 'Disabled'}
-          </button>
+          <span className="sk2-toggle">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={current.enabled}
+              className="axi-switch"
+              onClick={() => void toggle(current)}
+            >
+              <span className="axi-switch__knob" />
+            </button>
+            <span className="sk2-toggle__lbl">
+              {current.enabled ? 'Enabled' : 'Disabled'}
+            </span>
+          </span>
         )}
       </div>
 

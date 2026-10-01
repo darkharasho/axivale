@@ -168,12 +168,12 @@ export default function Editions({
     <div className="rail left editions">
       <div className="ed-head">
         <div className="h">Editions</div>
-        <button className="ed-new" onClick={onNew}>
+        <button className="ed-new axi-btn" onClick={onNew}>
           + New dispatch
         </button>
       </div>
       <input
-        className="ed-search"
+        className="ed-search axi-input"
         placeholder="Search editions"
         value={query}
         onChange={(e) => setQuery(e.target.value)}

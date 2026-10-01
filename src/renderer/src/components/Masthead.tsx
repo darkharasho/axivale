@@ -5,15 +5,6 @@ export type Section = 'dispatches' | 'operations' | 'roster' | 'skills' | 'logs'
 
 export type ProviderName = 'claude' | 'gemini' | 'openai' | 'codex' | 'antigravity' | 'local'
 
-const PROVIDER_LABELS: Record<ProviderName, string> = {
-  claude: 'Claude',
-  gemini: 'Gemini',
-  openai: 'OpenAI',
-  codex: 'ChatGPT',
-  antigravity: 'Gemini (Antigravity)',
-  local: 'Local'
-}
-
 /** 0 has no Roman numeral, so keep it literal; otherwise standard Roman. */
 function toRoman(n: number): string {
   if (n <= 0) return '0'
@@ -44,8 +35,6 @@ export interface MastheadProps {
   guildName: string | null
   guildTag: string | null
   memberCount: number | null
-  provider: ProviderName
-  providerReady: boolean
   section: Section
   onSection: (s: Section) => void
   onSwitched: () => void
@@ -64,11 +53,15 @@ function EarSwitcher({
   service,
   display,
   align = 'left',
+  title,
   onSwitched
 }: {
   service: 'gw2' | 'axivale'
   display: string
   align?: 'left' | 'right'
+  /** Hover detail the chip has no room to print — e.g. the guild's tag and
+   *  member count, which used to sit beside the name in the wide masthead. */
+  title?: string
   onSwitched: () => void
 }): ReactElement {
   const [open, setOpen] = useState(false)
@@ -101,8 +94,8 @@ function EarSwitcher({
 
   return (
     <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
-      <button className="earsw-btn" onClick={() => void toggle()}>
-        {display}
+      <button className="earsw-btn" title={title} onClick={() => void toggle()}>
+        <span className="ear-lbl">{display}</span>
         <span className="earsw-caret"><ChevronDown size={11} /></span>
       </button>
       {open && (
@@ -199,7 +192,7 @@ export function Gw2GuildSwitcher({ onSwitched }: { onSwitched: () => void }): Re
   return (
     <span className={`earsw${open ? ' open' : ''}`} ref={ref}>
       <button className="earsw-btn" onClick={() => void toggle()}>
-        {display}
+        <span className="ear-lbl">{display}</span>
         <span className="earsw-caret"><ChevronDown size={11} /></span>
       </button>
       {open && (
@@ -242,8 +235,6 @@ export default function Masthead(props: MastheadProps): ReactElement {
     guildName,
     guildTag,
     memberCount,
-    provider,
-    providerReady,
     section,
     onSection,
     onSwitched
@@ -257,9 +248,42 @@ export default function Masthead(props: MastheadProps): ReactElement {
 
   return (
     <div className="masthead">
+      {/* The titlebar row carries the status ears now. They had to leave the
+          chrome row: at the window's 940px minimum the nameplate, seven
+          sections and five chips cannot share one line, and the chips were the
+          ones being cut off. This row is already the metadata row — folio,
+          edition line — so the ears read as of a piece with it, and the chrome
+          row below is left to do one job. */}
       <div className="mtop">
         <span>{versionFolio(version)}</span>
         <span className="r">Final Edition · Free to Members</span>
+        {/* Each ear's colour already says connected-or-not, so the "AxiTools
+            connected" style label it used to carry is dropped as redundant.
+            The word that survives is the one the colour cannot say: which
+            account, which guild, which provider. */}
+        <div className="ears">
+          <span
+            className={`ear-chip ${axiConnected ? 'ok' : 'off'}`}
+            title={`AxiTools ${axiConnected ? 'connected' : 'offline'}`}
+          >
+            <Circle size={7} fill="currentColor" strokeWidth={0} />
+            <span className="ear-lbl">AxiTools</span>
+          </span>
+          <EarSwitcher
+            service="gw2"
+            display={gw2AccountName ?? 'no key'}
+            align="right"
+            onSwitched={onSwitched}
+          />
+          <Gw2GuildSwitcher onSwitched={onSwitched} />
+          <EarSwitcher
+            service="axivale"
+            display={guildName ?? 'Guild'}
+            align="right"
+            title={guildDetail}
+            onSwitched={onSwitched}
+          />
+        </div>
         <span className="winctl">
           <button title="Minimize" onClick={() => window.officer.windowControl('minimize')}>
             <Minus size={13} />
@@ -279,69 +303,33 @@ export default function Masthead(props: MastheadProps): ReactElement {
           </button>
         </span>
       </div>
-      <div className="mmain">
-        <div className="ear">
-          <div>
-            <b>AxiTools</b>{' '}
-            {axiConnected ? (
-              <span className="lit">
-                <Circle size={8} fill="currentColor" strokeWidth={0} /> connected
-              </span>
-            ) : (
-              <span className="off-air">
-                <Circle size={8} fill="currentColor" strokeWidth={0} /> offline
-              </span>
-            )}
-          </div>
-          <div>
-            <b>GW2 API</b>{' '}
-            <EarSwitcher
-              service="gw2"
-              display={gw2AccountName ?? 'no key'}
-              align="left"
-              onSwitched={onSwitched}
-            />
-          </div>
-          <div>
-            <b>GW2 Guild</b> <Gw2GuildSwitcher onSwitched={onSwitched} />
-          </div>
-        </div>
+      {/* One chrome row: the nameplate and the sections. */}
+      <div className="mbar">
         <div className="title">
           AxiVale<em>.</em>
         </div>
-        <div className="ear right">
-          <div>
-            <EarSwitcher
-              service="axivale"
-              display={guildName ?? 'Guild'}
-              align="right"
-              onSwitched={onSwitched}
-            />{' '}
-            {guildDetail}
-          </div>
-          <div>
-            <b>{PROVIDER_LABELS[provider] ?? 'Claude'}</b>{' '}
-            {providerReady ? 'connected' : 'not configured'}
-          </div>
+        <div className="mnav">
+          {(
+            [
+              ['dispatches', 'Dispatches'],
+              ['operations', 'Operations'],
+              ['roster', 'Roster'],
+              ['skills', 'Skills'],
+              ['logs', 'Logs'],
+              ['meta', 'Sources'],
+              ['settings', 'Settings']
+            ] as Array<[Section, string]>
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              className={section === key ? 'on' : ''}
+              aria-current={section === key ? 'page' : undefined}
+              onClick={() => onSection(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-      </div>
-      <div className="mnav">
-        {(
-          [
-            ['01', 'dispatches', 'Dispatches'],
-            ['02', 'operations', 'Operations'],
-            ['03', 'roster', 'Roster'],
-            ['04', 'skills', 'Skills'],
-            ['05', 'logs', 'Logs'],
-            ['06', 'meta', 'Sources'],
-            ['07', 'settings', 'Settings']
-          ] as Array<[string, Section, string]>
-        ).map(([no, key, label]) => (
-          <button key={key} className={section === key ? 'on' : ''} onClick={() => onSection(key)}>
-            <span className="no">{no}</span>
-            {label}
-          </button>
-        ))}
       </div>
     </div>
   )
