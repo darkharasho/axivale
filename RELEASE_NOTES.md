@@ -1,5 +1,29 @@
 # Release Notes
 
+## Version v1.5.0 — October 1, 2026
+
+AxiVale is now built on axi-design, the visual language the Axi apps share — without giving up the dark-newsprint broadsheet it has always been. The serif, the rules, the torn edges and the scanline are all still here; what changed is that they are drawn from the shared language underneath, which is what makes the two new pickers possible.
+
+### Pick an accent and a surface
+
+Settings has two new controls. **Accent** offers eleven colours and repaints the app's chrome — buttons, links, the active row, focus rings. **Surface** offers three looks: **Axi**, the flat outlined broadsheet with square corners and hard offset blocks, which stays the default; **Flat**, the same shapes with rounded corners and real shadows; and **Glass**, translucent panels with depth and blur. On Glass the masthead picks up glassy chrome to match.
+
+Both stick between launches and repaint everything at once.
+
+### Redrawn throughout
+
+- Panels, overlays and the settings surfaces sit on the page as raised blocks rather than being ruled off, so the hierarchy reads at a glance.
+- The composer is a card, and the chrome fits properly at narrow window widths.
+- Switches are real switches now, not styled checkboxes.
+- Data tables are drawn in the language's weights, and quantities are drawn as length rather than as brightness — a long bar means more, instead of a brighter colour meaning more.
+- The masthead no longer carries the provider badge.
+
+### Fixes
+
+- Your own messages had torn-paper edges that came out looking wrong after the redraw; they have been re-torn.
+- On Flat and Glass the window's rounded corners are now actually round; the page used to paint square corners over them.
+- Recessed areas are filled with the surface's own recess colour rather than the page colour.
+
 ## Version v1.4.0 — August 30, 2026
 
 ### Drop in a single fight and talk about it
