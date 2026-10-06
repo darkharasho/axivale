@@ -20,6 +20,8 @@ export interface AccessDeps {
   store: AccessStore
   config?: AxiConfig // tests inject one; production creates it
   onBlocked?: (info: { persisted: boolean }) => void // tests inject a spy
+  /** Awaited before a runtime block exits/relaunches the app, so child processes are released first. */
+  beforeBlocked?: () => Promise<void>
   lookupKey?: (apiKey: string) => Promise<Identity[]> // tests inject; production calls /v2/account
 }
 
@@ -37,7 +39,15 @@ export async function startAccess(deps: AccessDeps): Promise<AccessBoot> {
   const config = deps.config ?? createConfig({ appId: 'axivale', cacheDir: deps.electron.app.getPath('userData') })
   await config.ready()
   if (blockIfTripped(deps.electron, config)) return { blocked: true }
-  const gate = createAccessGate({ config, onBlocked: deps.onBlocked ?? ((info) => handleBlocked(deps.electron, config, info)) })
+  const gate = createAccessGate({ config, onBlocked: deps.onBlocked ?? ((info) => {
+      // handleBlocked may exit the app, skipping before-quit cleanup: run the
+      // hook first, and block regardless of whether it fails.
+      void Promise.resolve()
+        .then(() => deps.beforeBlocked?.())
+        .catch(() => {})
+        .finally(() => handleBlocked(deps.electron, config, info))
+    }),
+  })
 
   gate.addSource('gw2', async () => {
     const out: Identity[] = []

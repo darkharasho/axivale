@@ -228,9 +228,18 @@ app.whenReady().then(async () => {
 
   // Access check: when an earlier check tripped, show the block screen and start
   // nothing else (no IPC, timers, updater, window, meta refresher or wiki ingest).
-  const access = await startAccess({ electron: electronModule, store })
-  if (access.blocked) return
-  const recheckAccess = (): void => void access.gate.recheck()
+  // A runtime block exits the app and skips before-quit, so it runs this first
+  // (assigned once the launcher and ollama exist).
+  let releaseForBlock: () => Promise<void> = async () => {}
+  let access: Awaited<ReturnType<typeof startAccess>> | null = null
+  try {
+    access = await startAccess({ electron: electronModule, store, beforeBlocked: () => releaseForBlock() })
+  } catch {
+    // Fail open: a bug in the check must not take the app down.
+    console.warn('access check unavailable')
+  }
+  if (access?.blocked) return
+  const recheckAccess = (): void => void access?.gate.recheck()
 
   const conversations = new ConversationStore(join(app.getPath('userData'), 'conversations.json'))
 
@@ -497,6 +506,14 @@ app.whenReady().then(async () => {
   // focus-launched by AxiOM later. Defer the quit once to let the (best-effort,
   // short-timeout) release call complete; AxiForge ignores it if it has a window.
   let releasingForge = false
+  releaseForBlock = async () => {
+    try { ollama.stopServer() } catch { /* best-effort */ }
+    // Boxed so a hung release can never stall the block.
+    await Promise.race([
+      axiforgeLauncher.releaseIfSpawned().catch(() => {}),
+      new Promise<void>((r) => setTimeout(r, 3_000)),
+    ])
+  }
   app.on('before-quit', (e) => {
     if (releasingForge) return
     releasingForge = true

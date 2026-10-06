@@ -51,9 +51,13 @@ beforeEach(async () => {
   FakeWindow.all = []
 })
 afterEach(async () => {
-  for (const c of configs) c.close()
+  // Let any in-flight cache write settle before removing the directory.
+  for (const c of configs) {
+    await c.refresh()
+    c.close()
+  }
   configs = []
-  await rm(dir, { recursive: true, force: true })
+  await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 })
 })
 
 async function make(denylist: Array<[IdentityKind, string]>, fetchImpl?: typeof fetch) {
@@ -172,5 +176,35 @@ describe('access', () => {
     if (res.blocked) return
     expect(await res.gate.recheck()).toBe(false)
     expect(onBlocked).not.toHaveBeenCalled()
+  })
+
+  it('runs beforeBlocked to completion before the app exits on a runtime block', async () => {
+    const config = await make([['gw2_account', 'Some Player.1234']])
+    await config.ready()
+    await config.refresh()
+    const electron = fakeElectron(dir)
+    let release!: () => void
+    const beforeBlocked = vi.fn(() => new Promise<void>((r) => { release = r }))
+    const res = await startAccess({ electron, config, store: fakeStore({ gw2: { main: 'KEY-A' } }), lookupKey, beforeBlocked })
+    if (res.blocked) throw new Error('unexpected')
+    await res.gate.recheck()
+    await vi.waitFor(() => expect(beforeBlocked).toHaveBeenCalledTimes(1))
+    expect(electron.app.exit).not.toHaveBeenCalled()
+    release()
+    await vi.waitFor(() => expect(electron.app.exit).toHaveBeenCalled())
+  })
+
+  it('still blocks when beforeBlocked rejects', async () => {
+    const config = await make([['gw2_account', 'Some Player.1234']])
+    await config.ready()
+    await config.refresh()
+    const electron = fakeElectron(dir)
+    const res = await startAccess({
+      electron, config, store: fakeStore({ gw2: { main: 'KEY-A' } }), lookupKey,
+      beforeBlocked: async () => { throw new Error('release failed') },
+    })
+    if (res.blocked) throw new Error('unexpected')
+    await res.gate.recheck()
+    await vi.waitFor(() => expect(electron.app.exit).toHaveBeenCalled())
   })
 })
