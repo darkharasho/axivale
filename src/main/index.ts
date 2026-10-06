@@ -80,6 +80,8 @@ import type { ProviderConfig, ProviderName } from './providers/types'
 import { EntityService } from './entities/service'
 import { fetchGw2Entities } from './entities/dictionary'
 import { fetchEntityDetail } from './entities/gw2Detail'
+import { startAccess } from './access'
+import * as electronModule from 'electron'
 import { Gw2ApiClient } from '@axiapps/gw2-data'
 
 const gw2Api = new Gw2ApiClient()
@@ -223,6 +225,12 @@ function createWindow(store: SettingsStore): void {
 
 app.whenReady().then(async () => {
   const store = new SettingsStore(join(app.getPath('userData'), 'settings.json'), await electronCipher())
+
+  // Access check: when an earlier check tripped, show the block screen and start
+  // nothing else (no IPC, timers, updater, window, meta refresher or wiki ingest).
+  const access = await startAccess({ electron: electronModule, store })
+  if (access.blocked) return
+  const recheckAccess = (): void => void access.gate.recheck()
 
   const conversations = new ConversationStore(join(app.getPath('userData'), 'conversations.json'))
 
@@ -612,6 +620,7 @@ app.whenReady().then(async () => {
           guildId = String(guilds[0].id)
           name = guilds[0].name
           store.setKeyMeta('axivale', entry.label, { id: guildId, name })
+          recheckAccess()
         }
         return { client, guildId, name, label: entry.label }
       },
@@ -736,6 +745,7 @@ app.whenReady().then(async () => {
   ipcMain.handle('settings:get', (_event, key: SettingKey) => store.getSetting(key))
   ipcMain.handle('settings:set', (_event, key: SettingKey, value: string) => {
     store.setSetting(key, value)
+    if (key === 'gw2AccountName' || key === 'gw2GuildId' || key === 'guildId') recheckAccess()
     // Reflect a badge toggle immediately using the last count the renderer pushed.
     if (key === 'notifyBadge') applyBadge()
   })
@@ -745,6 +755,7 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('secrets:set', (_event, key: SecretKey, value: string) => {
     store.setSecret(key, value)
+    recheckAccess()
   })
   ipcMain.handle('secrets:has', (_event, key: SecretKey) => store.getSecret(key) !== null)
 
@@ -772,12 +783,14 @@ app.whenReady().then(async () => {
   ipcMain.handle('keys:add', (_event, service: KeyService, label: string, key: string) => {
     store.addKey(service, label, key)
     store.setActiveKey(service, label)
+    recheckAccess()
   })
   ipcMain.handle('keys:remove', (_event, service: KeyService, label: string) => {
     store.removeKey(service, label)
   })
   ipcMain.handle('keys:set-active', (_event, service: KeyService, label: string) => {
     store.setActiveKey(service, label)
+    recheckAccess()
   })
 
   ipcMain.handle('gw2:validate-key', async () => {
@@ -991,6 +1004,7 @@ app.whenReady().then(async () => {
             name: guilds[0].name,
             id: String(guilds[0].id)
           })
+          recheckAccess()
         }
       }
       return { ok: true, guilds }
@@ -1508,6 +1522,8 @@ app.whenReady().then(async () => {
   metaTimer = setInterval(() => void metaRefresher.refreshStale(), 6 * 60 * 60 * 1000)
   setTimeout(() => void wikiIngester.ingest(), 8_000)
   wikiTimer = setInterval(() => void wikiIngester.ingest(), 7 * 24 * 60 * 60 * 1000)
+  // First access re-check runs after normal startup and is never awaited.
+  recheckAccess()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow(store)
   })

@@ -116,3 +116,7 @@ and publishes to Releases — installed apps pick the update up automatically.
 
 Design docs live in `docs/superpowers/specs/` (including the approved UI
 mock) and screenshots regenerate with `node scripts/take-screenshots.mjs`.
+
+## Access
+
+AxiVale checks a public access list when it starts and every few hours, by downloading `https://config.axi.link/v1/manifest`. Access to the Axi apps can be revoked for accounts, guilds or Discord servers that violate the terms of use. The list holds only one-way SHA-256 hashes, and the comparison happens on your device: AxiVale compares your GW2 accounts and guilds and the Discord servers your AxiVale keys belong to against it and never sends them, or anything else about you, anywhere. If the list can't be reached, AxiVale keeps working. If you believe your access was revoked by mistake, use the contact link on the block screen, or reach the author through https://github.com/darkharasho.
