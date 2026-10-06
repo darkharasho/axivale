@@ -1,5 +1,15 @@
 # Release Notes
 
+## Version v1.6.0 — October 5, 2026
+
+### Access check
+
+AxiVale now checks a public access list when it starts and every few hours. Access to the Axi apps can be revoked for accounts, guilds or Discord servers that violate the terms of use, and a revoked install shows a block screen instead of the app.
+
+The list is downloaded from `config.axi.link` and holds only one-way hashes. AxiVale checks your GW2 accounts and guilds and the Discord servers your AxiVale keys belong to against it on your device and never sends them anywhere. To find a key's account and guilds, it asks the official Guild Wars 2 API using that key. If access is revoked while AxiVale is running, it shuts down the AxiForge and Ollama processes it started before closing.
+
+If the list can't be reached, AxiVale keeps working as before. The README has a new **Access** section that spells out exactly what is checked and how to appeal.
+
 ## Version v1.5.0 — October 1, 2026
 
 AxiVale is now built on axi-design, the visual language the Axi apps share — without giving up the dark-newsprint broadsheet it has always been. The serif, the rules, the torn edges and the scanline are all still here; what changed is that they are drawn from the shared language underneath, which is what makes the two new pickers possible.
