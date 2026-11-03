@@ -1,5 +1,13 @@
 # Release Notes
 
+## Version v1.6.2 — November 2, 2026
+
+### Fixes
+
+- Squad members who were in the squad but never fought no longer count toward the squad when AxiVale reads a log, so squad sizes and per-squad figures match Elite Insights.
+- Allies on the newest arcdps build no longer get counted as enemies.
+- On the Glass surface, dropdown menus are now solid so you can actually read them, and the loading spinner is a new three-bar loader.
+
 ## Version v1.6.1 — October 6, 2026
 
 ### Fixes
