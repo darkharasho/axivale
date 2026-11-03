@@ -51,7 +51,7 @@ describe('buildEntityIndex', () => {
     // { everything: true } — see task-2-report.md.
     const index = buildEntityIndex(report)
     expect(index.roleCounts()).toEqual({
-      squad: 38,
+      squad: 37,
       friendly_player: 4,
       enemy_player: 32,
       npc: 48

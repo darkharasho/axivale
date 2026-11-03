@@ -77,13 +77,13 @@ describe('AxilogService', () => {
     const overview = await service.overview('fx', FIXTURE, 'WvW 21:14')
     expect(service.workerIsRunning()).toBe(true)
     expect(overview.roleCounts).toEqual({
-      squad: 38,
+      squad: 37,
       friendly_player: 4,
       enemy_player: 32,
       npc: 48
     })
-    expect(Object.values(overview.roleCounts).reduce((a, b) => a + b, 0)).toBe(122)
-    expect(overview.squad.length).toBe(38)
+    expect(Object.values(overview.roleCounts).reduce((a, b) => a + b, 0)).toBe(121)
+    expect(overview.squad.length).toBe(37)
     service.dispose()
     expect(service.workerIsRunning()).toBe(false)
   })

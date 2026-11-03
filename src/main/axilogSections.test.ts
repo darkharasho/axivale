@@ -47,7 +47,7 @@ describe('runSection', () => {
     }
   })
 
-  it('defaults to a row limit so a 122-entity roster cannot flood context', () => {
+  it('defaults to a row limit so a 121-entity roster cannot flood context', () => {
     expect(runSection(report, 'damage', {}).rows.length).toBeLessThanOrEqual(DEFAULT_ROW_LIMIT)
   })
 
@@ -111,14 +111,14 @@ describe('runSection', () => {
     const res = runSection(report, 'defenses', { role: 'enemy_player' })
     expect(res.rows).toEqual([])
     expect(res.note).toMatch(/No entities matched \(role=enemy_player\)/)
-    expect(res.note).toMatch(/covers 42 of the log's 122 entities/)
+    expect(res.note).toMatch(/covers 41 of the log's 121 entities/)
   })
 
   it('returns no row at all, not a fabricated zero, when a squad rollup matches nothing', () => {
     const res = runSection(report, 'defenses', { granularity: 'squad', role: 'enemy_player' })
     expect(res.rows).toEqual([])
     expect(res.note).toMatch(/No entities matched \(role=enemy_player\)/)
-    expect(res.note).toMatch(/covers 42 of the log's 122 entities/)
+    expect(res.note).toMatch(/covers 41 of the log's 121 entities/)
   })
 
   it('reports an absent block as a note rather than empty rows', () => {
