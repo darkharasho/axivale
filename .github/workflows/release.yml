@@ -80,6 +80,19 @@ jobs:
             security find-identity -v signing_temp.keychain
             exit 1
           fi
+      # Without these electron-builder can't authenticate to Artifact Signing.
+      # Fail before the slow build instead of after it.
+      - name: Check the Windows signing secrets are set
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          for v in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET; do
+            [ -n "${!v}" ] || { echo "::error::Secret $v is not set."; exit 1; }
+          done
       # The signing keychain is mac-only — keep it off the windows runner, where
       # electron-builder would try to codesign the .exe with it and fail.
       - if: runner.os == 'macOS'
@@ -92,11 +105,31 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      # Windows is signed with Azure Artifact Signing instead (build.win.azureSignOptions
+      # in package.json); electron-builder reads the AZURE_* credentials from the
+      # environment. Linux ignores them.
       - if: runner.os != 'macOS'
         run: npx electron-builder --publish always
         working-directory: axivale
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      # The installer is already published by now, but a red job flags an unsigned
+      # build before anyone ships it further.
+      - name: Verify the Windows installer is signed
+        if: runner.os == 'Windows'
+        working-directory: axivale
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem release -Filter *.exe | Where-Object { $_.Name -like '* Setup *.exe' }
+          if (-not $files) { Write-Error "No installer found in release/"; exit 1 }
+          foreach ($f in $files) {
+            $sig = Get-AuthenticodeSignature $f.FullName
+            Write-Host "$($f.Name): $($sig.Status) — $($sig.SignerCertificate.Subject)"
+            if ($sig.Status -ne 'Valid') { Write-Error "$($f.Name) is not validly signed"; exit 1 }
+          }
 
   # Set the GitHub release body from RELEASE_NOTES.md and announce to Discord —
   # mirrors how AxiForge/AxiBridge ship. Runs once after all platforms publish.

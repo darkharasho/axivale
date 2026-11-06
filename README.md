@@ -101,6 +101,9 @@ npm version minor && git push --follow-tags
 ```
 
 GitHub Actions builds Linux/Windows/macOS, signs + notarizes the mac build,
+signs the Windows build with Azure Artifact Signing (`build.win.azureSignOptions`;
+needs the `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET` secrets,
+set with `~/.claude/templates/windows-signing/set-azure-signing-secrets.sh axivale`),
 and publishes to Releases — installed apps pick the update up automatically.
 
 ## Architecture

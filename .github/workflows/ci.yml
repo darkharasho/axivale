@@ -45,6 +45,13 @@ jobs:
         working-directory: axivale
       - run: npm run build
         working-directory: axivale
+      # CI has no Azure signing secrets, so drop win.azureSignOptions for this run.
+      # Left in, electron-builder would try to sign the .exe and fail. (A
+      # -c.win.azureSignOptions=null flag doesn't work: the CLI only coerces "null"
+      # for mac.identity, so it stays a string and fails schema validation.)
+      - name: Disable Windows signing for this unsigned build
+        working-directory: axivale
+        run: npm pkg delete build.win.azureSignOptions
       - run: npx electron-builder --win --dir
         working-directory: axivale
       - name: Verify codex binary + officer proxy + axilog binary are asar-unpacked

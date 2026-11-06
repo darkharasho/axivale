@@ -51,7 +51,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
     "electron": "^33.0.0",
-    "electron-builder": "^25.1.8",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "emoji-regex": "^10.6.0",
     "gw2-class-icons": "^0.3.0",
@@ -115,7 +115,13 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "azureSignOptions": {
+        "publisherName": "Michael Stephens",
+        "endpoint": "https://eus.codesigning.azure.net/",
+        "codeSigningAccountName": "darkharasho-signing",
+        "certificateProfileName": "public-trust"
+      }
     },
     "mac": {
       "target": [
